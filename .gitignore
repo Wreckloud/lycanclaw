@@ -1,0 +1,42 @@
+# Hexo生成的文件
+public/
+.deploy_git/
+.deploy/
+
+# 依赖目录
+node_modules/
+
+# 日志文件
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 编辑器目录和文件
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# 本地环境文件
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 其他
+.cache/
+.temp/
+.draft/
+
+# Hexo 文章草稿
+source/_drafts/
+
+# Hexo 主题可能的缓存
+themes/*/node_modules/
+themes/*/package-lock.json
+themes/*/pnpm-lock.yaml
