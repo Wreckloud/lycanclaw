@@ -1,0 +1,30 @@
+ 
+- links_category: 我的BiliBili
+  has_thumbnail: true
+  list: 
+    - name: 雲之残骸_Wreckloud的BiliBili
+      link: https://space.bilibili.com/177822535?spm_id_from=333.1296.0.0
+      description: 想到好活就会去更新了...咕咕咕(
+      avatar: /img/关于/1.jpg
+      thumbnail: /img/关于/关于封面.jpg # has_thumbnail 为 true 时才需要
+ 
+- links_category: 其他的有的没的
+  has_thumbnail: false
+  list: 
+    - name: 我的QQ空间
+      link: https://user.qzone.qq.com/1677820334/main
+      description: 有感觉就会发很炫酷的说说!
+      avatar: /img/关于/2.jpg
+    - name: 我的全民K歌
+      link: https://node.kg.qq.com/personal?uid=659c9f8d232f3f8c&stay=1
+      description: 甚至还留有我黑历史的音频(
+      avatar: /img/关于/3.jpg
+    - name: 网抑云歌单
+      link: https://music.163.com/#/playlist?id=973818739
+      description: 好听的歌想和你一起分享!
+      avatar: /img/关于/5.jpg
+    - name: 关于我
+      link: /about/
+      description: 这里貌似还留有一些东西...
+      avatar: /img/关于/4.jpg
+ 

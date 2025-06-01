@@ -20,6 +20,9 @@ importers:
       hexo-generator-index:
         specifier: ^3.0.0
         version: 3.0.0
+      hexo-generator-searchdb:
+        specifier: ^1.5.0
+        version: 1.5.0(chokidar@3.6.0)
       hexo-generator-tag:
         specifier: ^2.0.0
         version: 2.0.0
@@ -38,6 +41,9 @@ importers:
       hexo-theme-landscape:
         specifier: ^1.0.0
         version: 1.1.0
+      hexo-wordcount:
+        specifier: ^6.0.1
+        version: 6.0.1
 
 packages:
 
@@ -430,6 +436,9 @@ packages:
     resolution: {integrity: sha512-83AuNN4cWdLVi//3ugR8E3kR6rrOwhXZt+hOCm1IjtIGj353/GlrtpMHpqZHU5kqipzj4miy9dweVdukXglVWw==}
     engines: {node: '>=14'}
 
+  hexo-generator-searchdb@1.5.0:
+    resolution: {integrity: sha512-d0b5SueDxJimTFaHpPg430FQFx7DtMkmEIHo0UTOjXWRy+eDqNSp1CuS04P7fWzMnH2h+aQc6O9D2yY+3sdAUg==}
+
   hexo-generator-tag@2.0.0:
     resolution: {integrity: sha512-1px/hF3veEohWDN8jjzchQhaiz+uOStUvvMaBJC9vWOlALh30UFcapL8IrvAwwJZjFRVA+WqGgDRqoQ8+yaaFw==}
     engines: {node: '>=14'}
@@ -468,6 +477,9 @@ packages:
   hexo-util@3.3.0:
     resolution: {integrity: sha512-YvGngXijE2muEh5L/VI4Fmjqb+/yAkmY+VuyhWVoRwQu1X7bmWodsfYRXX7CUYhi5LqsvH8FAe/yBW1+f6ZX4Q==}
     engines: {node: '>=14'}
+
+  hexo-wordcount@6.0.1:
+    resolution: {integrity: sha512-tbo2P9xRWEKQmRf7+XuPjx9It1MnaE26nA+EEb2DN39gK1x+26W7Nm4Iyp4AugQjBWYYDx7OLn4gp1WFxQpQew==}
 
   hexo@7.3.0:
     resolution: {integrity: sha512-dOe8mzBKrvjubW5oBmyhcnQDpC+M2xmAMLae5K+o+SkHxyvAhShkS2VQZoTsOLIJKY6xilv7dzCjCvE7ol/NHQ==}
@@ -1339,6 +1351,12 @@ snapshots:
     dependencies:
       hexo-pagination: 3.0.0
 
+  hexo-generator-searchdb@1.5.0(chokidar@3.6.0):
+    dependencies:
+      nunjucks: 3.2.4(chokidar@3.6.0)
+    transitivePeerDependencies:
+      - chokidar
+
   hexo-generator-tag@2.0.0:
     dependencies:
       hexo-pagination: 3.0.0
@@ -1400,6 +1418,8 @@ snapshots:
       htmlparser2: 9.1.0
       prismjs: 1.30.0
       strip-indent: 3.0.0
+
+  hexo-wordcount@6.0.1: {}
 
   hexo@7.3.0(chokidar@3.6.0):
     dependencies:
