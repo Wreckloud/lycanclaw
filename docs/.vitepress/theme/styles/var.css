@@ -1,0 +1,26 @@
+/* 主题颜色变量 */
+:root {
+  /* 品牌颜色 */
+  --vp-c-brand-1: #187920;
+  --vp-c-brand-2: #299764;
+  --vp-c-brand-3: #30a46c;
+}
+
+/* 深色模式 */
+.dark {
+  --vp-c-brand-1: #3dd68c;
+  --vp-c-brand-2: #30a46c;
+  --vp-c-brand-3: #298a5c;
+}
+
+/* 链接样式 */
+.vp-doc a {
+  text-decoration: none;
+}
+
+/* 博客相关样式 */
+:root {
+  --blog-post-title-color: var(--vp-c-text-1);
+  --blog-post-meta-color: var(--vp-c-text-2);
+  --blog-post-tag-color: var(--vp-c-brand-1);
+} 

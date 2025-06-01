@@ -5,6 +5,7 @@ date: '2024-07-26 11:45:14'
 author: '友人A'
 cover: 'https://vitepress.dev/vitepress-logo-large.webp'
 publish: true
+tags: ['示例', '随笔', 'VitePress']
 ---
 
 # 思考随笔：示例

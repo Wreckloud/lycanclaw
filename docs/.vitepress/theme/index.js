@@ -8,7 +8,10 @@ import { useRoute } from 'vitepress';
 
 // 导入自定义组件
 import ArticleMetadata from './components/ArticleMetadata.vue';
+import PostList from './components/PostList.vue';
 
+// 导入自定义样式
+import './styles/index.css';
 
 export default {
   extends: DefaultTheme,
@@ -16,6 +19,7 @@ export default {
   enhanceApp({ app }) {
     // 注册全局组件
     app.component('ArticleMetadata', ArticleMetadata);
+    app.component('PostList', PostList);
   },
   
   setup() {
