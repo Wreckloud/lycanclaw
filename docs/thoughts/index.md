@@ -1,15 +1,28 @@
+---
+title: 思考随笔
+description: 个人思考和输出，分享给有缘人的想法与感悟
+sidebar: false
+aside: false
+---
+
 # 思考随笔
 
-这里收集了我的个人思考和输出，分享给有缘人的想法与感悟。
+记录个人思考和创作，分享给有缘人的想法与感悟。
 
-## 分类目录
+## 文章列表
 
-思考随笔按照以下主题进行整理：
+- [示例文章](/thoughts/example.html)
+- [前端模块化](/thoughts/frontend-modularization.html)
+- [自动高度过渡动画](/thoughts/auto-animation-height.html)
 
-- 生活感悟
-- 技术思考
-- 读书笔记
+<script setup>
+import { useData } from 'vitepress'
 
-## 最新随笔
+const { isDark } = useData()
+</script>
 
-- [示例随笔](./example.md) - 这是一个示例随笔，展示了文档的基本格式 
+<style scoped>
+.blog-page {
+  padding-bottom: 50px;
+}
+</style> 

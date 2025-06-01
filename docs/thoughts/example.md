@@ -1,3 +1,12 @@
+---
+title: 思考随笔：示例
+description: 这是一个示例随笔，展示了思考随笔的格式与结构
+date: '2024-07-26 11:45:14'
+author: '友人A'
+cover: 'https://vitepress.dev/vitepress-logo-large.webp'
+publish: true
+---
+
 # 思考随笔：示例
 
 ## 前言
@@ -18,7 +27,7 @@
 
 可以在此处插入相关图片，辅助表达您的想法。
 
-![图片描述](../public/logo.png)
+![图片描述](https://vitepress.dev/vitepress-logo-large.webp)
 
 ## 结语
 

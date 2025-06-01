@@ -26,6 +26,18 @@ export default defineConfig({
 
   // 启用最后更新时间
   lastUpdated: true, // 显示页面的最后更新时间（需要Git支持）
+  
+  // Markdown配置
+  markdown: {
+    // 在h1标题下插入文章元数据组件
+    config: (md) => {
+      md.renderer.rules.heading_close = (tokens, idx, options, env, slf) => {
+        let htmlResult = slf.renderToken(tokens, idx, options);
+        if (tokens[idx].tag === 'h1') htmlResult += `<ArticleMetadata />`; 
+        return htmlResult;
+      }
+    }
+  },
 
   // 默认主题配置
   themeConfig: {

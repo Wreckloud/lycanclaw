@@ -1,5 +1,4 @@
-// 导入并导出默认主题
-// 这样我们既可以使用默认主题，又可以在将来扩展它
+// 导入默认主题
 import DefaultTheme from 'vitepress/theme'
 
 // 导入medium-zoom和Vue响应式API
@@ -7,11 +6,17 @@ import mediumZoom from 'medium-zoom';
 import { onMounted, watch, nextTick } from 'vue';
 import { useRoute } from 'vitepress';
 
-// 导入自定义样式
-import './styles/var.css';
+// 导入自定义组件
+import ArticleMetadata from './components/ArticleMetadata.vue';
+
 
 export default {
   extends: DefaultTheme,
+  
+  enhanceApp({ app }) {
+    // 注册全局组件
+    app.component('ArticleMetadata', ArticleMetadata);
+  },
   
   setup() {
     const route = useRoute();

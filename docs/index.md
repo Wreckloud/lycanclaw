@@ -5,7 +5,7 @@ layout: home
 hero:
   name: "LycanClaw"
   text: "渊痕爪记"
-  tagline: 知识、思考与创造的个人空间
+  tagline: 维克罗德的世界探索笔记
   image:
     src: /logo.png
     alt: LycanClaw
