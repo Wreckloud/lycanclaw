@@ -1,9 +1,10 @@
 ---
-title: 'CSS3 常用属性'
-date: '2025-06-02 21:32:42'
-description: '这是一篇新文章!'
+title: CSS3 常用属性
+date: 2023-09-17 19:02:12
+description: 这是关于CSS的属性速查表
 publish: true
-tags: 
+tags:
+  - CSS3
 ---
 
 # 前端尺寸

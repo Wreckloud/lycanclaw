@@ -30,7 +30,7 @@ const shouldShowWordStats = computed(() => {
   </div>
 </template>
 
-<style>
+<style scoped>
 .post-title-container .post-title {
   margin-top: 1rem;
   margin-bottom: 0.5rem;

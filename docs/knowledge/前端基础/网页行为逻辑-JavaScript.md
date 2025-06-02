@@ -4,6 +4,7 @@ date: 2023-11-06 20:26:32
 description: JavaScript 是网页的交互引擎，让静态页面获得响应能力。
 publish: true
 tags:
+  - Javascript
 ---
 
 # JavaScript 介绍

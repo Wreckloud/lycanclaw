@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import { useData } from 'vitepress'
 import { countWord } from '../utils/wordCount'
 
@@ -43,14 +43,27 @@ const wordCount = ref(0)
 // 计算阅读时间（按照每分钟300字计算）
 const readTime = ref(0)
 
-onMounted(() => {
+// 计算文章字数和阅读时间的函数
+const calculateWordStats = () => {
   // 获取文章内容（从DOM中获取）
   const content = document.querySelector('.vp-doc')?.textContent || ''
   // 计算字数
   wordCount.value = countWord(content)
   // 计算阅读时间
   readTime.value = Math.ceil(wordCount.value / 300)
+}
+
+onMounted(() => {
+  calculateWordStats()
 })
+
+// 监听页面路径变化，重新计算字数和阅读时间
+watch(() => page.value.relativePath, () => {
+  // 使用nextTick确保DOM已更新
+  setTimeout(() => {
+    calculateWordStats()
+  }, 0)
+}, { immediate: true })
 
 // 添加默认导出
 defineOptions({
@@ -97,7 +110,7 @@ defineOptions({
   </div>
 </template>
 
-<style>
+<style scoped>
 .word {
   color: var(--vp-c-text-3);
   font-size: 12px;

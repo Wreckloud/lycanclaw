@@ -124,7 +124,7 @@ function getPostExcerpt(post) {
   </div>
 </template>
 
-<style>
+<style scoped>
 .post-list {
   margin-top: 2rem;
 }

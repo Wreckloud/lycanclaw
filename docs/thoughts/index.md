@@ -1,10 +1,10 @@
 ---
-title: '思考随笔'
+title: 啸月嗷声 - 随笔
 aside: false
 ---
 
-
-记录个人思考和创作，分享给有缘人的想法与感悟。
+非为吼叫，只是心有所动。  
+这里收录我向月吐露的低语，不为喧嚣，只为心中不灭的微光。
 
 <PostList />
 
@@ -18,4 +18,4 @@ const { isDark } = useData()
 .blog-page {
   padding-bottom: 50px;
 }
-</style> 
+</style>
