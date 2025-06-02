@@ -1,6 +1,6 @@
 ---
 title: 啸月嗷声 - 随笔
-aside: false
+aside: true
 ---
 
 非为吼叫，只是心有所动。  

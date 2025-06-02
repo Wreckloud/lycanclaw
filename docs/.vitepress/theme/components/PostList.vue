@@ -3,6 +3,9 @@ import { ref, onMounted } from 'vue'
 import { useData } from 'vitepress'
 import { withBase } from 'vitepress'
 
+// 判断是否在浏览器环境中
+const isBrowser = typeof window !== 'undefined'
+
 // 内联实现countWord函数
 function countWord(data) {
   const pattern = /[a-zA-Z0-9_\u0392-\u03C9\u00C0-\u00FF\u0600-\u06FF\u0400-\u04FF]+|[\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3040-\u309F\uAC00-\uD7AF]+/g
@@ -28,6 +31,9 @@ const isLoading = ref(true)
 const hasError = ref(false)
 
 onMounted(async () => {
+  // 确保只在浏览器环境中执行
+  if (!isBrowser) return
+  
   try {
     // 从生成的JSON文件获取数据
     const response = await fetch('/posts.json')

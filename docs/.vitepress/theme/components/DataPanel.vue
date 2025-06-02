@@ -8,6 +8,9 @@ import { useSidebar } from 'vitepress/theme'
 const { page, frontmatter } = useData()
 const { hasSidebar } = useSidebar()
 
+// 判断是否在浏览器环境中
+const isBrowser = typeof window !== 'undefined'
+
 // 当前年份
 const currentYear = new Date().getFullYear()
 
@@ -56,6 +59,9 @@ const updateTimer = () => {
 }
 
 onMounted(() => {
+  // 确保只在浏览器环境中执行
+  if (!isBrowser) return
+  
   // 动态加载不蒜子脚本
   const script = document.createElement('script')
   script.src = '//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js'
@@ -72,7 +78,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   // 清除计时器
-  if (timer) {
+  if (timer && isBrowser) {
     clearInterval(timer)
     timer = null
   }

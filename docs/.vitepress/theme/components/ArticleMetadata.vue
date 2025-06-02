@@ -3,6 +3,9 @@ import { onMounted, ref, computed, watch } from 'vue'
 import { useData } from 'vitepress'
 import { countWord } from '../utils/wordCount'
 
+// 判断是否在浏览器环境中
+const isBrowser = typeof window !== 'undefined'
+
 // 获取当前页面的数据
 const { frontmatter, page } = useData()
 
@@ -45,6 +48,9 @@ const readTime = ref(0)
 
 // 计算文章字数和阅读时间的函数
 const calculateWordStats = () => {
+  // 确保只在浏览器环境中执行DOM操作
+  if (!isBrowser) return
+  
   // 获取文章内容（从DOM中获取）
   const content = document.querySelector('.vp-doc')?.textContent || ''
   // 计算字数
@@ -54,12 +60,18 @@ const calculateWordStats = () => {
 }
 
 onMounted(() => {
-  calculateWordStats()
+  // 确保只在浏览器环境中执行
+  if (isBrowser) {
+    calculateWordStats()
+  }
 })
 
 // 监听页面路径变化，重新计算字数和阅读时间
 watch(() => page.value.relativePath, () => {
-  // 使用nextTick确保DOM已更新
+  // 确保只在浏览器环境中执行
+  if (!isBrowser) return
+  
+  // 使用setTimeout确保DOM已更新
   setTimeout(() => {
     calculateWordStats()
   }, 0)
