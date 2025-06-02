@@ -1,0 +1,18 @@
+{
+  "attachmentFolderPath": "public/images/文章资源/${filename}",
+  "autoRenameFiles": true,
+  "autoRenameFolder": true,
+  "convertImagesOnDragAndDrop": true,
+  "convertImagesToJpeg": true,
+  "deleteOrphanAttachments": true,
+  "duplicateNameSeparator": " ",
+  "jpegQuality": 0.8,
+  "keepEmptyAttachmentFolders": true,
+  "pastedFileName": "file-${date:YYYYMMDDHHmmssSSS}",
+  "renameAttachmentsOnDragAndDrop": true,
+  "renameCollectedFiles": true,
+  "renameOnlyImages": true,
+  "renamePastedFilesWithKnownNames": true,
+  "replaceWhitespace": true,
+  "toLowerCase": true
+}

@@ -120,6 +120,9 @@ export default defineConfig({
     // 站点Logo
     logo: '/logo.png', // 需要在public文件夹中添加logo.png
 
+    // 禁用默认页脚
+    footer: false,
+
     // 导航栏
     nav: [
       { text: '首页', link: '/' },
@@ -192,6 +195,6 @@ export default defineConfig({
     },
 
     // 使用自动生成的侧边栏
-    sidebar
+    sidebar,
   }
 })

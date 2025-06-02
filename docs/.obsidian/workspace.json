@@ -1,0 +1,201 @@
+{
+  "main": {
+    "id": "2a327d01976d7041",
+    "type": "split",
+    "children": [
+      {
+        "id": "9bffd1b8711cb9a7",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "f1a5ae53903c2eca",
+            "type": "leaf",
+            "state": {
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "新标签页"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "e614729a7ff4aac3",
+    "type": "split",
+    "children": [
+      {
+        "id": "d57180d71a95b5ef",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "9390bb6f3770f8ef",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "thoughts/未命名.md",
+                "followCursor": false,
+                "showSearch": true,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "未命名 的大纲"
+            }
+          },
+          {
+            "id": "aebed8ba13ee6df8",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "书签"
+            }
+          },
+          {
+            "id": "35b2b112743022f8",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": true,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "搜索"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 200
+  },
+  "right": {
+    "id": "318f4ed2312b0f42",
+    "type": "split",
+    "children": [
+      {
+        "id": "de2db9869ac882b8",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "609913dcbebc90fd",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "文件列表"
+            }
+          },
+          {
+            "id": "b5c835b74111611c",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "source/_posts/猎识印记-领域/Git-版本控制.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Git-版本控制 的反向链接列表"
+            }
+          },
+          {
+            "id": "f9e1fca7e6683779",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "标签"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 269.5
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:打开快速切换": false,
+      "graph:查看关系图谱": false,
+      "canvas:新建白板": false,
+      "templates:插入模板": false,
+      "command-palette:打开命令面板": false
+    }
+  },
+  "active": "609913dcbebc90fd",
+  "lastOpenFiles": [
+    "index.md",
+    "thoughts/未命名.md",
+    "about.md",
+    "posts/thoughts/未命名.md",
+    "posts/thoughts/博客-hello-websites.md",
+    "posts/thoughts/博客-常用物件存放处.md",
+    "posts/thoughts/笔电Wi-Fi消失的解决方法.md",
+    "posts/trash/deleted-sample.md",
+    "posts/trash",
+    "posts/private-notes/private-sample.md",
+    "posts/private-notes",
+    "posts/draft/draft-sample.md",
+    "posts/draft",
+    "posts/2025/vitepress-second.md",
+    "posts/2025",
+    "posts/vitepress-first.md",
+    "pages/tags.md",
+    "pages/category.md",
+    "pages/archives.md",
+    "pages/about.md",
+    "pages",
+    "posts/thoughts/獠牙下的野蔷薇.md",
+    "_scaffolds/post.md",
+    "posts/thoughts/獠牙下的野蔷薇.md",
+    "public/favicon.ico",
+    "public/logo - 副本.png",
+    "post/knowledge/index.md.new",
+    "post/knowledge/other-languages/index.md",
+    "post/knowledge/other-languages",
+    "post/knowledge/ai/index.md",
+    "post/knowledge/ai",
+    "post/knowledge/mobile/index.md",
+    "post/knowledge/mobile",
+    "post/knowledge/tools/index.md",
+    "post/knowledge/database/index.md",
+    "post/knowledge/cs-basics/index.md",
+    "post/knowledge/backend/index.md",
+    "source/img/文章封面/Wolf.png",
+    "source/img/文章资源/笔电wi-fi消失的解决方法/file-20250525123544569.jpg",
+    "source/img/文章资源/笔电wi-fi消失的解决方法/file-20250525123339342.jpg",
+    "source/img/文章资源/笔电wi-fi消失的解决方法/file-20250525120807782.jpg",
+    "source/img/文章资源/笔电wi-fi消失的解决方法/file-20250525115525944.jpg",
+    "source/img/文章资源/笔电wi-fi消失的解决方法/file-20250525115111952.jpg",
+    "source/img/文章资源/笔电wi-fi消失的解决方法/file-20250525114455557.jpg",
+    "source/img/文章资源/笔电wi-fi消失的解决方法/file-20250525113038153.jpg",
+    "source/img/文章资源/vue-状态管理-vuex/file-20250510144339143.jpg",
+    "点子合集.canvas"
+  ]
+}

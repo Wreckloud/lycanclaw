@@ -3,12 +3,13 @@ import DefaultTheme from 'vitepress/theme'
 
 // 导入medium-zoom和Vue响应式API
 import mediumZoom from 'medium-zoom';
-import { onMounted, watch, nextTick } from 'vue';
+import { onMounted, watch, nextTick, h } from 'vue';
 import { useRoute } from 'vitepress';
 
 // 导入自定义组件
 import ArticleMetadata from './components/ArticleMetadata.vue';
 import PostList from './components/PostList.vue';
+import DataPanel from './components/DataPanel.vue';
 
 // 导入自定义样式
 import './styles/index.css';
@@ -20,6 +21,14 @@ export default {
     // 注册全局组件
     app.component('ArticleMetadata', ArticleMetadata);
     app.component('PostList', PostList);
+    app.component('DataPanel', DataPanel);
+  },
+  
+  // 使用自定义页脚，但保持VitePress对侧边栏页面的页脚隐藏规则
+  Layout() {
+    return h(DefaultTheme.Layout, null, {
+      'layout-bottom': () => h(DataPanel)
+    })
   },
   
   setup() {

@@ -7,7 +7,7 @@ hero:
   text: "渊痕爪记"
   tagline: 维克罗德的世界探索笔记
   image:
-    src: /logo.png
+    src: /default.png
     alt: LycanClaw
   actions:
     - theme: brand

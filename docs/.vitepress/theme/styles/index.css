@@ -1,2 +1,93 @@
 /* 导入变量样式 */
-@import './var.css'; 
+@import './var.css';
+
+/* 首页LycanClaw标题渐变效果 */
+:root {
+  --gradient-brand: linear-gradient(90deg, 
+    var(--vp-c-brand-1) 0%, 
+    var(--vp-c-brand-2) 50%, 
+    var(--vp-c-brand-3) 100%);
+  --gradient-animated: linear-gradient(90deg,
+    var(--vp-c-brand-1) 0%, 
+    var(--vp-c-brand-2) 33%, 
+    var(--vp-c-brand-3) 67%,
+    var(--vp-c-brand-1) 100%);
+}
+
+.dark {
+  --gradient-brand: linear-gradient(90deg, 
+    var(--vp-c-brand-1) 0%, 
+    var(--vp-c-brand-2) 50%, 
+    var(--vp-c-brand-3) 100%);
+  --gradient-animated: linear-gradient(90deg,
+    var(--vp-c-brand-1) 0%, 
+    var(--vp-c-brand-2) 33%, 
+    var(--vp-c-brand-3) 67%,
+    var(--vp-c-brand-1) 100%);
+}
+
+.VPHero .name{
+  background: var(--gradient-animated);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientMove 8s linear infinite;
+}
+
+/* 为标题添加轻微阴影效果，增强可读性 */
+.VPHero .name{
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* 鼠标悬停时的动画效果 */
+.VPHero .name {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.VPHero .name:hover{
+  transform: scale(1.01);
+}
+
+/* 渐变移动动画 */
+@keyframes gradientMove {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+/* 可选：调整logo大小 */
+.VPHero .image-container .VPImage {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 页脚布局 */
+#app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.VPContent {
+  flex: 1;
+}
+
+.VPFooter {
+  margin-top: auto;
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid var(--vp-c-gutter);
+  padding: 32px 24px;
+  background-color: var(--vp-c-bg);
+}
+
+@media (max-width: 640px) {
+  .VPFooter {
+    padding: 24px 24px;
+  }
+} 
