@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/前端基础/网页结构骨架-HTML.md",
+                "file": "knowledge/前端基础/网页行为逻辑-JavaScript.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "网页结构骨架-HTML"
+              "title": "网页行为逻辑-JavaScript"
             }
           }
         ]
@@ -40,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/前端基础/网页结构骨架-HTML.md",
+                "file": "knowledge/前端基础/网页行为逻辑-JavaScript.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "网页结构骨架-HTML 的大纲"
+              "title": "网页行为逻辑-JavaScript 的大纲"
             }
           },
           {
@@ -154,10 +154,15 @@
   },
   "active": "f1a5ae53903c2eca",
   "lastOpenFiles": [
-    "knowledge/前端基础/网页行为逻辑-JavaScript.md",
-    "knowledge/前端基础/网页视觉样式-CSS.md",
-    "knowledge/前端基础/网页结构骨架-HTML.md",
     "knowledge/example.md",
+    "knowledge/前端基础/CSS3 常用属性.md",
+    "knowledge/前端基础/网页视觉样式-CSS.md",
+    "public/images/文章资源/网页视觉样式-css/file-20250602213036913.jpg",
+    "public/images/文章资源/网页视觉样式-css/file-20250602213021967.jpg",
+    "public/images/文章资源/网页视觉样式-css/file-20250602213019141.jpg",
+    "public/images/文章资源/网页视觉样式-css",
+    "knowledge/前端基础/网页结构骨架-HTML.md",
+    "knowledge/前端基础/网页行为逻辑-JavaScript.md",
     "knowledge/前端基础",
     "knowledge/index.md",
     "projects/index.md",
@@ -180,8 +185,6 @@
     "public/images/文章资源/笔记本-wi-fi-消失的解决方法/file-20250525120807782.jpg",
     "public/images/文章资源/笔记本-wi-fi-消失的解决方法/file-20250525123339342.jpg",
     "public/images/文章资源/笔记本-wi-fi-消失的解决方法/file-20250525123544569.jpg",
-    "public/images/文章资源/笔记本-wi-fi-消失的解决方法/file-20250602161200533.jpg",
-    "public/images/文章资源/笔记本-wi-fi-消失的解决方法/file-20250602160820252.jpg",
     "public/images/文章资源/笔记本-wi-fi-消失的解决方法",
     "_scaffolds/post.md",
     "_scaffolds/page.md",
@@ -190,16 +193,13 @@
     "about.md",
     "posts/thoughts/未命名.md",
     "posts/thoughts/博客-hello-websites.md",
-    "posts/thoughts/博客-常用物件存放处.md",
     "posts/trash",
     "posts/private-notes",
     "posts/draft",
     "posts/2025",
     "pages",
     "public/favicon.ico",
-    "public/logo - 副本.png",
     "post/knowledge/index.md.new",
-    "post/knowledge/other-languages",
     "点子合集.canvas"
   ]
 }
