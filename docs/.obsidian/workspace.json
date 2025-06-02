@@ -11,10 +11,14 @@
             "id": "f1a5ae53903c2eca",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "thoughts/獠牙下的野蔷薇.md",
+                "mode": "source",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "新标签页"
+              "title": "獠牙下的野蔷薇"
             }
           }
         ]
@@ -36,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "thoughts/未命名.md",
+                "file": "thoughts/獠牙下的野蔷薇.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "未命名 的大纲"
+              "title": "獠牙下的野蔷薇 的大纲"
             }
           },
           {
@@ -72,7 +76,8 @@
               "title": "搜索"
             }
           }
-        ]
+        ],
+        "currentTab": 2
       }
     ],
     "direction": "horizontal",
@@ -148,12 +153,29 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "609913dcbebc90fd",
+  "active": "f1a5ae53903c2eca",
   "lastOpenFiles": [
+    "thoughts/远古卷轴.md",
+    "thoughts/獠牙下的野蔷薇.md",
+    "thoughts/笔记本 Wi-Fi 消失的解决方法.md",
+    "thoughts/frontend-modularization.md",
+    "thoughts/example.md",
+    "thoughts/auto-animation-height.md",
+    "public/images/文章资源/笔记本-wi-fi-消失的解决方法/file-20250525113038153.jpg",
+    "public/images/文章资源/笔记本-wi-fi-消失的解决方法/file-20250525114455557.jpg",
+    "public/images/文章资源/笔记本-wi-fi-消失的解决方法/file-20250525115111952.jpg",
+    "public/images/文章资源/笔记本-wi-fi-消失的解决方法/file-20250525115525944.jpg",
+    "public/images/文章资源/笔记本-wi-fi-消失的解决方法/file-20250525120807782.jpg",
+    "public/images/文章资源/笔记本-wi-fi-消失的解决方法/file-20250525123339342.jpg",
+    "public/images/文章资源/笔记本-wi-fi-消失的解决方法/file-20250525123544569.jpg",
+    "public/images/文章资源/笔记本-wi-fi-消失的解决方法/file-20250602161200533.jpg",
+    "public/images/文章资源/笔记本-wi-fi-消失的解决方法/file-20250602160820252.jpg",
+    "public/images/文章资源/笔记本-wi-fi-消失的解决方法",
+    "_scaffolds/post.md",
     "_scaffolds/page.md",
+    "thoughts/index.md",
     "_scaffolds/post copy.md",
     "index.md",
-    "thoughts/未命名.md",
     "about.md",
     "posts/thoughts/未命名.md",
     "posts/thoughts/博客-hello-websites.md",
@@ -173,29 +195,11 @@
     "pages/archives.md",
     "pages/about.md",
     "pages",
-    "posts/thoughts/獠牙下的野蔷薇.md",
-    "_scaffolds/post.md",
-    "posts/thoughts/獠牙下的野蔷薇.md",
     "public/favicon.ico",
     "public/logo - 副本.png",
     "post/knowledge/index.md.new",
-    "post/knowledge/other-languages/index.md",
     "post/knowledge/other-languages",
-    "post/knowledge/ai/index.md",
     "post/knowledge/ai",
-    "post/knowledge/mobile/index.md",
-    "post/knowledge/mobile",
-    "post/knowledge/tools/index.md",
-    "post/knowledge/database/index.md",
-    "source/img/文章封面/Wolf.png",
-    "source/img/文章资源/笔电wi-fi消失的解决方法/file-20250525123544569.jpg",
-    "source/img/文章资源/笔电wi-fi消失的解决方法/file-20250525123339342.jpg",
-    "source/img/文章资源/笔电wi-fi消失的解决方法/file-20250525120807782.jpg",
-    "source/img/文章资源/笔电wi-fi消失的解决方法/file-20250525115525944.jpg",
-    "source/img/文章资源/笔电wi-fi消失的解决方法/file-20250525115111952.jpg",
-    "source/img/文章资源/笔电wi-fi消失的解决方法/file-20250525114455557.jpg",
-    "source/img/文章资源/笔电wi-fi消失的解决方法/file-20250525113038153.jpg",
-    "source/img/文章资源/vue-状态管理-vuex/file-20250510144339143.jpg",
     "点子合集.canvas"
   ]
 }
