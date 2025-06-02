@@ -1,6 +1,6 @@
 ---
 title: '{{title}}'
-date: '{{date}} {{time}}'
+date: '{{date:YYYY-MM-DD}} {{time}}'
 description: '这是一篇新文章!'
 publish: 'true'
 tags: 

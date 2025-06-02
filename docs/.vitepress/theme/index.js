@@ -38,8 +38,7 @@ export default {
     const initZoom = () => {
       // 为.main容器内的所有图像启用缩放功能
       mediumZoom('.main img', { 
-        background: 'var(--vp-c-bg)',
-        margin: 24
+        background: 'var(--vp-c-bg)'
       });
     };
     

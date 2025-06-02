@@ -1,8 +1,5 @@
 ---
 title: 思考随笔
-description: 个人思考和输出，分享给有缘人的想法与感悟
-sidebar: false
-aside: false
 ---
 
 # 思考随笔

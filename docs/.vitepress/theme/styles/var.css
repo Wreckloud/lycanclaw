@@ -1,9 +1,9 @@
 /* 主题颜色变量 */
 :root {
   /* 品牌颜色 */
-  --vp-c-brand-1: #0A3E1E; /* 主色调：深绿色 */
-  --vp-c-brand-2: #0E5429; /* 次要色调：稍亮的绿色 */
-  --vp-c-brand-3: #126B33; /* 强调色调：更亮的绿色 */
+  --vp-c-brand-1: #12500b; /* 主色调：深绿色 */
+  --vp-c-brand-2: #186812; /* 次要色调：稍亮的绿色 */
+  --vp-c-brand-3: #13851d; /* 强调色调：更亮的绿色 */
 }
 
 /* 深色模式 */
@@ -23,4 +23,14 @@
   --blog-post-title-color: var(--vp-c-text-1);
   --blog-post-meta-color: var(--vp-c-text-2);
   --blog-post-tag-color: var(--vp-c-brand-1);
-} 
+}
+
+/* 图片缩放相关样式 - 路径：.vitepress/theme/styles/var.css */
+.medium-zoom-overlay {
+  z-index: 30 !important;
+  background: var(--vp-c-bg) !important;
+}
+
+.medium-zoom-image {
+  z-index: 9999 !important;/* 给的值是21，但是实测盖不住，直接999 */
+}
