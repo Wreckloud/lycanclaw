@@ -1,6 +1,9 @@
 ---
-title: 示例笔记
-description: 这是一个知识笔记示例
+title: example
+description: 这是一篇新文章!
+date: 2025-06-02 17:02:47
+publish: true
+tags:
 ---
 
 # 示例笔记

@@ -10,6 +10,8 @@ import { useRoute } from 'vitepress';
 import ArticleMetadata from './components/ArticleMetadata.vue';
 import PostList from './components/PostList.vue';
 import DataPanel from './components/DataPanel.vue';
+import PostTitle from './components/PostTitle.vue';
+import MyLayout from './components/MyLayout.vue';
 
 // 导入自定义样式
 import './styles/index.css';
@@ -22,14 +24,11 @@ export default {
     app.component('ArticleMetadata', ArticleMetadata);
     app.component('PostList', PostList);
     app.component('DataPanel', DataPanel);
+    app.component('PostTitle', PostTitle);
   },
   
   // 使用自定义页脚，但保持VitePress对侧边栏页面的页脚隐藏规则
-  Layout() {
-    return h(DefaultTheme.Layout, null, {
-      'layout-bottom': () => h(DataPanel)
-    })
-  },
+  Layout: MyLayout,
   
   setup() {
     const route = useRoute();

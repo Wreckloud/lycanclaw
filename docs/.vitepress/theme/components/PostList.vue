@@ -57,7 +57,7 @@ function formatDate(dateString) {
   const year = date.getFullYear()
   const month = (date.getMonth() + 1).toString().padStart(2, '0')
   const day = date.getDate().toString().padStart(2, '0')
-  return `${month}月${day}日`
+  return `${year}年${month}月${day}日`
 }
 
 // 计算阅读时间
@@ -96,7 +96,7 @@ function getPostExcerpt(post) {
     <template v-else>
       <div v-for="post in thoughtsPosts" :key="post.url" class="post-item">
         <a :href="withBase(post.url)" class="post-link">
-          <h2 class="post-title">{{ post.frontmatter.title }}</h2>
+          <h2 class="post-item-title">{{ post.frontmatter.title }}</h2>
           
           <!-- 文章摘要：优先使用description -->
           <p class="post-excerpt">{{ getPostExcerpt(post) }}</p>
@@ -145,14 +145,15 @@ function getPostExcerpt(post) {
   color: var(--vp-c-text-1);
 }
 
-.post-link:hover .post-title {
+.post-link:hover .post-item-title {
   color: var(--vp-c-brand-1);
 }
 
-.post-title {
+.post-item-title {
   font-size: 1.4rem;
   margin: 0 0 0.5rem 0;
   transition: color 0.2s;
+  color: var(--vp-c-text-1);
 }
 
 .post-excerpt {

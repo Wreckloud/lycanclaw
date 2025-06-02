@@ -25,15 +25,6 @@
   --blog-post-tag-color: var(--vp-c-brand-1);
 }
 
-/* 文章标题样式 */
-.VPDoc h1 {
-  background: -webkit-linear-gradient(10deg, #34a965 5%, #424987);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-
 /* 图片缩放相关样式 - 路径：.vitepress/theme/styles/var.css */
 .medium-zoom-overlay {
   z-index: 30 !important;

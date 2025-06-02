@@ -27,6 +27,17 @@ const creationDate = computed(() => {
   }
 })
 
+// 格式化日期，显示年月日
+const formattedDate = computed(() => {
+  if (!creationDate.value) return ''
+  
+  const year = creationDate.value.getFullYear()
+  const month = (creationDate.value.getMonth() + 1).toString().padStart(2, '0')
+  const day = creationDate.value.getDate().toString().padStart(2, '0')
+  
+  return `${year}年${month}月${day}日`
+})
+
 // 计算字数
 const wordCount = ref(0)
 // 计算阅读时间（按照每分钟300字计算）
@@ -39,6 +50,11 @@ onMounted(() => {
   wordCount.value = countWord(content)
   // 计算阅读时间
   readTime.value = Math.ceil(wordCount.value / 300)
+})
+
+// 添加默认导出
+defineOptions({
+  name: 'ArticleMetadata'
 })
 </script>
 
@@ -54,7 +70,7 @@ onMounted(() => {
             fill="#9a9a9a" p-id="2494"></path>
           <path d="M234.666667 512h554.666666v64H234.666667z" fill="#9a9a9a" p-id="2495"></path>
         </svg>
-        <span>创建: {{ creationDate.toLocaleDateString() }}</span>
+        <span>创建: {{ formattedDate }}</span>
         <span class="stat-divider"></span>
 
 

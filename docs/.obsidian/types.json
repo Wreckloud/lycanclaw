@@ -4,6 +4,6 @@
     "cssclasses": "multitext",
     "tags": "tags",
     "publish": "checkbox",
-    "date": "datetime"
+    "date": "text"
   }
 }

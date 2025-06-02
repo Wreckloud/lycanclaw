@@ -102,14 +102,7 @@ export default defineConfig({
   
   // Markdown配置
   markdown: {
-    // 在h1标题下插入文章元数据组件
-    config: (md) => {
-      md.renderer.rules.heading_close = (tokens, idx, options, env, slf) => {
-        let htmlResult = slf.renderToken(tokens, idx, options);
-        if (tokens[idx].tag === 'h1') htmlResult += `<ArticleMetadata />`; 
-        return htmlResult;
-      }
-    }
+    // 移除在h1标题下自动插入文章元数据组件的配置
   },
 
   // 构建钩子
@@ -172,7 +165,7 @@ export default defineConfig({
 
     // 大纲设置
     outline: {
-      level: [2, 3], // 显示2-3级标题
+      level: [1, 3], // 显示2-3级标题
       label: '当前页大纲'
     },
 

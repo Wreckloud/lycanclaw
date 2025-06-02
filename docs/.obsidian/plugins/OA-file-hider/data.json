@@ -1,8 +1,4 @@
 {
   "hidden": true,
-  "hiddenList": [
-    "index.md",
-    "thoughts/index.md",
-    "projects/index.md"
-  ]
+  "hiddenList": []
 }

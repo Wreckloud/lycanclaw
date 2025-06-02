@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "thoughts/獠牙下的野蔷薇.md",
+                "file": "knowledge/前端基础/网页结构骨架-HTML.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "獠牙下的野蔷薇"
+              "title": "网页结构骨架-HTML"
             }
           }
         ]
@@ -40,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "thoughts/獠牙下的野蔷薇.md",
+                "file": "knowledge/前端基础/网页结构骨架-HTML.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "獠牙下的野蔷薇 的大纲"
+              "title": "网页结构骨架-HTML 的大纲"
             }
           },
           {
@@ -76,12 +76,11 @@
               "title": "搜索"
             }
           }
-        ],
-        "currentTab": 2
+        ]
       }
     ],
     "direction": "horizontal",
-    "width": 200
+    "width": 251.5
   },
   "right": {
     "id": "318f4ed2312b0f42",
@@ -155,9 +154,22 @@
   },
   "active": "f1a5ae53903c2eca",
   "lastOpenFiles": [
-    "thoughts/远古卷轴.md",
+    "knowledge/前端基础/网页行为逻辑-JavaScript.md",
+    "knowledge/前端基础/网页视觉样式-CSS.md",
+    "knowledge/前端基础/网页结构骨架-HTML.md",
+    "knowledge/example.md",
+    "knowledge/前端基础",
+    "knowledge/index.md",
+    "projects/index.md",
+    "thoughts/index.md",
+    "projects/example-project.md",
+    "knowledge/programming/index.md",
     "thoughts/獠牙下的野蔷薇.md",
     "thoughts/笔记本 Wi-Fi 消失的解决方法.md",
+    "thoughts/远古卷轴.md",
+    "knowledge/technology/index.md",
+    "knowledge/technology/cloud.md",
+    "knowledge/programming/javascript.md",
     "thoughts/frontend-modularization.md",
     "thoughts/example.md",
     "thoughts/auto-animation-height.md",
@@ -173,33 +185,21 @@
     "public/images/文章资源/笔记本-wi-fi-消失的解决方法",
     "_scaffolds/post.md",
     "_scaffolds/page.md",
-    "thoughts/index.md",
     "_scaffolds/post copy.md",
     "index.md",
     "about.md",
     "posts/thoughts/未命名.md",
     "posts/thoughts/博客-hello-websites.md",
     "posts/thoughts/博客-常用物件存放处.md",
-    "posts/thoughts/笔电Wi-Fi消失的解决方法.md",
-    "posts/trash/deleted-sample.md",
     "posts/trash",
-    "posts/private-notes/private-sample.md",
     "posts/private-notes",
-    "posts/draft/draft-sample.md",
     "posts/draft",
-    "posts/2025/vitepress-second.md",
     "posts/2025",
-    "posts/vitepress-first.md",
-    "pages/tags.md",
-    "pages/category.md",
-    "pages/archives.md",
-    "pages/about.md",
     "pages",
     "public/favicon.ico",
     "public/logo - 副本.png",
     "post/knowledge/index.md.new",
     "post/knowledge/other-languages",
-    "post/knowledge/ai",
     "点子合集.canvas"
   ]
 }
