@@ -24,11 +24,26 @@ const yearString = startYear === currentYear
 
 // 计时器相关
 const startDate = new Date('2023-09-17T14:00:00')
+const years = ref(0)
 const days = ref(0)
 const hours = ref(0)
 const minutes = ref(0)
 const seconds = ref(0)
 let timer: number | null = null
+
+// 不蒜子统计是否已加载
+const busuanziLoaded = ref(false)
+
+// 监听不蒜子统计加载情况
+const checkBusuanziLoaded = () => {
+  if (!isBrowser) return
+  
+  // 检查是否有数值（不是--）
+  const pvElement = document.getElementById('busuanzi_value_site_pv')
+  if (pvElement && pvElement.textContent && pvElement.textContent !== '--') {
+    busuanziLoaded.value = true
+  }
+}
 
 // 一言API相关
 const hitokoto = ref("死亡是涅灭，亦或是永恒？")
@@ -51,11 +66,18 @@ const updateTimer = () => {
   const now = new Date()
   const diff = now.getTime() - startDate.getTime()
   
-  // 计算天、时、分、秒
-  days.value = Math.floor(diff / (1000 * 60 * 60 * 24))
-  hours.value = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-  minutes.value = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-  seconds.value = Math.floor((diff % (1000 * 60)) / 1000)
+  // 计算年、天、时、分、秒
+  const millisecondsPerYear = 1000 * 60 * 60 * 24 * 365.25 // 考虑闰年
+  years.value = Math.floor(diff / millisecondsPerYear)
+  const remainingAfterYears = diff % millisecondsPerYear
+  
+  days.value = Math.floor(remainingAfterYears / (1000 * 60 * 60 * 24))
+  hours.value = Math.floor((remainingAfterYears % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  minutes.value = Math.floor((remainingAfterYears % (1000 * 60 * 60)) / (1000 * 60))
+  seconds.value = Math.floor((remainingAfterYears % (1000 * 60)) / 1000)
+  
+  // 每秒检查一次不蒜子是否加载
+  checkBusuanziLoaded()
 }
 
 onMounted(() => {
@@ -92,26 +114,26 @@ onBeforeUnmount(() => {
       <div class="footer-content">
         <!-- 左侧内容 -->
         <div class="left-content">
-          <p class="copyright">© {{ yearString }} Wreckloud. 
+          <p class="timer">
+            孤狼踏雪，已行于世间第
+            <span v-if="years > 0">{{ years }} 年 </span>
+            <span>{{ days }}</span> 天 
+            <span>{{ hours }}</span> 时 
+            <span>{{ minutes }}</span> 分 
+            <span class="time-value">{{ seconds }}</span> 秒
+          </p>
+          <p class="credits">
             <span>Powered by <a href="https://www.netlify.com/" target="_blank">netlify</a> | </span>
             <span>Theme by <a href="https://vitepress.dev/" target="_blank">vitepress</a></span>
           </p>
-          <p class="timer">
-            孤狼踏雪，已行于世间第 
-            <span class="time-value">{{ days }}</span> 天 
-            <span class="time-value">{{ hours }}</span> 时 
-            <span class="time-value">{{ minutes }}</span> 分 
-            <span class="time-value">{{ seconds }}</span> 秒
-          </p>
-
         </div>
         
         <!-- 右侧内容 -->
         <div class="right-content">
-          <p class="statistics">
+          <p class="statistics" v-if="busuanziLoaded">
             <span id="busuanzi_container_site_pv" class="statistic-item">造访爪迹 <span id="busuanzi_value_site_pv" class="statistic-value">--</span> 次</span>
-            
           </p>
+          <p class="copyright">© {{ yearString }} <a href="/about">Wreckloud</a>.</p>
           <p class="motto">{{ hitokoto }}</p>
         </div>
       </div>
@@ -149,7 +171,7 @@ onBeforeUnmount(() => {
   text-align: right;
 }
 
-.copyright, .timer, .motto, .statistics {
+.copyright, .timer, .motto, .statistics, .credits {
   margin: 4px 0;
   line-height: 1.6;
   font-size: 14px;
@@ -157,14 +179,14 @@ onBeforeUnmount(() => {
   color: var(--vp-c-text-3);
 }
 
-a {
-  color: var(--vp-c-text-3);
+.VPFooter a {
+  color: var(--vp-c-text-2);
   text-decoration: none;
   transition: color 0.25s;
 }
 
-a:hover {
-  color: var(--vp-c-text-2);
+.VPFooter a:hover {
+  color: var(--vp-c-text-1);
 }
 
 .time-value {
@@ -184,6 +206,10 @@ a:hover {
   flex-direction: column;
   gap: 4px;
   align-items: flex-end;
+}
+
+.statistic-item {
+  display: inline-block;
 }
 
 /* 移动端适配 */
