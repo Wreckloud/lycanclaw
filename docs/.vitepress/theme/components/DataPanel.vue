@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // 在组件挂载时加载不蒜子统计脚本
-import { onMounted, ref, onBeforeUnmount, computed } from 'vue'
+import { onMounted, ref, onBeforeUnmount } from 'vue'
 import { useData } from 'vitepress'
 import { useSidebar } from 'vitepress/theme'
 
@@ -30,61 +30,6 @@ const hours = ref(0)
 const minutes = ref(0)
 const seconds = ref(0)
 let timer: number | null = null
-
-// 不蒜子统计是否已加载
-const busuanziLoaded = ref(false)
-const loadingAttempts = ref(0)
-const maxLoadingAttempts = 5 // 最多尝试加载5次
-
-// 监听不蒜子统计加载情况
-const checkBusuanziLoaded = () => {
-  if (!isBrowser) return
-  
-  // 检查是否有数值（不是--）
-  const pvElement = document.getElementById('busuanzi_value_site_pv')
-  if (pvElement && pvElement.textContent && pvElement.textContent !== '--') {
-    busuanziLoaded.value = true
-    return true
-  }
-  return false
-}
-
-// 加载不蒜子脚本
-const loadBusuanziScript = () => {
-  if (!isBrowser || loadingAttempts.value >= maxLoadingAttempts) return
-
-  loadingAttempts.value++
-  
-  // 先尝试移除旧脚本（如果存在）
-  const oldScript = document.getElementById('busuanzi-script')
-  if (oldScript) {
-    document.body.removeChild(oldScript)
-  }
-  
-  // 创建新脚本
-  const script = document.createElement('script')
-  script.id = 'busuanzi-script'
-  script.src = 'https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js'
-  script.async = true
-  script.onload = () => {
-    // 脚本加载成功，等待一段时间检查是否统计数据加载成功
-    setTimeout(() => {
-      if (!checkBusuanziLoaded() && loadingAttempts.value < maxLoadingAttempts) {
-        // 如果加载不成功，尝试重新加载
-        console.log(`第${loadingAttempts.value}次尝试加载不蒜子统计失败，正在重试...`)
-        loadBusuanziScript()
-      }
-    }, 1000)
-  }
-  script.onerror = () => {
-    console.error('不蒜子统计脚本加载失败')
-    if (loadingAttempts.value < maxLoadingAttempts) {
-      console.log(`第${loadingAttempts.value}次尝试加载不蒜子统计失败，正在重试...`)
-      setTimeout(loadBusuanziScript, 2000) // 2秒后重试
-    }
-  }
-  document.body.appendChild(script)
-}
 
 // 一言API相关
 const hitokoto = ref("死亡是涅灭，亦或是永恒？")
@@ -116,9 +61,17 @@ const updateTimer = () => {
   hours.value = Math.floor((remainingAfterYears % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
   minutes.value = Math.floor((remainingAfterYears % (1000 * 60 * 60)) / (1000 * 60))
   seconds.value = Math.floor((remainingAfterYears % (1000 * 60)) / 1000)
+}
+
+// 不蒜子统计脚本加载
+const loadBusuanziScript = () => {
+  if (!isBrowser) return
   
-  // 每秒检查一次不蒜子是否加载
-  checkBusuanziLoaded()
+  // 创建不蒜子脚本
+  const script = document.createElement('script')
+  script.async = true
+  script.src = 'https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js'
+  document.body.appendChild(script)
 }
 
 onMounted(() => {
@@ -149,6 +102,7 @@ onBeforeUnmount(() => {
   <!-- 只在没有侧边栏时显示页脚 -->
   <footer v-if="!hasSidebar" class="VPFooter">
     <div class="container">
+      <!-- 页脚内容 -->
       <div class="footer-content">
         <!-- 左侧内容 -->
         <div class="left-content">
@@ -168,15 +122,11 @@ onBeforeUnmount(() => {
         
         <!-- 右侧内容 -->
         <div class="right-content">
-          <p class="statistics" v-if="busuanziLoaded">
-            <span id="busuanzi_container_site_pv" class="statistic-item">造访爪迹 <span id="busuanzi_value_site_pv" class="statistic-value">--</span> 次</span>
-            <span id="busuanzi_container_site_uv" class="statistic-item">访客足印 <span id="busuanzi_value_site_uv" class="statistic-value">--</span> 枚</span>
-          </p>
-          <p class="statistics" v-else-if="loadingAttempts >= maxLoadingAttempts">
-            <span class="statistic-item">统计服务暂不可用</span>
-          </p>
           <p class="copyright">© {{ yearString }} <a href="/about">Wreckloud</a>.</p>
           <p class="motto">{{ hitokoto }}</p>
+          <p class="visitor-count">
+             <span id="busuanzi_value_site_uv" class="count-value">--</span> 位行者曾翻阅此卷
+          </p>
         </div>
       </div>
     </div>
@@ -213,7 +163,7 @@ onBeforeUnmount(() => {
   text-align: right;
 }
 
-.copyright, .timer, .motto, .statistics, .credits {
+.copyright, .timer, .motto, .credits, .visitor-count {
   margin: 4px 0;
   line-height: 1.6;
   font-size: 14px;
@@ -239,19 +189,8 @@ onBeforeUnmount(() => {
   color: var(--vp-c-brand-1);
 }
 
-.statistic-value {
+.count-value {
   color: var(--vp-c-brand-1);
-}
-
-.statistics {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: flex-end;
-}
-
-.statistic-item {
-  display: inline-block;
 }
 
 /* 移动端适配 */
@@ -267,10 +206,6 @@ onBeforeUnmount(() => {
   
   .right-content {
     margin-top: 16px;
-  }
-  
-  .statistics {
-    align-items: center;
   }
 }
 </style> 

@@ -124,7 +124,7 @@ export default defineConfig({
     // 添加Content-Security-Policy，允许加载不蒜子统计脚本
     ['meta', { 
       'http-equiv': 'Content-Security-Policy', 
-      content: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://busuanzi.ibruce.info; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://v1.hitokoto.cn https://busuanzi.ibruce.info; font-src 'self' data:; frame-src 'self';"
+      content: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://busuanzi.ibruce.info http://busuanzi.ibruce.info; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://v1.hitokoto.cn https://busuanzi.ibruce.info http://busuanzi.ibruce.info; font-src 'self' data:; frame-src 'self';"
     }],
     // 添加跨域预获取策略，提前连接不蒜子服务
     ['link', { rel: 'preconnect', href: 'https://busuanzi.ibruce.info' }],
