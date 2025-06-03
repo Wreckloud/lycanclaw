@@ -151,6 +151,16 @@ export default defineConfig({
     lineNumbers: true,
   },
 
+  // Vue配置
+  vue: {
+    template: {
+      compilerOptions: {
+        // 不再需要这些自定义元素配置，因为我们已经移除了所有相关组件
+        isCustomElement: (tag) => false
+      }
+    }
+  },
+
   // 构建钩子
   buildEnd: generatePostsData,
 

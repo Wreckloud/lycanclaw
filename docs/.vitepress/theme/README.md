@@ -194,3 +194,44 @@ export default {
 2. 添加文章目录和搜索功能
 3. 支持更多的frontmatter选项，如封面图像
 4. 添加文章评论功能
+
+## 性能优化
+
+### 组件按需加载
+
+本站使用Vue的`defineAsyncComponent`实现组件按需加载，提高首屏加载速度：
+
+```js
+// 在theme/index.js中
+import { defineAsyncComponent } from 'vue';
+
+// 使用异步组件实现按需加载
+const AsyncPostList = defineAsyncComponent(() => import('./components/PostList.vue'));
+const AsyncDataPanel = defineAsyncComponent(() => import('./components/DataPanel.vue'));
+
+// 注册全局组件
+app.component('PostList', AsyncPostList);
+app.component('DataPanel', AsyncDataPanel);
+```
+
+按需加载的优势：
+- 减少首屏加载时间和初始包体积
+- 只在需要时才加载组件代码
+- 提高用户体验，特别是在移动设备上
+- 优化网站性能评分
+
+### 文章数据生成
+
+博客数据通过构建时脚本自动生成为静态 JSON 文件，最近进行了性能优化：
+
+1. **增量更新**：只在文件变化时重新生成数据
+2. **错误处理**：添加错误捕获机制
+3. **建立缓存**：比较文件修改时间
+4. 生成步骤：
+   - 扫描 `thoughts/` 目录下的所有Markdown文件
+   - 解析frontmatter和内容
+   - 提取摘要(优先使用`<!-- more -->`标记)
+   - 按日期排序(从新到旧)
+   - 生成 `public/posts.json` 文件
+
+然后，PostList组件会在客户端通过fetch请求加载这个JSON文件。

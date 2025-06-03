@@ -124,10 +124,14 @@ onBeforeUnmount(() => {
         <div class="right-content">
           <p class="copyright">© {{ yearString }} <a href="/about">Wreckloud</a>.</p>
           <p class="motto">{{ hitokoto }}</p>
-          <p class="visitor-count">
-             <span id="busuanzi_value_site_uv" class="count-value">--</span> 位行者曾翻阅此卷
-          </p>
         </div>
+      </div>
+      
+      <!-- 访客统计居中显示 -->
+      <div class="visitor-count-container">
+        <p class="visitor-count">
+          <span id="busuanzi_value_site_uv" class="count-value">--</span> 位行者曾翻阅此卷
+        </p>
       </div>
     </div>
   </footer>
@@ -163,7 +167,7 @@ onBeforeUnmount(() => {
   text-align: right;
 }
 
-.copyright, .timer, .motto, .credits, .visitor-count {
+.copyright, .timer, .motto, .credits {
   margin: 4px 0;
   line-height: 1.6;
   font-size: 14px;
@@ -187,6 +191,20 @@ onBeforeUnmount(() => {
   text-align: center;
   font-variant-numeric: tabular-nums;
   color: var(--vp-c-brand-1);
+}
+
+.visitor-count-container {
+  text-align: center;
+  margin-top: 12px;
+}
+
+.visitor-count {
+  margin: 4px 0;
+  line-height: 1.6;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--vp-c-text-3);
+  display: inline-block;
 }
 
 .count-value {

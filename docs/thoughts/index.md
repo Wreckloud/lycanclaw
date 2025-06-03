@@ -10,6 +10,7 @@ aside: true
 
 <script setup>
 import { useData } from 'vitepress'
+import PostList from '../.vitepress/theme/components/PostList.vue'
 
 const { isDark } = useData()
 </script>

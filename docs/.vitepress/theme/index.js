@@ -3,28 +3,30 @@ import DefaultTheme from 'vitepress/theme'
 
 // 导入medium-zoom和Vue响应式API
 import mediumZoom from 'medium-zoom';
-import { onMounted, watch, nextTick, h } from 'vue';
+import { onMounted, watch, nextTick, h, defineAsyncComponent } from 'vue';
 import { useRoute } from 'vitepress';
 
-// 导入自定义组件
-import ArticleMetadata from './components/ArticleMetadata.vue';
-import PostList from './components/PostList.vue';
-import DataPanel from './components/DataPanel.vue';
-import PostTitle from './components/PostTitle.vue';
+// 导入自定义布局组件（保留直接导入，因为它是必需的）
 import MyLayout from './components/MyLayout.vue';
 
 // 导入自定义样式
 import './styles/index.css';
 
+// 使用异步组件实现按需加载
+const AsyncArticleMetadata = defineAsyncComponent(() => import('./components/ArticleMetadata.vue'));
+const AsyncPostList = defineAsyncComponent(() => import('./components/PostList.vue'));
+const AsyncDataPanel = defineAsyncComponent(() => import('./components/DataPanel.vue'));
+const AsyncPostTitle = defineAsyncComponent(() => import('./components/PostTitle.vue'));
+
 export default {
   extends: DefaultTheme,
   
   enhanceApp({ app }) {
-    // 注册全局组件
-    app.component('ArticleMetadata', ArticleMetadata);
-    app.component('PostList', PostList);
-    app.component('DataPanel', DataPanel);
-    app.component('PostTitle', PostTitle);
+    // 注册全局组件（使用异步组件）
+    app.component('ArticleMetadata', AsyncArticleMetadata);
+    app.component('PostList', AsyncPostList);
+    app.component('DataPanel', AsyncDataPanel);
+    app.component('PostTitle', AsyncPostTitle);
   },
   
   // 使用自定义页脚，但保持VitePress对侧边栏页面的页脚隐藏规则

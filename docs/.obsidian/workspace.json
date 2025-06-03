@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "thoughts/从一盏灯开始的文明.md",
+                "file": "thoughts/笔记本 Wi-Fi 消失的解决方法.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "从一盏灯开始的文明"
+              "title": "笔记本 Wi-Fi 消失的解决方法"
             }
           }
         ]
@@ -40,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "thoughts/从一盏灯开始的文明.md",
+                "file": "thoughts/笔记本 Wi-Fi 消失的解决方法.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "从一盏灯开始的文明 的大纲"
+              "title": "笔记本 Wi-Fi 消失的解决方法 的大纲"
             }
           },
           {
@@ -154,8 +154,9 @@
   },
   "active": "f1a5ae53903c2eca",
   "lastOpenFiles": [
-    "knowledge/前端基础/Javascript-进阶语法.md",
     "thoughts/从一盏灯开始的文明.md",
+    "knowledge/前端框架",
+    "knowledge/前端基础/Javascript-进阶语法.md",
     "knowledge/前端基础/JavaScript-常用API.md",
     "public/images/文章资源/javascript-常用api/file-20250603101814455.jpg",
     "public/images/文章资源/javascript-常用api/file-20250603101800621.jpg",
@@ -194,12 +195,10 @@
     "public/images/文章资源/笔记本-wi-fi-消失的解决方法",
     "_scaffolds/post.md",
     "_scaffolds/page.md",
-    "_scaffolds/post copy.md",
     "posts/trash",
     "posts/private-notes",
     "posts/draft",
     "posts/2025",
-    "pages",
     "点子合集.canvas"
   ]
 }
