@@ -33,6 +33,8 @@ let timer: number | null = null
 
 // 不蒜子统计是否已加载
 const busuanziLoaded = ref(false)
+const loadingAttempts = ref(0)
+const maxLoadingAttempts = 5 // 最多尝试加载5次
 
 // 监听不蒜子统计加载情况
 const checkBusuanziLoaded = () => {
@@ -42,7 +44,46 @@ const checkBusuanziLoaded = () => {
   const pvElement = document.getElementById('busuanzi_value_site_pv')
   if (pvElement && pvElement.textContent && pvElement.textContent !== '--') {
     busuanziLoaded.value = true
+    return true
   }
+  return false
+}
+
+// 加载不蒜子脚本
+const loadBusuanziScript = () => {
+  if (!isBrowser || loadingAttempts.value >= maxLoadingAttempts) return
+
+  loadingAttempts.value++
+  
+  // 先尝试移除旧脚本（如果存在）
+  const oldScript = document.getElementById('busuanzi-script')
+  if (oldScript) {
+    document.body.removeChild(oldScript)
+  }
+  
+  // 创建新脚本
+  const script = document.createElement('script')
+  script.id = 'busuanzi-script'
+  script.src = 'https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js'
+  script.async = true
+  script.onload = () => {
+    // 脚本加载成功，等待一段时间检查是否统计数据加载成功
+    setTimeout(() => {
+      if (!checkBusuanziLoaded() && loadingAttempts.value < maxLoadingAttempts) {
+        // 如果加载不成功，尝试重新加载
+        console.log(`第${loadingAttempts.value}次尝试加载不蒜子统计失败，正在重试...`)
+        loadBusuanziScript()
+      }
+    }, 1000)
+  }
+  script.onerror = () => {
+    console.error('不蒜子统计脚本加载失败')
+    if (loadingAttempts.value < maxLoadingAttempts) {
+      console.log(`第${loadingAttempts.value}次尝试加载不蒜子统计失败，正在重试...`)
+      setTimeout(loadBusuanziScript, 2000) // 2秒后重试
+    }
+  }
+  document.body.appendChild(script)
 }
 
 // 一言API相关
@@ -84,11 +125,8 @@ onMounted(() => {
   // 确保只在浏览器环境中执行
   if (!isBrowser) return
   
-  // 动态加载不蒜子脚本
-  const script = document.createElement('script')
-  script.src = '//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js'
-  script.async = true
-  document.body.appendChild(script)
+  // 加载不蒜子脚本
+  loadBusuanziScript()
   
   // 初始化计时器
   updateTimer()
@@ -132,6 +170,10 @@ onBeforeUnmount(() => {
         <div class="right-content">
           <p class="statistics" v-if="busuanziLoaded">
             <span id="busuanzi_container_site_pv" class="statistic-item">造访爪迹 <span id="busuanzi_value_site_pv" class="statistic-value">--</span> 次</span>
+            <span id="busuanzi_container_site_uv" class="statistic-item">访客足印 <span id="busuanzi_value_site_uv" class="statistic-value">--</span> 枚</span>
+          </p>
+          <p class="statistics" v-else-if="loadingAttempts >= maxLoadingAttempts">
+            <span class="statistic-item">统计服务暂不可用</span>
           </p>
           <p class="copyright">© {{ yearString }} <a href="/about">Wreckloud</a>.</p>
           <p class="motto">{{ hitokoto }}</p>

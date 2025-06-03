@@ -121,6 +121,13 @@ export default defineConfig({
   // fav图标配置
   head: [
     ['link', { rel: 'icon', href: '/logo.png' }], // 网站图标，需要在public文件夹中添加logo.png
+    // 添加Content-Security-Policy，允许加载不蒜子统计脚本
+    ['meta', { 
+      'http-equiv': 'Content-Security-Policy', 
+      content: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://busuanzi.ibruce.info; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://v1.hitokoto.cn https://busuanzi.ibruce.info; font-src 'self' data:; frame-src 'self';"
+    }],
+    // 添加跨域预获取策略，提前连接不蒜子服务
+    ['link', { rel: 'preconnect', href: 'https://busuanzi.ibruce.info' }],
   ],
 
   // 启用深色模式
@@ -133,6 +140,15 @@ export default defineConfig({
   markdown: {
     // 移除在h1标题下自动插入文章元数据组件的配置
     breaks: true, // 启用换行转换，单个换行符会转为 <br>
+    
+    // 代码块配置
+    theme: {
+      light: 'github-light',
+      dark: 'github-dark'
+    },
+    
+    // 代码块行号
+    lineNumbers: true,
   },
 
   // 构建钩子

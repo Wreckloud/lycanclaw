@@ -93,3 +93,19 @@
     padding: 24px 24px;
   }
 }
+
+/* 添加代码块自动换行样式 */
+.vp-doc div[class*='language-'] pre {
+  white-space: pre-wrap;       /* CSS3 */
+  word-wrap: break-word;       /* IE和Edge */
+}
+
+.vp-doc div[class*='language-'] code {
+  white-space: pre-wrap;       /* CSS3 */
+  word-wrap: break-word;       /* IE和Edge */
+}
+
+/* 确保行号保持在左侧 */
+.vp-doc div[class*='language-'] .line-numbers {
+  white-space: nowrap;
+}
