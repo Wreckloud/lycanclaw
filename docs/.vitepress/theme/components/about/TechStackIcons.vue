@@ -129,7 +129,7 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .tech-icons-container {
-    transform: rotate(30deg) scale(1.2) translateY(-60px) translateX(60px);
+    transform: rotate(30deg) scale(1.2) translateY(-70px) translateX(50px);
   }
   
   .tags-group-icon {
