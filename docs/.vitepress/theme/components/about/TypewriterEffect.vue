@@ -160,7 +160,7 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .typewriter-box {
-    width: 100%;
+    width: 50%;
     min-height: 100px;
     padding: 1rem;
   }
