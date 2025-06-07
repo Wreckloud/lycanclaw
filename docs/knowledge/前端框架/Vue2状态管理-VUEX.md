@@ -35,7 +35,7 @@ Vuex 主要解决以下场景的数据管理问题：
 2. **选择自定义配置**：
    使用方向键选择最后一项 `Manually select features`，按回车确认。
 
-   ![](../../images/文章资源/vue2状态管理-vuex/file-20250607113054174.jpg)
+   ![](../../public/images/文章资源/vue2状态管理-vuex/file-20250607113054174.jpg)
 
 3. **选择功能模块**：
    使用方向键移动，空格键选择/取消，为项目添加以下功能：
@@ -45,42 +45,42 @@ Vuex 主要解决以下场景的数据管理问题：
    - **CSS Pre-processors**：CSS 预处理器，如 LESS、SASS
    - **Linter / Formatter**：代码检查和格式化工具
 
-   ![](../../images/文章资源/vue2状态管理-vuex/file-20250607113059064.jpg)
+   ![](../../public/images/文章资源/vue2状态管理-vuex/file-20250607113059064.jpg)
 
 4. **选择 Vue 版本**：
    选择熟悉的 Vue 2.x 版本，按回车确认。
 
-   ![](../../images/文章资源/vue2状态管理-vuex/file-20250607113103577.jpg)
+   ![](../../public/images/文章资源/vue2状态管理-vuex/file-20250607113103577.jpg)
 
 5. **配置路由模式**：
    选择是否使用 history 模式，输入 `n` 选择默认的 hash 模式（URL 带 # 符号）。
 
-   ![](../../images/文章资源/vue2状态管理-vuex/file-20250607113130159.jpg)
+   ![](../../public/images/文章资源/vue2状态管理-vuex/file-20250607113130159.jpg)
 
 6. **选择 CSS 预处理器**：
    推荐选择 Less，这是一个流行的 CSS 预处理器，提供变量、嵌套、混合等功能。
 
-   ![](../../images/文章资源/vue2状态管理-vuex/file-20250607113135107.jpg)
+   ![](../../public/images/文章资源/vue2状态管理-vuex/file-20250607113135107.jpg)
 
 7. **选择代码规范**：
    推荐选择 `ESLint + Standard config`，这是目前最流行的无分号代码规范。
 
-   ![](../../images/文章资源/vue2状态管理-vuex/file-20250607113139209.jpg)
+   ![](../../public/images/文章资源/vue2状态管理-vuex/file-20250607113139209.jpg)
 
 8. **选择代码检查方式**：
    选择 `Lint on save`，在保存文件时自动进行代码检查和修复。
 
-   ![](../../images/文章资源/vue2状态管理-vuex/file-20250607113142245.jpg)
+   ![](../../public/images/文章资源/vue2状态管理-vuex/file-20250607113142245.jpg)
 
 9. **配置文件存放方式**：
    选择 `In dedicated config files`，将各种配置放在独立的文件中，而不是全部集中在 package.json 中。
 
-   ![](../../images/文章资源/vue2状态管理-vuex/file-20250607113146288.jpg)
+   ![](../../public/images/文章资源/vue2状态管理-vuex/file-20250607113146288.jpg)
 
 10. **是否保存预设**：
     可以选择保存当前配置作为预设，方便下次使用。
 
-    ![](../../images/文章资源/vue2状态管理-vuex/file-20250607113150312.jpg)
+    ![](../../public/images/文章资源/vue2状态管理-vuex/file-20250607113150312.jpg)
 
 完成上述步骤后，Vue CLI 会自动安装依赖并创建项目。安装完成后，可以通过以下命令启动项目：
 
@@ -89,7 +89,7 @@ cd project-name
 npm run serve
 ```
 
-![](../../images/文章资源/vue2状态管理-vuex/file-20250607113154881.jpg)
+![](../../public/images/文章资源/vue2状态管理-vuex/file-20250607113154881.jpg)
 
 通过这种方式创建的项目已经配置好了路由、样式预处理器和代码规范，可以直接进入开发阶段，显著提升开发效率。
 
@@ -218,7 +218,7 @@ export default {
 
 Vuex 采用 State + Mutations 的核心模式：State 作为数据容器存储状态，Mutations 作为唯一修改途径保证数据可追踪性。
 
-![](../../images/文章资源/vue2状态管理-vuex/file-20250607113215801.jpg)
+![](../../public/images/文章资源/vue2状态管理-vuex/file-20250607113215801.jpg)
 
 ## State - 状态管理
 

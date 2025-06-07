@@ -146,7 +146,7 @@ function createLoop() {
 createLoop(); // 即使函数执行完毕，引用次数永远≥1
 ```
 
-![](../../images/文章资源/javascript-进阶语法/file-20250602215258063.jpg)
+![](../../public/images/文章资源/javascript-进阶语法/file-20250602215258063.jpg)
 
 - **标记清除法（现代方案）**
 
@@ -168,7 +168,7 @@ delete window.exposedData; // 断开引用链
 // 下次垃圾回收时 privateData 成为不可达对象 → 被回收
 ```
 
-![](../../images/文章资源/javascript-进阶语法/file-20250602215325808.jpg)
+![](../../public/images/文章资源/javascript-进阶语法/file-20250602215325808.jpg)
 
 ### 闭包
 
@@ -1736,7 +1736,7 @@ greyWolf.establishTerritory();  // 输出：灰狼标记 600 平方公里领地
 
 在 JavaScript 的原型继承体系中，每个构造函数的原型对象（prototype）默认包含一个 constructor 属性指向构造函数本身。
 
-![](../../images/文章资源/javascript-进阶语法/file-20250602215540006.jpg)
+![](../../public/images/文章资源/javascript-进阶语法/file-20250602215540006.jpg)
 
 开发中常遇到需批量添加原型方法的场景。若采用直接赋值方式覆盖原型对象（而非属性追加方式），会破坏原型链的完整性：
 
@@ -1771,7 +1771,7 @@ Wolf.prototype = {
 
 实例对象的  `__proto__`  属性（现代规范中对应 `[[Prototype]]` 内部插槽）构成原型链的核心链路。
 
-![](../../images/文章资源/javascript-进阶语法/file-20250602215546570.jpg)
+![](../../public/images/文章资源/javascript-进阶语法/file-20250602215546570.jpg)
 
 该属性指向其构造函数的原型对象（prototype），实现继承关系：
 
@@ -1794,7 +1794,7 @@ alphaWolf.snowCommunication();  // 通过原型链访问
 
 ### 三要素关系体系
 
-![](../../images/文章资源/javascript-进阶语法/file-20250602215659302.jpg)
+![](../../public/images/文章资源/javascript-进阶语法/file-20250602215659302.jpg)
 
 **构造函数的 `prototype`**  
  存储当前构造函数所有实例的**共享方法**，该属性是一个独立对象，通过  `Wolf.prototype.howl`  定义的方法可被所有狼实例调用：
@@ -1915,7 +1915,7 @@ male.pregnancy(); // TypeError: 方法不存在
 3. **原型链追溯**：若仍未找到，则继续向上一级原型对象（Object.prototype）追溯
 4. **终止条件**：最终到达 Object.prototype 的  `__proto__`（值为 null）时停止查找
 
-![](../../images/文章资源/javascript-进阶语法/file-20250602215719550.jpg)
+![](../../public/images/文章资源/javascript-进阶语法/file-20250602215719550.jpg)
 
 `instanceof`  运算符通过原型链检测对象类型：
 

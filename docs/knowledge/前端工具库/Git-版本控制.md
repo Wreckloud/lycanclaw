@@ -65,7 +65,7 @@ git clone https://github.com/username/repository.git
 
 ## 理解 Git 的三个工作区域
 
-![](../../images/文章资源/git-版本控制/file-20250607142804873.jpg)
+![](../../public/images/文章资源/git-版本控制/file-20250607142804873.jpg)
 
 1. **工作目录(Working Directory)**：你写代码的地方，就像草稿本
 2. **暂存区(Staging Area)**：临时存放改动的地方，像是草稿箱
@@ -77,7 +77,7 @@ git clone https://github.com/username/repository.git
 
 在 Git 的世界里，文件有这些状态：
 
-![](../../images/文章资源/git-版本控制/file-20250607142809133.jpg)
+![](../../public/images/文章资源/git-版本控制/file-20250607142809133.jpg)
 
 - **未跟踪(`U`标注)**：新文件，Git 还不认识它们
 - **已跟踪**：Git 已经认识的文件
@@ -118,7 +118,7 @@ git log --oneline  # 简洁模式
 
 暂存区不只是过渡站，还是强大的工具：
 
-![](../../images/文章资源/git-版本控制/file-20250607142815202.jpg)
+![](../../public/images/文章资源/git-版本控制/file-20250607142815202.jpg)
 
 ```bash
 # 把暂存区的内容覆盖工作区（小心使用！会丢失未暂存的改动）
@@ -137,7 +137,7 @@ git rm --cached 文件名
 git log --oneline
 ```
 
-![](../../images/文章资源/git-版本控制/file-20250607142821170.jpg)
+![](../../public/images/文章资源/git-版本控制/file-20250607142821170.jpg)
 
 ```bash
 # 撤销工作区的修改（回到最后一次git add或commit的状态）
@@ -189,7 +189,7 @@ node_modules/
 git branch
 ```
 
-![](../../images/文章资源/git-版本控制/file-20250607142827860.jpg)
+![](../../public/images/文章资源/git-版本控制/file-20250607142827860.jpg)
 
 **HEAD 指针**指向当前所在分支，影响工作区和暂存区的代码状态。
 
@@ -216,7 +216,7 @@ git checkout -b 分支名
 
 ## 合并分支
 
-![](../../images/文章资源/git-版本控制/file-20250607142835490.jpg)
+![](../../public/images/文章资源/git-版本控制/file-20250607142835490.jpg)
 
 ```bash
 # 先切换到目标分支（通常是主分支）
@@ -231,7 +231,7 @@ git branch -d feature/login
 
 当两个分支都有各自的新提交时，合并会自动创建一个"合并提交"：
 
-![](../../images/文章资源/git-版本控制/file-20250607142840466.jpg)
+![](../../public/images/文章资源/git-版本控制/file-20250607142840466.jpg)
 
 功能开发完成后，通常会将功能分支合并回主分支，然后可以删除功能分支保持仓库整洁。
 
@@ -239,7 +239,7 @@ git branch -d feature/login
 
 当不同分支修改了同一个文件的同一部分，Git 无法自动合并，产生冲突：
 
-![](../../images/文章资源/git-版本控制/file-20250607142847158.jpg)
+![](../../public/images/文章资源/git-版本控制/file-20250607142847158.jpg)
 
 解决冲突的步骤：
 

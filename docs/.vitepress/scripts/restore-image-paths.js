@@ -6,70 +6,17 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-// 缓存文件路径
-const CACHE_FILE = path.join(__dirname, '.image-paths-cache.json')
+// 获取docs目录的绝对路径
+const docsPath = path.resolve(__dirname, '../../')
 
-// 加载缓存
-function loadCache() {
-  try {
-    if (fs.existsSync(CACHE_FILE)) {
-      const cacheData = fs.readFileSync(CACHE_FILE, 'utf-8')
-      return JSON.parse(cacheData)
-    }
-  } catch (error) {
-    console.error('读取缓存文件失败:', error.message)
-  }
-  return {}
-}
-
-// 保存缓存
-function saveCache(cache) {
-  try {
-    fs.writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2), 'utf-8')
-  } catch (error) {
-    console.error('保存缓存文件失败:', error.message)
-  }
-}
-
-// 检查文件是否需要处理
-function shouldProcessFile(filePath, cache) {
-  if (!cache[filePath]) {
-    return true // 缓存中不存在，需要处理
-  }
-  
-  try {
-    const stats = fs.statSync(filePath)
-    const lastModified = stats.mtimeMs
-    
-    // 如果文件比缓存中记录的修改时间新，则需要处理
-    return lastModified > cache[filePath].lastModified
-  } catch (error) {
-    return true // 出错则处理
-  }
-}
-
-// 更新缓存
-function updateCache(filePath, cache, wasFixed) {
-  try {
-    const stats = fs.statSync(filePath)
-    cache[filePath] = {
-      lastModified: stats.mtimeMs,
-      wasFixed: wasFixed
-    }
-  } catch (error) {
-    console.error(`更新缓存失败 ${filePath}:`, error.message)
-  }
-}
-
-// 替换图片路径的正则表达式合集
+// 替换图片路径的正则表达式合集 - 这里是反向替换
 const pathPatterns = [
-  // 注释掉这些替换，保留public前缀
-  // { regex: /\/public\/images\//g, replacement: '/images/' },
-  // { regex: /!\[\[public\/images\//g, replacement: '![[/images/' },
-  // { regex: /\(public\/images\//g, replacement: '(/images/' }
+  { regex: /\/images\//g, replacement: '/public/images/' },
+  { regex: /!\[\[\/images\//g, replacement: '![[public/images/' },
+  { regex: /\(\/images\//g, replacement: '(public/images/' }
 ]
 
-function fixImagePaths(directoryPath, cache) {
+function restoreImagePaths(directoryPath) {
   try {
     const files = fs.readdirSync(directoryPath)
     let filesProcessed = 0
@@ -82,16 +29,11 @@ function fixImagePaths(directoryPath, cache) {
         
         if (stat.isDirectory()) {
           // 递归处理子目录
-          const subDirStats = fixImagePaths(fullPath, cache)
+          const subDirStats = restoreImagePaths(fullPath)
           filesProcessed += subDirStats.filesProcessed
           filesFixed += subDirStats.filesFixed
         } else if (file.endsWith('.md')) {
           filesProcessed++
-          
-          // 检查文件是否需要处理
-          if (!shouldProcessFile(fullPath, cache)) {
-            return // 跳过不需要处理的文件
-          }
           
           // 处理 markdown 文件
           let content = fs.readFileSync(fullPath, 'utf-8')
@@ -110,12 +52,9 @@ function fixImagePaths(directoryPath, cache) {
           
           if (wasModified) {
             fs.writeFileSync(fullPath, newContent, 'utf-8')
-            console.log(`已修复图片路径: ${fullPath}`)
+            console.log(`已还原图片路径: ${fullPath}`)
             filesFixed++
           }
-          
-          // 更新缓存
-          updateCache(fullPath, cache, wasModified)
         }
       } catch (fileError) {
         console.error(`处理文件 ${path.join(directoryPath, file)} 时出错:`, fileError.message)
@@ -128,12 +67,6 @@ function fixImagePaths(directoryPath, cache) {
     return { filesProcessed: 0, filesFixed: 0 }
   }
 }
-
-// 获取docs目录的绝对路径
-const docsPath = path.resolve(__dirname, '../../')
-
-// 加载缓存
-const cache = loadCache()
 
 // 处理所有可能包含 Markdown 文件的目录
 const directories = [
@@ -153,17 +86,12 @@ directories.forEach(dir => {
     const stat = fs.statSync(fullPath)
     if (stat.isDirectory()) {
       console.log(`处理目录: ${fullPath}`)
-      const stats = fixImagePaths(fullPath, cache)
+      const stats = restoreImagePaths(fullPath)
       totalProcessed += stats.filesProcessed
       totalFixed += stats.filesFixed
     } else if (dir.endsWith('.md')) {
       // 单独处理根目录下的md文件
       totalProcessed++
-      
-      // 检查文件是否需要处理
-      if (!shouldProcessFile(fullPath, cache)) {
-        return // 跳过不需要处理的文件
-      }
       
       let content = fs.readFileSync(fullPath, 'utf-8')
       let newContent = content
@@ -180,19 +108,13 @@ directories.forEach(dir => {
       
       if (wasModified) {
         fs.writeFileSync(fullPath, newContent, 'utf-8')
-        console.log(`已修复图片路径: ${fullPath}`)
+        console.log(`已还原图片路径: ${fullPath}`)
         totalFixed++
       }
-      
-      // 更新缓存
-      updateCache(fullPath, cache, wasModified)
     }
   } catch (error) {
     console.error(`处理 ${fullPath} 时出错:`, error.message)
   }
 })
 
-// 保存缓存
-saveCache(cache)
-
-console.log(`图片路径修复完成！检查了 ${totalProcessed} 个文件，修复了 ${totalFixed} 个文件。`)
+console.log(`图片路径还原完成！检查了 ${totalProcessed} 个文件，还原了 ${totalFixed} 个文件。`) 

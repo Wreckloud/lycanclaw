@@ -20,7 +20,7 @@ Web API 是浏览器为 JavaScript 提供的**双向通信接口**，使脚本�
 
 文档树直观的体现了标签与标签之间的关系。
 
-![](../../images/文章资源/javascript-常用api/file-20250603101331897.jpg)
+![](../../public/images/文章资源/javascript-常用api/file-20250603101331897.jpg)
 
 有了 DOM 树， HTML  就转换为可编程的**对象**。
 所有元素挂载在  `document`  对象下。
@@ -243,7 +243,7 @@ element.dataset.orderStatus = 'shipped' // 自动转为 data-order-status
 
 Browser Object Model（浏览器对象模型）用于提供与浏览器窗口交互的对象和方法，是浏览器提供给开发者操作浏览器窗口的接口集合。
 
-![](../../images/文章资源/javascript-常用api/file-20250603101412085.jpg)
+![](../../public/images/文章资源/javascript-常用api/file-20250603101412085.jpg)
 
 其中  **`window`  对象**是 BOM 的核心入口，既是全局对象（所有顶层变量/函数都自动挂载到 window），也是浏览器窗口的抽象（控制导航栏、窗口尺寸等）。
 
@@ -545,7 +545,7 @@ window.addEventListener('resize',function (){
 | **clientWidth**  | 获取元素可视区域宽度 | 内容 + padding（不含滚动条、边框） |
 | **clientHeight** | 获取元素可视区域高度 | 内容 + padding                     |
 
-![](../../images/文章资源/javascript-常用api/file-20250603101436724.jpg)
+![](../../public/images/文章资源/javascript-常用api/file-20250603101436724.jpg)
 
 不包含边框（内容+padding，不含滚动条和边框），常用于布局计算。
 
@@ -585,7 +585,7 @@ window.addEventListener('scroll',function (){
 | **scrollTop**  | 获取/设置元素垂直滚动距离（被卷去的头部高度） |
 | **scrollLeft** | 获取/设置元素水平滚动距离（被卷去的左侧宽度） |
 
-![](../../images/文章资源/javascript-常用api/file-20250603101444075.jpg)
+![](../../public/images/文章资源/javascript-常用api/file-20250603101444075.jpg)
 
 - 获取元素内容往左、往上滚出去看不到的距离
 - 这两个值是可读写的
@@ -668,7 +668,7 @@ window.scrollTo(0, 1000)
 
 ### 获取元素尺寸
 
-![](../../images/文章资源/javascript-常用api/file-20250603101453860.jpg)
+![](../../public/images/文章资源/javascript-常用api/file-20250603101453860.jpg)
 
 | **属性**                              | **计算范围**                 | **包含内容**                       |
 | ------------------------------------- | ---------------------------- | ---------------------------------- |
@@ -691,7 +691,7 @@ console.log('元素高度：', box.clientHeight)
 
 ### 获取元素位置
 
-![](../../images/文章资源/javascript-常用api/file-20250603101536465.jpg)
+![](../../public/images/文章资源/javascript-常用api/file-20250603101536465.jpg)
 
 | **属性/方法**                      | **作用**                           | **参照物**                            | **示例**                          |
 | ---------------------------------- | ---------------------------------- | ------------------------------------- | --------------------------------- |
@@ -724,7 +724,7 @@ console.log(box.getBoundingClientRect())
 | `width`  | 元素的宽度（包含边框和 padding） |
 | `height` | 元素的高度（包含边框和 padding） |
 
-![](../../images/文章资源/javascript-常用api/file-20250603101647944.jpg)
+![](../../public/images/文章资源/javascript-常用api/file-20250603101647944.jpg)
 
 这个方法在某些情况下使用十分方便：
 
@@ -952,7 +952,7 @@ document.addEventListener('keydown', (e) => {
 
 假设页面里有个 div，当触发事件时，会经历两个阶段，分别是捕获阶段、冒泡阶段。
 
-![](../../images/文章资源/javascript-常用api/file-20250603101703370.jpg)
+![](../../public/images/文章资源/javascript-常用api/file-20250603101703370.jpg)
 
 简单来说：捕获阶段是从父到子，冒泡阶段是从子到父。
 实际工作主要使用事件冒泡为主。
@@ -1131,7 +1131,7 @@ DOM 树里每一个内容都称之为节点
 - **属性节点**：所有的属性 （如 `href`）
 - **文本节点**：标签内的文字
 
-![](../../images/文章资源/javascript-常用api/file-20250603101719088.jpg)
+![](../../public/images/文章资源/javascript-常用api/file-20250603101719088.jpg)
 
 元素节点是 DOM 操作的核心对象，其他节点通过元素节点访问
 
@@ -1398,7 +1398,7 @@ console.log('开始切菜'); // 立即执行不等待
 
 JavaScript 通过 **事件循环（Event Loop）** 实现单线程下的异步处理，其运作流程如下：
 
-![](../../images/文章资源/javascript-常用api/file-20250603101800621.jpg)
+![](../../public/images/文章资源/javascript-常用api/file-20250603101800621.jpg)
 
 1. **执行栈管理**  
    所有同步任务在主线程形成执行栈顺序执行，如同厨师处理当前订单。
@@ -1468,7 +1468,7 @@ console.log('当前主题：', theme); // 输出 "light-mode"
 const fontSize = localStorage.getItem('font_size') || '16px';
 ```
 
-![](../../images/文章资源/javascript-常用api/file-20250603101814455.jpg)
+![](../../public/images/文章资源/javascript-常用api/file-20250603101814455.jpg)
 
 **删除数据（删）** `localStorage.removeItem(key)`
 
