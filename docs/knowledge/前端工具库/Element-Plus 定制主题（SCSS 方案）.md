@@ -77,7 +77,7 @@ Element Plus 提供了「全量引入 + SCSS 变量覆盖」的方式。你需�
 
 在你的主入口中这样写：
 
-```javascript{9-10,20-23,30-38}
+```javascript{9-10,19-21,20-23,30-37}
 import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig } from 'vite'
@@ -95,7 +95,11 @@ export default defineConfig({
       resolvers: [ElementPlusResolver()],
     }),
     Components({
-      resolvers: [ElementPlusResolver()],
+      resolvers: [
+	    ElementPlusResolver({
+		    importStyle: 'sass' // 这里要改成sass
+		  })
+	    ],
     }),
     // 按需定制主题配置
     ElementPlus({
@@ -111,9 +115,7 @@ export default defineConfig({
     preprocessorOptions: {
       scss: {
         // 自动导入定制化样式文件进行样式覆盖
-        additionalData: `
-          @use "@/styles/element/index.scss" as *;
-        `,
+        additionalData: `@use "@/styles/element/index.scss" as *;`
       }
     }
   }

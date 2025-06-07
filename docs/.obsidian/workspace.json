@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/前端工具库/Element-Plus 定制主题（SCSS 方案）.md",
+                "file": "thoughts/未命名.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Element-Plus 定制主题（SCSS 方案）"
+              "title": "未命名"
             }
           }
         ]
@@ -40,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/前端工具库/Element-Plus 定制主题（SCSS 方案）.md",
+                "file": "thoughts/未命名.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Element-Plus 定制主题（SCSS 方案） 的大纲"
+              "title": "未命名 的大纲"
             }
           },
           {
@@ -154,9 +154,11 @@
   },
   "active": "f1a5ae53903c2eca",
   "lastOpenFiles": [
-    "knowledge/前端工具库/ESLint+Prettier 代码规范自动化.md",
-    "knowledge/前端工具库/Element-Plus 定制主题（SCSS 方案）.md",
+    "knowledge/前端工具库/在项目重封装 Axios 请求.md",
+    "thoughts/未命名.md",
     "knowledge/前端工具库/Axios-现代化的 Ajax 请求工具.md",
+    "knowledge/前端工具库/Element-Plus 定制主题（SCSS 方案）.md",
+    "knowledge/前端工具库/ESLint+Prettier 代码规范自动化.md",
     "knowledge/前端工具库/Git-版本控制.md",
     "public/images/文章资源/axios-现代化的-ajax-请求工具/file-20250607143509813.jpg",
     "public/images/文章资源/axios-现代化的-ajax-请求工具/file-20250607143502314.jpg",
@@ -198,8 +200,6 @@
     "projects/index.md",
     "about.md",
     "projects/example-project.md",
-    "knowledge/example.md",
-    "knowledge/programming/index.md",
     "点子合集.canvas"
   ]
 }
