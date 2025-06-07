@@ -84,8 +84,8 @@
     "wasFixed": true
   },
   "D:\\Portfolio\\Website\\LycanClaw\\docs\\knowledge\\前端工具库\\Axios-现代化的 Ajax 请求工具.md": {
-    "lastModified": 1749278178713.969,
-    "wasFixed": true
+    "lastModified": 1749278418217.883,
+    "wasFixed": false
   },
   "D:\\Portfolio\\Website\\LycanClaw\\docs\\knowledge\\前端工具库\\Git-版本控制.md": {
     "lastModified": 1749278178714.968,
@@ -97,6 +97,10 @@
   },
   "D:\\Portfolio\\Website\\LycanClaw\\docs\\knowledge\\前端框架\\VUE3状态管理 - Pinia(替代Vuex).md": {
     "lastModified": 1749277319041.8176,
+    "wasFixed": false
+  },
+  "D:\\Portfolio\\Website\\LycanClaw\\docs\\knowledge\\前端工具库\\ESLint+Prettier 代码规范自动化.md": {
+    "lastModified": 1749281216727.432,
     "wasFixed": false
   }
 }
