@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "thoughts/未命名.md",
+                "file": "thoughts/光不在彼方.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "未命名"
+              "title": "光不在彼方"
             }
           }
         ]
@@ -40,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "thoughts/未命名.md",
+                "file": "thoughts/光不在彼方.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "未命名 的大纲"
+              "title": "光不在彼方 的大纲"
             }
           },
           {
@@ -155,7 +155,7 @@
   "active": "f1a5ae53903c2eca",
   "lastOpenFiles": [
     "knowledge/前端工具库/在项目重封装 Axios 请求.md",
-    "thoughts/未命名.md",
+    "thoughts/光不在彼方.md",
     "knowledge/前端工具库/Axios-现代化的 Ajax 请求工具.md",
     "knowledge/前端工具库/Element-Plus 定制主题（SCSS 方案）.md",
     "knowledge/前端工具库/ESLint+Prettier 代码规范自动化.md",
