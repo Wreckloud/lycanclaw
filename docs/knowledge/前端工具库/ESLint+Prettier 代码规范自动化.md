@@ -31,6 +31,16 @@ pnpm create vue@latest
 
 这一步其实已经帮你装好了基础依赖，挺贴心，但还不够。
 
+## 没勾上怎么办？
+
+如果你当时手快没选 ESLint 和 Prettier，也不用重来。直接手动装上缺的依赖就行：
+
+```bash
+pnpm add -D eslint prettier eslint-plugin-vue @vue/eslint-config-prettier`
+```
+
+这几样就是官方选项会帮你自动加的东西，补上就行。
+
 ## 补齐必要依赖
 
 项目初始化后，按照惯例先跑一遍依赖安装：
@@ -257,13 +267,13 @@ pnpm lint-staged
 
 ## 自动化开发流程
 
-### 开发时：
+### 开发时
 
 1. 写代码（不用刻意注意格式）
 2. 保存时 ESLint 自动修复
 3. 修好之后 VS Code 自动展示结果
 
-### 提交时：
+### 提交时
 
 1. `git add` 加入暂存区
 2. `git commit` 被 Husky 拦下

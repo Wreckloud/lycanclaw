@@ -10,12 +10,10 @@
     "vue": "^3.5.16"
   },
   "scripts": {
-    "dev": "pnpm run generate-posts && pnpm run fix-images && vitepress dev docs",
-    "build": "pnpm run generate-posts && pnpm run fix-images && vitepress build docs",
+    "dev": "pnpm run generate-posts && vitepress dev docs",
+    "build": "pnpm run generate-posts && vitepress build docs",
     "preview": "vitepress preview docs",
-    "generate-posts": "node docs/.vitepress/scripts/generate-posts-data.js",
-    "fix-images": "node docs/.vitepress/scripts/fix-image-paths.js",
-    "restore-images": "node docs/.vitepress/scripts/restore-image-paths.js"
+    "generate-posts": "node docs/.vitepress/scripts/generate-posts-data.js"
   },
   "dependencies": {
     "gray-matter": "^4.0.3"

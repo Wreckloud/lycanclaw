@@ -109,3 +109,25 @@
 .vp-doc div[class*='language-'] .line-numbers {
   white-space: nowrap;
 }
+
+/* 猎识印记页面大纲目录文字不可选中 */
+.VPDocOutlineItem,
+.VPDocOutlineItem .outline-link,
+.VPDocOutlineItem .outline-title {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* 侧边栏导航文字不可选中 */
+.VPSidebar,
+.VPSidebarItem,
+.VPSidebarItem .text,
+.VPSidebarItem .link,
+.VPSidebarItem h2 {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
