@@ -62,6 +62,16 @@ try {
       frontmatter.tags = []
     }
 
+    // 确保date是标准格式
+    if (frontmatter.date && !(frontmatter.date instanceof Date)) {
+      try {
+        frontmatter.date = new Date(frontmatter.date).toISOString()
+      } catch (e) {
+        // 如果日期格式无效，使用当前时间
+        frontmatter.date = new Date().toISOString()
+      }
+    }
+
     // 从内容中提取摘要（如果没有指定摘要分隔符）
     let extractedExcerpt = excerpt || ''
     if (!extractedExcerpt) {

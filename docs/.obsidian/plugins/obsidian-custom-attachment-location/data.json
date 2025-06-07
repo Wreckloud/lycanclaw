@@ -7,7 +7,7 @@
   "deleteOrphanAttachments": true,
   "duplicateNameSeparator": " ",
   "jpegQuality": 0.8,
-  "keepEmptyAttachmentFolders": true,
+  "keepEmptyAttachmentFolders": false,
   "pastedFileName": "file-${date:YYYYMMDDHHmmssSSS}",
   "renameAttachmentsOnDragAndDrop": true,
   "renameCollectedFiles": true,
