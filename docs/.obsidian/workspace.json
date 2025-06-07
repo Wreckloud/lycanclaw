@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/前端工具库/Axios-现代化的 Ajax 请求工具.md",
+                "file": "knowledge/前端工具库/ESLint+Prettier代码规范自动化.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Axios-现代化的 Ajax 请求工具"
+              "title": "ESLint+Prettier代码规范自动化"
             }
           }
         ]
@@ -40,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/前端工具库/Axios-现代化的 Ajax 请求工具.md",
+                "file": "knowledge/前端工具库/ESLint+Prettier代码规范自动化.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Axios-现代化的 Ajax 请求工具 的大纲"
+              "title": "ESLint+Prettier代码规范自动化 的大纲"
             }
           },
           {
@@ -154,6 +154,8 @@
   },
   "active": "f1a5ae53903c2eca",
   "lastOpenFiles": [
+    "knowledge/前端工具库/Axios-现代化的 Ajax 请求工具.md",
+    "knowledge/前端工具库/ESLint+Prettier代码规范自动化.md",
     "public/images/文章资源/axios-现代化的-ajax-请求工具/file-20250607143509813.jpg",
     "public/images/文章资源/axios-现代化的-ajax-请求工具/file-20250607143502314.jpg",
     "public/images/文章资源/axios-现代化的-ajax-请求工具/file-20250607143457637.jpg",
@@ -164,10 +166,8 @@
     "public/images/文章资源/axios-现代化的-ajax-请求工具/file-20250607143255690.jpg",
     "public/images/文章资源/axios-现代化的-ajax-请求工具/file-20250607143239679.jpg",
     "public/images/文章资源/axios-现代化的-ajax-请求工具/file-20250607143218305.jpg",
-    "public/images/文章资源/axios-现代化的-ajax-请求工具/file-20250607143208977.jpg",
     "public/images/文章资源/axios-现代化的-ajax-请求工具",
     "knowledge/前端工具库/Git-版本控制.md",
-    "knowledge/前端工具库/Axios-现代化的 Ajax 请求工具.md",
     "public/images/文章资源/git-版本控制",
     "knowledge/前端框架/VUE3状态管理 - Pinia(替代Vuex).md",
     "knowledge/前端工具库",
