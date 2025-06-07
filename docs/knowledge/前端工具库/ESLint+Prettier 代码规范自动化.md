@@ -36,7 +36,7 @@ pnpm create vue@latest
 如果你当时手快没选 ESLint 和 Prettier，也不用重来。直接手动装上缺的依赖就行：
 
 ```bash
-pnpm add -D eslint prettier eslint-plugin-vue @vue/eslint-config-prettier`
+pnpm add -D eslint prettier eslint-plugin-vue @vue/eslint-config-prettier
 ```
 
 这几样就是官方选项会帮你自动加的东西，补上就行。
@@ -117,17 +117,8 @@ export default defineConfig([
       prettier: pluginPrettier,
     },
     rules: {
-      // 把 prettier 的格式问题当作 warning 报出
-      'prettier/prettier': [
-        'warn',
-        {
-          singleQuote: true,       // 使用单引号
-          semi: false,             // 不加分号
-          trailingComma: 'none',   // 不加尾逗号
-          printWidth: 80,          // 每行最大宽度
-          endOfLine: 'auto',       // 自动换行符处理
-        },
-      ],
+      // 把 prettier 的格式问题当作 error 报出，确保保存时会自动修复
+      'prettier/prettier': 'error',
 
       // 允许 index.vue 这种单词组件名
       'vue/multi-word-component-names': [
@@ -143,7 +134,6 @@ export default defineConfig([
     },
   },
 ])
-
 ```
 
 这一坨记住三件事就够了：
@@ -154,7 +144,7 @@ export default defineConfig([
 
 ## Prettier 配置（`.prettierrc.json`）
 
-规则就这么几条，关键是要跟 ESLint 里那份保持一致，否则两边会扯头发：
+规则就这么几条，关键是要跟 ESLint 里那份保持一致，否则两边会打架：
 
 ```json
 {
@@ -174,28 +164,28 @@ export default defineConfig([
 `.vscode/settings.json` 是你和编辑器“约法三章”的地方，少了它，再完美的配置也白搭：
 
 ```json
-{
   // 保存时执行 ESLint 自动修复
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "always"
+    "source.fixAll.eslint": "explicit"
   },
 
-  // 禁用 VS Code 自带的格式化（避免和 ESLint 冲突）
+  // 禁用 VS Code 自带的格式化（由 ESLint+Prettier 插件处理）
   "editor.formatOnSave": false,
 
-  // 指定使用 Prettier 插件来格式化（由 ESLint 调用）
+  // 指定默认格式化器（虽然我们禁用了保存时格式化，但手动格式化时会用到）
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "[vue]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
 
   // 明确哪些类型的文件要交给 ESLint 检查
   "eslint.validate": ["javascript", "javascriptreact", "vue"],
 
-  // 启用 ESLint 的格式化功能（默认是 false）
+  // 启用 ESLint 的格式化功能
   "eslint.format.enable": true
-}
-
 ```
 
 关键理解就三句：
@@ -216,11 +206,33 @@ git init
 
 ## 安装 Husky
 
+Husky 可以拦截 Git 钩子，在你 commit 前执行一些检查命令：
+
 ```bash
-pnpm dlx husky-init && pnpm install
+pnpm dlx husky-init
 ```
 
-默认配置是这样的：
+这一步做了三件事：
+
+1. 创建 `.husky/` 目录（专放 Git 钩子）
+2. 自动添加 `pre-commit` 钩子，默认执行 `pnpm test`
+3. 在 `package.json` 里加上一行脚本：
+
+```json
+"scripts": {
+	"prepare": "husky install"
+}
+```
+
+> 注意：它并不会安装 `husky` 这个包本身。
+
+接下来我们再使用经典指令补全依赖:
+
+```bash
+pnpm install
+```
+
+默认的配置存放在`.husky/` 目录，是这样的：
 
 ```bash
 #!/usr/bin/env sh
@@ -237,9 +249,11 @@ pnpm lint
 pnpm add -D lint-staged
 ```
 
-然后在 `package.json` 加配置：
+这个工具会拦住你提交前的代码，只检查 **Git 暂存区（你 `git add` 过的）文件**，不会浪费时间检查整仓库。
 
-```json
+然后在 `package.json` 加配置（建议放在 scripts 后面）：
+
+```json{3,5-9}
 {
   "scripts": {
     "lint-staged": "lint-staged"
@@ -252,14 +266,23 @@ pnpm add -D lint-staged
 }
 ```
 
-改一下 `.husky/pre-commit`：
+**说明：**
 
-```bash
+- 先加一个 npm 脚本，方便后续执行
+- 配置里指定：只有 js / ts / vue 文件才会跑 `eslint --fix`
+- 自动修复能修的，修不了的会直接阻止你提交
+
+接下来，把 `.husky/pre-commit` 改掉：
+
+```bash{4}
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
 pnpm lint-staged
 ```
+
+这一步非常重要。
+它执行你定义的 test 脚本——但大多数人项目里没写测试，就会导致你每次提交都报错，纯属折磨人。我们改成 `pnpm lint-staged`，才是真正用于**代码质量兜底**。
 
 这样，每次提交只修你刚改的文件，效率高、体验好。
 
