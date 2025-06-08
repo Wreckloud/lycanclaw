@@ -4,31 +4,11 @@ import { h } from 'vue'
 import PostTitle from './PostTitle.vue'
 import DataPanel from './DataPanel.vue'
 import { useData, useRoute } from 'vitepress'
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 
 const { Layout } = DefaultTheme
 const { page, frontmatter } = useData()
 const route = useRoute()
-
-// 计算当前页面是否应该显示评论区
-const shouldShowComments = computed(() => {
-  // 在随想页面显示评论区
-  if (route.path.includes('/thoughts/') && !route.path.endsWith('/thoughts/')) {
-    return true;
-  }
-  
-  // 在关于页面显示评论区 (匹配 /about 和 /about.html)
-  if (route.path === '/about' || route.path === '/about.html') {
-    return true;
-  }
-  
-  // 其他页面可以通过 frontmatter 控制
-  if (frontmatter.value.showComments) {
-    return true;
-  }
-  
-  return false;
-})
 
 // 返回顶部按钮
 const showBackToTop = ref(false)
@@ -62,12 +42,6 @@ onUnmounted(() => {
   <Layout>
     <template #doc-before>
       <PostTitle />
-    </template>
-
-    <!-- 添加评论区组件 -->
-    <template #doc-footer-before>
-      <!-- Giscus评论区将自动通过插件显示，无需手动添加组件 -->
-      <!-- 评论系统会根据shouldShowComments计算属性来控制显示 -->
     </template>
 
     <template #layout-bottom>

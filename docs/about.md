@@ -1,6 +1,5 @@
 ---
 title: 留痕之地-关于
-comment: true
 aside: true
 ---
 

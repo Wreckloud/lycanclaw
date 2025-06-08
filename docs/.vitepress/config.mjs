@@ -121,14 +121,13 @@ export default defineConfig({
   // fav图标配置
   head: [
     ['link', { rel: 'icon', href: '/logo.png' }], // 网站图标，需要在public文件夹中添加logo.png
-    // 添加Content-Security-Policy，允许加载不蒜子统计脚本和Giscus脚本
+    // 添加Content-Security-Policy，允许加载不蒜子统计脚本
     ['meta', { 
       'http-equiv': 'Content-Security-Policy', 
-      content: "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://busuanzi.ibruce.info http://busuanzi.ibruce.info https://unpkg.com https://giscus.app; style-src 'self' 'unsafe-inline' https://unpkg.com https://giscus.app; img-src 'self' data: https: https://secure.gravatar.com; connect-src 'self' https: wss:; font-src 'self' data:; frame-src 'self' https://giscus.app;" // 更新CSP以支持Giscus
+      content: "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://busuanzi.ibruce.info http://busuanzi.ibruce.info https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https: https://secure.gravatar.com; connect-src 'self' https: wss:; font-src 'self' data:;" // 更新CSP移除Giscus
     }],
     // 添加跨域预获取策略
     ['link', { rel: 'preconnect', href: 'https://busuanzi.ibruce.info' }],
-    ['link', { rel: 'preconnect', href: 'https://giscus.app' }],
   ],
 
   // 启用深色模式
@@ -156,7 +155,6 @@ export default defineConfig({
   vue: {
     template: {
       compilerOptions: {
-        // 不再需要这些自定义元素配置，因为我们已经移除了所有相关组件
         isCustomElement: (tag) => false
       }
     }
