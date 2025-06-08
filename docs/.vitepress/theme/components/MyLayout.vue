@@ -3,11 +3,32 @@ import DefaultTheme from 'vitepress/theme'
 import { h } from 'vue'
 import PostTitle from './PostTitle.vue'
 import DataPanel from './DataPanel.vue'
-import { useData } from 'vitepress'
+import { useData, useRoute } from 'vitepress'
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 
 const { Layout } = DefaultTheme
 const { page, frontmatter } = useData()
+const route = useRoute()
+
+// 计算当前页面是否应该显示评论区
+const shouldShowComments = computed(() => {
+  // 在随想页面显示评论区
+  if (route.path.includes('/thoughts/') && !route.path.endsWith('/thoughts/')) {
+    return true;
+  }
+  
+  // 在关于页面显示评论区 (匹配 /about 和 /about.html)
+  if (route.path === '/about' || route.path === '/about.html') {
+    return true;
+  }
+  
+  // 其他页面可以通过 frontmatter 控制
+  if (frontmatter.value.showComments) {
+    return true;
+  }
+  
+  return false;
+})
 
 // 返回顶部按钮
 const showBackToTop = ref(false)
@@ -42,6 +63,12 @@ onUnmounted(() => {
     <template #doc-before>
       <PostTitle />
     </template>
+
+    <!-- 添加评论区组件 -->
+    <template #doc-footer-before>
+      <WalineComment v-if="shouldShowComments && !frontmatter.hideComments" />
+    </template>
+
     <template #layout-bottom>
       <DataPanel />
     </template>

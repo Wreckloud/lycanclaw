@@ -18,6 +18,8 @@ const AsyncArticleMetadata = defineAsyncComponent(() => import('./components/Art
 const AsyncPostList = defineAsyncComponent(() => import('./components/PostList.vue'));
 const AsyncDataPanel = defineAsyncComponent(() => import('./components/DataPanel.vue'));
 const AsyncPostTitle = defineAsyncComponent(() => import('./components/PostTitle.vue'));
+// 加载评论组件
+const AsyncWalineComment = defineAsyncComponent(() => import('./components/WalineComment.vue'));
 
 export default {
   extends: DefaultTheme,
@@ -28,6 +30,7 @@ export default {
     app.component('PostList', AsyncPostList);
     app.component('DataPanel', AsyncDataPanel);
     app.component('PostTitle', AsyncPostTitle);
+    app.component('WalineComment', AsyncWalineComment);
   },
   
   // 使用自定义页脚，但保持VitePress对侧边栏页面的页脚隐藏规则

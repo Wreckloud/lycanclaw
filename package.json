@@ -16,6 +16,7 @@
     "generate-posts": "node docs/.vitepress/scripts/generate-posts-data.js"
   },
   "dependencies": {
+    "@waline/client": "^3.5.7",
     "gray-matter": "^4.0.3"
   },
   "type": "module"

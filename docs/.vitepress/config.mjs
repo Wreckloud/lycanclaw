@@ -121,13 +121,14 @@ export default defineConfig({
   // fav图标配置
   head: [
     ['link', { rel: 'icon', href: '/logo.png' }], // 网站图标，需要在public文件夹中添加logo.png
-    // 添加Content-Security-Policy，允许加载不蒜子统计脚本
+    // 添加Content-Security-Policy，允许加载不蒜子统计脚本和 Waline 脚本
     ['meta', { 
       'http-equiv': 'Content-Security-Policy', 
-      content: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://busuanzi.ibruce.info http://busuanzi.ibruce.info; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://v1.hitokoto.cn https://busuanzi.ibruce.info http://busuanzi.ibruce.info; font-src 'self' data:; frame-src 'self';"
+      content: "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://busuanzi.ibruce.info http://busuanzi.ibruce.info https://unpkg.com https://wreckloud.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https: https://secure.gravatar.com; connect-src 'self' https: wss:; font-src 'self' data:; frame-src 'self';" // 使用更宽松的CSP配置解决连接问题
     }],
-    // 添加跨域预获取策略，提前连接不蒜子服务
+    // 添加跨域预获取策略，提前连接不蒜子服务和 Waline 服务
     ['link', { rel: 'preconnect', href: 'https://busuanzi.ibruce.info' }],
+    ['link', { rel: 'preconnect', href: 'https://wreckloud.com' }], // 替换为你的 Waline 服务地址
   ],
 
   // 启用深色模式
