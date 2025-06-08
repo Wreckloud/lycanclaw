@@ -1,13 +1,11 @@
 <script setup>
 import DefaultTheme from 'vitepress/theme'
-import { h } from 'vue'
 import PostTitle from './PostTitle.vue'
 import DataPanel from './DataPanel.vue'
-import { useData, useRoute } from 'vitepress'
-import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
+import { useRoute } from 'vitepress'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 const { Layout } = DefaultTheme
-const { page, frontmatter } = useData()
 const route = useRoute()
 
 // 返回顶部按钮

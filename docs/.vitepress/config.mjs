@@ -151,15 +151,6 @@ export default defineConfig({
     lineNumbers: true,
   },
 
-  // Vue配置
-  vue: {
-    template: {
-      compilerOptions: {
-        isCustomElement: (tag) => false
-      }
-    }
-  },
-
   // 构建钩子
   buildEnd: generatePostsData,
 

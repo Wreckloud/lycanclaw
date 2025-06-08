@@ -1,9 +1,10 @@
 ---
 title: Axios-现代化的 Ajax 请求工具
-date: '2024-11-27 11:57:22'
+date: 2024-11-27 11:57:22
 description: Ajax是一种在无需重新加载整个页面的情况下，与服务器交换数据并更新部分网页的技术。
 publish: true
 tags:
+  - Axios
 ---
 
 # Ajax 基础概念

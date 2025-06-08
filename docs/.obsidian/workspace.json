@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "thoughts/笔记本 Wi-Fi 消失的解决方法.md",
+                "file": "knowledge/前端工具库/Axios-现代化的 Ajax 请求工具.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "笔记本 Wi-Fi 消失的解决方法"
+              "title": "Axios-现代化的 Ajax 请求工具"
             }
           }
         ]
@@ -40,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "thoughts/笔记本 Wi-Fi 消失的解决方法.md",
+                "file": "knowledge/前端工具库/Axios-现代化的 Ajax 请求工具.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "笔记本 Wi-Fi 消失的解决方法 的大纲"
+              "title": "Axios-现代化的 Ajax 请求工具 的大纲"
             }
           },
           {
@@ -154,14 +154,14 @@
   },
   "active": "f1a5ae53903c2eca",
   "lastOpenFiles": [
+    "knowledge/前端工具库/在项目重封装 Axios 请求.md",
+    "knowledge/前端工具库/Axios-现代化的 Ajax 请求工具.md",
+    "thoughts/笔记本 Wi-Fi 消失的解决方法.md",
     "thoughts/未命名3.md",
     "thoughts/未命名2.md",
     "thoughts/未命名1.md",
     "thoughts/tags.md",
-    "knowledge/前端工具库/Axios-现代化的 Ajax 请求工具.md",
-    "knowledge/前端工具库/在项目重封装 Axios 请求.md",
     "thoughts/獠牙下的野蔷薇.md",
-    "thoughts/笔记本 Wi-Fi 消失的解决方法.md",
     "thoughts/从一盏灯开始的文明.md",
     "thoughts/光不在彼方.md",
     "debug-sort.log",

@@ -1,9 +1,10 @@
 ---
-title: '在项目重封装 Axios 请求'
-date: '2025-06-07 18:06:38'
-description: '这是一篇新文章!'
+title: 在项目重封装 Axios 请求
+date: 2025-06-07 18:06:38
+description: 这是一篇新文章!
 publish: true
-tags: 
+tags:
+  - Axios
 ---
 
 # Axios 项目配置
@@ -16,7 +17,7 @@ tags:
 1. 实例化 - baseURL + timeout
 2. 拦截器 - 携带 token 401 拦截等
 
-官方文档地址：[https://axios-http.com/zh/docs/intro](https://axios-http.com/zh/docs/intro)
+[Axios 官方文档（中文）](https://www.axios-http.cn/docs/instance)
 
 ## 1. 安装 axios
 
@@ -30,184 +31,108 @@ pnpm add axios
 
 ```js
 // src/utils/request.js
+
 import axios from 'axios'
 
-// 创建 Axios 实例，统一配置 baseURL 和超时
+// 创建 Axios 实例，配置基础路径和请求超时
 const instance = axios.create({
-  baseURL: 'https://some-domain.com/api/', // 所有请求默认加这个前缀
-  timeout: 5000 // 超过5秒没响应就抛错，避免死等
+  baseURL: 'https://some-domain.com/api/', // 请求地址前缀
+  timeout: 5000 // 请求超时时间（毫秒）
 })
 
-// 请求拦截器：请求发出去前的最后把关
+// 请求拦截器：请求发送前统一处理
 instance.interceptors.request.use(
-  function (config) {
-    // 你想加token、修改请求头啥的，都写这
-    return config // 一定要返回config，否则请求断了
+  config => {
+    // 可在此注入 token、修改 headers 等
+    // 示例：统一附带 token
+    const token = localStorage.getItem('token')
+    if (token) config.headers.Authorization = `Bearer ${token}`
+    return config // 必须返回 config 对象
   },
-  function (error) {
-    // 请求发不出去直接拒绝promise，交给调用方处理
+  error => {
+    // 请求错误（如配置问题）直接拒绝
     return Promise.reject(error)
   }
 )
 
-// 响应拦截器：服务器成功响应后的统一处理
+// 响应拦截器：统一处理响应结果
 instance.interceptors.response.use(
-  function (response) {
-    // 只要状态码是2xx就走这里
-    // 大多数接口响应都包装在data里，直接返回data，调用更方便
+  response => {
+    // 请求成功，直接返回核心数据部分
     return response.data
   },
-  function (error) {
-    // 状态码非2xx时，或者网络错误，走这里
-    // 这里可以统一弹错误提示、日志，或者做自动重试
-    return Promise.reject(error) // 让调用方感知错误
+  error => {
+    // 请求失败（状态码非 2xx 或网络错误）
+    return Promise.reject(error) // 交由调用方处理
   }
 )
 
 export default instance
-
 ```
 
-## 3. API 模块化封装示例
+### 多接口基地址支持方案
 
-为了更好地组织 API 请求，可以按功能模块进一步封装：
+有些项目不仅访问一个后端服务，还要接多个接口来源，比如：
 
-```javascript
+- 用户相关：`https://api.user-service.com`
+- 商品相关：`https://api.goods-service.com`
+
+**解决方案：用多个 axios 实例**：
+
+```js
+// src/utils/request-user.js
+export default axios.create({
+  baseURL: 'https://api.user-service.com',
+  timeout: 5000
+})
+
+// src/utils/request-goods.js
+export default axios.create({
+  baseURL: 'https://api.goods-service.com',
+  timeout: 5000
+})
+```
+
+然后在对应的 API 文件中引入使用即可，避免 baseURL 混乱。
+
+## 3.模块化封装 API 接口
+
+将接口**按功能划分成文件**，统一调用 `request` 实例，利于维护和复用。
+
+```js
 // api/user.js
 import request from '@/utils/request'
 
-// 用户相关接口
-export const login = (data) => {
-  return request.post('/user/login', data)
-}
+export const login = data => request.post('/user/login', data)
+export const getUserInfo = () => request.get('/user/info')
+```
 
-export const getUserInfo = () => {
-  return request.get('/user/info')
-}
-
+```js
 // api/product.js
 import request from '@/utils/request'
 
-// 商品相关接口
-export const getProductList = (params) => {
-  return request.get('/products', { params })
-}
-
-export const getProductDetail = (id) => {
-  return request.get(`/products/${id}`)
-}
+export const getProductList = params => request.get('/products', { params })
+export const getProductDetail = id => request.get(`/products/${id}`)
 ```
 
-在组件中使用：
+## 4. 组件中调用方式
 
-```javascript
-// 使用模块化API
+```js
+// Login.vue
 import { login } from '@/api/user'
 
 export default {
   methods: {
     async handleLogin() {
       try {
-        const data = {
+        const res = await login({
           username: this.username,
           password: this.password
-        }
-        const res = await login(data)
-        // 处理登录成功
-      } catch (error) {
-        // 已在拦截器中统一处理错误
+        })
+        // 登录成功逻辑
+      } catch (e) {
+        // 错误已被拦截器统一处理，必要时也可以额外提示
       }
-    }
-  }
-}
-```
-
-这种封装方式让接口请求更加统一管理，且便于添加全局配置和拦截器，处理统一的错误逻辑、添加请求头等。同时，按功能模块化组织 API 使代码结构更加清晰，便于团队协作。
-
-调用就很简单了：
-
-```js
-import { login } from '@/api/user'
-
-login({ username: 'wolf', password: '123456' })
-  .then(res => {
-    console.log(res)  // 这里拿到的是后端返回的 data（拦截器自动帮你取的）
-  })
-  .catch(err => {
-    console.error('接口请求失败:', err)
-  })
-
-```
-
-在实际项目开发中，直接使用原始的 axios 会面临以各种问题。
-
-1. **重复配置**：每个组件都需要单独配置请求参数
-2. **错误处理分散**：每个请求都需要单独处理错误
-3. **认证信息添加**：需要在每个请求中手动添加 token
-4. **响应数据格式化**：后端返回的数据格式可能需要统一处理
-
-通过封装，我们可以集中解决这些问题，提高代码复用性和可维护性。
-
-[axios 官方文档](https://www.axios-http.cn/docs/instance)
-
-将 axios 封装为 request 模块，方便管理 API 请求：
-
-1. **安装 axios**
-
-```bash
-yarn add axios
-# 或
-npm i axios
-```
-
-2. **创建 request 模块**
-
-```javascript
-import axios from 'axios'
-
-const instance = axios.create({
-  baseURL: 'https://some-domain.com/api/',
-  timeout: 5000
-})
-
-// 添加请求拦截器
-instance.interceptors.request.use(function (config) {
-  // 在发送请求之前做些什么
-  return config
-}, function (error) {
-  // 对请求错误做些什么
-  return Promise.reject(error)
-})
-
-// 添加响应拦截器
-instance.interceptors.response.use(function (response) {
-  // 2xx 范围内的状态码都会触发该函数。
-  // 对响应数据做点什么
-  return response.data
-}, function (error) {
-  // 超出 2xx 范围的状态码都会触发该函数。
-  // 对响应错误做点什么
-  return Promise.reject(error)
-})
-
-export default instance
-
-```
-
-3. **使用封装的 request**
-
-```javascript
-// 在组件中使用
-import request from '@/utils/request'
-
-export default {
-  name: 'LoginPage',
-  async created() {
-    try {
-      const res = await request.get('/captcha/image')
-      console.log(res)
-    } catch (error) {
-      console.error(error)
     }
   }
 }
