@@ -1,6 +1,7 @@
 ---
 title: 思考随笔
 description: 记录思考、感悟与创作
+comment: false
 sidebar: false
 ---
 

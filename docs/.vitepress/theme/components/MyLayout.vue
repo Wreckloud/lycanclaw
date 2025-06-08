@@ -66,7 +66,8 @@ onUnmounted(() => {
 
     <!-- 添加评论区组件 -->
     <template #doc-footer-before>
-      <WalineComment v-if="shouldShowComments && !frontmatter.hideComments" />
+      <!-- Giscus评论区将自动通过插件显示，无需手动添加组件 -->
+      <!-- 评论系统会根据shouldShowComments计算属性来控制显示 -->
     </template>
 
     <template #layout-bottom>
