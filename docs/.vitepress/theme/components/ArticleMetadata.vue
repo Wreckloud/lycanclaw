@@ -20,25 +20,57 @@ const hasCreationDate = computed(() => !!frontmatter.value.date)
 const creationDate = computed(() => {
   if (!frontmatter.value.date) return null
   
-  // 尝试解析日期，处理多种可能的格式
+  // 直接从日期字符串中提取年月日时分秒，避免时区转换问题
+  const dateStr = String(frontmatter.value.date).replace(/^['"]|['"]$/g, '')
+  const match = dateStr.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/)
+  
+  if (match) {
+    return {
+      year: parseInt(match[1], 10),
+      month: parseInt(match[2], 10),
+      day: parseInt(match[3], 10),
+      hours: parseInt(match[4], 10),
+      minutes: parseInt(match[5], 10),
+      seconds: parseInt(match[6], 10)
+    }
+  }
+  
+  // 如果无法提取，则回退到Date对象
   try {
-    // 日期可能是 '2024-07-26 11:45:14' 格式或其他格式
-    return new Date(frontmatter.value.date)
+    return new Date(dateStr)
   } catch (e) {
     console.error('无法解析日期:', frontmatter.value.date)
     return null
   }
 })
 
-// 格式化日期，显示年月日
+// 格式化日期，显示年月日时分秒
 const formattedDate = computed(() => {
   if (!creationDate.value) return ''
   
-  const year = creationDate.value.getFullYear()
-  const month = (creationDate.value.getMonth() + 1).toString().padStart(2, '0')
-  const day = creationDate.value.getDate().toString().padStart(2, '0')
+  // 如果是我们自己解析的日期对象
+  if (typeof creationDate.value === 'object' && 'year' in creationDate.value) {
+    const date = creationDate.value
+    const year = date.year
+    const month = date.month.toString().padStart(2, '0')
+    const day = date.day.toString().padStart(2, '0')
+    const hours = date.hours.toString().padStart(2, '0')
+    const minutes = date.minutes.toString().padStart(2, '0')
+    const seconds = date.seconds.toString().padStart(2, '0')
+    
+    return `${year}年${month}月${day}日 ${hours}:${minutes}:${seconds}`
+  }
   
-  return `${year}年${month}月${day}日`
+  // 否则使用Date对象
+  const date = creationDate.value
+  const year = date.getFullYear()
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const day = date.getDate().toString().padStart(2, '0')
+  const hours = date.getHours().toString().padStart(2, '0')
+  const minutes = date.getMinutes().toString().padStart(2, '0')
+  const seconds = date.getSeconds().toString().padStart(2, '0')
+  
+  return `${year}年${month}月${day}日 ${hours}:${minutes}:${seconds}`
 })
 
 // 计算字数

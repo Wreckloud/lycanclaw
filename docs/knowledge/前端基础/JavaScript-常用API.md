@@ -1,6 +1,6 @@
 ---
 title: JavaScript-常用API
-date: 2025-03-07 12:33:11
+date: '2025-03-07 12:33:11'
 description: 详细介绍JavaScript中DOM和BOM操作的常用方法，包括元素选择、内容修改、样式控制、事件处理等前端开发必备技能。
 publish: true
 tags:

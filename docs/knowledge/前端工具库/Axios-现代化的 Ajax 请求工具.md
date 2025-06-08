@@ -1,6 +1,6 @@
 ---
 title: Axios-现代化的 Ajax 请求工具
-date: 2024-11-27 11:57:22
+date: '2024-11-27 11:57:22'
 description: Ajax是一种在无需重新加载整个页面的情况下，与服务器交换数据并更新部分网页的技术。
 publish: true
 tags:
@@ -1446,4 +1446,3 @@ console.log('3');
 在上面的例子中，await 后面的代码实际上被转换为 Promise.then()回调，因此作为微任务在同步代码之后执行。
 
 通过掌握同步异步编程模型和事件循环机制，我们能更好地理解和应用 Promise、async/await 等现代 JavaScript 异步编程技术，编写出高效、可维护的前端代码。
-

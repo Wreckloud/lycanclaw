@@ -9,6 +9,7 @@ import { useRoute } from 'vitepress';
 // 导入自定义布局组件（保留直接导入，因为它是必需的）
 import MyLayout from './components/MyLayout.vue';
 
+
 // 导入自定义样式
 import './styles/index.css';
 
@@ -31,6 +32,8 @@ export default {
   
   // 使用自定义页脚，但保持VitePress对侧边栏页面的页脚隐藏规则
   Layout: MyLayout,
+  
+
   
   setup() {
     const route = useRoute();

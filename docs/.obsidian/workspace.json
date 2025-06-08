@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "thoughts/光不在彼方.md",
+                "file": "thoughts/笔记本 Wi-Fi 消失的解决方法.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "光不在彼方"
+              "title": "笔记本 Wi-Fi 消失的解决方法"
             }
           }
         ]
@@ -40,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "thoughts/光不在彼方.md",
+                "file": "thoughts/笔记本 Wi-Fi 消失的解决方法.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "光不在彼方 的大纲"
+              "title": "笔记本 Wi-Fi 消失的解决方法 的大纲"
             }
           },
           {
@@ -154,9 +154,17 @@
   },
   "active": "f1a5ae53903c2eca",
   "lastOpenFiles": [
-    "knowledge/前端工具库/在项目重封装 Axios 请求.md",
-    "thoughts/光不在彼方.md",
+    "thoughts/未命名3.md",
+    "thoughts/未命名2.md",
+    "thoughts/未命名1.md",
+    "thoughts/tags.md",
     "knowledge/前端工具库/Axios-现代化的 Ajax 请求工具.md",
+    "knowledge/前端工具库/在项目重封装 Axios 请求.md",
+    "thoughts/獠牙下的野蔷薇.md",
+    "thoughts/笔记本 Wi-Fi 消失的解决方法.md",
+    "thoughts/从一盏灯开始的文明.md",
+    "thoughts/光不在彼方.md",
+    "debug-sort.log",
     "knowledge/前端工具库/Element-Plus 定制主题（SCSS 方案）.md",
     "knowledge/前端工具库/ESLint+Prettier 代码规范自动化.md",
     "knowledge/前端工具库/Git-版本控制.md",
@@ -183,7 +191,6 @@
     "public/images/文章资源/vuex-状态管理",
     "vitepress-container-demo.md",
     "public/images/文章资源/vue-x-状态管理",
-    "thoughts/笔记本 Wi-Fi 消失的解决方法.md",
     "knowledge/前端基础/网页视觉样式-CSS.md",
     "knowledge/前端基础/网页行为逻辑-JavaScript.md",
     "knowledge/前端基础/Javascript-进阶语法.md",
@@ -193,13 +200,6 @@
     "knowledge/前端基础/网页结构骨架-HTML.md",
     "images/文章资源/网页结构骨架-html",
     "images/文章资源",
-    "images",
-    "thoughts/从一盏灯开始的文明.md",
-    "thoughts/index.md",
-    "knowledge/index.md",
-    "projects/index.md",
-    "about.md",
-    "projects/example-project.md",
     "点子合集.canvas"
   ]
 }

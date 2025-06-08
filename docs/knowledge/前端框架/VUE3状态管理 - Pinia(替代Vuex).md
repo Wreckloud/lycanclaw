@@ -1,6 +1,6 @@
 ---
 title: VUE3状态管理-Pinia(替代Vuex)
-date: 2025-05-17 20:21:20
+date: '2025-05-17 20:21:20'
 description: Vue的下一代状态管理工具，以更简洁的API和更友好的TypeScript支持替代Vuex！
 publish: true
 tags:

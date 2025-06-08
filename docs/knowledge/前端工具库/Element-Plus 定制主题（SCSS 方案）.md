@@ -1,6 +1,6 @@
 ---
 title: Element-Plus 定制主题（SCSS 方案）
-date: 2025-06-07 17:19:28
+date: '2025-06-07 17:19:28'
 description: 这是一篇新文章!
 publish: true
 tags:

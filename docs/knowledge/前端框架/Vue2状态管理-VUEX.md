@@ -1,6 +1,6 @@
 ---
 title: Vue2状态管理-VUEX
-date: 2025-05-06 14:03:47
+date: '2025-05-06 14:03:47'
 description: 专为 Vue 应用程序开发的状态管理模式
 publish: true
 tags:

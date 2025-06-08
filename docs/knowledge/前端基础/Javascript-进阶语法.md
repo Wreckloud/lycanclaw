@@ -1,6 +1,6 @@
 ---
 title: Javascript-进阶语法
-date: 2025-04-02 12:09:57
+date: '2025-04-02 12:09:57'
 description: 这是一篇新文章!
 publish: true
 tags:

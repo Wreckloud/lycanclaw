@@ -1,6 +1,6 @@
 ---
 title: VUE 2-渐进式框架
-date: 2024-11-24 18:04:40
+date: '2024-11-24 18:04:40'
 description: Vue是一款用于构建用户界面的渐进式的 JavaScript 框架。
 publish: true
 tags:

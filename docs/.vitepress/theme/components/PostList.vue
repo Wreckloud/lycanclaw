@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useData } from 'vitepress'
 import { withBase } from 'vitepress'
 
@@ -30,21 +30,106 @@ const thoughtsPosts = ref([])
 const isLoading = ref(true)
 const hasError = ref(false)
 
+// 分页相关
+const currentPage = ref(1)
+const postsPerPage = 7 // 每页显示7篇文章
+const totalPages = computed(() => Math.ceil(thoughtsPosts.value.length / postsPerPage))
+const paginatedPosts = computed(() => {
+  const startIndex = (currentPage.value - 1) * postsPerPage
+  const endIndex = startIndex + postsPerPage
+  return thoughtsPosts.value.slice(startIndex, endIndex)
+})
+
+// 页码导航
+const pageNumbers = computed(() => {
+  const pages = []
+  const maxVisiblePages = 5 // 最多显示5个页码
+  
+  if (totalPages.value <= maxVisiblePages) {
+    // 如果总页数少于最大显示页码，则显示所有页码
+    for (let i = 1; i <= totalPages.value; i++) {
+      pages.push(i)
+    }
+  } else {
+    // 总是显示第一页
+    pages.push(1)
+    
+    // 计算中间页码的起始和结束
+    let start = Math.max(2, currentPage.value - 1)
+    let end = Math.min(totalPages.value - 1, currentPage.value + 1)
+    
+    // 如果当前页靠近开始，多显示几个后面的页码
+    if (currentPage.value <= 3) {
+      end = Math.min(totalPages.value - 1, 4)
+    }
+    
+    // 如果当前页靠近结束，多显示几个前面的页码
+    if (currentPage.value >= totalPages.value - 2) {
+      start = Math.max(2, totalPages.value - 3)
+    }
+    
+    // 如果第一页和起始页之间有间隔，添加省略号
+    if (start > 2) {
+      pages.push('...')
+    }
+    
+    // 添加中间页码
+    for (let i = start; i <= end; i++) {
+      pages.push(i)
+    }
+    
+    // 如果结束页和最后一页之间有间隔，添加省略号
+    if (end < totalPages.value - 1) {
+      pages.push('...')
+    }
+    
+    // 总是显示最后一页
+    pages.push(totalPages.value)
+  }
+  
+  return pages
+})
+
+// 页面导航函数
+function goToPage(page) {
+  if (typeof page === 'number' && page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+    // 滚动到页面顶部
+    if (isBrowser) {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+}
+
 onMounted(async () => {
   // 确保只在浏览器环境中执行
   if (!isBrowser) return
   
   try {
-    // 从生成的JSON文件获取数据
-    const response = await fetch('/posts.json')
+    // 从生成的JSON文件获取数据，使用绝对路径
+    const response = await fetch(withBase('/posts.json'))
     if (!response.ok) {
       throw new Error('Failed to fetch posts data')
     }
     
     const posts = await response.json()
     
-    // 严格过滤，只显示publish为true的文章
-    thoughtsPosts.value = posts.filter(post => post.frontmatter.publish === true)
+    // 严格过滤，只显示publish为true的随想文章
+    thoughtsPosts.value = posts.filter(post => 
+      post.frontmatter.publish === true && 
+      post.relativePath.startsWith('thoughts/') &&
+      post.relativePath !== 'thoughts/index.md' &&
+      post.relativePath !== 'thoughts/tags.md'
+    )
+    
+    // 验证文章URL是否有效
+    if (isBrowser && window.location.pathname.includes('/thoughts/') && 
+        !thoughtsPosts.value.some(post => post.url === window.location.pathname)) {
+      // 当前路径是一个thoughts文章，但在posts.json中找不到
+      // 这可能是因为文件已被删除
+      console.warn('当前文章可能已被删除:', window.location.pathname)
+    }
+    
     isLoading.value = false
   } catch (error) {
     console.error('Error loading posts:', error)
@@ -57,12 +142,28 @@ onMounted(async () => {
 function formatDate(dateString) {
   if (!dateString) return ''
   
-  const date = new Date(dateString)
+  // 处理可能带引号的日期字符串
+  const cleanDateString = String(dateString).replace(/^['"]|['"]$/g, '')
+  
+  // 直接从日期字符串中提取年月日
+  const match = cleanDateString.match(/(\d{4})-(\d{2})-(\d{2})/)
+  
+  if (match) {
+    const year = match[1]
+    const month = match[2]
+    const day = match[3]
+    
+    return `${year}年${month}月${day}日`
+  }
+  
+  // 如果无法提取，则回退到Date对象
+  const date = new Date(cleanDateString)
   if (isNaN(date.getTime())) return ''
   
   const year = date.getFullYear()
   const month = (date.getMonth() + 1).toString().padStart(2, '0')
   const day = date.getDate().toString().padStart(2, '0')
+  
   return `${year}年${month}月${day}日`
 }
 
@@ -100,7 +201,7 @@ function getPostExcerpt(post) {
     
     <!-- 文章列表 -->
     <template v-else>
-      <div v-for="post in thoughtsPosts" :key="post.url" class="post-item">
+      <div v-for="post in paginatedPosts" :key="post.url" class="post-item">
         <a :href="withBase(post.url)" class="post-link">
           <h2 class="post-item-title">{{ post.frontmatter.title }}</h2>
           
@@ -120,6 +221,38 @@ function getPostExcerpt(post) {
             </span>
           </div>
         </a>
+      </div>
+      
+      <!-- 分页导航 -->
+      <div v-if="totalPages > 1" class="pagination">
+        <button 
+          class="pagination-button" 
+          :class="{ disabled: currentPage === 1 }"
+          @click="goToPage(currentPage - 1)" 
+          :disabled="currentPage === 1"
+        >
+          上一页
+        </button>
+        
+        <button 
+          v-for="page in pageNumbers" 
+          :key="page"
+          class="pagination-button" 
+          :class="{ active: page === currentPage, ellipsis: page === '...' }"
+          @click="typeof page === 'number' && goToPage(page)"
+          :disabled="page === '...'"
+        >
+          {{ page }}
+        </button>
+        
+        <button 
+          class="pagination-button" 
+          :class="{ disabled: currentPage === totalPages }"
+          @click="goToPage(currentPage + 1)" 
+          :disabled="currentPage === totalPages"
+        >
+          下一页
+        </button>
       </div>
       
       <!-- 无文章提示 -->
@@ -205,5 +338,47 @@ function getPostExcerpt(post) {
 
 .error {
   color: var(--vp-c-danger);
+}
+
+/* 分页样式 */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 2rem;
+  gap: 0.5rem;
+}
+
+.pagination-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  font-size: 14px;
+  border-radius: 4px;
+  background-color: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-1);
+  border: 1px solid var(--vp-c-divider);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pagination-button:hover:not(.disabled):not(.active):not(.ellipsis) {
+  border-color: var(--vp-c-brand-1);
+  color: var(--vp-c-brand-1);
+}
+
+.pagination-button.active {
+  background-color: var(--vp-c-brand-1);
+  color: var(--vp-c-white);
+  border-color: var(--vp-c-brand-1);
+}
+
+.pagination-button.disabled,
+.pagination-button.ellipsis {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style> 
