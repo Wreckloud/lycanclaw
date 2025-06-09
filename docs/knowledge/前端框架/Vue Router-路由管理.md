@@ -11,117 +11,222 @@ tags:
 
 ## 单页应用
 
-**单页应用程序**(Single Page Application, SPA)是一种将所有功能集中在同一个 HTML 页面中实现的现代 Web 应用架构模式。整个应用只有一个完整的页面加载，后续操作通过动态更新当前页面来实现交互。
+**单页应用程序**(Single Page Application, SPA)就是整个网站只有一个 HTML 页面，页面内容通过 JS 动态切换，不会整页刷新。常见场景：后台管理、文档系统、移动端 Web 应用等。
 
-**代表案例**：[网易云音乐](https://music.163.com/)、GitHub、Gmail等。
+**代表案例**：[网易云音乐](https://music.163.com/)、GitHub、Gmail 等。
 
-| 优点                     | 缺点                           |
-| ------------------------ | ------------------------------ |
-| 按需更新 DOM，性能高     | 首屏加载较慢(需一次性加载框架) |
-| 用户体验流畅(无页面跳转) | 不利于 SEO(搜索引擎优化)       |
-| 前后端分离，开发效率高   | 开发复杂度和学习成本较高       |
-| 节省服务器资源           | 对浏览器性能要求较高           |
-
-SPA 特别适合以下场景：
-
-- **系统类网站**：后台管理系统、内部 ERP 系统
-- **内部应用**：对 SEO 要求不高的内部网站
-- **文档类应用**：在线文档、知识库
-- **移动端应用**：接近原生体验的移动 web 应用
+核心优点：体验流畅、前后端分离、开发效率高。
+主要缺点：首屏加载慢、不利于 SEO。
 
 **什么是路由？**
 
 在生活中，路由器负责数据包的转发，建立了设备和 IP 的映射关系。在 Vue 应用中，**路由**是指**路径和组件之间的映射关系**。通过路由系统，可以根据不同的 URL 路径，在页面中渲染不同的组件，实现 SPA 的核心功能。
 
-路由的核心功能是：根据 URL 路径切换显示不同的组件，且无需重新加载页面。这就像是一个智能的导航系统，当用户点击不同的链接时，系统会找到对应的组件并显示，而不会刷新整个页面。
+在 Vue 里，路由就是“路径和组件的映射”。你只需要配置好“哪个路径显示哪个组件”，Vue Router 会帮你根据 URL 自动切换页面内容，无需刷新。
 
-## 安装与配置
+## 安装
 
-Vue Router 是 Vue 官方的路由管理器，与 Vue.js 深度集成，是构建 SPA 的必备工具。它提供了完整的路由功能，包括路由配置、导航控制、参数传递等。
+### 方式一：脚手架集成（推荐）
 
-> **版本对应关系**：  
-> Vue 2.x → Vue Router 3.x → Vuex 3.x  
-> Vue 3.x → Vue Router 4.x → Pinia
+**新项目建议直接用官方脚手架工具，自动帮你配置好 Vue Router 4。**
 
-### 基本使用步骤(5+2 模式)
+#### 1. 使用 Vue CLI
 
-实现 Vue Router 基本功能需要完成以下步骤：
-
-#### 5 个基础步骤
-
-1. **下载安装**：添加 Vue Router 到项目中
+安装 Vue CLI（如未安装）
 
 ```bash
-# Vue3项目安装Vue Router 4.x版本
-yarn add vue-router@4
-# 或
+npm install -g @vue/cli
+```
+
+创建新项目，按提示选择“Vue Router”
+
+```bash
+vue create my-vue-app
+```
+
+> 脚手架会自动帮你生成 `src/router/index.js` 和基础路由配置，直接用即可。
+
+### 方式二：手动安装
+
+适合已有项目或需要自定义配置时使用。
+
+#### 1. 安装
+
+```bash
 npm install vue-router@4
+# 或选择自己喜欢的包管理器
+yarn add vue-router@4
 ```
 
-2. **引入模块**：在 `main.js` 中导入 Vue Router 所需的函数
+#### 2. 创建路由配置文件
 
-```javascript
-import { createRouter, createWebHistory } from "vue-router";
-```
+**src/router/index.js：**
 
-3. **定义路由**：配置路由规则
-
-```javascript
-const routes = [
-  { path: '/home', component: () => import('./views/Home.vue') }
-];
-```
-
-4. **创建路由实例**：使用createRouter创建路由对象
-
-```javascript
-const router = createRouter({
-  history: createWebHistory(),
-  routes
-});
-```
-
-5. **注入挂载**：将路由对象注入到 Vue 应用实例
-
-```javascript
-// Vue 3中使用createApp创建应用实例
-import { createApp } from 'vue';
-import App from './App.vue';
-
-const app = createApp(App);
-app.use(router); // 将路由挂载到应用
-app.mount('#app');
-```
-
-完整的 main.js：
-
-```javascript
-import { createApp } from 'vue'
-import App from './App.vue'
+```js
+// 引入 Vue Router 的核心方法
 import { createRouter, createWebHistory } from 'vue-router'
 
-// 路由配置
+
+// 创建路由实例，采用 history 模式（URL 无 #，更美观）
+const router = createRouter({
+  history: createWebHistory(), // 路由表：每个对象就是一个页面路由配置
+  routes:[
+	{
+	    path: '/', // 路径
+	    name: 'Home', // 路由名称（推荐写，便于编程式跳转）
+	    component: () => import('@/views/Home.vue') // 懒加载页面组件
+	},
+	{
+		path: '/about',
+	    name: 'About',
+	    component: () => import('@/views/About.vue')
+	}
+  ]
+
+})
+
+// 导出路由实例，供 main.js/main.ts 挂载
+export default router
+```
+
+#### 3. 在 main.js 中挂载
+
+```js
+import { createApp } from 'vue' // 引入 Vue 3 的应用创建方法
+import App from './App.vue' // 引入根组件
+import router from './router' // 引入路由实例（上面配置并导出的 router）
+
+const app = createApp(App) // 创建 Vue 应用实例
+// 挂载路由插件，整个应用就能用 <router-link>、<router-view> 等路由功能
+app.use(router)
+app.mount('#app') // 挂载根组件到页面
+```
+
+这样写，查阅和操作都非常直观，适合 Vue 3 项目日常开发。
+
+## 配置
+
+### 基本配置
+
+最简单的路由配置，每个页面一个路由：
+
+```js
+import { createRouter, createWebHistory } from 'vue-router'
+
+// 路由表：每个对象就是一个页面
 const routes = [
-  { path: '/find', component: () => import('./views/Find.vue') },
-  { path: '/my', component: () => import('./views/My.vue') },
-  { path: '/friend', component: () => import('./views/Friend.vue') }
+  {
+    path: '/home',
+    name: 'Home',
+    component: () => import('@/views/Home.vue')
+  },
+  {
+    path: '/about',
+    name: 'About',
+    component: () => import('@/views/About.vue')
+  }
+]
+```
+
+### 嵌套路由（子页面）
+
+有些页面有自己的“子页面”，比如用户中心下有“资料”和“帖子”。这时用 children 配置嵌套路由：
+
+```js
+const routes = [
+  // ...前面的基础路由
+  {
+    path: '/user',
+    name: 'User',
+    component: () => import('@/views/User/index.vue'), // 父页面
+    children: [
+      {
+        path: 'profile', // 访问 /user/profile
+        name: 'UserProfile',
+        component: () => import('@/views/User/Profile.vue')
+      },
+      {
+        path: 'posts', // 访问 /user/posts
+        name: 'UserPosts',
+        component: () => import('@/views/User/Posts.vue')
+      }
+    ]
+  }
+]
+```
+
+- 父页面（如 User/index.vue）里要有 `<router-view />`，子页面会渲染在这里。
+- 子路由 path 前面不要加 `/`，否则会变成根路径。
+
+### 路由重定向
+
+有时希望访问某个路径时自动跳转到另一个页面，比如访问 `/` 时跳到 `/home`：
+
+```js
+const routes = [
+  { path: '/', redirect: '/home' }
+  // ...其他路由
+]
+```
+
+redirect 可以是字符串路径，也可以是对象（如 `{ name: 'Home' }`）。
+
+### 404 页面（通配符）
+
+如果用户访问了不存在的路径，应该显示一个友好的 404 页面：
+
+```js
+const routes = [
+  // ...其他路由
+  {
+    path: '/:pathMatch(.*)*', // 匹配所有未定义的路径
+    name: 'NotFound',
+    component: () => import('@/views/NotFound.vue')
+  }
+]
+```
+
+404 路由要放在最后，否则会把所有路由都匹配成 404。
+
+**完整配置示例**
+
+把上面所有内容合并，就是一个常用的路由配置文件：
+
+```js
+import { createRouter, createWebHistory } from 'vue-router'
+
+const routes = [
+  // 重定向：访问 / 自动跳转到 /home
+  { path: '/', redirect: '/home' },
+
+  // 基础页面
+  { path: '/home', name: 'Home', component: () => import('@/views/Home.vue') },
+  { path: '/about', name: 'About', component: () => import('@/views/About.vue') },
+
+  // 嵌套路由：用户中心
+  {
+    path: '/user',
+    name: 'User',
+    component: () => import('@/views/User/index.vue'),
+    children: [
+      { path: 'profile', name: 'UserProfile', component: () => import('@/views/User/Profile.vue') },
+      { path: 'posts', name: 'UserPosts', component: () => import('@/views/User/Posts.vue') }
+    ]
+  },
+
+  // 404 页面，必须放最后
+  { path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('@/views/NotFound.vue') }
 ]
 
-// 创建路由实例
 const router = createRouter({
   history: createWebHistory(),
   routes
 })
 
-// 创建应用实例
-const app = createApp(App)
-
-// 挂载路由
-app.use(router)
-
-// 挂载应用
-app.mount('#app')
+export default router
 ```
+
+````
 
 #### 2 个核心步骤
 
@@ -134,7 +239,7 @@ const routes = [
   { path: '/my', component: () => import('./views/My.vue') },
   { path: '/friend', component: () => import('./views/Friend.vue') }
 ];
-```
+````
 
 2. **使用路由组件**：在 `App.vue` 添加路由导航链接和视图出口
 
@@ -157,6 +262,88 @@ const routes = [
 ```
 
 > `<router-link>` 组件会被渲染为 `<a>` 标签，但比普通 `<a>` 标签更智能，可以阻止默认的页面刷新行为，保持单页应用的特性。
+
+## 使用
+
+配置好路由后，页面跳转和内容切换就非常简单了。主要用到两个内置组件：`<router-link>` 和 `<router-view>`。
+
+### `<router-link>` 跳转导航
+
+`<router-link>` 用来生成导航链接，点击后会切换页面，但不会刷新整个页面。
+
+**基本用法：**
+
+```vue
+<template>
+  <div>
+    <router-link to="/home">首页</router-link>
+    <router-link to="/about">关于</router-link>
+    <router-link to="/user/profile">我的资料</router-link>
+  </div>
+</template>
+```
+
+- `to` 属性指定要跳转的路径。
+- 渲染出来其实是 `<a>` 标签，但不会刷新页面，体验更流畅。
+
+### `<router-view>` 页面出口
+
+`<router-view>` 是用来显示当前路由对应的页面组件的地方。通常放在 App.vue 或页面的主区域。
+
+**基本用法：**
+
+```vue
+<template>
+  <div>
+    <!-- 导航栏 -->
+    <nav>
+      <router-link to="/home">首页</router-link>
+      <router-link to="/about">关于</router-link>
+    </nav>
+    <!-- 路由出口，当前页面内容会显示在这里 -->
+    <router-view />
+  </div>
+</template>
+```
+
+- 只有 `<router-view>` 里才会渲染当前激活的页面组件。
+- 如果有嵌套路由，父组件和子组件都要有 `<router-view>`。
+
+### 导航高亮
+
+当前激活的 `<router-link>` 会自动加上 `router-link-active` 或 `router-link-exact-active` 类名，可以用 CSS 高亮当前菜单。
+
+```css
+.router-link-active {
+  color: #42b983;
+  font-weight: bold;
+}
+```
+
+### 命名路由跳转
+
+除了写死路径，也可以用路由的 name 跳转，方便维护：
+
+```vue
+<router-link :to="{ name: 'UserProfile' }">我的资料</router-link>
+```
+
+### 嵌套路由的使用
+
+如果有嵌套路由，父组件（如 User/index.vue）里要加 `<router-view />`，子页面会显示在这里：
+
+```vue
+<!-- User/index.vue -->
+<template>
+  <div>
+    <h2>用户中心</h2>
+    <router-link to="/user/profile">资料</router-link>
+    <router-link to="/user/posts">帖子</router-link>
+    <!-- 子路由出口 -->
+    <router-view />
+  </div>
+</template>
+```
 
 ## 组件分类
 
@@ -216,302 +403,6 @@ app.mount('#app');
 
 Vue CLI 提供了 `@` 路径别名，指向 src 目录，使用它可以避免复杂的相对路径引用，简化导入语句。
 
-## 嵌套路由
-
-在实际应用中，页面通常由多层嵌套的组件组成。例如，一个用户管理页面可能包含用户列表、用户详情等子页面。Vue Router 支持通过 `children` 配置项来实现路由嵌套，创建多级路由结构。
-
-### 配置嵌套路由
-
-在路由配置中，使用 `children` 属性定义子路由规则：
-
-```javascript
-const routes = [
-  {
-    path: "/user",
-    component: () => import('./views/User.vue'),
-    children: [
-      // 子路由路径前不需要加/
-      { path: "profile", component: () => import('./views/user/UserProfile.vue') }, // /user/profile
-      { path: "posts", component: () => import('./views/user/UserPosts.vue') }, // /user/posts
-      { path: "", component: () => import('./views/user/UserHome.vue') }, // /user 默认子路由
-    ],
-  },
-];
-
-const router = createRouter({
-  history: createWebHistory(),
-  routes
-});
-```
-
-### 添加嵌套的路由出口
-
-在父级路由组件中，需要添加一个 `<router-view>` 作为子路由的出口：
-
-```vue
-<!-- User.vue -->
-<template>
-  <div class="user">
-    <h2>用户中心</h2>
-
-    <!-- 子路由导航 -->
-    <router-link to="/user/profile">个人资料</router-link>
-    <router-link to="/user/posts">我的文章</router-link>
-
-    <!-- 子路由出口 -->
-    <router-view></router-view>
-  </div>
-</template>
-```
-
-当用户访问 `/user/profile` 时，父组件 `User` 会渲染在根 `<router-view>` 中，而子组件 `UserProfile` 会渲染在 `User` 组件内的 `<router-view>` 中，形成嵌套结构。
-
-嵌套路由的使用使得复杂应用的页面组织更加清晰，特别适合构建包含侧边栏、标签页等多层次的界面结构。
-
-# 声明式导航
-
-### router-link 组件
-
-`router-link` 是 Vue Router 提供的全局组件，用于替代传统的 `<a>` 标签。
-它不仅能实现页面跳转，还自带激活状态的高亮效果。
-
-使用时，必须通过 `to` 属性指定目标路由路径。
-
-```vue
-<router-link to="/path">链接文本</router-link>
-```
-
-**激活状态类名**
-
-`router-link` 的一个重要特性是会自动为当前激活的导航添加类名，便于设置样式：
-
-- `router-link-active`：模糊匹配，适用于导航菜单。例如，当 `to="/my"` 时，可以匹配 `/my`、`/my/a`、`/my/b` 等路径。
-- `router-link-exact-active`：精确匹配，仅当路径完全相同时才会激活。例如，`to="/my"` 只能匹配 `/my`。
-
-这些默认类名可以在路由配置中自定义：
-
-```javascript
-const router = createRouter({
-  history: createWebHistory(),
-  routes: [...],
-  linkActiveClass: "active",    // 自定义模糊匹配类名
-  linkExactActiveClass: "exact" // 自定义精确匹配类名
-});
-```
-
-在Vue 3中，`router-link`组件还提供了自定义v-slot功能，可以更灵活地定制链接样式：
-
-```vue
-<router-link to="/profile" v-slot="{ href, route, navigate, isActive, isExactActive }">
-  <a :href="href" @click="navigate" :class="[isActive && 'active', isExactActive && 'exact']">
-    个人中心
-  </a>
-</router-link>
-```
-
-## 声明式传参
-
-在 Vue 应用中，不同页面间常常需要传递数据。Vue Router 提供了两种参数传递方式，分别适用于不同场景。
-
-### 查询参数传参 (query)
-
-查询参数是 URL 中 `?` 后面的部分，以键值对形式传递数据。这种方式类似于传统的 GET 请求，适合传递多个可选参数：
-
-```vue
-<router-link to="/search?keyword=vue&type=all">搜索</router-link>
-```
-
-更结构化的写法：
-
-```vue
-<router-link :to="{ path: '/search', query: { keyword: 'vue', type: 'all' }}">
-  搜索
-</router-link>
-```
-
-在目标组件中，通过 `useRoute()` 钩子获取这些参数：
-
-```js
-// 选项式API中
-export default {
-  created() {
-    console.log(this.$route.query.keyword); // 'vue'
-    console.log(this.$route.query.type); // 'all'
-  },
-};
-
-// 组合式API中 (Vue 3推荐)
-import { useRoute } from 'vue-router';
-import { onMounted } from 'vue';
-
-export default {
-  setup() {
-    const route = useRoute();
-    
-    onMounted(() => {
-      console.log(route.query.keyword); // 'vue'
-      console.log(route.query.type); // 'all'
-    });
-  }
-};
-```
-
-查询参数的优势在于灵活性高，不需要在路由配置中预先定义参数名称。
-
-### 动态路由传参 (params)
-
-动态路由参数作为 URL 路径的一部分，使 URL 更简洁美观。这种方式更适合传递必要的、语义化的参数。
-
-首先需要在路由配置中定义参数占位符：
-
-```javascript
-const routes = [
-  { path: "/search/:keyword", component: () => import('./views/Search.vue') }
-];
-
-const router = createRouter({
-  history: createWebHistory(),
-  routes
-});
-```
-
-然后在链接中传递参数：
-
-```vue
-<router-link to="/search/vue">搜索</router-link>
-```
-
-更结构化的写法（使用命名路由）：
-
-```vue
-<router-link :to="{ name: 'search', params: { keyword: 'vue' }}">
-  搜索
-</router-link>
-```
-
-在目标组件中，通过 `useRoute()` 获取参数：
-
-```js
-// 选项式API中
-export default {
-  created() {
-    console.log(this.$route.params.keyword); // 'vue'
-  },
-};
-
-// 组合式API中 (Vue 3推荐)
-import { useRoute } from 'vue-router';
-import { onMounted } from 'vue';
-
-export default {
-  setup() {
-    const route = useRoute();
-    
-    onMounted(() => {
-      console.log(route.params.keyword); // 'vue'
-    });
-  }
-};
-```
-
-某些情况下，参数可能是可选的，可以在路由配置中添加 `?` 使参数变为可选：
-
-```javascript
-{ path: '/search/:keyword?', component: () => import('./views/Search.vue') }
-```
-
-动态路由参数的优势在于 URL 更简洁，参数更有语义性，适合表示资源标识。
-
-## 路由重定向
-
-### 重定向
-
-在单页应用中，当用户访问根路径 `/` 时，通常需要将其重定向到应用的默认页面，而不是显示空白页面。
-
-重定向的工作原理是：当匹配到特定路径时，自动跳转到另一个路径：
-
-```javascript
-const routes = [
-  { path: "/", redirect: "/home" }, // 访问根路径时自动跳转到home页面
-  { path: "/home", component: () => import('./views/Home.vue') },
-];
-
-const router = createRouter({
-  history: createWebHistory(),
-  routes
-});
-```
-
-Vue Router 4还支持更灵活的重定向方式：
-
-```javascript
-// 使用命名路由重定向
-{ path: '/', redirect: { name: 'home' } },
-
-// 使用函数进行动态重定向
-{ path: '/user/:id', redirect: to => {
-  // 根据条件动态返回重定向目标
-  return { path: '/profile', query: { id: to.params.id } }
-}}
-```
-
-### 404 页面
-
-对于用户访问不存在的路径，应当提供一个友好的 404 页面，而不是留下空白。配置 404 页面需要使用通配符路径：
-
-```javascript
-const routes = [
-  // ... 其他路由配置
-  { 
-    path: "/:pathMatch(.*)*", 
-    name: "NotFound",
-    component: () => import('./views/NotFound.vue')
-  }, // 匹配任何未定义的路径
-];
-```
-
-注意：在Vue Router 4中，通配符语法从`*`变为了`/:pathMatch(.*)*`，更加符合路径参数的统一规范。
-
-404 页面的配置需要放在路由配置的最后，因为路由匹配是按顺序进行的，最后才会匹配到通配符。
-
-## 路由模式
-
-Vue Router 提供了几种 URL 模式，适应不同的部署需求：
-
-- **Hash 模式**：URL 中带有 `#` 符号，如 `http://localhost:8080/#/home`
-- **HTML5 模式**：更自然的 URL 形式，如 `http://localhost:8080/home`
-- **内存模式**：不会更改URL，适用于SSR等特殊场景
-
-在Vue Router 4中，这些模式通过不同的history创建函数来实现：
-
-```javascript
-// Hash模式
-import { createRouter, createWebHashHistory } from 'vue-router'
-
-const router = createRouter({
-  history: createWebHashHistory(),
-  routes: [...]
-})
-
-// HTML5模式
-import { createRouter, createWebHistory } from 'vue-router'
-
-const router = createRouter({
-  history: createWebHistory(),
-  routes: [...]
-})
-
-// 内存模式 (主要用于SSR)
-import { createRouter, createMemoryHistory } from 'vue-router'
-
-const router = createRouter({
-  history: createMemoryHistory(),
-  routes: [...]
-})
-```
-
-> 使用 HTML5 模式 (createWebHistory) 时，需要后端服务器配置支持，否则用户刷新页面时可能会遇到 404 错误。
-
 # 编程式导航
 
 除了使用 `router-link` 组件实现声明式导航，Vue Router 还提供了通过 JavaScript 代码控制路由跳转的方法，这在需要根据逻辑动态决定跳转目标时非常有用。
@@ -520,11 +411,11 @@ const router = createRouter({
 
 ## 获取路由实例
 
-在Vue 3中，编程式导航有两种实现方式：
+在 Vue 3 中，编程式导航有两种实现方式：
 
-### 选项式API中
+### 选项式 API 中
 
-在选项式API中，可以通过 `this.$router` 访问路由实例：
+在选项式 API 中，可以通过 `this.$router` 访问路由实例：
 
 ```js
 export default {
@@ -536,9 +427,9 @@ export default {
 }
 ```
 
-### 组合式API中（推荐）
+### 组合式 API 中（推荐）
 
-在组合式API中，使用 `useRouter` 钩子获取路由实例：
+在组合式 API 中，使用 `useRouter` 钩子获取路由实例：
 
 ```js
 import { useRouter } from 'vue-router';
@@ -546,11 +437,11 @@ import { useRouter } from 'vue-router';
 export default {
   setup() {
     const router = useRouter();
-    
+
     function goToHome() {
       router.push('/home');
     }
-    
+
     return {
       goToHome
     };
@@ -692,7 +583,7 @@ export default {
     const route = useRoute();
     console.log(route.query.keyword) // 'vue'
     console.log(route.query.type)    // 'all'
-    
+
     return {}
   }
 }
@@ -761,7 +652,7 @@ export default {
   setup() {
     const route = useRoute();
     console.log(route.params.userId) // '123'
-    
+
     return {}
   }
 }
@@ -834,7 +725,7 @@ router.replace({
 </template>
 ```
 
-在Vue 3中，`<router-view>` 组件提供了 v-slot API，可以更灵活地控制路由组件的渲染：
+在 Vue 3 中，`<router-view>` 组件提供了 v-slot API，可以更灵活地控制路由组件的渲染：
 
 ```vue
 <template>
@@ -940,7 +831,7 @@ export default {
 </script>
 ```
 
-使用组合式API：
+使用组合式 API：
 
 ```vue
 <template>
@@ -992,12 +883,12 @@ export default {
       console.log("组件被激活");
       // 可以在这里更新数据或重置状态
     });
-    
+
     onDeactivated(() => {
       console.log("组件被停用");
       // 可以在这里清理资源或保存状态
     });
-    
+
     return {};
   }
 };

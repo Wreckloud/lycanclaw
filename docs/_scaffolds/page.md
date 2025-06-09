@@ -1,5 +1,4 @@
 ---
-title: '{{title}}'
-comment: false
+title: "{{title}}"
 aside: false
 ---
