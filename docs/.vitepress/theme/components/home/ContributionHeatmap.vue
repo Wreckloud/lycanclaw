@@ -5,7 +5,19 @@
  */
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { withBase } from 'vitepress'
-import * as echarts from 'echarts'
+import * as echarts from 'echarts/core'
+import { CalendarComponent, TooltipComponent, VisualMapComponent } from 'echarts/components'
+import { HeatmapChart } from 'echarts/charts'
+import { CanvasRenderer } from 'echarts/renderers'
+
+// 按需注册组件
+echarts.use([
+  CalendarComponent,
+  TooltipComponent,
+  VisualMapComponent,
+  HeatmapChart,
+  CanvasRenderer
+])
 
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
@@ -129,6 +141,63 @@ function countWord(data) {
 // 热力图实例
 const chartInstance = ref(null)
 
+// 获取图表配置
+function getChartOption() {
+  return {
+    backgroundColor: isDark.value ? 'rgba(0,0,0,0)' : undefined,
+    tooltip: {
+      position: 'top',
+      formatter: function(params) {
+        const count = params.value[1]
+        if (count === 0) {
+          return `${params.value[0]}: 无更新`
+        } else {
+          return `${params.value[0]}: ${count} 字`
+        }
+      }
+    },
+    visualMap: {
+      show: false,
+      min: 0,
+      max: visualMapMax.value,
+      calculable: true,
+      inRange: {
+        color: getThemeColors()
+      }
+    },
+    calendar: {
+      top: 50,
+      left: 50,
+      right: 50,
+      cellSize: [14, 18],
+      range: [yearRange.value.start, yearRange.value.end],
+      itemStyle: {
+        borderWidth: 2,
+        borderColor: isDark.value ? '#1B1B1F' : '#FFFFFF'
+      },
+      splitLine: {
+        show: false
+      },
+      dayLabel: {
+        show: false
+      },
+      monthLabel: {
+        nameMap: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
+        fontSize: 12,
+        color: '#999'
+      },
+      yearLabel: {
+        show: false
+      }
+    },
+    series: {
+      type: 'heatmap',
+      coordinateSystem: 'calendar',
+      data: heatmapData.value
+    }
+  }
+}
+
 // 设置横向滚动
 function setupHorizontalScroll() {
   if (containerRef.value) {
@@ -154,7 +223,7 @@ function initChart() {
     heatmapRef.value.style.height = '200px'
     
     // 初始化图表
-    const chart = echarts.init(heatmapRef.value)
+    const chart = echarts.init(heatmapRef.value, isDark.value ? 'dark' : undefined)
     
     // 添加测试数据（如果没有真实数据）
     if (heatmapData.value.length === 0 || heatmapData.value.every(item => item[1] === 0)) {
@@ -171,7 +240,7 @@ function initChart() {
     }
     
     // 设置图表选项
-    updateChartOptions(chart)
+    chart.setOption(getChartOption())
     
     // 添加窗口大小变化事件监听
     window.addEventListener('resize', handleResize)
@@ -185,76 +254,9 @@ function initChart() {
 }
 
 // 更新图表配置选项
-function updateChartOptions(chart) {
-  if (!chart) chart = chartInstance.value
-  if (!chart) return
-  
-  const themeColors = getThemeColors()
-  
-  chart.setOption({
-    tooltip: {
-      position: 'top',
-      formatter: function(params) {
-        const count = params.value[1]
-        if (count === 0) {
-          return `${params.value[0]}: 无更新`
-        } else {
-          return `${params.value[0]}: ${count} 字`
-        }
-      }
-    },
-    visualMap: {
-      show: false,
-      min: 0,
-      max: visualMapMax.value,
-      calculable: true,
-      orient: 'horizontal',
-      left: 'center',
-      top: 'top',
-      inRange: {
-        // 使用主题颜色
-        color: themeColors
-      }
-    },
-    grid: {
-      right: 50,
-      top: 50,
-      bottom: 20
-    },
-    calendar: {
-      top: 50,
-      left: 50,
-      right: 50,
-      cellSize: [14, 18], // 固定大小的方形单元格
-      range: [yearRange.value.start, yearRange.value.end],
-      itemStyle: {
-        borderWidth: 2,
-        borderColor: isDark.value ? '#1B1B1F' : '#FFFFFF'
-      },
-      splitLine: {
-        show: false
-      },
-      dayLabel: {
-        show: false // 隐藏星期几标签
-      },
-      monthLabel: {
-        nameMap: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
-        fontSize: 12,
-        color: '#999'
-      },
-      yearLabel: {
-        show: false
-      }
-    },
-    series: {
-      type: 'heatmap',
-      coordinateSystem: 'calendar',
-      data: heatmapData.value,
-      label: {
-        show: false
-      }
-    }
-  })
+function updateChartOptions() {
+  if (!chartInstance.value) return
+  chartInstance.value.setOption(getChartOption())
 }
 
 // 检测并设置当前主题
@@ -265,9 +267,15 @@ function detectTheme() {
   const isDarkMode = document.documentElement.classList.contains('dark')
   if (isDark.value !== isDarkMode) {
     isDark.value = isDarkMode
-    // 如果图表已初始化，则更新配置
+    
+    // 销毁并重新创建图表以应用新主题
     if (chartInstance.value) {
-      updateChartOptions()
+      const el = chartInstance.value.getDom()
+      chartInstance.value.dispose()
+      // 设置DOM背景色，确保与页面背景一致
+      el.style.backgroundColor = isDarkMode ? 'transparent' : '';
+      chartInstance.value = echarts.init(el, isDarkMode ? 'dark' : undefined)
+      chartInstance.value.setOption(getChartOption())
     }
   }
 }
@@ -474,7 +482,6 @@ onBeforeUnmount(() => {
   color: var(--vp-c-danger);
 }
 
-
 .heatmap-container {
   width: 400px;
   overflow-x: hidden;
@@ -504,10 +511,9 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(27, 31, 35, 0.06);
 }
 
-
-
 .heatmap-chart {
   position: relative;
+  background-color: transparent;
 }
 
 @media (max-width: 768px) {
