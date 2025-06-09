@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // 在组件挂载时加载不蒜子统计脚本
-import { onMounted, ref, onBeforeUnmount } from 'vue'
+import { onMounted, ref, onBeforeUnmount, watch } from 'vue'
 import { useData } from 'vitepress'
 import { useSidebar } from 'vitepress/theme'
 
@@ -34,6 +34,10 @@ let timer: number | null = null
 // 一言API相关
 const hitokoto = ref("死亡是涅灭，亦或是永恒？")
 
+// 访客统计相关
+const uvElement = ref(null)
+const showVisitorCount = ref(false)
+
 // 获取一言内容
 const fetchHitokoto = async () => {
   try {
@@ -63,6 +67,14 @@ const updateTimer = () => {
   seconds.value = Math.floor((remainingAfterYears % (1000 * 60)) / 1000)
 }
 
+// 检查访客统计是否有效
+const checkVisitorCount = () => {
+  if (uvElement.value) {
+    const el = uvElement.value as HTMLElement
+    showVisitorCount.value = Boolean(el.innerText && el.innerText !== '--')
+  }
+}
+
 // 不蒜子统计脚本加载
 const loadBusuanziScript = () => {
   if (!isBrowser) return
@@ -71,6 +83,14 @@ const loadBusuanziScript = () => {
   const script = document.createElement('script')
   script.async = true
   script.src = 'https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js'
+  
+  // 监听脚本加载完成事件
+  script.onload = () => {
+    // 设置延迟检查，给不蒜子一些时间处理数据
+    setTimeout(checkVisitorCount, 500)
+    setTimeout(checkVisitorCount, 1500)  // 再次检查，以防第一次太快
+  }
+  
   document.body.appendChild(script)
 }
 
@@ -87,6 +107,17 @@ onMounted(() => {
   
   // 加载一言
   fetchHitokoto()
+  
+  // 设置一个观察器来检查访问数是否发生变化
+  const observer = new MutationObserver(checkVisitorCount)
+  if (uvElement.value) {
+    observer.observe(uvElement.value as Node, { childList: true, characterData: true, subtree: true })
+  }
+  
+  // 在组件卸载时断开观察器
+  onBeforeUnmount(() => {
+    observer.disconnect()
+  })
 })
 
 onBeforeUnmount(() => {
@@ -107,12 +138,14 @@ onBeforeUnmount(() => {
         <!-- 左侧内容 -->
         <div class="left-content">
           <p class="timer">
-            孤狼踏雪，已行于世间第
-            <span v-if="years > 0">{{ years }} 年 </span>
-            <span>{{ days }}</span> 天 
-            <span>{{ hours }}</span> 时 
-            <span>{{ minutes }}</span> 分 
-            <span class="time-value">{{ seconds }}</span> 秒
+            <span class="timer-prefix">孤狼踏雪，已行于世间</span><br class="timer-break">
+            <span class="timer-count">第
+              <span v-if="years > 0" class="time-unit">{{ years }} 年 </span>&nbsp;
+              <span class="time-unit">{{ days }}</span> 天 
+              <span class="time-unit">{{ hours }}</span> 时 
+              <span class="time-unit">{{ minutes }}</span> 分 
+              <span class="time-value">{{ seconds }}</span> 秒
+            </span>
           </p>
           <p class="credits">
             <span>Powered by <a href="https://www.netlify.com/" target="_blank">netlify</a> | </span>
@@ -129,8 +162,8 @@ onBeforeUnmount(() => {
       
       <!-- 访客统计居中显示 -->
       <div class="visitor-count-container">
-        <p class="visitor-count">
-          <span id="busuanzi_value_site_uv" class="count-value">--</span> 位行者曾翻阅此卷
+        <p class="visitor-count" v-show="showVisitorCount">
+          <span id="busuanzi_value_site_uv" ref="uvElement" class="count-value">--</span> 位行者曾翻阅此卷
         </p>
       </div>
     </div>
@@ -175,14 +208,30 @@ onBeforeUnmount(() => {
   color: var(--vp-c-text-3);
 }
 
-.VPFooter a {
-  color: var(--vp-c-text-2);
-  text-decoration: none;
-  transition: color 0.25s;
+.timer-prefix {
+  display: inline-block;
 }
 
-.VPFooter a:hover {
-  color: var(--vp-c-text-1);
+.timer-count {
+  display: inline-block;
+}
+
+/* 在桌面设备上隐藏换行符 */
+@media (min-width: 769px) {
+  .timer-break {
+    display: none;
+  }
+}
+
+/* 在移动设备上显示换行符 */
+@media (max-width: 768px) {
+  .timer-break {
+    display: block;
+  }
+}
+
+.time-unit {
+  display: inline-block;
 }
 
 .time-value {
@@ -191,6 +240,16 @@ onBeforeUnmount(() => {
   text-align: center;
   font-variant-numeric: tabular-nums;
   color: var(--vp-c-brand-1);
+}
+
+.VPFooter a {
+  color: var(--vp-c-text-2);
+  text-decoration: none;
+  transition: color 0.25s;
+}
+
+.VPFooter a:hover {
+  color: var(--vp-c-text-1);
 }
 
 .visitor-count-container {

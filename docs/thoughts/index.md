@@ -1,5 +1,5 @@
 ---
-title: 思考随笔
+title: 思索-风絮茸杂
 description: 记录思考、感悟与创作
 comment: false
 sidebar: false
