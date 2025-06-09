@@ -73,7 +73,6 @@ import ContributionHeatmap from './.vitepress/theme/components/home/Contribution
   grid-area: sidebar;
   display: flex;
   flex-direction: column;
-  gap: 2rem; /* 每个部分之间的间距 */
 }
 
 /* 确保每个区域占满宽度 */

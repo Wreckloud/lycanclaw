@@ -3,8 +3,8 @@
  * GitHub风格贡献热力图
  * 基于ECharts实现，显示文章发布的热力分布
  */
-import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { withBase } from 'vitepress'
+import { ref, onMounted, onBeforeUnmount, nextTick, computed, watch } from 'vue'
+import { withBase, useData } from 'vitepress'
 import * as echarts from 'echarts/core'
 import { CalendarComponent, TooltipComponent, VisualMapComponent } from 'echarts/components'
 import { HeatmapChart } from 'echarts/charts'
@@ -19,6 +19,9 @@ echarts.use([
   CanvasRenderer
 ])
 
+// 从VitePress获取主题数据
+const { isDark: themeIsDark } = useData()
+
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
 
@@ -26,11 +29,15 @@ const isBrowser = typeof window !== 'undefined'
 const heatmapRef = ref(null)
 const containerRef = ref(null)
 
+// 滚动状态
+const scrollPosition = ref(0)
+const maxScroll = ref(0)
+
 // 组件状态
 const isLoading = ref(true)
 const hasError = ref(false)
 const debugInfo = ref('') // 保留调试信息但默认不显示
-const isDark = ref(false) // 添加暗色主题状态
+const isDark = computed(() => themeIsDark.value) // 使用VitePress的主题状态
 
 // 热力图数据
 const heatmapData = ref([])
@@ -39,6 +46,28 @@ const yearRange = ref({
   end: ''
 })
 const visualMapMax = ref(100)
+
+// 平滑滚动热力图
+function scrollHeatmap(delta) {
+  if (!containerRef.value) return
+  
+  const targetScroll = scrollPosition.value + delta
+  
+  // 使用原生动画API实现平滑滚动
+  containerRef.value.scrollTo({
+    left: targetScroll,
+    behavior: 'smooth'
+  })
+}
+
+// 更新滚动位置
+function updateScrollPosition() {
+  if (!containerRef.value) return
+  scrollPosition.value = containerRef.value.scrollLeft
+  
+  // 计算最大滚动距离
+  maxScroll.value = containerRef.value.scrollWidth - containerRef.value.clientWidth
+}
 
 // 日期格式化
 function formatDate(date) {
@@ -144,15 +173,13 @@ const chartInstance = ref(null)
 // 获取图表配置
 function getChartOption() {
   return {
-    backgroundColor: isDark.value ? 'rgba(0,0,0,0)' : undefined,
+    backgroundColor: isDark.value ? 'rgba(0,0,0,0)' : undefined, // 深色模式下使用透明背景
     tooltip: {
       position: 'top',
       formatter: function(params) {
         const count = params.value[1]
-        if (count === 0) {
-          return `${params.value[0]}: 无更新`
-        } else {
-          return `${params.value[0]}: ${count} 字`
+        if (count !== 0) {
+          return `${count} 字`
         }
       }
     },
@@ -201,12 +228,23 @@ function getChartOption() {
 // 设置横向滚动
 function setupHorizontalScroll() {
   if (containerRef.value) {
+    // 监听滚轮事件
     containerRef.value.addEventListener('wheel', (e) => {
       if (e.deltaY !== 0) {
         e.preventDefault()
         containerRef.value.scrollLeft += e.deltaY
       }
-    }, { passive: false })
+    }, { passive: false });
+    
+    // 初始化滚动位置
+    updateScrollPosition()
+    
+    // 设置初始位置到最右侧（最新数据）
+    nextTick(() => {
+      if (containerRef.value) {
+        containerRef.value.scrollLeft = containerRef.value.scrollWidth - containerRef.value.clientWidth;
+      }
+    });
   }
 }
 
@@ -247,6 +285,16 @@ function initChart() {
     
     // 保存图表实例，以便后续可以销毁
     chartInstance.value = chart
+    
+    // 更新滚动状态
+    nextTick(() => {
+      updateScrollPosition()
+      
+      // 设置初始位置到最右侧（最新数据）
+      if (containerRef.value) {
+        containerRef.value.scrollLeft = containerRef.value.scrollWidth - containerRef.value.clientWidth;
+      }
+    })
   } catch (err) {
     console.error('Error initializing heatmap:', err)
     hasError.value = true
@@ -259,6 +307,33 @@ function updateChartOptions() {
   chartInstance.value.setOption(getChartOption())
 }
 
+// 监听主题变化
+watch(isDark, (newVal, oldVal) => {
+  if (newVal !== oldVal && chartInstance.value) {
+    // 保存当前滚动位置
+    const currentScrollLeft = containerRef.value?.scrollLeft || 0;
+    
+    // 重新初始化图表以应用新主题
+    nextTick(() => {
+      if (chartInstance.value) {
+        const el = chartInstance.value.getDom();
+        chartInstance.value.dispose();
+        el.style.backgroundColor = newVal ? 'transparent' : '';
+        chartInstance.value = echarts.init(el, newVal ? 'dark' : undefined);
+        chartInstance.value.setOption(getChartOption());
+        
+        // 恢复滚动位置
+        nextTick(() => {
+          if (containerRef.value) {
+            containerRef.value.scrollLeft = currentScrollLeft;
+            updateScrollPosition();
+          }
+        });
+      }
+    });
+  }
+}, { immediate: false });
+
 // 检测并设置当前主题
 function detectTheme() {
   if (!isBrowser) return
@@ -266,17 +341,8 @@ function detectTheme() {
   // 获取HTML元素上的dark类
   const isDarkMode = document.documentElement.classList.contains('dark')
   if (isDark.value !== isDarkMode) {
-    isDark.value = isDarkMode
-    
-    // 销毁并重新创建图表以应用新主题
-    if (chartInstance.value) {
-      const el = chartInstance.value.getDom()
-      chartInstance.value.dispose()
-      // 设置DOM背景色，确保与页面背景一致
-      el.style.backgroundColor = isDarkMode ? 'transparent' : '';
-      chartInstance.value = echarts.init(el, isDarkMode ? 'dark' : undefined)
-      chartInstance.value.setOption(getChartOption())
-    }
+    // 不需要手动设置isDark，因为它是一个computed属性，会自动跟随themeIsDark变化
+    console.log('Theme change detected by mutation observer, but we use VitePress isDark computed property instead');
   }
 }
 
@@ -284,23 +350,10 @@ function detectTheme() {
 function setupThemeChangeListener() {
   if (!isBrowser) return
   
-  // 初始检测主题
-  detectTheme()
+  // 不再需要初始检测主题，因为使用了VitePress的isDark
   
-  // 使用MutationObserver监听HTML元素的类变化
-  const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      if (mutation.attributeName === 'class') {
-        detectTheme()
-      }
-    })
-  })
-  
-  // 开始观察HTML元素的类变化
-  observer.observe(document.documentElement, { attributes: true })
-  
-  // 返回清理函数
-  return () => observer.disconnect()
+  // 返回空函数作为清理函数
+  return () => {};
 }
 
 // 处理窗口大小变化
@@ -308,6 +361,9 @@ function handleResize() {
   if (chartInstance.value) {
     chartInstance.value.resize()
   }
+  nextTick(() => {
+    updateScrollPosition()
+  })
 }
 
 onMounted(async () => {
@@ -425,7 +481,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="contribution-heatmap">
-    <h3 class="section-title">贡献热力图</h3>
+    <h3 class="section-title">字数热力图</h3>
     
     <!-- 加载中状态 -->
     <div v-if="isLoading" class="loading">
@@ -439,17 +495,27 @@ onBeforeUnmount(() => {
     
     <!-- 热力图展示 -->
     <div v-else class="heatmap-outer">
-      <div class="heatmap-container" ref="containerRef">
+      <div class="scroll-wrapper">
+        <!-- 左侧渐变遮罩 -->
+        <div class="fade-mask left" :style="{ opacity: scrollPosition > 0 ? 1 : 0 }"></div>
+
+        <!-- 热力图容器 -->
+        <div class="heatmap-container" ref="containerRef" @scroll="updateScrollPosition">
         <div ref="heatmapRef" class="heatmap-chart"></div>
+        </div>
+        
+        <!-- 右侧渐变遮罩 -->
+        <div class="fade-mask right" :style="{ opacity: scrollPosition < maxScroll ? 1 : 0 }"></div>
       </div>
+
       <div class="legend">
           <span class="legend-text">字数贡献</span>
           <div class="legend-squares">
-            <span class="legend-square" :style="{ backgroundColor: isDark ? '#2d333b' : '#ebedf0' }"></span>
-            <span class="legend-square" :style="{ backgroundColor: isDark ? '#0e4429' : '#c6e48b' }"></span>
-            <span class="legend-square" :style="{ backgroundColor: isDark ? '#006d32' : '#7bc96f' }"></span>
-            <span class="legend-square" :style="{ backgroundColor: isDark ? '#26a641' : '#239a3b' }"></span>
-            <span class="legend-square" :style="{ backgroundColor: isDark ? '#39d353' : '#196127' }"></span>
+          <span class="legend-square" :style="{ backgroundColor: isDark ? '#2d333b' : '#ebedf0' }"></span>
+          <span class="legend-square" :style="{ backgroundColor: isDark ? '#0e4429' : '#c6e48b' }"></span>
+          <span class="legend-square" :style="{ backgroundColor: isDark ? '#006d32' : '#7bc96f' }"></span>
+          <span class="legend-square" :style="{ backgroundColor: isDark ? '#26a641' : '#239a3b' }"></span>
+          <span class="legend-square" :style="{ backgroundColor: isDark ? '#39d353' : '#196127' }"></span>
           </div>
           <span class="legend-text">更多</span>
         </div>
@@ -482,15 +548,58 @@ onBeforeUnmount(() => {
   color: var(--vp-c-danger);
 }
 
+.heatmap-outer {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 16px;
+}
+
+.scroll-wrapper {
+  position: relative;
+  width: 400px;
+  overflow: hidden;
+}
+
 .heatmap-container {
   width: 400px;
-  overflow-x: hidden;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scroll-behavior: smooth;
+}
+
+.heatmap-container::-webkit-scrollbar {
+  display: none;
+}
+
+/* 渐变遮罩 */
+.fade-mask {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 60px;
+  z-index: 10;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.fade-mask.left {
+  left: 0;
+  background: linear-gradient(to right, var(--vp-c-bg), transparent);
+}
+
+.fade-mask.right {
+  right: 0;
+  background: linear-gradient(to left, var(--vp-c-bg), transparent);
 }
 
 .legend {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  margin-top: 8px;
   margin-bottom: 0.5rem;
   font-size: 0.8rem;
   color: var(--vp-c-text-2);
@@ -517,5 +626,8 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 768px) {
+  .fade-mask {
+    width: 40px;
+  }
 }
 </style> 
