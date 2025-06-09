@@ -11,6 +11,8 @@ import MyLayout from './components/MyLayout.vue';
 
 // 导入自定义样式
 import './styles/index.css';
+// 导入echarts
+import * as echarts from 'echarts';
 
 // 使用异步组件实现按需加载
 const AsyncArticleMetadata = defineAsyncComponent(() => import('./components/ArticleMetadata.vue'));
@@ -27,6 +29,9 @@ export default {
     app.component('PostList', AsyncPostList);
     app.component('DataPanel', AsyncDataPanel);
     app.component('PostTitle', AsyncPostTitle);
+    
+    // 全局注册echarts
+    app.config.globalProperties.$echarts = echarts;
   },
   
   // 使用自定义页脚，但保持VitePress对侧边栏页面的页脚隐藏规则
