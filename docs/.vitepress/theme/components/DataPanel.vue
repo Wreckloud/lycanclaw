@@ -1,6 +1,10 @@
 <script setup lang="ts">
-// 在组件挂载时加载不蒜子统计脚本
-import { onMounted, ref, onBeforeUnmount, watch, computed } from 'vue'
+/**
+ * 网站页脚数据面板组件
+ * 显示网站运行时间、版权信息和访问统计
+ * 由不蒜子统计更换为Waline统计
+ */
+import { onMounted, ref, onBeforeUnmount, computed } from 'vue'
 import { useData } from 'vitepress'
 import { useSidebar } from 'vitepress/theme'
 
@@ -11,18 +15,17 @@ const { hasSidebar } = useSidebar()
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
 
+// ===== 版权年份相关 =====
 // 当前年份
 const currentYear = new Date().getFullYear()
-
 // 网站创建年份
 const startYear = 2023
-
 // 格式化年份显示
 const yearString = startYear === currentYear 
   ? currentYear.toString() 
   : `${startYear}-${currentYear}`
 
-// 计时器相关
+// ===== 计时器相关 =====
 const startDate = new Date('2023-09-17T14:00:00')
 const years = ref(0)
 const days = ref(0)
@@ -31,13 +34,24 @@ const minutes = ref(0)
 const seconds = ref(0)
 let timer: number | null = null
 
-// 一言API相关
+// ===== 一言API相关 =====
 const hitokoto = ref("死亡是涅灭，亦或是永恒？")
 
-// 访客统计相关
-const visitorCount = ref('')
+// ===== 访客统计相关 =====
+// 访问量数据
+const visitorCount = ref('0')
+// 数据加载状态，不再用于控制显示
+const isVisitorCountLoaded = ref(false)
+// 缓存键名
+const VISITOR_COUNT_CACHE_KEY = 'waline_visitor_count'
+// 缓存时间键名
+const VISITOR_COUNT_CACHE_TIME_KEY = 'waline_visitor_count_time'
+// 缓存有效期（12小时，单位毫秒）
+const CACHE_EXPIRATION = 12 * 60 * 60 * 1000
 
-// 获取一言内容
+/**
+ * 获取一言内容
+ */
 const fetchHitokoto = async () => {
   try {
     const response = await fetch('https://v1.hitokoto.cn')
@@ -50,7 +64,9 @@ const fetchHitokoto = async () => {
   }
 }
 
-// 更新计时器函数
+/**
+ * 更新计时器函数
+ */
 const updateTimer = () => {
   const now = new Date()
   const diff = now.getTime() - startDate.getTime()
@@ -66,41 +82,60 @@ const updateTimer = () => {
   seconds.value = Math.floor((remainingAfterYears % (1000 * 60)) / 1000)
 }
 
-// 监听访客统计数值变化
-const updateVisitorCount = () => {
-  if (isBrowser) {
-    const element = document.getElementById('busuanzi_value_site_uv')
-    if (element && element.innerText && element.innerText !== '--') {
-      visitorCount.value = element.innerText
-    }
-  }
-}
-
-// 不蒜子统计脚本加载
-const loadBusuanziScript = () => {
+/**
+ * 获取Waline站点访问量统计
+ * 使用缓存机制减少API请求次数
+ */
+const fetchWalineVisitorCount = async () => {
   if (!isBrowser) return
   
-  // 创建不蒜子脚本
-  const script = document.createElement('script')
-  script.async = true
-  script.src = 'https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js'
-  
-  // 监听脚本加载完成事件
-  script.onload = () => {
-    // 设置延迟检查，给不蒜子一些时间处理数据
-    setTimeout(updateVisitorCount, 500)
-    setTimeout(updateVisitorCount, 1500)  // 再次检查，以防第一次太快
+  try {
+    // 检查缓存是否存在且有效
+    const cachedCount = localStorage.getItem(VISITOR_COUNT_CACHE_KEY)
+    const cachedTime = localStorage.getItem(VISITOR_COUNT_CACHE_TIME_KEY)
+    
+    // 如果缓存有效且未过期
+    if (cachedCount && cachedTime) {
+      const now = Date.now()
+      const cacheAge = now - parseInt(cachedTime)
+      
+      if (cacheAge < CACHE_EXPIRATION) {
+        // 使用缓存数据
+        visitorCount.value = cachedCount
+        isVisitorCountLoaded.value = true
+        return
+      }
+    }
+    
+    // 缓存过期或不存在，请求API
+    const response = await fetch('https://lycanclaw-comment.netlify.app/.netlify/functions/comment/counter?type=users')
+    
+    if (response.ok) {
+      const data = await response.json()
+      // 确保数据有效
+      if (data && typeof data === 'number') {
+        visitorCount.value = data.toString()
+        isVisitorCountLoaded.value = true
+        
+        // 缓存访问量数据
+        localStorage.setItem(VISITOR_COUNT_CACHE_KEY, data.toString())
+        localStorage.setItem(VISITOR_COUNT_CACHE_TIME_KEY, Date.now().toString())
+      }
+    }
+  } catch (error) {
+    console.error('Failed to fetch Waline visitor count:', error)
+    // 失败时尝试从localStorage获取缓存的数据
+    const cachedCount = localStorage.getItem(VISITOR_COUNT_CACHE_KEY)
+    if (cachedCount) {
+      visitorCount.value = cachedCount
+      isVisitorCountLoaded.value = true
+    }
   }
-  
-  document.body.appendChild(script)
 }
 
 onMounted(() => {
   // 确保只在浏览器环境中执行
   if (!isBrowser) return
-  
-  // 加载不蒜子脚本
-  loadBusuanziScript()
   
   // 初始化计时器
   updateTimer()
@@ -109,23 +144,8 @@ onMounted(() => {
   // 加载一言
   fetchHitokoto()
   
-  // 设置一个观察器来检查访问数是否发生变化
-  const observer = new MutationObserver(() => {
-    updateVisitorCount()
-  })
-  
-  // 在组件挂载后等待DOM渲染完成再添加观察器
-  setTimeout(() => {
-    const element = document.getElementById('busuanzi_value_site_uv')
-    if (element) {
-      observer.observe(element, { childList: true, characterData: true, subtree: true })
-    }
-  }, 100)
-  
-  // 在组件卸载时断开观察器
-  onBeforeUnmount(() => {
-    observer.disconnect()
-  })
+  // 获取Waline访问统计
+  fetchWalineVisitorCount()
 })
 
 onBeforeUnmount(() => {
@@ -168,10 +188,10 @@ onBeforeUnmount(() => {
         </div>
       </div>
       
-      <!-- 访客统计居中显示 - 只在有有效数据时显示 -->
-      <div class="visitor-count-container" v-if="visitorCount">
+      <!-- 访客统计居中显示 - 始终显示 -->
+      <div class="visitor-count-container">
         <p class="visitor-count">
-          <span id="busuanzi_value_site_uv" class="count-value">{{ visitorCount }}</span> 位行者曾翻阅此卷
+          <span class="count-value">{{ visitorCount }}</span> 位行者曾翻阅此卷
         </p>
       </div>
     </div>

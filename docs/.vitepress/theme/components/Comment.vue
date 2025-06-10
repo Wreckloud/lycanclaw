@@ -10,6 +10,9 @@ const { isDark } = useData()
 const walineRef = ref(null)
 let walineInstance = null
 
+// 添加评论区是否准备好的状态
+const isCommentReady = ref(false)
+
 // 计算当前路径作为评论标识
 const commentPath = computed(() => route.path)
 
@@ -41,25 +44,82 @@ const initWaline = async () => {
       el: walineRef.value,
       serverURL: 'https://lycanclaw-comment.netlify.app/.netlify/functions/comment',
       path: commentPath.value,
-      dark: isDark.value,
+      dark: isDark.value ? 'html.dark' : false,
       meta: ['nick', 'mail', 'link'],
       requiredMeta: ['nick', 'mail'],
       pageSize: 10,
+      // 更换为B站表情包
+      emoji: [
+        'https://unpkg.com/@waline/emojis@1.2.0/bilibili',
+      ],
+      // 禁用表情搜索
+      search: false,
+      // 禁用文章反应
+      reaction: false, 
+      // 启用浏览统计
+      pageview: true,
+      // 评论数统计默认开启
+      comment: true,
+      // 隐藏Markdown指南
+      texRenderer: false,
+      // 本地化文字
       locale: {
         placeholder: '欢迎留下您的评论~',
+        sofa: '快来抢占沙发吧~',
+        comment: '评论',
+        like: '点赞',
+        cancelLike: '取消点赞',
+        replyPlaceholder: '回复 @{at}',
+        admin: '管理员',
+        level0: '潜水',
+        level1: '冒泡',
+        level2: '活跃',
+        level3: '话痨',
+        more: '更多...',
+        preview: '预览',
+        emoji: '表情',
+        uploadImage: '上传图片',
+        seconds: '秒前',
+        minutes: '分钟前',
+        hours: '小时前',
+        days: '天前',
+        now: '刚刚',
+        loading: '加载中...',
+        login: '登录',
+        logout: '退出',
+        admin: '管理员',
+        sticky: '置顶',
+        word: '字',
+        wordHint: '评论字数应在 $0 到 $1 字之间',
       },
-      emoji: [
-        'https://unpkg.com/@waline/emojis@1.1.0/weibo',
-      ],
-      login: 'enable'
+      login: 'enable',
+      // 错误处理
+      errorHandler: (err) => {
+        console.error('[Waline]', err);
+        // 即使出错也标记为已加载，避免一直显示加载中
+        setTimeout(() => {
+          isCommentReady.value = true;
+        }, 500);
+      }
     })
+    
+    // 实例创建后立即设置为准备好状态
+    // 延迟一点时间确保DOM已更新
+    setTimeout(() => {
+      isCommentReady.value = true
+    }, 500)
+    
   } catch (err) {
     console.error('Waline初始化失败:', err)
+    // 出错时也设置为已加载，显示评论区而不是一直加载
+    isCommentReady.value = true
   }
 }
 
 // 监听路由变化重新初始化评论
 watch(() => route.path, () => {
+  // 重置状态
+  isCommentReady.value = false
   // 延迟执行以确保DOM更新完成
   setTimeout(() => {
     initWaline()
@@ -74,7 +134,7 @@ const setupThemeWatcher = () => {
   // 创建一个观察器来监听文档根元素上的数据主题属性变化
   const observer = new MutationObserver(() => {
     if (walineInstance) {
-      walineInstance.update({ dark: isDark.value })
+      walineInstance.update({ dark: isDark.value ? 'html.dark' : false })
     }
   })
   
@@ -105,14 +165,27 @@ onMounted(() => {
         }
       })
     }, 500)
+  } else {
+    // 服务端渲染环境下直接设置为已加载
+    isCommentReady.value = true
   }
 })
 </script>
 
 <template>
-  <div class="comment-section">
+  <div v-if="isCommentReady" class="comment-section">
     <h2 class="comment-title">评论</h2>
     <div ref="walineRef" class="waline-container"></div>
+  </div>
+  <div v-else class="comment-loading">
+    <div class="comment-loading-spinner">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid">
+        <circle cx="50" cy="50" fill="none" stroke="currentColor" stroke-width="8" r="30" stroke-dasharray="141.37 49.12">
+          <animateTransform attributeName="transform" type="rotate" repeatCount="indefinite" dur="1s" values="0 50 50;360 50 50" keyTimes="0;1"></animateTransform>
+        </circle>
+      </svg>
+    </div>
+    <div class="comment-loading-text">评论加载中...</div>
   </div>
 </template>
 
@@ -132,38 +205,76 @@ onMounted(() => {
 }
 
 .waline-container {
+  max-width: 100%;
+  min-height: 200px;
+  
+  /* 匹配主题色 */
   --waline-theme-color: var(--vp-c-brand-1, #3eaf7c);
   --waline-active-color: var(--vp-c-brand-2, #2c974b);
-  --waline-font-size: 16px;
-  --waline-border-color: var(--vp-c-divider, #ddd);
-  --waline-border-radius: 8px;
-  max-width: 100%;
-  min-height: 200px; /* 确保容器有足够高度 */
 }
 
-/* 适配暗色模式 */
-html.dark .waline-container {
-  --waline-white: #1e1e1e;
-  --waline-light-grey: #272727;
-  --waline-dark-grey: #999;
-  --waline-text-color: #888;
-  --waline-bgcolor: #121212;
-  --waline-bgcolor-light: #272727;
-  --waline-border-color: #333;
-  --waline-disable-bgcolor: #444;
-  --waline-disable-color: #272727;
+/* 隐藏Markdown指南文本 */
+.wl-footer .wl-action[title="Markdown Guide"] {
+  display: none !important;
+}
+
+/* 只统一评论文本区域字体 */
+.wl-editor {
+  font-family: var(--vp-font-family-base) !important;
+  font-size: var(--vp-font-size-1*0.6) !important;
+  background-color: transparent !important;
+}
+
+/* 移除wl-panel的边框并添加阴影效果 */
+.wl-panel {
+  border: none !important;
+  border-radius: 5px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), 0 5px 12px rgba(0, 0, 0, 0.12) !important;
+  transition: all 0.3s ease;
+}
+
+/* 移除输入框被选中时的所有高亮效果 */
+.wl-editor:focus, .wl-input:focus {
+  outline: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+}
+
+/* 完全移除文本区域选中效果 */
+.wl-editor:focus {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* 评论加载中样式 */
+.comment-loading {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--vp-c-divider);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.comment-loading-spinner {
+  width: 40px;
+  height: 40px;
+  color: var(--vp-c-brand-1);
+  margin-bottom: 1rem;
+}
+
+.comment-loading-text {
+  font-size: 1rem;
+  color: var(--vp-c-text-2);
 }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .waline-container {
-    --waline-font-size: 14px;
-  }
-  
-  .wl-card {
-    padding: 0.5rem !important;
-  }
-  
   .comment-title {
     font-size: 1.25rem;
   }

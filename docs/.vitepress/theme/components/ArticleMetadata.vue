@@ -77,8 +77,16 @@ const formattedDate = computed(() => {
 const wordCount = ref(0)
 // 计算阅读时间（按照每分钟300字计算）
 const readTime = ref(0)
+// 浏览量
+const pageviewCount = ref('-')
+// 缓存相关常量
+const PAGEVIEW_CACHE_PREFIX = 'waline_pageview_'
+const PAGEVIEW_CACHE_TIME_SUFFIX = '_time'
+const CACHE_EXPIRATION = 5 * 60 * 1000 // 5分钟缓存
 
-// 计算文章字数和阅读时间的函数
+/**
+ * 计算文章字数和阅读时间的函数
+ */
 const calculateWordStats = () => {
   // 确保只在浏览器环境中执行DOM操作
   if (!isBrowser) return
@@ -91,14 +99,66 @@ const calculateWordStats = () => {
   readTime.value = Math.ceil(wordCount.value / 300)
 }
 
+/**
+ * 获取页面浏览量
+ * 使用缓存机制减少API请求次数
+ */
+const fetchPageViewCount = async () => {
+  if (!isBrowser) return
+  
+  try {
+    // 获取当前路径
+    const path = window.location.pathname
+    
+    // 先尝试从缓存获取
+    const cacheKey = `${PAGEVIEW_CACHE_PREFIX}${path}`
+    const cachedData = localStorage.getItem(cacheKey)
+    
+    // 如果有缓存且未过期（设置缓存有效期为5分钟）
+    const now = Date.now()
+    const cacheTime = localStorage.getItem(`${cacheKey}${PAGEVIEW_CACHE_TIME_SUFFIX}`)
+    const cacheExpired = !cacheTime || (now - parseInt(cacheTime)) > CACHE_EXPIRATION
+    
+    if (cachedData && !cacheExpired) {
+      pageviewCount.value = cachedData
+      return
+    }
+    
+    // 缓存过期或不存在时，请求API
+    const response = await fetch(`https://lycanclaw-comment.netlify.app/.netlify/functions/comment/counter?url=${encodeURIComponent(path)}&type=time`)
+    
+    if (response.ok) {
+      const data = await response.json()
+      // 确保数据有效
+      if (data && typeof data === 'number') {
+        pageviewCount.value = data.toString()
+        
+        // 更新缓存
+        localStorage.setItem(cacheKey, data.toString())
+        localStorage.setItem(`${cacheKey}${PAGEVIEW_CACHE_TIME_SUFFIX}`, now.toString())
+      }
+    }
+  } catch (error) {
+    console.error('获取页面浏览量失败:', error)
+    
+    // 如果有缓存，仍然使用
+    const cacheKey = `${PAGEVIEW_CACHE_PREFIX}${window.location.pathname}`
+    const cachedData = localStorage.getItem(cacheKey)
+    if (cachedData) {
+      pageviewCount.value = cachedData
+    }
+  }
+}
+
 onMounted(() => {
   // 确保只在浏览器环境中执行
   if (isBrowser) {
     calculateWordStats()
+    fetchPageViewCount()
   }
 })
 
-// 监听页面路径变化，重新计算字数和阅读时间
+// 监听页面路径变化，重新计算字数和阅读时间，更新浏览量
 watch(() => page.value.relativePath, () => {
   // 确保只在浏览器环境中执行
   if (!isBrowser) return
@@ -106,6 +166,7 @@ watch(() => page.value.relativePath, () => {
   // 使用setTimeout确保DOM已更新
   setTimeout(() => {
     calculateWordStats()
+    fetchPageViewCount()
   }, 0)
 }, { immediate: true })
 
@@ -149,6 +210,13 @@ defineOptions({
           fill="#9a9a9a" p-id="15032"></path>
       </svg>
       <span>时长: {{ readTime }} 分钟</span>
+      <span class="stat-divider"></span>
+
+      <!-- 浏览量统计 -->
+      <svg t="1724823765544" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="11578" width="14" height="14">
+        <path d="M512 298.666667c-164.266667 0-313.6 95.573333-413.866667 249.6 100.266667 154.026667 249.6 249.6 413.866667 249.6 164.266667 0 313.6-95.573333 413.866667-249.6-100.266667-154.026667-249.6-249.6-413.866667-249.6z m0 416c-91.733333 0-166.4-74.666667-166.4-166.4s74.666667-166.4 166.4-166.4 166.4 74.666667 166.4 166.4-74.666667 166.4-166.4 166.4z m0-265.6c-55.466667 0-99.2 43.733333-99.2 99.2s43.733333 99.2 99.2 99.2 99.2-43.733333 99.2-99.2-43.733333-99.2-99.2-99.2z" fill="#9a9a9a" p-id="11579"></path>
+      </svg>
+      <span>浏览: {{ pageviewCount }}</span>
     </template>
     </p>
   </div>

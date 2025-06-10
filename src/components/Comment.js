@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
 import { init } from '@waline/client';
-import '@waline/client/dist/waline.css';
 
 // 自定义样式
 import './Comment.css';
