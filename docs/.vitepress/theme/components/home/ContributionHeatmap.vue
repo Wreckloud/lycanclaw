@@ -265,7 +265,6 @@ function initChart() {
     
     // 添加测试数据（如果没有真实数据）
     if (heatmapData.value.length === 0 || heatmapData.value.every(item => item[1] === 0)) {
-      console.log('没有找到文章数据，添加测试数据')
       // 添加一些测试数据点
       const testData = []
       const today = new Date()
@@ -342,7 +341,6 @@ function detectTheme() {
   const isDarkMode = document.documentElement.classList.contains('dark')
   if (isDark.value !== isDarkMode) {
     // 不需要手动设置isDark，因为它是一个computed属性，会自动跟随themeIsDark变化
-    console.log('Theme change detected by mutation observer, but we use VitePress isDark computed property instead');
   }
 }
 
@@ -366,6 +364,9 @@ function handleResize() {
   })
 }
 
+// 保存需要清理的资源
+let cleanupThemeListener = null;
+
 onMounted(async () => {
   // 确保只在浏览器环境中执行
   if (!isBrowser) return
@@ -378,7 +379,6 @@ onMounted(async () => {
     }
     
     const posts = await response.json()
-    console.log('获取文章数量:', posts.length)
     
     // 只获取随想文章
     const thoughtsPosts = posts.filter(post => 
@@ -387,13 +387,6 @@ onMounted(async () => {
       post.relativePath !== 'thoughts/index.md' &&
       post.relativePath !== 'thoughts/tags.md'
     )
-    console.log('过滤后随想文章数量:', thoughtsPosts.length)
-    
-    // 记录日期格式
-    if (thoughtsPosts.length > 0 && thoughtsPosts[0].frontmatter.date) {
-      console.log('日期格式示例:', thoughtsPosts[0].frontmatter.date)
-      console.log('日期类型:', typeof thoughtsPosts[0].frontmatter.date)
-    }
     
     // 按日期统计文章字数
     const dateWordCountMap = {}
@@ -438,13 +431,12 @@ onMounted(async () => {
     
     // 保存数据
     heatmapData.value = tempData
-    console.log('有效数据点数:', tempData.filter(item => item[1] > 0).length)
     
     // 渲染完成后，需要设置isLoading为false
     isLoading.value = false
     
     // 设置主题变化监听器
-    const cleanupThemeListener = setupThemeChangeListener()
+    cleanupThemeListener = setupThemeChangeListener()
     
     // 确保DOM已渲染后初始化图表
     nextTick(() => {
@@ -452,11 +444,6 @@ onMounted(async () => {
         initChart()
         setupHorizontalScroll() // 设置横向滚动
       }, 100) // 添加一点延迟，以确保DOM完全渲染
-    })
-    
-    // 组件卸载时清理主题监听器
-    onBeforeUnmount(() => {
-      cleanupThemeListener()
     })
   } catch (error) {
     console.error('Error loading heatmap data:', error)
@@ -468,10 +455,18 @@ onMounted(async () => {
 // 组件卸载时清理资源
 onBeforeUnmount(() => {
   if (isBrowser) {
+    // 清理主题监听器
+    if (cleanupThemeListener) {
+      cleanupThemeListener()
+    }
+    
+    // 清理事件监听器
     window.removeEventListener('resize', handleResize)
     if (containerRef.value) {
       containerRef.value.removeEventListener('wheel', () => {})
     }
+    
+    // 销毁图表实例
     if (chartInstance.value) {
       chartInstance.value.dispose()
     }

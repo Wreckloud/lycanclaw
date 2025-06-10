@@ -50,7 +50,6 @@ const handleClick = (e) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  -webkit-tap-highlight-color: transparent; /* 禁用移动设备上的点击高亮效果 */
   -webkit-touch-callout: none; /* 禁用长按菜单 */
 }
 

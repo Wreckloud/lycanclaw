@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, reactive, onBeforeUnmount } from 'vue'
 import { withBase } from 'vitepress'
+import EncourageWidget from './EncourageWidget.vue'
 
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
@@ -29,10 +30,26 @@ const encourageMessages = {
   // 可以根据需要添加更多特定次数的消息
 }
 
+// 定义消息的颜色列表
+const messageColors = [
+  '#f59e0b', // 橙色
+  '#10b981', // 绿色
+  '#3b82f6', // 蓝色
+  '#8b5cf6', // 紫色
+  '#ec4899', // 粉色
+  '#ef4444', // 红色
+  '#14b8a6', // 青色
+  '#f97316', // 深橙色
+];
+
 const isLoading = ref(true)
 const hasError = ref(false)
 const animationStarted = ref(false)
 const encourageCount = ref(0) // 催更计数器
+const activeMessages = ref([]) // 当前活跃的消息列表
+let messageIdCounter = 0 // 消息ID计数器
+
+// 抽屉相关
 const isDrawerVisible = ref(false) // 抽屉是否可见
 const drawerMessage = ref('') // 抽屉中显示的消息
 let drawerTimer = null // 抽屉自动关闭的计时器
@@ -60,6 +77,51 @@ function getEncourageMessage(count) {
   
   // 默认消息
   return `催更x${count}！作者表示很焦虑...`;
+}
+
+// 显示简短的"催更x"消息在鼠标点击处
+function showFloatingMessage(event, count) {
+  const x = event.clientX;
+  const y = event.clientY;
+  
+  // 随机参数
+  const angle = Math.random() * 20 - 10; // -10度到10度
+  const offsetX = Math.random() * 40 - 20; // -20到20像素的偏移
+  const offsetY = Math.random() * 20 - 30; // 向上偏移多一点
+  const color = messageColors[Math.floor(Math.random() * messageColors.length)];
+  const id = messageIdCounter++;
+  
+  // 创建消息对象 - 只显示"催更"或"催更xN"
+  const displayMessage = count === 1 ? '催更' : `催更x${count}`;
+  
+  const messageObj = {
+    id,
+    x: x + offsetX,
+    y: y + offsetY,
+    message: displayMessage,
+    angle,
+    color,
+    opacity: 1,
+    scale: 0.8
+  };
+  
+  // 添加到活跃消息列表
+  activeMessages.value.push(messageObj);
+  
+  // 设置消失定时器
+  setTimeout(() => {
+    // 先执行淡出动画
+    const msgIndex = activeMessages.value.findIndex(m => m.id === id);
+    if (msgIndex !== -1) {
+      activeMessages.value[msgIndex].opacity = 0;
+      activeMessages.value[msgIndex].scale = 1.2;
+    }
+    
+    // 然后在动画结束后移除消息
+    setTimeout(() => {
+      activeMessages.value = activeMessages.value.filter(m => m.id !== id);
+    }, 500); // 与CSS过渡时间匹配
+  }, 1500); // 显示1.5秒后开始淡出
 }
 
 // 创建星星粒子效果
@@ -156,6 +218,12 @@ function encourageUpdate(event) {
   // 使用配置获取消息
   const text = getEncourageMessage(encourageCount.value);
   
+  // 显示浮动短消息
+  showFloatingMessage(event, encourageCount.value);
+  
+  // 创建粒子效果
+  createParticles(event, event.currentTarget);
+  
   // 更新抽屉消息
   drawerMessage.value = text;
   
@@ -171,15 +239,12 @@ function encourageUpdate(event) {
     isDrawerVisible.value = true;
   }
   
-  // 创建粒子效果
-  createParticles(event, event.currentTarget);
-  
   // 设置自动关闭计时器
   drawerTimer = setTimeout(() => {
     isDrawerVisible.value = false;
   }, 3000);
   
-  // 持久化保存催更次数（可选）
+  // 持久化保存催更次数
   try {
     if (isBrowser && window.localStorage) {
       localStorage.setItem('lycanClawEncourageCount', encourageCount.value);
@@ -243,7 +308,7 @@ function animateNumbers() {
     animationStarted.value = true
     
     const duration = 2000 // 动画持续时间（毫秒）
-    const framesPerSecond = 90
+    const framesPerSecond = 60
     const totalFrames = duration / 1000 * framesPerSecond
     let currentFrame = 0
     
@@ -261,7 +326,7 @@ function animateNumbers() {
       currentFrame++
       const progress = currentFrame / totalFrames
       
-      // 使用easeOutQuart缓动函数，比easeOutExpo慢一些
+      // 使用easeOutQuart缓动函数
       const easeProgress = 1 - Math.pow(1 - progress, 4)
       
       stats.animatedCurrentMonthPosts = Math.round(easeProgress * targetCurrentMonthPosts)
@@ -406,19 +471,7 @@ onBeforeUnmount(() => {
     <!-- 统计数据展示 -->
     <div v-else class="stats-container">
       <div class="stats-grid">
-        <div class="stats-card encourage-card" @click="encourageUpdate">
-          <div class="stats-value">{{ formatNumber(stats.animatedCurrentMonthPosts) }}<span class="plus-mark">+</span></div>
-          <div class="stats-label">本月更新</div>
-          
-          <!-- 抽屉组件 -->
-          <div class="drawer-container">
-            <div class="drawer" :class="{ 'drawer-visible': isDrawerVisible }">
-              <div class="drawer-content">
-                {{ drawerMessage }}
-              </div>
-            </div>
-          </div>
-        </div>
+        <encourage-widget :post-count="stats.currentMonthPosts" :animated-count="stats.animatedCurrentMonthPosts" />
         
         <div class="stats-card">
           <div class="stats-value">{{ formatNumber(stats.animatedThoughtsCount) }}</div>
@@ -430,6 +483,24 @@ onBeforeUnmount(() => {
           <div class="stats-label">总字数</div>
         </div>
       </div>
+      
+      <!-- 浮动催更消息 -->
+      <div class="floating-messages">
+        <div
+          v-for="msg in activeMessages"
+          :key="msg.id"
+          class="floating-message"
+          :style="{
+            left: `${msg.x}px`,
+            top: `${msg.y}px`,
+            transform: `translate(-50%, -50%) rotate(${msg.angle}deg) scale(${msg.scale})`,
+            color: msg.color,
+            opacity: msg.opacity
+          }"
+        >
+          {{ msg.message }}
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -437,6 +508,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .stats-panel {
   margin: 2rem 0;
+  position: relative;
 }
 
 .section-title {
@@ -465,6 +537,7 @@ onBeforeUnmount(() => {
   gap: 1rem;
   width: 100%;
   overflow: hidden;
+  position: relative;
 }
 
 .stats-grid {
@@ -491,10 +564,6 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-.encourage-card {
-  cursor: pointer;
-}
-
 .stats-value {
   font-size: 1.8rem;
   font-weight: 700;
@@ -508,16 +577,6 @@ onBeforeUnmount(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   user-select: none;
-}
-
-.plus-mark {
-  font-size: 1.5rem;
-  font-weight: 700;
-  vertical-align: super;
-  line-height: 1;
-  display: inline-block;
-  position: relative;
-  top: -0.2rem;
 }
 
 .stats-label {
@@ -570,14 +629,39 @@ onBeforeUnmount(() => {
   animation: pulse 1s infinite alternate;
 }
 
+/* 浮动消息样式 */
+.floating-messages {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  overflow: visible;
+}
+
+.floating-message {
+  position: fixed;
+  font-size: 1.2rem;
+  font-weight: 600;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+  animation: pulse 1s infinite alternate;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
 @keyframes pulse {
   from {
-    transform: scale(1);
-    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(1);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   }
   to {
-    transform: scale(1.05);
-    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.05);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   }
 }
 
@@ -616,18 +700,9 @@ onBeforeUnmount(() => {
     height: 2rem;
   }
   
-  .plus-mark {
-    font-size: 1.2rem;
-    top: -0.15rem;
-  }
-  
   .stats-label {
     font-size: 0.85rem;
     height: 1.3rem;
-  }
-  
-  .drawer-content {
-    font-size: 1rem;
   }
 }
 
@@ -646,18 +721,9 @@ onBeforeUnmount(() => {
     margin-bottom: 0.3rem;
   }
   
-  .plus-mark {
-    font-size: 1rem;
-    top: -0.1rem;
-  }
-  
   .stats-label {
     font-size: 0.8rem;
     height: 1.2rem;
-  }
-  
-  .drawer-content {
-    font-size: 0.9rem;
   }
 }
 </style> 
