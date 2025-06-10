@@ -124,7 +124,7 @@ onMounted(async () => {
         
         <div class="stats-card">
           <div class="stats-value">{{ stats.thoughtsCount }}</div>
-          <div class="stats-label">随想数</div>
+          <div class="stats-label">随想总数</div>
         </div>
         
         <div class="stats-card">
@@ -165,27 +165,32 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  width: 100%;
+  overflow: hidden;
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .stats-card {
   background-color: var(--vp-c-bg-soft);
   border-radius: 8px;
-  padding: 1.5rem;
+  padding: 1.5rem 0.5rem;
   text-align: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
   justify-content: center;
+  min-width: 0;
 }
 
 .stats-value {
-  font-size: 2rem;
+  font-size: 1.8rem;
   font-weight: 700;
   color: var(--vp-c-brand-1);
   margin-bottom: 0.5rem;
@@ -194,6 +199,8 @@ onMounted(async () => {
   display: flex;
   justify-content: center;
   align-items: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .plus-mark {
@@ -217,13 +224,14 @@ onMounted(async () => {
 }
 
 /* 移动端适配 */
-@media (max-width: 768px) {
+@media (max-width: 959px) {
   .stats-grid {
     grid-template-columns: repeat(3, 1fr);
+    gap: 0.8rem;
   }
   
   .stats-card {
-    padding: 1rem;
+    padding: 1rem 0.5rem;
   }
   
   .stats-value {
@@ -244,16 +252,22 @@ onMounted(async () => {
 
 @media (max-width: 480px) {
   .stats-grid {
-    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
   }
   
   .stats-card {
-    padding: 0.8rem;
+    padding: 0.8rem 0.4rem;
   }
   
   .stats-value {
     font-size: 1.4rem;
     height: 1.8rem;
+    margin-bottom: 0.3rem;
+  }
+  
+  .plus-mark {
+    font-size: 1rem;
+    top: -0.1rem;
   }
   
   .stats-label {

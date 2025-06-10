@@ -256,7 +256,7 @@ function initChart() {
   }
   
   try {
-    // 强制设置容器尺寸
+    // 强制设置容器尺寸 - 保留原始尺寸设置
     heatmapRef.value.style.width = '1000px'
     heatmapRef.value.style.height = '200px'
     
@@ -558,20 +558,17 @@ onBeforeUnmount(() => {
 
 .scroll-wrapper {
   position: relative;
-  width: 400px;
+  width: 100%;
+  max-width: 400px;
   overflow: hidden;
 }
 
 .heatmap-container {
-  width: 400px;
+  width: 100%;
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
   scroll-behavior: smooth;
-}
-
-.heatmap-container::-webkit-scrollbar {
-  display: none;
 }
 
 /* 渐变遮罩 */
@@ -625,9 +622,37 @@ onBeforeUnmount(() => {
   background-color: transparent;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 959px) {
   .fade-mask {
     width: 40px;
+  }
+  
+  .section-title {
+    font-size: 1.2rem;
+    margin-bottom: 0.8rem;
+  }
+  
+  .heatmap-container {
+    width: 100%;
+  }
+  
+  .legend {
+    font-size: 0.7rem;
+  }
+  
+  .legend-square {
+    width: 10px;
+    height: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .scroll-wrapper {
+    max-width: 100%;
+  }
+  
+  .fade-mask {
+    width: 30px;
   }
 }
 </style> 

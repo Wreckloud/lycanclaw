@@ -75,22 +75,20 @@ function formatDate(dateString) {
   const match = cleanDateString.match(/(\d{4})-(\d{2})-(\d{2})/)
   
   if (match) {
-    const year = match[1]
     const month = match[2]
     const day = match[3]
     
-    return `${year}年${month}月${day}日`
+    return `${month}月${day}日`
   }
   
   // 如果无法提取，则回退到Date对象
   const date = new Date(cleanDateString)
   if (isNaN(date.getTime())) return ''
   
-  const year = date.getFullYear()
   const month = (date.getMonth() + 1).toString().padStart(2, '0')
   const day = date.getDate().toString().padStart(2, '0')
   
-  return `${year}年${month}月${day}日`
+  return `${month}月${day}日`
 }
 
 // 计算阅读时间
@@ -200,7 +198,7 @@ function getPostExcerpt(post) {
   margin: 0 0 0.5rem 0;
   transition: color 0.2s;
   color: var(--vp-c-text-1);
-  font-weight: 500;
+  font-weight: 700;
 }
 
 .post-excerpt {
@@ -269,5 +267,69 @@ function getPostExcerpt(post) {
 
 .view-more-link:hover {
   color: var(--vp-c-brand-2);
+}
+
+/* 移动端适配 */
+@media (max-width: 959px) {
+  .recent-posts {
+    margin: 1.5rem 0;
+  }
+  
+  .section-title {
+    font-size: 1.5rem;
+    margin-bottom: 1.2rem;
+  }
+  
+  .post-item-title {
+    font-size: 1.1rem;
+  }
+  
+  .post-excerpt {
+    font-size: 0.9rem;
+    margin: 0.6rem 0;
+  }
+  
+  .post-meta {
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .recent-posts {
+    margin: 1rem 0;
+  }
+  
+  .section-title {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.4rem;
+  }
+  
+  .post-item {
+    margin-bottom: 1.2rem;
+    padding-bottom: 0.8rem;
+  }
+  
+  .post-item-title {
+    font-size: 1rem;
+  }
+  
+  .post-excerpt {
+    font-size: 0.85rem;
+    margin: 0.5rem 0;
+    -webkit-line-clamp: 2;
+  }
+  
+  .post-meta {
+    font-size: 0.8rem;
+  }
+  
+  .post-tag {
+    margin-right: 6px;
+  }
+  
+  .view-more-link {
+    font-size: 0.9rem;
+  }
 }
 </style> 

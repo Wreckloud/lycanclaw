@@ -28,6 +28,8 @@ import StatsPanel from './.vitepress/theme/components/home/StatsPanel.vue'
 import ContributionHeatmap from './.vitepress/theme/components/home/ContributionHeatmap.vue'
 </script>
 
+
+
 <div class="home-container">
   <!-- 左侧主要内容区域 -->
   <div class="home-content-area">
@@ -54,10 +56,12 @@ import ContributionHeatmap from './.vitepress/theme/components/home/Contribution
 /* 主页整体容器 */
 .home-container {
   display: grid;
-  grid-template-columns: 2fr 1fr; /* 左侧占2份，右侧占1份 */
+  grid-template-columns: 1.8fr 1.2fr; /* 调整左右比例，给右侧更多空间 */
   grid-template-areas: "content sidebar";
   gap: 2rem;
   margin-top: 2rem;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 /* 左侧内容区域 */
@@ -66,6 +70,8 @@ import ContributionHeatmap from './.vitepress/theme/components/home/Contribution
   display: flex;
   flex-direction: column;
   gap: 2rem; /* 每个部分之间的间距 */
+  width: 100%;
+  min-width: 0; /* 防止内容溢出 */
 }
 
 /* 右侧边栏区域 */
@@ -73,27 +79,35 @@ import ContributionHeatmap from './.vitepress/theme/components/home/Contribution
   grid-area: sidebar;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  min-width: 0; /* 防止内容溢出 */
 }
 
-/* 确保每个区域占满宽度 */
+/* 确保每个区域占满宽度但不溢出 */
 .home-section {
   width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
-/* 移动端适配 - 当宽度小于768px时 */
+/* 移动端适配 - 当宽度小于959px时 */
 @media (max-width: 959px) {
   /* 改为单列布局 */
   .home-container {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr; /* 使用1fr而不是2fr */
     grid-template-areas: 
       "content" 
       "sidebar";
+    width: 100%;
+    padding: 0 1rem;
+    box-sizing: border-box;
   }
   
   /* 减少移动端的间距 */
   .home-content-area,
   .home-sidebar {
     gap: 1.5rem;
+    width: 100%;
   }
 }
 
@@ -102,6 +116,7 @@ import ContributionHeatmap from './.vitepress/theme/components/home/Contribution
   .home-container {
     gap: 1rem;
     margin-top: 1.5rem;
+    padding: 0 0.5rem;
   }
   
   .home-content-area,
