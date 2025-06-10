@@ -1,19 +1,24 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, reactive, onBeforeUnmount } from 'vue'
 import { withBase } from 'vitepress'
 
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
 
 // 统计数据
-const stats = ref({
+const stats = reactive({
   currentMonthPosts: 0,  // 本月更新的文章数
   thoughtsCount: 0,      // 随想文章数
   thoughtsWords: 0,      // 随想文章总字数
+  // 动画相关
+  animatedCurrentMonthPosts: 0,
+  animatedThoughtsCount: 0,
+  animatedThoughtsWords: 0,
 })
 
 const isLoading = ref(true)
 const hasError = ref(false)
+const animationStarted = ref(false)
 
 // 内联实现countWord函数
 function countWord(data) {
@@ -34,9 +39,26 @@ function countWord(data) {
   return count
 }
 
-// 格式化数字
+// 格式化数字 - 智能单位显示
 function formatNumber(num) {
-  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  if (num === undefined || num === null) return '0'
+  
+  // 小于10000，使用逗号分隔
+  if (num < 10000) {
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  }
+  // 小于1百万，使用k
+  else if (num < 1000000) {
+    return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'k'
+  }
+  // 小于1亿，使用M
+  else if (num < 100000000) {
+    return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M'
+  }
+  // 大于1亿，使用亿
+  else {
+    return (num / 100000000).toFixed(1).replace(/\.0$/, '') + '亿'
+  }
 }
 
 // 判断日期是否在当前月份
@@ -46,6 +68,85 @@ function isCurrentMonth(date) {
          date.getFullYear() === now.getFullYear()
 }
 
+// 数字滚动动画
+function animateNumbers() {
+  if (!animationStarted.value) {
+    animationStarted.value = true
+    
+    const duration = 2000 // 动画持续时间（毫秒）
+    const framesPerSecond = 90
+    const totalFrames = duration / 1000 * framesPerSecond
+    let currentFrame = 0
+    
+    const targetCurrentMonthPosts = stats.currentMonthPosts
+    const targetThoughtsCount = stats.thoughtsCount
+    const targetThoughtsWords = stats.thoughtsWords
+    
+    // 重置动画起始值
+    stats.animatedCurrentMonthPosts = 0
+    stats.animatedThoughtsCount = 0
+    stats.animatedThoughtsWords = 0
+    
+    // 使用requestAnimationFrame实现平滑动画
+    function animate() {
+      currentFrame++
+      const progress = currentFrame / totalFrames
+      
+      // 使用easeOutQuart缓动函数，比easeOutExpo慢一些
+      const easeProgress = 1 - Math.pow(1 - progress, 4)
+      
+      stats.animatedCurrentMonthPosts = Math.round(easeProgress * targetCurrentMonthPosts)
+      stats.animatedThoughtsCount = Math.round(easeProgress * targetThoughtsCount)
+      stats.animatedThoughtsWords = Math.round(easeProgress * targetThoughtsWords)
+      
+      if (currentFrame < totalFrames) {
+        requestAnimationFrame(animate)
+      } else {
+        // 确保最终值精确
+        stats.animatedCurrentMonthPosts = targetCurrentMonthPosts
+        stats.animatedThoughtsCount = targetThoughtsCount
+        stats.animatedThoughtsWords = targetThoughtsWords
+      }
+    }
+    
+    requestAnimationFrame(animate)
+  }
+}
+
+// 观察元素是否进入视口
+function setupIntersectionObserver() {
+  if (!isBrowser || !window.IntersectionObserver) return
+  
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting && !animationStarted.value && !isLoading.value) {
+        animateNumbers()
+      }
+    })
+  }, { threshold: 0.2 }) // 当20%的元素可见时触发
+  
+  // 获取统计面板元素并观察它
+  setTimeout(() => {
+    const statsPanel = document.querySelector('.stats-panel')
+    if (statsPanel) {
+      observer.observe(statsPanel)
+    }
+  }, 100) // 短暂延迟确保DOM已渲染
+  
+  // 返回清理函数
+  return () => {
+    if (isBrowser) {
+      const statsPanel = document.querySelector('.stats-panel')
+      if (statsPanel && observer) {
+        observer.unobserve(statsPanel)
+        observer.disconnect()
+      }
+    }
+  }
+}
+
+// 加载数据
+let cleanup = null
 onMounted(async () => {
   // 确保只在浏览器环境中执行
   if (!isBrowser) return
@@ -85,18 +186,24 @@ onMounted(async () => {
     })
     
     // 更新统计数据
-    stats.value = {
-      currentMonthPosts: currentMonthCount,
-      thoughtsCount: thoughtsPosts.length,
-      thoughtsWords: totalWords,
-    }
+    stats.currentMonthPosts = currentMonthCount
+    stats.thoughtsCount = thoughtsPosts.length
+    stats.thoughtsWords = totalWords
     
     isLoading.value = false
+    
+    // 设置交叉观察器，当元素进入视口时启动动画
+    cleanup = setupIntersectionObserver()
   } catch (error) {
     console.error('Error loading stats data:', error)
     hasError.value = true
     isLoading.value = false
   }
+})
+
+// 组件卸载时的清理函数
+onBeforeUnmount(() => {
+  if (cleanup) cleanup()
 })
 </script>
 
@@ -118,17 +225,17 @@ onMounted(async () => {
     <div v-else class="stats-container">
       <div class="stats-grid">
         <div class="stats-card">
-          <div class="stats-value">{{ stats.currentMonthPosts }}<span class="plus-mark">+</span></div>
+          <div class="stats-value">{{ formatNumber(stats.animatedCurrentMonthPosts) }}<span class="plus-mark">+</span></div>
           <div class="stats-label">本月更新</div>
         </div>
         
         <div class="stats-card">
-          <div class="stats-value">{{ stats.thoughtsCount }}</div>
+          <div class="stats-value">{{ formatNumber(stats.animatedThoughtsCount) }}</div>
           <div class="stats-label">随想总数</div>
         </div>
         
         <div class="stats-card">
-          <div class="stats-value">{{ formatNumber(stats.thoughtsWords) }}</div>
+          <div class="stats-value">{{ formatNumber(stats.animatedThoughtsWords) }}</div>
           <div class="stats-label">总字数</div>
         </div>
       </div>
@@ -187,6 +294,8 @@ onMounted(async () => {
   flex-direction: column;
   justify-content: center;
   min-width: 0;
+  user-select: none;
+  cursor: default;
 }
 
 .stats-value {
@@ -201,6 +310,7 @@ onMounted(async () => {
   align-items: center;
   overflow: hidden;
   text-overflow: ellipsis;
+  user-select: none;
 }
 
 .plus-mark {
@@ -221,6 +331,7 @@ onMounted(async () => {
   display: flex;
   justify-content: center;
   align-items: center;
+  user-select: none;
 }
 
 /* 移动端适配 */
