@@ -16,9 +16,178 @@ const stats = reactive({
   animatedThoughtsWords: 0,
 })
 
+// 催更消息配置 - 可以根据需要自定义不同次数的消息
+const encourageMessages = {
+  1: '催更成功！作者已收到通知~', // 第一次催更
+  2: '催更x2！作者表示压力山大...',
+  3: '催更x3！作者开始掉头发了...',
+  5: '催更x5！作者正在熬夜码字中...',
+  10: '催更x10！作者已经趴下了...',
+  20: '催更x20！再催作者要罢工了！',
+  50: '催更x50！您是真爱粉无误！',
+  100: '催更x100！恭喜解锁成就【催更狂魔】',
+  // 可以根据需要添加更多特定次数的消息
+}
+
 const isLoading = ref(true)
 const hasError = ref(false)
 const animationStarted = ref(false)
+const encourageCount = ref(0) // 催更计数器
+const isDrawerVisible = ref(false) // 抽屉是否可见
+const drawerMessage = ref('') // 抽屉中显示的消息
+let drawerTimer = null // 抽屉自动关闭的计时器
+
+// 获取催更消息
+function getEncourageMessage(count) {
+  // 如果有精确匹配的消息，直接返回
+  if (encourageMessages[count]) {
+    return encourageMessages[count];
+  }
+  
+  // 查找最接近但小于当前计数的消息
+  const specificCounts = Object.keys(encourageMessages)
+    .map(Number)
+    .filter(n => n < count)
+    .sort((a, b) => b - a);
+  
+  if (specificCounts.length > 0) {
+    // 找到最接近的特定消息，并把计数显示为当前实际计数
+    const closestCount = specificCounts[0];
+    const baseMessage = encourageMessages[closestCount];
+    // 替换消息中的数字
+    return baseMessage.replace(`x${closestCount}`, `x${count}`);
+  }
+  
+  // 默认消息
+  return `催更x${count}！作者表示很焦虑...`;
+}
+
+// 创建星星粒子效果
+function createParticles(event, cardElement) {
+  const colors = ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
+  const particles = 30; // 粒子数量
+  
+  // 创建粒子容器
+  const particleContainer = document.createElement('div');
+  particleContainer.className = 'particle-container';
+  document.body.appendChild(particleContainer); // 添加到body而不是卡片
+  
+  // 获取点击位置相对于视口的坐标
+  const x = event.clientX;
+  const y = event.clientY;
+  
+  // 设置容器位置到点击位置
+  particleContainer.style.position = 'fixed';
+  particleContainer.style.left = '0';
+  particleContainer.style.top = '0';
+  particleContainer.style.width = '100vw';
+  particleContainer.style.height = '100vh';
+  particleContainer.style.pointerEvents = 'none';
+  particleContainer.style.zIndex = '9999';
+  
+  // 创建粒子
+  for (let i = 0; i < particles; i++) {
+    const particle = document.createElement('div');
+    particle.className = 'particle';
+    
+    // 随机样式
+    const size = Math.random() * 8 + 4;
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const angle = Math.random() * Math.PI * 2; // 随机角度
+    const velocity = Math.random() * 3 + 2;    // 随机速度
+    const lifetime = Math.random() * 1000 + 1000; // 生命周期
+    
+    // 设置星星形状 - 使用CSS制作星星
+    particle.innerHTML = `<svg width="${size*2}" height="${size*2}" viewBox="0 0 24 24" fill="${color}">
+      <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+    </svg>`;
+    
+    // 设置初始位置和样式
+    particle.style.position = 'absolute';
+    particle.style.left = `${x}px`;
+    particle.style.top = `${y}px`;
+    particle.style.transform = 'translate(-50%, -50%)';
+    
+    particleContainer.appendChild(particle);
+    
+    // 计算速度分量
+    const vx = Math.cos(angle) * velocity;
+    const vy = Math.sin(angle) * velocity - 1; // 添加向上的偏移
+    
+    // 粒子运动动画
+    let startTime = null;
+    
+    function animateParticle(timestamp) {
+      if (!startTime) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      
+      if (elapsed < lifetime) {
+        // 计算新位置，加入重力效果
+        const progress = elapsed / lifetime;
+        const moveX = x + vx * elapsed * 0.1;
+        const moveY = y + vy * elapsed * 0.1 + 0.5 * 9.8 * Math.pow(elapsed * 0.01, 2);
+        
+        // 更新位置、旋转和透明度
+        particle.style.left = `${moveX}px`;
+        particle.style.top = `${moveY}px`;
+        particle.style.opacity = 1 - progress;
+        particle.style.transform = `translate(-50%, -50%) rotate(${progress * 360}deg)`;
+        
+        requestAnimationFrame(animateParticle);
+      } else {
+        // 动画结束，移除粒子
+        particle.remove();
+        
+        // 检查是否所有粒子都已移除，如果是则移除容器
+        if (particleContainer.children.length === 0) {
+          particleContainer.remove();
+        }
+      }
+    }
+    
+    requestAnimationFrame(animateParticle);
+  }
+}
+
+// 催更功能
+function encourageUpdate(event) {
+  encourageCount.value++;
+  
+  // 使用配置获取消息
+  const text = getEncourageMessage(encourageCount.value);
+  
+  // 更新抽屉消息
+  drawerMessage.value = text;
+  
+  // 处理连续点击的情况
+  if (isDrawerVisible.value) {
+    // 如果抽屉已经可见，则更新消息但不重新开始动画
+    // 清除自动关闭的计时器
+    if (drawerTimer) {
+      clearTimeout(drawerTimer);
+    }
+  } else {
+    // 如果抽屉不可见，则显示抽屉
+    isDrawerVisible.value = true;
+  }
+  
+  // 创建粒子效果
+  createParticles(event, event.currentTarget);
+  
+  // 设置自动关闭计时器
+  drawerTimer = setTimeout(() => {
+    isDrawerVisible.value = false;
+  }, 3000);
+  
+  // 持久化保存催更次数（可选）
+  try {
+    if (isBrowser && window.localStorage) {
+      localStorage.setItem('lycanClawEncourageCount', encourageCount.value);
+    }
+  } catch (e) {
+    console.error('Failed to save encourage count to localStorage', e);
+  }
+}
 
 // 内联实现countWord函数
 function countWord(data) {
@@ -152,6 +321,18 @@ onMounted(async () => {
   if (!isBrowser) return
   
   try {
+    // 尝试从localStorage读取催更次数
+    try {
+      if (window.localStorage) {
+        const savedCount = localStorage.getItem('lycanClawEncourageCount');
+        if (savedCount) {
+          encourageCount.value = parseInt(savedCount, 10);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load encourage count from localStorage', e);
+    }
+    
     // 从生成的JSON文件获取数据
     const response = await fetch(withBase('/posts.json'))
     if (!response.ok) {
@@ -204,6 +385,7 @@ onMounted(async () => {
 // 组件卸载时的清理函数
 onBeforeUnmount(() => {
   if (cleanup) cleanup()
+  if (drawerTimer) clearTimeout(drawerTimer)
 })
 </script>
 
@@ -224,9 +406,18 @@ onBeforeUnmount(() => {
     <!-- 统计数据展示 -->
     <div v-else class="stats-container">
       <div class="stats-grid">
-        <div class="stats-card">
+        <div class="stats-card encourage-card" @click="encourageUpdate">
           <div class="stats-value">{{ formatNumber(stats.animatedCurrentMonthPosts) }}<span class="plus-mark">+</span></div>
           <div class="stats-label">本月更新</div>
+          
+          <!-- 抽屉组件 -->
+          <div class="drawer-container">
+            <div class="drawer" :class="{ 'drawer-visible': isDrawerVisible }">
+              <div class="drawer-content">
+                {{ drawerMessage }}
+              </div>
+            </div>
+          </div>
         </div>
         
         <div class="stats-card">
@@ -296,6 +487,12 @@ onBeforeUnmount(() => {
   min-width: 0;
   user-select: none;
   cursor: default;
+  position: relative;
+  overflow: hidden;
+}
+
+.encourage-card {
+  cursor: pointer;
 }
 
 .stats-value {
@@ -334,6 +531,75 @@ onBeforeUnmount(() => {
   user-select: none;
 }
 
+/* 抽屉样式 */
+.drawer-container {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none; /* 允许点击穿透到卡片 */
+}
+
+.drawer {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--vp-c-brand-1);
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  text-align: center;
+  z-index: 5;
+}
+
+.drawer-visible {
+  transform: translateY(0);
+}
+
+.drawer-content {
+  padding: 0 0.5rem;
+  font-size: 1.1rem;
+  animation: pulse 1s infinite alternate;
+}
+
+@keyframes pulse {
+  from {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+}
+
+/* 粒子样式 */
+.particle-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.particle {
+  position: absolute;
+  pointer-events: none;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
 /* 移动端适配 */
 @media (max-width: 959px) {
   .stats-grid {
@@ -358,6 +624,10 @@ onBeforeUnmount(() => {
   .stats-label {
     font-size: 0.85rem;
     height: 1.3rem;
+  }
+  
+  .drawer-content {
+    font-size: 1rem;
   }
 }
 
@@ -384,6 +654,10 @@ onBeforeUnmount(() => {
   .stats-label {
     font-size: 0.8rem;
     height: 1.2rem;
+  }
+  
+  .drawer-content {
+    font-size: 0.9rem;
   }
 }
 </style> 
