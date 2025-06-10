@@ -10,9 +10,6 @@ const { isDark } = useData()
 const walineRef = ref(null)
 let walineInstance = null
 
-// 添加评论区是否准备好的状态
-const isCommentReady = ref(false)
-
 // 计算当前路径作为评论标识
 const commentPath = computed(() => route.path)
 
@@ -96,30 +93,15 @@ const initWaline = async () => {
       // 错误处理
       errorHandler: (err) => {
         console.error('[Waline]', err);
-        // 即使出错也标记为已加载，避免一直显示加载中
-        setTimeout(() => {
-          isCommentReady.value = true;
-        }, 500);
       }
     })
-    
-    // 实例创建后立即设置为准备好状态
-    // 延迟一点时间确保DOM已更新
-    setTimeout(() => {
-      isCommentReady.value = true
-    }, 500)
-    
   } catch (err) {
     console.error('Waline初始化失败:', err)
-    // 出错时也设置为已加载，显示评论区而不是一直加载
-    isCommentReady.value = true
   }
 }
 
 // 监听路由变化重新初始化评论
 watch(() => route.path, () => {
-  // 重置状态
-  isCommentReady.value = false
   // 延迟执行以确保DOM更新完成
   setTimeout(() => {
     initWaline()
@@ -165,27 +147,14 @@ onMounted(() => {
         }
       })
     }, 500)
-  } else {
-    // 服务端渲染环境下直接设置为已加载
-    isCommentReady.value = true
   }
 })
 </script>
 
 <template>
-  <div v-if="isCommentReady" class="comment-section">
+  <div class="comment-section">
     <h2 class="comment-title">评论</h2>
     <div ref="walineRef" class="waline-container"></div>
-  </div>
-  <div v-else class="comment-loading">
-    <div class="comment-loading-spinner">
-      <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid">
-        <circle cx="50" cy="50" fill="none" stroke="currentColor" stroke-width="8" r="30" stroke-dasharray="141.37 49.12">
-          <animateTransform attributeName="transform" type="rotate" repeatCount="indefinite" dur="1s" values="0 50 50;360 50 50" keyTimes="0;1"></animateTransform>
-        </circle>
-      </svg>
-    </div>
-    <div class="comment-loading-text">评论加载中...</div>
   </div>
 </template>
 
