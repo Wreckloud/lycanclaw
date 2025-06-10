@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import DefaultTheme from 'vitepress/theme'
-import { Content } from 'vitepress'
+import { Content, useData } from 'vitepress'
+import { ref, computed, defineAsyncComponent } from 'vue'
 
 const { Layout } = DefaultTheme
+const { frontmatter, page } = useData()
+
+// 这个布局是备用布局，主要逻辑已移至MyLayout.vue
+// 如果需要直接修改VitePress默认布局，可以在这里操作
 </script>
 
 <template>
@@ -35,7 +40,7 @@ const { Layout } = DefaultTheme
     </template>
     
     <template #doc-after>
-      <!-- 文档后内容 -->
+      <!-- 文档后内容 - 评论区逻辑已移至MyLayout.vue -->
     </template>
     
     <template #layout-bottom>

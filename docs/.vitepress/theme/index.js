@@ -19,6 +19,7 @@ const AsyncArticleMetadata = defineAsyncComponent(() => import('./components/Art
 const AsyncPostList = defineAsyncComponent(() => import('./components/PostList.vue'));
 const AsyncDataPanel = defineAsyncComponent(() => import('./components/DataPanel.vue'));
 const AsyncPostTitle = defineAsyncComponent(() => import('./components/PostTitle.vue'));
+const AsyncComment = defineAsyncComponent(() => import('./components/Comment.vue'));
 
 export default {
   extends: DefaultTheme,
@@ -29,6 +30,7 @@ export default {
     app.component('PostList', AsyncPostList);
     app.component('DataPanel', AsyncDataPanel);
     app.component('PostTitle', AsyncPostTitle);
+    app.component('Comment', AsyncComment);
     
     // 全局注册echarts
     app.config.globalProperties.$echarts = echarts;

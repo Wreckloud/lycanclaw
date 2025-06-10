@@ -1,0 +1,49 @@
+.comment-section {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.comment-title {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  color: var(--text-color, #333);
+}
+
+.waline-container {
+  --waline-theme-color: var(--primary-color, #27ae60);
+  --waline-active-color: var(--secondary-color, #2ecc71);
+  --waline-font-size: 16px;
+  --waline-border-color: var(--border-color, #ddd);
+  --waline-border-radius: 8px;
+  max-width: 100%;
+}
+
+/* 适配暗色模式 */
+:root[data-theme='dark'] .waline-container,
+body.dark-theme .waline-container {
+  --waline-white: #1e1e1e;
+  --waline-light-grey: #272727;
+  --waline-dark-grey: #999;
+  --waline-text-color: #888;
+  --waline-bgcolor: #121212;
+  --waline-bgcolor-light: #272727;
+  --waline-border-color: #333;
+  --waline-disable-bgcolor: #444;
+  --waline-disable-color: #272727;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .waline-container {
+    --waline-font-size: 14px;
+  }
+  
+  .wl-card {
+    padding: 0.5rem !important;
+  }
+  
+  .comment-title {
+    font-size: 1.25rem;
+  }
+} 

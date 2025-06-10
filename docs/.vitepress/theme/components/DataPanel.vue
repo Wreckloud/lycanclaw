@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // 在组件挂载时加载不蒜子统计脚本
-import { onMounted, ref, onBeforeUnmount, watch } from 'vue'
+import { onMounted, ref, onBeforeUnmount, watch, computed } from 'vue'
 import { useData } from 'vitepress'
 import { useSidebar } from 'vitepress/theme'
 
@@ -35,8 +35,7 @@ let timer: number | null = null
 const hitokoto = ref("死亡是涅灭，亦或是永恒？")
 
 // 访客统计相关
-const uvElement = ref(null)
-const showVisitorCount = ref(false)
+const visitorCount = ref('')
 
 // 获取一言内容
 const fetchHitokoto = async () => {
@@ -67,11 +66,13 @@ const updateTimer = () => {
   seconds.value = Math.floor((remainingAfterYears % (1000 * 60)) / 1000)
 }
 
-// 检查访客统计是否有效
-const checkVisitorCount = () => {
-  if (uvElement.value) {
-    const el = uvElement.value as HTMLElement
-    showVisitorCount.value = Boolean(el.innerText && el.innerText !== '--')
+// 监听访客统计数值变化
+const updateVisitorCount = () => {
+  if (isBrowser) {
+    const element = document.getElementById('busuanzi_value_site_uv')
+    if (element && element.innerText && element.innerText !== '--') {
+      visitorCount.value = element.innerText
+    }
   }
 }
 
@@ -87,8 +88,8 @@ const loadBusuanziScript = () => {
   // 监听脚本加载完成事件
   script.onload = () => {
     // 设置延迟检查，给不蒜子一些时间处理数据
-    setTimeout(checkVisitorCount, 500)
-    setTimeout(checkVisitorCount, 1500)  // 再次检查，以防第一次太快
+    setTimeout(updateVisitorCount, 500)
+    setTimeout(updateVisitorCount, 1500)  // 再次检查，以防第一次太快
   }
   
   document.body.appendChild(script)
@@ -109,10 +110,17 @@ onMounted(() => {
   fetchHitokoto()
   
   // 设置一个观察器来检查访问数是否发生变化
-  const observer = new MutationObserver(checkVisitorCount)
-  if (uvElement.value) {
-    observer.observe(uvElement.value as Node, { childList: true, characterData: true, subtree: true })
-  }
+  const observer = new MutationObserver(() => {
+    updateVisitorCount()
+  })
+  
+  // 在组件挂载后等待DOM渲染完成再添加观察器
+  setTimeout(() => {
+    const element = document.getElementById('busuanzi_value_site_uv')
+    if (element) {
+      observer.observe(element, { childList: true, characterData: true, subtree: true })
+    }
+  }, 100)
   
   // 在组件卸载时断开观察器
   onBeforeUnmount(() => {
@@ -160,10 +168,10 @@ onBeforeUnmount(() => {
         </div>
       </div>
       
-      <!-- 访客统计居中显示 -->
-      <div class="visitor-count-container">
-        <p class="visitor-count" v-show="showVisitorCount">
-          <span id="busuanzi_value_site_uv" ref="uvElement" class="count-value">--</span> 位行者曾翻阅此卷
+      <!-- 访客统计居中显示 - 只在有有效数据时显示 -->
+      <div class="visitor-count-container" v-if="visitorCount">
+        <p class="visitor-count">
+          <span id="busuanzi_value_site_uv" class="count-value">{{ visitorCount }}</span> 位行者曾翻阅此卷
         </p>
       </div>
     </div>

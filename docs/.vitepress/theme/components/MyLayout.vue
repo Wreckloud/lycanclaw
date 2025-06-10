@@ -2,13 +2,38 @@
 import DefaultTheme from 'vitepress/theme'
 import PostTitle from './PostTitle.vue'
 import DataPanel from './DataPanel.vue'
-import { useRoute } from 'vitepress'
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { useRoute, useData } from 'vitepress'
+import { ref, onMounted, onUnmounted, computed, defineAsyncComponent } from 'vue'
 
 const { Layout } = DefaultTheme
 const route = useRoute()
+const { frontmatter, page } = useData()
 
-// 返回顶部按钮
+// 异步加载评论组件，提高页面加载性能
+const Comment = defineAsyncComponent(() => 
+  import('./Comment.vue')
+)
+
+/**
+ * 判断是否显示评论
+ * - 文章页面 (有日期属性的页面)
+ * - 关于页面
+ * - 除非明确禁用评论
+ */
+const shouldShowComment = computed(() => {
+  // 在文章页面显示评论 (通常有日期的是文章页)
+  const isArticlePage = !!frontmatter.value.date
+  
+  // 关于页显示评论
+  const isAboutPage = page.value.relativePath === 'about.md'
+  
+  // 明确禁用评论的页面不显示
+  const disableComment = frontmatter.value.comment === false
+  
+  return (isArticlePage || isAboutPage) && !disableComment
+})
+
+// ===== 返回顶部按钮相关逻辑 =====
 const showBackToTop = ref(false)
 const scrollThreshold = 300
 const scrollProgress = ref(0)
@@ -95,10 +120,17 @@ onUnmounted(() => {
 
 <template>
   <Layout>
+    <!-- 文章标题区域 -->
     <template #doc-before>
       <PostTitle />
     </template>
+    
+    <!-- 评论区域 -->
+    <template #doc-after>
+      <Comment v-if="shouldShowComment" />
+    </template>
 
+    <!-- 页脚数据面板 -->
     <template #layout-bottom>
       <DataPanel />
     </template>

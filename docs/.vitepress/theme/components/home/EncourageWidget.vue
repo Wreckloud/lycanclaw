@@ -25,12 +25,11 @@ const encourageMessages = {
   1: '收到催更了',
   5: '别戳啦！已经在动笔了',
   10: '嗷呜——深夜码字...',
-  15: '咕——要过劳死了……',
-  25: '再催试试看？(咧牙)',
-  40: '你是想逼我咬你一口？',
-  60: '还在戳，是死忠……还是死对头？',
-  80: '哼，再点也没用，我不伺候了!',
-  150: '真有耐心...但没用!',
+  20: '咕——要过劳死了……',
+  30: '再催试试看？(咧牙)',
+  45: '你是想逼我咬你一口？',
+  90: '哼，我不伺候了!',
+  200: '真有耐心...但没用!',
 }
 
 // 消息颜色列表
@@ -69,12 +68,15 @@ function showFloatingMessage(event, count) {
   const x = event.clientX
   const y = event.clientY
   
-  // 随机参数 - 进一步增加垂直方向上的偏移，使消息更靠上
+  // 随机参数 - 增加横向和垂直方向上的偏移
   const angle = Math.random() * 40 - 20  // 更夸张的角度范围，从 ±10 变为 ±20
-  const offsetX = Math.random() * 40 - 20
-  const offsetY = Math.random() * 60 - 120  // 更强的向上偏移，从 -80 变为 -120
+  const offsetX = Math.random() * 80 - 40  // 横向偏移增加一倍，从 ±20 变为 ±40
+  const offsetY = Math.random() * 60 - 120  // 更强的向上偏移
   const color = messageColors[Math.floor(Math.random() * messageColors.length)]
   const id = messageIdCounter++
+  
+  // 添加随机大小变化
+  const sizeVariation = 0.9 + Math.random() * 0.3 // 0.9 到 1.2 之间的随机值
   
   // 创建消息对象
   const displayMessage = count === 1 ? '催更' : `催更x${count}`
@@ -87,7 +89,8 @@ function showFloatingMessage(event, count) {
     angle,  // 使用更夸张的角度
     color,
     opacity: 1,
-    scale: 0.8
+    scale: 0.8 * sizeVariation, // 应用随机大小变化
+    fontSize: `${1.2 * sizeVariation}rem` // 随机字体大小
   }
   
   // 添加消息
@@ -99,7 +102,7 @@ function showFloatingMessage(event, count) {
     const msgIndex = activeMessages.value.findIndex(m => m.id === id)
     if (msgIndex !== -1) {
       activeMessages.value[msgIndex].opacity = 0
-      activeMessages.value[msgIndex].scale = 1.2
+      activeMessages.value[msgIndex].scale = 1.2 * sizeVariation // 保持大小比例
     }
     
     // 移除消息
@@ -289,7 +292,8 @@ function formatNumber(num) {
           top: `${msg.y}px`,
           transform: `translate(-50%, -50%) rotate(${msg.angle}deg) scale(${msg.scale})`,
           color: msg.color,
-          opacity: msg.opacity
+          opacity: msg.opacity,
+          fontSize: msg.fontSize
         }"
       >
         {{ msg.message }}
