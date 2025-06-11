@@ -198,11 +198,11 @@ function createParticles(event) {
     const size = Math.random() * 6 + 4
     const color = colors[Math.floor(Math.random() * colors.length)]
     const angle = Math.random() * Math.PI * 2
-    const velocity = Math.random() * 1.8 + 1.2 // 增加速度范围
+    const velocity = Math.random() * 2.5 + 1.8 // 增加初始速度范围
     
     // 计算水平和垂直速度
     const vx = Math.cos(angle) * velocity
-    const vy = Math.sin(angle) * velocity - 1
+    const vy = Math.sin(angle) * velocity - 2 // 增加初始向上的力量
     
     // 创建粒子对象
     particlesArray.push({
@@ -214,13 +214,13 @@ function createParticles(event) {
       color,
       alpha: 1,
       rotation: 0,
-      rotationSpeed: (Math.random() * 0.8 - 0.4) * Math.PI / 180 * 5 // 降低旋转速度，转换为弧度
+      rotationSpeed: (Math.random() * 0.8 - 0.4) * Math.PI / 180 * 6 // 增加旋转速度
     })
   }
   
   // 开始时间
   const startTime = performance.now()
-  const duration = 1200 // 增加粒子效果持续时间
+  const duration = 1300 // 增加粒子效果持续时间
   
   // 执行动画
   function animate() {
@@ -238,7 +238,8 @@ function createParticles(event) {
         // 更新位置
         p.x += p.vx
         p.y += p.vy
-        p.vy += 0.04 // 减小重力效果
+        p.vy += 0.08 // 显著增加重力效果
+        p.vx *= 0.99 // 添加水平阻力
         p.rotation += p.rotationSpeed
         
         // 使用缓动函数计算透明度，让消失更自然
@@ -504,14 +505,14 @@ function formatNumber(num) {
 .floating-message {
   position: fixed;
   font-size: 1.2rem;
-  font-weight: 600;
+  font-weight: 700; /* 增加字重 */
   padding: 0.4rem 0.8rem;
   border-radius: 4px;
   pointer-events: none;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); /* 增强文字阴影 */
   white-space: nowrap;
-  transition: opacity 0.5s ease, transform 0.5s ease;
-  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.3)); /* 减淡阴影效果 */
+  transition: opacity 0.5s ease, transform 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* 使用更有弹性的贝塞尔曲线 */
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.4)); /* 增强阴影效果 */
   will-change: transform, opacity; /* 告知浏览器哪些属性会变化 */
   left: 0;
   top: 0;
