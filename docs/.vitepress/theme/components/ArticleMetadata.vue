@@ -78,11 +78,104 @@ const wordCount = ref(0)
 // 计算阅读时间（按照每分钟300字计算）
 const readTime = ref(0)
 // 浏览量
-const pageviewCount = ref('-')
+const pageviewCount = ref('0')
 // 缓存相关常量
-const PAGEVIEW_CACHE_PREFIX = 'waline_pageview_'
+const PAGEVIEW_CACHE_PREFIX = 'busuanzi_pageview_'
 const PAGEVIEW_CACHE_TIME_SUFFIX = '_time'
-const CACHE_EXPIRATION = 5 * 60 * 1000 // 5分钟缓存
+const CACHE_EXPIRATION = 30 * 60 * 1000 // 30分钟缓存
+
+// 获取当前页面路径用于统计
+const currentPath = computed(() => isBrowser ? window.location.pathname : '')
+
+/**
+ * 从缓存中获取页面访问量
+ */
+const getPageViewFromCache = () => {
+  if (!isBrowser) return null
+  
+  try {
+    const path = window.location.pathname
+    const cacheKey = `${PAGEVIEW_CACHE_PREFIX}${path}`
+    const cachedData = localStorage.getItem(cacheKey)
+    
+    // 检查缓存是否过期
+    const cacheTime = localStorage.getItem(`${cacheKey}${PAGEVIEW_CACHE_TIME_SUFFIX}`)
+    if (!cacheTime) return null
+    
+    const now = Date.now()
+    if ((now - parseInt(cacheTime)) > CACHE_EXPIRATION) return null
+    
+    return cachedData || null
+  } catch (e) {
+    return null
+  }
+}
+
+/**
+ * 将页面访问量保存到缓存
+ */
+const savePageViewToCache = (count) => {
+  if (!isBrowser || !count) return
+  
+  try {
+    const path = window.location.pathname
+    const cacheKey = `${PAGEVIEW_CACHE_PREFIX}${path}`
+    localStorage.setItem(cacheKey, count)
+    localStorage.setItem(`${cacheKey}${PAGEVIEW_CACHE_TIME_SUFFIX}`, Date.now().toString())
+  } catch (e) {
+    console.error('保存页面访问量到缓存失败:', e)
+  }
+}
+
+/**
+ * 加载不蒜子脚本（如果需要）
+ */
+const loadBusuanziScript = () => {
+  if (!isBrowser) return
+  
+  // 先尝试从缓存中获取
+  const cachedCount = getPageViewFromCache()
+  if (cachedCount) {
+    pageviewCount.value = cachedCount
+  }
+  
+  // 防止重复加载脚本
+  if (document.getElementById('busuanzi_script')) return
+  
+  // 创建不蒜子脚本
+  const script = document.createElement('script')
+  script.id = 'busuanzi_script'
+  script.src = '//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js'
+  script.async = true
+  
+  // 监视DOM变化来获取不蒜子更新的值
+  const observer = new MutationObserver(() => {
+    const pvElement = document.getElementById('busuanzi_value_page_pv')
+    if (pvElement && pvElement.textContent) {
+      pageviewCount.value = pvElement.textContent
+      savePageViewToCache(pvElement.textContent)
+      observer.disconnect()
+    }
+  })
+  
+  // 开始监听文档变化
+  script.onload = () => {
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    })
+    
+    // 1秒后如果还没有获取到值，尝试手动更新
+    setTimeout(() => {
+      if (window['busuanzi'] && typeof window['busuanzi'].fetch === 'function') {
+        window['busuanzi'].fetch()
+      }
+    }, 1000)
+  }
+  
+  // 添加脚本到页面
+  document.head.appendChild(script)
+}
 
 /**
  * 计算文章字数和阅读时间的函数
@@ -100,54 +193,11 @@ const calculateWordStats = () => {
 }
 
 /**
- * 获取页面浏览量
- * 使用缓存机制减少API请求次数
+ * 获取页面浏览量（简化版）
  */
 const fetchPageViewCount = async () => {
-  if (!isBrowser) return
-  
-  try {
-    // 获取当前路径
-    const path = window.location.pathname
-    
-    // 先尝试从缓存获取
-    const cacheKey = `${PAGEVIEW_CACHE_PREFIX}${path}`
-    const cachedData = localStorage.getItem(cacheKey)
-    
-    // 如果有缓存且未过期（设置缓存有效期为5分钟）
-    const now = Date.now()
-    const cacheTime = localStorage.getItem(`${cacheKey}${PAGEVIEW_CACHE_TIME_SUFFIX}`)
-    const cacheExpired = !cacheTime || (now - parseInt(cacheTime)) > CACHE_EXPIRATION
-    
-    if (cachedData && !cacheExpired) {
-      pageviewCount.value = cachedData
-      return
-    }
-    
-    // 缓存过期或不存在时，请求API
-    const response = await fetch(`https://lycanclaw-comment.netlify.app/.netlify/functions/comment/counter?url=${encodeURIComponent(path)}&type=time`)
-    
-    if (response.ok) {
-      const data = await response.json()
-      // 确保数据有效
-      if (data && typeof data === 'number') {
-        pageviewCount.value = data.toString()
-        
-        // 更新缓存
-        localStorage.setItem(cacheKey, data.toString())
-        localStorage.setItem(`${cacheKey}${PAGEVIEW_CACHE_TIME_SUFFIX}`, now.toString())
-      }
-    }
-  } catch (error) {
-    console.error('获取页面浏览量失败:', error)
-    
-    // 如果有缓存，仍然使用
-    const cacheKey = `${PAGEVIEW_CACHE_PREFIX}${window.location.pathname}`
-    const cachedData = localStorage.getItem(cacheKey)
-    if (cachedData) {
-      pageviewCount.value = cachedData
-    }
-  }
+  // 简化为调用不蒜子加载函数
+  loadBusuanziScript()
 }
 
 onMounted(() => {
@@ -178,9 +228,12 @@ defineOptions({
 
 <template>
   <div class="word">
+    <!-- 移除隐藏的浏览量统计元素 -->
     <p>
       <!-- 创建时间，仅在frontmatter中存在date属性时显示 -->
       <template v-if="hasCreationDate && creationDate">
+        <div class="metadata-container">
+          <div class="metadata-date">
         <svg t="1724643683964" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"
           p-id="2493" width="14" height="14">
           <path
@@ -189,9 +242,9 @@ defineOptions({
           <path d="M234.666667 512h554.666666v64H234.666667z" fill="#9a9a9a" p-id="2495"></path>
         </svg>
         <span>创建: {{ formattedDate }}</span>
-        <span class="stat-divider"></span>
+          </div>
 
-
+          <div class="metadata-stats-item">
       <svg t="1724571760788" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"
         p-id="6125" width="14" height="14">
         <path
@@ -201,8 +254,9 @@ defineOptions({
           fill="#E0E0E0" opacity=".619" p-id="6127"></path>
       </svg>
       <span>字数: {{ wordCount }} 字</span>
-      <span class="stat-divider"></span>
+          </div>
 
+          <div class="metadata-stats-item">
       <svg t="1724572797268" class="icon" viewBox="0 0 1060 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"
         p-id="15031" width="14" height="14">
         <path
@@ -210,13 +264,19 @@ defineOptions({
           fill="#9a9a9a" p-id="15032"></path>
       </svg>
       <span>时长: {{ readTime }} 分钟</span>
-      <span class="stat-divider"></span>
+          </div>
 
-      <!-- 浏览量统计 -->
+          <div class="metadata-stats-item">
       <svg t="1724823765544" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="11578" width="14" height="14">
         <path d="M512 298.666667c-164.266667 0-313.6 95.573333-413.866667 249.6 100.266667 154.026667 249.6 249.6 413.866667 249.6 164.266667 0 313.6-95.573333 413.866667-249.6-100.266667-154.026667-249.6-249.6-413.866667-249.6z m0 416c-91.733333 0-166.4-74.666667-166.4-166.4s74.666667-166.4 166.4-166.4 166.4 74.666667 166.4 166.4-74.666667 166.4-166.4 166.4z m0-265.6c-55.466667 0-99.2 43.733333-99.2 99.2s43.733333 99.2 99.2 99.2 99.2-43.733333 99.2-99.2-43.733333-99.2-99.2-99.2z" fill="#9a9a9a" p-id="11579"></path>
       </svg>
-      <span>浏览: {{ pageviewCount }}</span>
+            <span>浏览: 
+              <span id="busuanzi_container_page_pv">
+                <span id="busuanzi_value_page_pv">0</span>
+              </span>
+            </span>
+          </div>
+        </div>
     </template>
     </p>
   </div>
@@ -228,14 +288,31 @@ defineOptions({
   font-size: 12px;
 }
 
+.metadata-container {
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: 8px;
+  column-gap: 16px;
+}
+
+.metadata-date {
+  white-space: nowrap;
+}
+
+.metadata-stats-item {
+  white-space: nowrap;
+}
+
 .icon {
     display: inline-block;
-    transform: translate(0px , 2px);
+  transform: translate(0px, 2px);
     margin-right: 4px;
 }
 
-.stat-divider {
-    display: inline-block;
-    width: 16px;
+/* 响应式布局 - 最多两行 */
+@media (max-width: 768px) {
+  .metadata-date {
+    flex: 0 0 100%;
+  }
 }
 </style> 

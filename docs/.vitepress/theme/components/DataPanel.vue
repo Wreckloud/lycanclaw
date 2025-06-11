@@ -40,14 +40,104 @@ const hitokoto = ref("死亡是涅灭，亦或是永恒？")
 // ===== 访客统计相关 =====
 // 访问量数据
 const visitorCount = ref('0')
-// 数据加载状态，不再用于控制显示
-const isVisitorCountLoaded = ref(false)
 // 缓存键名
-const VISITOR_COUNT_CACHE_KEY = 'waline_visitor_count'
+const UV_CACHE_KEY = 'busuanzi_site_uv'
 // 缓存时间键名
-const VISITOR_COUNT_CACHE_TIME_KEY = 'waline_visitor_count_time'
-// 缓存有效期（12小时，单位毫秒）
-const CACHE_EXPIRATION = 12 * 60 * 60 * 1000
+const UV_CACHE_TIME_KEY = 'busuanzi_site_uv_time'
+// 缓存有效期（6小时，单位毫秒）
+const CACHE_EXPIRATION = 6 * 60 * 60 * 1000
+
+/**
+ * 从缓存中获取站点访问量
+ */
+const getVisitorCountFromCache = () => {
+  if (!isBrowser) return null
+  
+  try {
+    const cachedCount = localStorage.getItem(UV_CACHE_KEY)
+    
+    // 检查缓存是否过期
+    const cacheTime = localStorage.getItem(UV_CACHE_TIME_KEY)
+    if (!cacheTime) return null
+    
+    const now = Date.now()
+    if ((now - parseInt(cacheTime)) > CACHE_EXPIRATION) return null
+    
+    return cachedCount || null
+  } catch (e) {
+    return null
+  }
+}
+
+/**
+ * 将站点访问量保存到缓存
+ */
+const saveVisitorCountToCache = (count) => {
+  if (!isBrowser || !count) return
+  
+  try {
+    localStorage.setItem(UV_CACHE_KEY, count)
+    localStorage.setItem(UV_CACHE_TIME_KEY, Date.now().toString())
+  } catch (e) {
+    console.error('保存站点访问量到缓存失败:', e)
+  }
+}
+
+/**
+ * 初始化不蒜子统计
+ */
+const initBusuanzi = () => {
+  if (!isBrowser) return
+  
+  // 先尝试从缓存中获取
+  const cachedCount = getVisitorCountFromCache()
+  if (cachedCount) {
+    visitorCount.value = cachedCount
+  }
+  
+  // 防止重复加载脚本
+  if (document.getElementById('busuanzi_script')) {
+    // 如果脚本已经加载，尝试重新初始化
+    if (typeof window !== 'undefined' && window['busuanzi'] && typeof window['busuanzi'].fetch === 'function') {
+      window['busuanzi'].fetch()
+    }
+    return
+  }
+  
+  // 创建不蒜子脚本
+  const script = document.createElement('script')
+  script.id = 'busuanzi_script'
+  script.src = '//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js'
+  script.async = true
+  
+  // 监视DOM变化来获取不蒜子更新的值
+  const observer = new MutationObserver(() => {
+    const uvElement = document.getElementById('busuanzi_value_site_uv')
+    if (uvElement && uvElement.textContent) {
+      visitorCount.value = uvElement.textContent
+      saveVisitorCountToCache(uvElement.textContent)
+      observer.disconnect()
+    }
+  })
+  
+  // 脚本加载成功后开始监听DOM变化
+  script.onload = () => {
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    })
+    
+    // 1秒后如果还没有获取到值，尝试手动更新
+    setTimeout(() => {
+      if (window['busuanzi'] && typeof window['busuanzi'].fetch === 'function') {
+        window['busuanzi'].fetch()
+      }
+    }, 1000)
+  }
+  
+  // 添加脚本到页面
+  document.head.appendChild(script)
+}
 
 /**
  * 获取一言内容
@@ -86,52 +176,9 @@ const updateTimer = () => {
  * 获取Waline站点访问量统计
  * 使用缓存机制减少API请求次数
  */
-const fetchWalineVisitorCount = async () => {
-  if (!isBrowser) return
-  
-  try {
-    // 检查缓存是否存在且有效
-    const cachedCount = localStorage.getItem(VISITOR_COUNT_CACHE_KEY)
-    const cachedTime = localStorage.getItem(VISITOR_COUNT_CACHE_TIME_KEY)
-    
-    // 如果缓存有效且未过期
-    if (cachedCount && cachedTime) {
-      const now = Date.now()
-      const cacheAge = now - parseInt(cachedTime)
-      
-      if (cacheAge < CACHE_EXPIRATION) {
-        // 使用缓存数据
-        visitorCount.value = cachedCount
-        isVisitorCountLoaded.value = true
-        return
-      }
-    }
-    
-    // 缓存过期或不存在，请求API
-    const response = await fetch('https://lycanclaw-comment.netlify.app/.netlify/functions/comment/counter?type=users')
-    
-    if (response.ok) {
-      const data = await response.json()
-      // 确保数据有效
-      if (data && typeof data === 'number') {
-        visitorCount.value = data.toString()
-        isVisitorCountLoaded.value = true
-        
-        // 缓存访问量数据
-        localStorage.setItem(VISITOR_COUNT_CACHE_KEY, data.toString())
-        localStorage.setItem(VISITOR_COUNT_CACHE_TIME_KEY, Date.now().toString())
-      }
-    }
-  } catch (error) {
-    console.error('Failed to fetch Waline visitor count:', error)
-    // 失败时尝试从localStorage获取缓存的数据
-    const cachedCount = localStorage.getItem(VISITOR_COUNT_CACHE_KEY)
-    if (cachedCount) {
-      visitorCount.value = cachedCount
-      isVisitorCountLoaded.value = true
-    }
-  }
-}
+/* const fetchWalineVisitorCount = async () => {
+  // ... 原来的Waline统计代码
+} */
 
 onMounted(() => {
   // 确保只在浏览器环境中执行
@@ -144,8 +191,8 @@ onMounted(() => {
   // 加载一言
   fetchHitokoto()
   
-  // 获取Waline访问统计
-  fetchWalineVisitorCount()
+  // 初始化不蒜子统计
+  initBusuanzi()
 })
 
 onBeforeUnmount(() => {
@@ -188,10 +235,13 @@ onBeforeUnmount(() => {
         </div>
       </div>
       
-      <!-- 访客统计居中显示 - 始终显示 -->
+      <!-- 访客统计居中显示 - 使用不蒜子统计 -->
       <div class="visitor-count-container">
         <p class="visitor-count">
-          <span class="count-value">{{ visitorCount }}</span> 位行者曾翻阅此卷
+          <!-- 隐藏的不蒜子统计元素，用于数据获取 -->
+          <span id="busuanzi_container_site_uv">
+            <span id="busuanzi_value_site_uv" class="count-value">0</span> 位行者曾翻阅此卷
+          </span>
         </p>
       </div>
     </div>

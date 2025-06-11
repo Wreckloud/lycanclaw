@@ -54,11 +54,11 @@ const initWaline = async () => {
       // 禁用文章反应
       reaction: false, 
       // 启用浏览统计
-      pageview: true,
+      pageview: '.waline-pageview-count',
       // 评论数统计默认开启
       comment: true,
-      // 隐藏Markdown指南
-      texRenderer: false,
+      // 正确设置Markdown渲染，不使用原来的布尔值false
+      texRenderer: undefined,
       // 本地化文字
       locale: {
         placeholder: '欢迎留下您的评论~',
@@ -105,7 +105,7 @@ watch(() => route.path, () => {
   // 延迟执行以确保DOM更新完成
   setTimeout(() => {
     initWaline()
-  }, 300)
+  }, 100)
 })
 
 /**
@@ -137,16 +137,24 @@ onMounted(() => {
     // 延迟执行以确保DOM更新完成
     setTimeout(() => {
       initWaline()
-      const cleanup = setupThemeWatcher()
+      // 存储清理函数，用于卸载时调用
+      window.__walineCleanup = setupThemeWatcher()
+    }, 200)
+  }
+})
       
-      // 组件卸载前清理
+// 将onBeforeUnmount移到顶层
       onBeforeUnmount(() => {
-        cleanup()
+  // 清理主题观察器
+  if (typeof window !== 'undefined' && window.__walineCleanup) {
+    window.__walineCleanup()
+    window.__walineCleanup = null
+  }
+  
+  // 销毁Waline实例
         if (walineInstance) {
           walineInstance.destroy()
-        }
-      })
-    }, 500)
+    walineInstance = null
   }
 })
 </script>
@@ -215,31 +223,6 @@ onMounted(() => {
   border: none !important;
   outline: none !important;
   box-shadow: none !important;
-}
-
-/* 评论加载中样式 */
-.comment-loading {
-  margin-top: 2rem;
-  margin-bottom: 2rem;
-  padding-top: 1rem;
-  border-top: 1px dashed var(--vp-c-divider);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 200px;
-}
-
-.comment-loading-spinner {
-  width: 40px;
-  height: 40px;
-  color: var(--vp-c-brand-1);
-  margin-bottom: 1rem;
-}
-
-.comment-loading-text {
-  font-size: 1rem;
-  color: var(--vp-c-text-2);
 }
 
 /* 响应式设计 */

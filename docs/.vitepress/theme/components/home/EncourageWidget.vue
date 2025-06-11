@@ -19,6 +19,10 @@ const isDrawerVisible = ref(false)
 const drawerMessage = ref('')
 let drawerTimer = null
 let comboResetTimer = null // 连击重置计时器
+let lastParticleTime = 0 // 上次创建粒子的时间
+let lastClickTime = 0 // 上次点击的时间
+const THROTTLE_INTERVAL = 200 // 粒子效果节流间隔（毫秒）
+const CLICK_THROTTLE = 80 // 点击事件节流间隔（毫秒）
 
 // 催更消息配置
 const encourageMessages = {
@@ -112,91 +116,158 @@ function showFloatingMessage(event, count) {
   }, 1500)
 }
 
-// 创建粒子效果
+// 创建粒子效果（Canvas优化版）
 function createParticles(event) {
-  const colors = ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899']
-  const particles = 20 // 减少粒子数量提高性能
+  const now = Date.now()
   
-  // 创建容器
-  const particleContainer = document.createElement('div')
-  particleContainer.className = 'particle-container'
-  document.body.appendChild(particleContainer)
+  // 节流控制 - 如果距离上次粒子效果不到200ms，跳过创建新粒子
+  if (now - lastParticleTime < THROTTLE_INTERVAL) return
+  lastParticleTime = now
+  
+  const colors = ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899']
+  
+  // 根据设备性能动态调整粒子数量
+  let particles = 24 // 增加粒子数量到24个
+  
+  // 移动设备检测（简易版）- 降低粒子数量
+  if (window.innerWidth <= 768) {
+    particles = 12 // 移动设备使用12个粒子
+  }
+  
+  // 创建Canvas元素
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  
+  if (!ctx) {
+    console.error('无法创建Canvas上下文')
+    return
+  }
+  
+  // 设置Canvas样式
+  canvas.className = 'particle-canvas'
+  canvas.width = window.innerWidth
+  canvas.height = window.innerHeight
+  canvas.style.position = 'fixed'
+  canvas.style.left = '0'
+  canvas.style.top = '0'
+  canvas.style.width = '100vw'
+  canvas.style.height = '100vh'
+  canvas.style.pointerEvents = 'none'
+  canvas.style.zIndex = '9999'
+  
+  document.body.appendChild(canvas)
   
   // 获取点击位置
   const x = event.clientX
   const y = event.clientY
   
-  // 设置容器样式
-  particleContainer.style.position = 'fixed'
-  particleContainer.style.left = '0'
-  particleContainer.style.top = '0'
-  particleContainer.style.width = '100vw'
-  particleContainer.style.height = '100vh'
-  particleContainer.style.pointerEvents = 'none'
-  particleContainer.style.zIndex = '9999'
+  // 创建粒子数组
+  const particlesArray = []
   
-  // 创建粒子
-  for (let i = 0; i < particles; i++) {
-    const particle = document.createElement('div')
-    particle.className = 'particle'
+  // 创建星星路径（一次性定义，重复使用）
+  function drawStar(ctx, x, y, size, color) {
+    ctx.save()
+    ctx.beginPath()
+    ctx.fillStyle = color
     
-    // 随机参数
-    const size = Math.random() * 8 + 4
-    const color = colors[Math.floor(Math.random() * colors.length)]
-    const angle = Math.random() * Math.PI * 2
-    const velocity = Math.random() * 3 + 2
-    const lifetime = Math.random() * 800 + 800
+    // 绘制更精细的星星
+    const spikes = 5
+    const outerRadius = size
+    const innerRadius = size * 0.4
     
-    // 星星形状
-    particle.innerHTML = `<svg width="${size*2}" height="${size*2}" viewBox="0 0 24 24" fill="${color}">
-      <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
-    </svg>`
-    
-    // 初始位置
-    particle.style.position = 'absolute'
-    particle.style.left = `${x}px`
-    particle.style.top = `${y}px`
-    particle.style.transform = 'translate(-50%, -50%)'
-    
-    particleContainer.appendChild(particle)
-    
-    // 计算速度
-    const vx = Math.cos(angle) * velocity
-    const vy = Math.sin(angle) * velocity - 1
-    
-    // 动画
-    let startTime = null
-    
-    function animateParticle(timestamp) {
-      if (!startTime) startTime = timestamp
-      const elapsed = timestamp - startTime
+    for (let i = 0; i < spikes * 2; i++) {
+      const radius = i % 2 === 0 ? outerRadius : innerRadius
+      const angle = (Math.PI * i) / spikes - Math.PI / 2 // 从顶部开始绘制
+      const pointX = x + Math.cos(angle) * radius
+      const pointY = y + Math.sin(angle) * radius
       
-      if (elapsed < lifetime) {
-        // 计算新位置
-        const progress = elapsed / lifetime
-        const moveX = x + vx * elapsed * 0.1
-        const moveY = y + vy * elapsed * 0.1 + 0.5 * 9.8 * Math.pow(elapsed * 0.01, 2)
-        
-        // 更新样式
-        particle.style.left = `${moveX}px`
-        particle.style.top = `${moveY}px`
-        particle.style.opacity = 1 - progress
-        particle.style.transform = `translate(-50%, -50%) rotate(${progress * 360}deg)`
-        
-        requestAnimationFrame(animateParticle)
+      if (i === 0) {
+        ctx.moveTo(pointX, pointY)
       } else {
-        // 移除粒子
-        particle.remove()
-        
-        // 检查是否所有粒子都已移除
-        if (particleContainer.children.length === 0) {
-          particleContainer.remove()
-        }
+        ctx.lineTo(pointX, pointY)
       }
     }
     
-    requestAnimationFrame(animateParticle)
+    ctx.closePath()
+    ctx.fill()
+    ctx.restore()
   }
+  
+  // 生成粒子
+  for (let i = 0; i < particles; i++) {
+    const size = Math.random() * 6 + 4
+    const color = colors[Math.floor(Math.random() * colors.length)]
+    const angle = Math.random() * Math.PI * 2
+    const velocity = Math.random() * 1.8 + 1.2 // 增加速度范围
+    
+    // 计算水平和垂直速度
+    const vx = Math.cos(angle) * velocity
+    const vy = Math.sin(angle) * velocity - 1
+    
+    // 创建粒子对象
+    particlesArray.push({
+      x,
+      y,
+      vx,
+      vy,
+      size,
+      color,
+      alpha: 1,
+      rotation: 0,
+      rotationSpeed: (Math.random() * 0.8 - 0.4) * Math.PI / 180 * 5 // 降低旋转速度，转换为弧度
+    })
+  }
+  
+  // 开始时间
+  const startTime = performance.now()
+  const duration = 1200 // 增加粒子效果持续时间
+  
+  // 执行动画
+  function animate() {
+    // 计算已过去的时间
+    const elapsed = performance.now() - startTime
+    
+    if (elapsed < duration) {
+      // 清除画布
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      
+      // 绘制每个粒子
+      for (let i = 0; i < particlesArray.length; i++) {
+        const p = particlesArray[i]
+        
+        // 更新位置
+        p.x += p.vx
+        p.y += p.vy
+        p.vy += 0.04 // 减小重力效果
+        p.rotation += p.rotationSpeed
+        
+        // 使用缓动函数计算透明度，让消失更自然
+        const progress = elapsed / duration
+        p.alpha = 1 - Math.pow(progress, 1.5)
+        
+        // 绘制粒子
+        ctx.globalAlpha = p.alpha
+        ctx.save()
+        ctx.translate(p.x, p.y)
+        ctx.rotate(p.rotation)
+        
+        // 绘制星形
+        drawStar(ctx, 0, 0, p.size, p.color)
+        
+        ctx.restore()
+        ctx.globalAlpha = 1
+      }
+      
+      // 继续动画
+      requestAnimationFrame(animate)
+    } else {
+      // 动画结束，移除Canvas
+      canvas.remove()
+    }
+  }
+  
+  // 开始动画
+  animate()
 }
 
 // 重置连击计时器
@@ -214,8 +285,14 @@ function resetComboTimer() {
   }, 3000)
 }
 
-// 催更功能
+// 催更功能（节流版）
 function encourageUpdate(event) {
+  const now = Date.now()
+  
+  // 如果点击过于频繁，跳过处理
+  if (now - lastClickTime < CLICK_THROTTLE) return
+  lastClickTime = now
+  
   // 增加计数
   encourageCount.value++
   
@@ -288,12 +365,13 @@ function formatNumber(num) {
         :key="msg.id"
         class="floating-message"
         :style="{
-          left: `${msg.x}px`,
-          top: `${msg.y}px`,
-          transform: `translate(-50%, -50%) rotate(${msg.angle}deg) scale(${msg.scale})`,
-          color: msg.color,
-          opacity: msg.opacity,
-          fontSize: msg.fontSize
+          '--x-pos': `${msg.x}px`,
+          '--y-pos': `${msg.y}px`,
+          '--angle': `${msg.angle}deg`,
+          '--scale': msg.scale,
+          '--opacity': msg.opacity,
+          'color': msg.color,
+          'font-size': msg.fontSize
         }"
       >
         {{ msg.message }}
@@ -316,6 +394,8 @@ function formatNumber(num) {
   user-select: none;
   position: relative;
   overflow: hidden;
+  will-change: transform; /* 提示浏览器这个元素将会变化 */
+  transform: translateZ(0); /* 启用硬件加速 */
 }
 
 .clickable-area {
@@ -383,6 +463,8 @@ function formatNumber(num) {
   font-weight: 600;
   text-align: center;
   z-index: 5;
+  will-change: transform; /* 提示浏览器这个元素将会变化 */
+  transform: translateZ(0); /* 启用硬件加速 */
 }
 
 .drawer-content {
@@ -416,6 +498,7 @@ function formatNumber(num) {
   pointer-events: none;
   z-index: 9999;
   overflow: visible;
+  contain: content; /* 优化渲染 */
 }
 
 .floating-message {
@@ -429,25 +512,24 @@ function formatNumber(num) {
   white-space: nowrap;
   transition: opacity 0.5s ease, transform 0.5s ease;
   filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.3)); /* 减淡阴影效果 */
+  will-change: transform, opacity; /* 告知浏览器哪些属性会变化 */
+  left: 0;
+  top: 0;
+  /* 使用CSS变量改进性能 */
+  transform: translate(var(--x-pos), var(--y-pos)) rotate(var(--angle)) scale(var(--scale));
+  opacity: var(--opacity);
+  backface-visibility: hidden;
 }
 
-/* 粒子样式 */
-.particle-container {
+/* 粒子Canvas优化 */
+.particle-canvas {
   position: fixed;
-  top: 0;
   left: 0;
-  width: 100vw;
-  height: 100vh;
-  overflow: visible;
+  top: 0;
   pointer-events: none;
   z-index: 9999;
-}
-
-.particle {
-  position: absolute;
-  pointer-events: none;
-  transform-origin: center;
-  will-change: transform, opacity;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 /* 移动端适配 */

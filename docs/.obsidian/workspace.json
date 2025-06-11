@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "thoughts/竟然被回关.md",
+                "file": "thoughts/远古卷轴.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "竟然被回关"
+              "title": "远古卷轴"
             }
           }
         ]
@@ -40,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "thoughts/竟然被回关.md",
+                "file": "thoughts/远古卷轴.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "竟然被回关 的大纲"
+              "title": "远古卷轴 的大纲"
             }
           },
           {
@@ -154,10 +154,11 @@
   },
   "active": "f1a5ae53903c2eca",
   "lastOpenFiles": [
+    "thoughts/獠牙下的野蔷薇.md",
+    "thoughts/竟然被回关.md",
     "public/images/文章资源/竟然被回关/file-20250609182158378.jpg",
     "public/images/文章资源/竟然被回关/86ecfcceae025c3e6055b368a8b36809.jpg",
     "public/images/文章资源/竟然被回关/file-20250609182158378.gif",
-    "thoughts/竟然被回关.md",
     "thoughts/光不在彼方.md",
     "projects/online-shoping-vue3.md",
     "thoughts/远古卷轴.md",
@@ -174,7 +175,6 @@
     "thoughts/未命名2.md",
     "thoughts/未命名1.md",
     "thoughts/tags.md",
-    "thoughts/獠牙下的野蔷薇.md",
     "thoughts/从一盏灯开始的文明.md",
     "debug-sort.log",
     "knowledge/前端工具库/Element-Plus 定制主题（SCSS 方案）.md",
@@ -185,7 +185,6 @@
     "public/images/文章资源/axios-现代化的-ajax-请求工具/file-20250607143457637.jpg",
     "public/images/文章资源/axios-现代化的-ajax-请求工具/file-20250607143443291.jpg",
     "public/images/文章资源/axios-现代化的-ajax-请求工具/file-20250607143352649.jpg",
-    "public/images/文章资源/axios-现代化的-ajax-请求工具/file-20250607143321885.jpg",
     "public/images/文章资源/axios-现代化的-ajax-请求工具",
     "public/images/文章资源/git-版本控制",
     "knowledge/前端框架/VUE3状态管理 - Pinia(替代Vuex).md",
