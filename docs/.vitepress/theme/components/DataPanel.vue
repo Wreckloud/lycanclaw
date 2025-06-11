@@ -2,11 +2,12 @@
 /**
  * 网站页脚数据面板组件
  * 显示网站运行时间、版权信息和访问统计
- * 由不蒜子统计更换为Waline统计
+ * 由不蒜子统计更换为封装的API
  */
 import { onMounted, ref, onBeforeUnmount, computed } from 'vue'
 import { useData } from 'vitepress'
 import { useSidebar } from 'vitepress/theme'
+import { getSiteUV } from '../utils/pageViewApi'
 
 // 获取页面数据和侧边栏状态
 const { page, frontmatter } = useData()
@@ -40,103 +41,22 @@ const hitokoto = ref("死亡是涅灭，亦或是永恒？")
 // ===== 访客统计相关 =====
 // 访问量数据
 const visitorCount = ref('0')
-// 缓存键名
-const UV_CACHE_KEY = 'busuanzi_site_uv'
-// 缓存时间键名
-const UV_CACHE_TIME_KEY = 'busuanzi_site_uv_time'
-// 缓存有效期（6小时，单位毫秒）
-const CACHE_EXPIRATION = 6 * 60 * 60 * 1000
 
 /**
- * 从缓存中获取站点访问量
+ * 获取站点访问量
  */
-const getVisitorCountFromCache = () => {
-  if (!isBrowser) return null
-  
-  try {
-    const cachedCount = localStorage.getItem(UV_CACHE_KEY)
-    
-    // 检查缓存是否过期
-    const cacheTime = localStorage.getItem(UV_CACHE_TIME_KEY)
-    if (!cacheTime) return null
-    
-    const now = Date.now()
-    if ((now - parseInt(cacheTime)) > CACHE_EXPIRATION) return null
-    
-    return cachedCount || null
-  } catch (e) {
-    return null
-  }
-}
-
-/**
- * 将站点访问量保存到缓存
- */
-const saveVisitorCountToCache = (count) => {
-  if (!isBrowser || !count) return
-  
-  try {
-    localStorage.setItem(UV_CACHE_KEY, count)
-    localStorage.setItem(UV_CACHE_TIME_KEY, Date.now().toString())
-  } catch (e) {
-    console.error('保存站点访问量到缓存失败:', e)
-  }
-}
-
-/**
- * 初始化不蒜子统计
- */
-const initBusuanzi = () => {
+const fetchVisitorCount = async () => {
   if (!isBrowser) return
   
-  // 先尝试从缓存中获取
-  const cachedCount = getVisitorCountFromCache()
-  if (cachedCount) {
-    visitorCount.value = cachedCount
-  }
-  
-  // 防止重复加载脚本
-  if (document.getElementById('busuanzi_script')) {
-    // 如果脚本已经加载，尝试重新初始化
-    if (typeof window !== 'undefined' && window['busuanzi'] && typeof window['busuanzi'].fetch === 'function') {
-      window['busuanzi'].fetch()
+  try {
+    // 使用封装的API获取站点访问量
+    const count = await getSiteUV()
+    if (count > 0) {
+      visitorCount.value = count.toString()
     }
-    return
+  } catch (error) {
+    console.error('获取站点访问量失败:', error)
   }
-  
-  // 创建不蒜子脚本
-  const script = document.createElement('script')
-  script.id = 'busuanzi_script'
-  script.src = '//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js'
-  script.async = true
-  
-  // 监视DOM变化来获取不蒜子更新的值
-  const observer = new MutationObserver(() => {
-    const uvElement = document.getElementById('busuanzi_value_site_uv')
-    if (uvElement && uvElement.textContent) {
-      visitorCount.value = uvElement.textContent
-      saveVisitorCountToCache(uvElement.textContent)
-      observer.disconnect()
-    }
-  })
-  
-  // 脚本加载成功后开始监听DOM变化
-  script.onload = () => {
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true
-    })
-    
-    // 1秒后如果还没有获取到值，尝试手动更新
-    setTimeout(() => {
-      if (window['busuanzi'] && typeof window['busuanzi'].fetch === 'function') {
-        window['busuanzi'].fetch()
-      }
-    }, 1000)
-  }
-  
-  // 添加脚本到页面
-  document.head.appendChild(script)
 }
 
 /**
@@ -172,14 +92,6 @@ const updateTimer = () => {
   seconds.value = Math.floor((remainingAfterYears % (1000 * 60)) / 1000)
 }
 
-/**
- * 获取Waline站点访问量统计
- * 使用缓存机制减少API请求次数
- */
-/* const fetchWalineVisitorCount = async () => {
-  // ... 原来的Waline统计代码
-} */
-
 onMounted(() => {
   // 确保只在浏览器环境中执行
   if (!isBrowser) return
@@ -191,8 +103,8 @@ onMounted(() => {
   // 加载一言
   fetchHitokoto()
   
-  // 初始化不蒜子统计
-  initBusuanzi()
+  // 获取站点访问量
+  fetchVisitorCount()
 })
 
 onBeforeUnmount(() => {
@@ -235,13 +147,10 @@ onBeforeUnmount(() => {
         </div>
       </div>
       
-      <!-- 访客统计居中显示 - 使用不蒜子统计 -->
+      <!-- 访客统计居中显示 -->
       <div class="visitor-count-container">
         <p class="visitor-count">
-          <!-- 隐藏的不蒜子统计元素，用于数据获取 -->
-          <span id="busuanzi_container_site_uv">
-            <span id="busuanzi_value_site_uv" class="count-value">0</span> 位行者曾翻阅此卷
-          </span>
+          <span class="count-value">{{ visitorCount }}</span> 位行者曾翻阅此卷
         </p>
       </div>
     </div>

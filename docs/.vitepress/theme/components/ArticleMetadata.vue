@@ -2,6 +2,7 @@
 import { onMounted, ref, computed, watch } from 'vue'
 import { useData } from 'vitepress'
 import { countWord } from '../utils/wordCount'
+import { getAndUpdatePageView, getPageViewFromCache } from '../utils/pageViewApi'
 
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
@@ -77,105 +78,12 @@ const formattedDate = computed(() => {
 const wordCount = ref(0)
 // 计算阅读时间（按照每分钟300字计算）
 const readTime = ref(0)
-// 浏览量
-const pageviewCount = ref('0')
-// 缓存相关常量
-const PAGEVIEW_CACHE_PREFIX = 'busuanzi_pageview_'
-const PAGEVIEW_CACHE_TIME_SUFFIX = '_time'
-const CACHE_EXPIRATION = 30 * 60 * 1000 // 30分钟缓存
+// 浏览量相关数据
+const pageviewCount = ref('--') // 默认显示为"--"而不是"0"
+const isLoading = ref(true)
 
 // 获取当前页面路径用于统计
 const currentPath = computed(() => isBrowser ? window.location.pathname : '')
-
-/**
- * 从缓存中获取页面访问量
- */
-const getPageViewFromCache = () => {
-  if (!isBrowser) return null
-  
-  try {
-    const path = window.location.pathname
-    const cacheKey = `${PAGEVIEW_CACHE_PREFIX}${path}`
-    const cachedData = localStorage.getItem(cacheKey)
-    
-    // 检查缓存是否过期
-    const cacheTime = localStorage.getItem(`${cacheKey}${PAGEVIEW_CACHE_TIME_SUFFIX}`)
-    if (!cacheTime) return null
-    
-    const now = Date.now()
-    if ((now - parseInt(cacheTime)) > CACHE_EXPIRATION) return null
-    
-    return cachedData || null
-  } catch (e) {
-    return null
-  }
-}
-
-/**
- * 将页面访问量保存到缓存
- */
-const savePageViewToCache = (count) => {
-  if (!isBrowser || !count) return
-  
-  try {
-    const path = window.location.pathname
-    const cacheKey = `${PAGEVIEW_CACHE_PREFIX}${path}`
-    localStorage.setItem(cacheKey, count)
-    localStorage.setItem(`${cacheKey}${PAGEVIEW_CACHE_TIME_SUFFIX}`, Date.now().toString())
-  } catch (e) {
-    console.error('保存页面访问量到缓存失败:', e)
-  }
-}
-
-/**
- * 加载不蒜子脚本（如果需要）
- */
-const loadBusuanziScript = () => {
-  if (!isBrowser) return
-  
-  // 先尝试从缓存中获取
-  const cachedCount = getPageViewFromCache()
-  if (cachedCount) {
-    pageviewCount.value = cachedCount
-  }
-  
-  // 防止重复加载脚本
-  if (document.getElementById('busuanzi_script')) return
-  
-  // 创建不蒜子脚本
-  const script = document.createElement('script')
-  script.id = 'busuanzi_script'
-  script.src = '//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js'
-  script.async = true
-  
-  // 监视DOM变化来获取不蒜子更新的值
-  const observer = new MutationObserver(() => {
-    const pvElement = document.getElementById('busuanzi_value_page_pv')
-    if (pvElement && pvElement.textContent) {
-      pageviewCount.value = pvElement.textContent
-      savePageViewToCache(pvElement.textContent)
-      observer.disconnect()
-    }
-  })
-  
-  // 开始监听文档变化
-  script.onload = () => {
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true
-    })
-    
-    // 1秒后如果还没有获取到值，尝试手动更新
-    setTimeout(() => {
-      if (window['busuanzi'] && typeof window['busuanzi'].fetch === 'function') {
-        window['busuanzi'].fetch()
-      }
-    }, 1000)
-  }
-  
-  // 添加脚本到页面
-  document.head.appendChild(script)
-}
 
 /**
  * 计算文章字数和阅读时间的函数
@@ -193,12 +101,44 @@ const calculateWordStats = () => {
 }
 
 /**
- * 获取页面浏览量（简化版）
+ * 获取页面浏览量（使用封装的API）
  */
 const fetchPageViewCount = async () => {
-  // 简化为调用不蒜子加载函数
-  loadBusuanziScript()
+  if (!isBrowser) return
+  isLoading.value = true
+  
+  try {
+    // 首先尝试从缓存获取，避免闪烁
+    if (typeof window === 'undefined') return
+    
+    const currentPagePath = window.location.pathname
+    const cachedCount = getPageViewFromCache(currentPagePath)
+    
+    if (cachedCount !== null && cachedCount > 0) {
+      pageviewCount.value = cachedCount.toString()
+      isLoading.value = false
+    }
+    
+    // 使用封装的API获取并更新浏览量
+    const count = await getAndUpdatePageView(currentPagePath, 1)
+    if (count && count > 0) {
+      pageviewCount.value = count.toString()
+    } else if (pageviewCount.value === '--') {
+      // 如果API返回0，并且当前还是默认值，则显示为1
+      pageviewCount.value = '1'
+    }
+  } catch (error) {
+    console.error('获取页面浏览量失败:', error)
+    if (pageviewCount.value === '--') {
+      pageviewCount.value = '1' // 失败时显示默认值1
+    }
+  } finally {
+    isLoading.value = false
+  }
 }
+
+// 用于控制节流的变量
+let pageViewUpdateTimeout: ReturnType<typeof setTimeout> | null = null
 
 onMounted(() => {
   // 确保只在浏览器环境中执行
@@ -216,7 +156,15 @@ watch(() => page.value.relativePath, () => {
   // 使用setTimeout确保DOM已更新
   setTimeout(() => {
     calculateWordStats()
-    fetchPageViewCount()
+    
+    // 添加节流逻辑，防止短时间内多次更新浏览量
+    if (pageViewUpdateTimeout) {
+      clearTimeout(pageViewUpdateTimeout)
+    }
+    pageViewUpdateTimeout = setTimeout(() => {
+      fetchPageViewCount()
+      pageViewUpdateTimeout = null
+    }, 500) // 500ms节流延迟
   }, 0)
 }, { immediate: true })
 
@@ -270,11 +218,7 @@ defineOptions({
       <svg t="1724823765544" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="11578" width="14" height="14">
         <path d="M512 298.666667c-164.266667 0-313.6 95.573333-413.866667 249.6 100.266667 154.026667 249.6 249.6 413.866667 249.6 164.266667 0 313.6-95.573333 413.866667-249.6-100.266667-154.026667-249.6-249.6-413.866667-249.6z m0 416c-91.733333 0-166.4-74.666667-166.4-166.4s74.666667-166.4 166.4-166.4 166.4 74.666667 166.4 166.4-74.666667 166.4-166.4 166.4z m0-265.6c-55.466667 0-99.2 43.733333-99.2 99.2s43.733333 99.2 99.2 99.2 99.2-43.733333 99.2-99.2-43.733333-99.2-99.2-99.2z" fill="#9a9a9a" p-id="11579"></path>
       </svg>
-            <span>浏览: 
-              <span id="busuanzi_container_page_pv">
-                <span id="busuanzi_value_page_pv">0</span>
-              </span>
-            </span>
+            <span>浏览: <span :class="{'loading-placeholder': isLoading}">{{ pageviewCount }}</span></span>
           </div>
         </div>
     </template>
@@ -304,9 +248,14 @@ defineOptions({
 }
 
 .icon {
-    display: inline-block;
+  display: inline-block;
   transform: translate(0px, 2px);
-    margin-right: 4px;
+  margin-right: 4px;
+}
+
+/* 加载占位符样式 */
+.loading-placeholder {
+  opacity: 0.6;
 }
 
 /* 响应式布局 - 最多两行 */
