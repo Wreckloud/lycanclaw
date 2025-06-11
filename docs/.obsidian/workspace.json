@@ -11,14 +11,10 @@
             "id": "f1a5ae53903c2eca",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "thoughts/测试.md",
-                "mode": "source",
-                "source": false
-              },
+              "type": "empty",
+              "state": {},
               "icon": "lucide-file",
-              "title": "测试"
+              "title": "新标签页"
             }
           }
         ]
@@ -152,7 +148,7 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "f1a5ae53903c2eca",
+  "active": "609913dcbebc90fd",
   "lastOpenFiles": [
     "thoughts/獠牙下的野蔷薇.md",
     "thoughts/测试.md",

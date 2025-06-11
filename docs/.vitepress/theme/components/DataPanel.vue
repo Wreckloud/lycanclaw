@@ -1,13 +1,11 @@
 <script setup lang="ts">
 /**
  * 网站页脚数据面板组件
- * 显示网站运行时间、版权信息和访问统计
- * 由不蒜子统计更换为封装的API
+ * 显示网站运行时间、版权信息和一言API
  */
 import { onMounted, ref, onBeforeUnmount, computed } from 'vue'
 import { useData } from 'vitepress'
 import { useSidebar } from 'vitepress/theme'
-import { getSiteUV } from '../utils/pageViewApi'
 
 // 获取页面数据和侧边栏状态
 const { page, frontmatter } = useData()
@@ -37,27 +35,6 @@ let timer: number | null = null
 
 // ===== 一言API相关 =====
 const hitokoto = ref("死亡是涅灭，亦或是永恒？")
-
-// ===== 访客统计相关 =====
-// 访问量数据
-const visitorCount = ref('0')
-
-/**
- * 获取站点访问量
- */
-const fetchVisitorCount = async () => {
-  if (!isBrowser) return
-  
-  try {
-    // 使用封装的API获取站点访问量
-    const count = await getSiteUV()
-    if (count > 0) {
-      visitorCount.value = count.toString()
-    }
-  } catch (error) {
-    console.error('获取站点访问量失败:', error)
-      }
-}
 
 /**
  * 获取一言内容
@@ -102,9 +79,6 @@ onMounted(() => {
   
   // 加载一言
   fetchHitokoto()
-  
-  // 获取站点访问量
-  fetchVisitorCount()
 })
 
 onBeforeUnmount(() => {
@@ -145,13 +119,6 @@ onBeforeUnmount(() => {
           <p class="copyright">© {{ yearString }} <a href="/about">Wreckloud</a>.</p>
           <p class="motto">{{ hitokoto }}</p>
         </div>
-      </div>
-      
-      <!-- 访客统计居中显示 -->
-      <div class="visitor-count-container">
-        <p class="visitor-count">
-          <span class="count-value">{{ visitorCount }}</span> 位行者曾翻阅此卷
-        </p>
       </div>
     </div>
   </footer>
@@ -239,25 +206,7 @@ onBeforeUnmount(() => {
   color: var(--vp-c-text-1);
 }
 
-.visitor-count-container {
-  text-align: center;
-  margin-top: 12px;
-}
-
-.visitor-count {
-  margin: 4px 0;
-  line-height: 1.6;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--vp-c-text-3);
-  display: inline-block;
-}
-
-.count-value {
-  color: var(--vp-c-brand-1);
-}
-
-/* 移动端适配 */
+/* 响应式样式调整 */
 @media (max-width: 768px) {
   .footer-content {
     flex-direction: column;
@@ -265,11 +214,11 @@ onBeforeUnmount(() => {
   
   .left-content, .right-content {
     text-align: center;
-    width: 100%;
+    margin: 0 auto;
   }
   
-  .right-content {
-    margin-top: 16px;
+  .left-content {
+    margin-bottom: 12px;
   }
 }
 </style> 

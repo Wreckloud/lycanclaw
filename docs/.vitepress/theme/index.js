@@ -26,55 +26,6 @@ const AsyncComment = defineAsyncComponent(() => import('./components/Comment.vue
 const AsyncRecentComments = defineAsyncComponent(() => import('./components/home/RecentComments.vue'));
 
 /**
- * 清除不蒜子缓存
- * 在以下情况会自动清除缓存：
- * 1. URL参数中包含clear_busuanzi_cache=true
- * 2. 强制刷新页面（Ctrl+F5）
- */
-function clearBusuanziCache() {
-  if (!window.localStorage) return
-  
-  try {
-    // 检查URL参数
-    const urlParams = new URLSearchParams(window.location.search)
-    const shouldClear = urlParams.get('clear_busuanzi_cache') === 'true'
-    
-    if (shouldClear) {
-      // 清除所有以busuanzi_开头的缓存
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('busuanzi_')) {
-          localStorage.removeItem(key)
-        }
-      })
-    }
-  } catch (e) {
-    console.error('清除不蒜子缓存失败:', e)
-  }
-}
-
-/**
- * 更新不蒜子统计
- */
-function updateBusuanziCount() {
-  if (typeof window !== 'undefined') {
-    // 尝试清除缓存（如果需要）
-    clearBusuanziCache()
-    
-    setTimeout(() => {
-      try {
-        // 使用索引访问方法
-        const busuanziObj = window['busuanzi']
-        if (busuanziObj && typeof busuanziObj.fetch === 'function') {
-          busuanziObj.fetch();
-        }
-      } catch (e) {
-        console.error('不蒜子统计更新失败:', e)
-      }
-    }, 500)
-  }
-}
-
-/**
  * 预加载网站数据
  * 提前加载网站统计、最新评论等数据，避免页面切换时卡顿
  */
@@ -120,22 +71,18 @@ export default {
       });
     };
     
-    // 组件挂载后初始化缩放和浏览量统计
+    // 组件挂载后初始化缩放和预加载数据
     onMounted(() => {
       initZoom();
-      // 更新不蒜子统计
-      updateBusuanziCount();
       // 预加载网站数据
       preloadSiteData();
     });
     
-    // 路由变化时重新初始化缩放和浏览量统计
+    // 路由变化时重新初始化缩放
     watch(
       () => route.path,
       () => nextTick(() => {
         initZoom();
-        // 更新不蒜子统计
-        updateBusuanziCount();
       })
     );
   }

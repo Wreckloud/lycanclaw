@@ -61,8 +61,8 @@ const initWaline = async () => {
       texRenderer: undefined,
       // 本地化文字
       locale: {
-        placeholder: '欢迎留下您的评论~',
-        sofa: '快来抢占沙发吧~',
+        placeholder: '行者,欲留下何言？',
+        sofa: '风静人稀，尚无行者留声。',
         comment: '评论',
         like: '点赞',
         cancelLike: '取消点赞',
@@ -84,10 +84,13 @@ const initWaline = async () => {
         loading: '加载中...',
         login: '登录',
         logout: '退出',
-        admin: '管理员',
         sticky: '置顶',
         word: '字',
         wordHint: '评论字数应在 $0 到 $1 字之间',
+        // 输入框占位符配置
+        nick: '称谓',
+        mail: '邮箱',
+        link: '网址',
       },
       login: 'enable',
       // 错误处理
