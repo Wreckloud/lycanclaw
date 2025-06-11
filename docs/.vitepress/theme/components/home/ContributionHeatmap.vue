@@ -388,8 +388,10 @@ onMounted(async () => {
       post.relativePath !== 'thoughts/tags.md'
     )
     
-    // 按日期统计文章字数
+    // 初始化按日期统计的字数映射
     const dateWordCountMap = {}
+    
+    // 计算随想文章的字数并按日期统计
     thoughtsPosts.forEach(post => {
       if (post.frontmatter.date) {
         // 使用增强的日期解析
@@ -402,6 +404,28 @@ onMounted(async () => {
         }
       }
     })
+    
+    // 尝试加载知识笔记统计数据
+    try {
+      const knowledgeResponse = await fetch(withBase('/knowledge-stats.json'))
+      if (knowledgeResponse.ok) {
+        const knowledgeStats = await knowledgeResponse.json()
+        
+        // 累加知识笔记的字数和更新日期
+        knowledgeStats.forEach(item => {
+          if (item.date) {
+            // 尝试解析日期，如果失败则跳过
+            const parsedDate = parseDateString(item.date)
+            if (parsedDate) {
+              const dateStr = formatDate(parsedDate)
+              dateWordCountMap[dateStr] = (dateWordCountMap[dateStr] || 0) + item.wordCount
+            }
+          }
+        })
+      }
+    } catch (knowledgeError) {
+      // 忽略知识笔记统计数据的加载错误，不影响主要功能
+    }
     
     // 确定日期范围
     yearRange.value = getYearRange()

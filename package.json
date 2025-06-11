@@ -10,10 +10,12 @@
     "vue": "^3.5.16"
   },
   "scripts": {
-    "dev": "pnpm run generate-posts && vitepress dev docs",
-    "build": "pnpm run generate-posts && vitepress build docs",
+    "dev": "pnpm run generate-data && vitepress dev docs",
+    "build": "pnpm run generate-data && vitepress build docs",
     "preview": "vitepress preview docs",
-    "generate-posts": "node docs/.vitepress/scripts/generate-posts-data.js"
+    "generate-posts": "node docs/.vitepress/scripts/generate-posts-data.js",
+    "generate-knowledge-stats": "node docs/.vitepress/scripts/generate-knowledge-stats.js",
+    "generate-data": "pnpm run generate-posts && pnpm run generate-knowledge-stats"
   },
   "dependencies": {
     "@waline/client": "^3.5.7",

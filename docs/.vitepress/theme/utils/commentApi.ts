@@ -49,7 +49,6 @@ let preloadPromise: Promise<WalineComment[]> | null = null;
  */
 const http = {
   async get(url: string): Promise<any> {
-    console.log(`[CommentAPI] 请求: ${url}`);
     try {
       const response = await fetch(url, {
         method: 'GET',
@@ -91,14 +90,11 @@ function getRecentCommentsFromCache(): WalineComment[] | null {
     
     const now = Date.now();
     if ((now - parseInt(cacheTime)) > CACHE_EXPIRATION) {
-      console.log('[CommentAPI] 缓存已过期');
       return null;
     }
     
-    console.log('[CommentAPI] 使用缓存的最新评论数据');
     return JSON.parse(cachedData);
   } catch (e) {
-    console.error('[CommentAPI] 从缓存获取最新评论失败:', e);
     return null;
   }
 }
@@ -112,9 +108,7 @@ function saveRecentCommentsToCache(comments: WalineComment[]): void {
   try {
     localStorage.setItem(RECENT_COMMENTS_CACHE_KEY, JSON.stringify(comments));
     localStorage.setItem(RECENT_COMMENTS_CACHE_TIME_KEY, Date.now().toString());
-    console.log('[CommentAPI] 最新评论数据已保存到缓存');
   } catch (e) {
-    console.error('[CommentAPI] 保存最新评论到缓存失败:', e);
   }
 }
 
@@ -128,9 +122,7 @@ export function clearCommentsCache(): void {
   try {
     localStorage.removeItem(RECENT_COMMENTS_CACHE_KEY);
     localStorage.removeItem(RECENT_COMMENTS_CACHE_TIME_KEY);
-    console.log('[CommentAPI] 评论缓存已清除');
   } catch (e) {
-    console.error('[CommentAPI] 清除评论缓存失败:', e);
   }
 }
 
@@ -148,7 +140,6 @@ export function preloadRecentComments(count: number = 5): void {
     ((cb: Function) => setTimeout(() => cb(), 1000));
   
   requestIdle(() => {
-    console.log('[CommentAPI] 预加载最新评论');
     getRecentComments(count).finally(() => {
       isPreloading = false;
     });

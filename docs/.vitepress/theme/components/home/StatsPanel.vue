@@ -420,8 +420,35 @@ onMounted(async () => {
       totalWords += countWord(post.content || '')
     })
     
-    // 计算本月发布的文章数
+    // 初始化本月发布的文章数
     let currentMonthCount = 0
+    
+    // 尝试加载知识笔记统计数据
+    try {
+      const knowledgeResponse = await fetch(withBase('/knowledge-stats.json'))
+      if (knowledgeResponse.ok) {
+        const knowledgeStats = await knowledgeResponse.json()
+        
+        // 累加知识笔记的字数
+        knowledgeStats.forEach(item => {
+          if (item.wordCount) {
+            totalWords += item.wordCount
+          }
+          
+          // 累加本月知识笔记的数量
+          if (item.date) {
+            const postDate = new Date(item.date)
+            if (isCurrentMonth(postDate)) {
+              currentMonthCount++
+            }
+          }
+        })
+      }
+    } catch (knowledgeError) {
+      // 忽略知识笔记统计数据的加载错误，不影响主要功能
+    }
+    
+    // 计算本月发布的文章数
     thoughtsPosts.forEach(post => {
       if (post.frontmatter.date) {
         const postDate = new Date(post.frontmatter.date)
@@ -434,7 +461,7 @@ onMounted(async () => {
     // 更新统计数据
     stats.currentMonthPosts = currentMonthCount
     stats.thoughtsCount = thoughtsPosts.length
-    stats.thoughtsWords = totalWords
+    stats.thoughtsWords = totalWords // 现在包含知识笔记的字数
     
     isLoading.value = false
     

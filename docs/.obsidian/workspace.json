@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "thoughts/獠牙下的野蔷薇.md",
+                "file": "knowledge/前端框架/新增的测试文章.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "獠牙下的野蔷薇"
+              "title": "新增的测试文章"
             }
           }
         ]
@@ -40,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "thoughts/獠牙下的野蔷薇.md",
+                "file": "knowledge/前端框架/新增的测试文章.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "獠牙下的野蔷薇 的大纲"
+              "title": "新增的测试文章 的大纲"
             }
           },
           {
@@ -152,13 +152,15 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "f1a5ae53903c2eca",
+  "active": "609913dcbebc90fd",
   "lastOpenFiles": [
+    "public/knowledge-stats.json",
+    "thoughts/獠牙下的野蔷薇.md",
+    "knowledge/前端框架/新增的测试文章.md",
     "thoughts/竟然被回关.md",
     "thoughts/光不在彼方.md",
     "thoughts/从一盏灯开始的文明.md",
     "thoughts/远古卷轴.md",
-    "thoughts/獠牙下的野蔷薇.md",
     "public/images/文章资源/竟然被回关/file-20250609182158378.jpg",
     "public/images/文章资源/竟然被回关/86ecfcceae025c3e6055b368a8b36809.jpg",
     "public/images/文章资源/竟然被回关/file-20250609182158378.gif",
@@ -197,7 +199,6 @@
     "public/images/文章资源/vuex-状态管理",
     "vitepress-container-demo.md",
     "public/images/文章资源/vue-x-状态管理",
-    "knowledge/前端基础/网页视觉样式-CSS.md",
     "images/文章资源/网页结构骨架-html",
     "点子合集.canvas"
   ]

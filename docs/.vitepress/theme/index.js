@@ -46,7 +46,6 @@ function clearBusuanziCache() {
           localStorage.removeItem(key)
         }
       })
-      console.log('不蒜子访问统计缓存已清除')
     }
   } catch (e) {
     console.error('清除不蒜子缓存失败:', e)
