@@ -1,11 +1,13 @@
 .comment-section {
-  margin-top: 2rem;
-  margin-bottom: 2rem;
+  margin-top: 3rem;
+  margin-bottom: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px dashed var(--border-color, #ddd);
 }
 
 .comment-title {
   font-size: 1.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
   font-weight: 600;
   color: var(--text-color, #333);
 }
@@ -13,10 +15,153 @@
 .waline-container {
   --waline-theme-color: var(--primary-color, #27ae60);
   --waline-active-color: var(--secondary-color, #2ecc71);
-  --waline-font-size: 16px;
+  --waline-font-size: 14px;
   --waline-border-color: var(--border-color, #ddd);
   --waline-border-radius: 8px;
   max-width: 100%;
+  
+  /* 优化元素间距和布局 */
+  --waline-avatar-size: 2.6rem;
+  --waline-badge-font-size: 0.7em;
+  --waline-info-font-size: 0.7em;
+  --waline-border: 1px solid var(--waline-border-color);
+  --waline-box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  --waline-avatar-radius: 50%; /* 改回圆形头像 */
+}
+
+/* 优化评论卡片 */
+.wl-card {
+  padding: 0.8rem 0;
+  margin-bottom: 0.8rem;
+  border-radius: 0;
+  background-color: transparent;
+  border-bottom: 1px solid var(--waline-border-color);
+  transition: all 0.3s ease;
+}
+
+/* 评论内容区域 */
+.wl-content {
+  margin-top: 0.3rem;
+  margin-bottom: 0.3rem;
+  line-height: 1.5;
+}
+
+/* 头像优化 */
+.wl-avatar {
+  margin-right: 0.5rem;
+}
+
+/* 评论元数据区 */
+.wl-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  margin-top: 0.1rem;
+  line-height: 1.2;
+}
+
+/* 评论作者和时间等信息 */
+.wl-head {
+  font-size: 0.9rem;
+  line-height: 1.2;
+  margin-bottom: 0.2rem;
+}
+
+.wl-head .wl-nick {
+  font-weight: 500;
+}
+
+.wl-head .wl-time {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+/* 评论工具栏 */
+.wl-actions {
+  margin-top: 0.2rem;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+}
+
+.wl-actions svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* 评论按钮 */
+.wl-btn {
+  padding: 0.25rem 0.7rem;
+  font-size: 0.85rem;
+  line-height: 1.2;
+}
+
+/* 评论编辑区域 */
+.wl-header {
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.wl-header-item {
+  margin-bottom: 0.3rem;
+}
+
+.wl-input {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  height: 2rem;
+}
+
+/* 编辑器工具栏按钮 */
+.wl-footer .wl-action svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* 评论引用样式 */
+.wl-quote {
+  border-left: 1px solid var(--waline-border-color);
+  padding-left: 0.8rem;
+  opacity: 0.8;
+  font-size: 0.9em;
+}
+
+/* 编辑器区域 */
+.wl-panel {
+  border: none !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  margin-bottom: 2rem;
+  overflow: hidden;
+}
+
+/* 编辑器内部 */
+.wl-editor {
+  padding: 0.8rem 1rem;
+  min-height: 120px;
+  font-family: inherit !important;
+  line-height: 1.6 !important;
+  background-color: transparent !important;
+  border: none !important;
+}
+
+/* 编辑器底部工具栏 */
+.wl-footer {
+  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--waline-border-color);
+}
+
+/* 评论嵌套缩进优化 */
+.wl-reply .wl-card {
+  margin-left: 1.2rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-left: 1px solid var(--waline-border-color);
+  padding-left: 0.8rem;
+  border-bottom: none;
 }
 
 /* 适配暗色模式 */
@@ -37,13 +182,24 @@ body.dark-theme .waline-container {
 @media (max-width: 768px) {
   .waline-container {
     --waline-font-size: 14px;
+    --waline-avatar-size: 2.5rem;
   }
   
   .wl-card {
-    padding: 0.5rem !important;
+    padding: 0.8rem;
+    margin-bottom: 1rem;
+  }
+  
+  .wl-reply .wl-card {
+    margin-left: 1rem;
+  }
+  
+  .wl-editor {
+    min-height: 100px;
   }
   
   .comment-title {
     font-size: 1.25rem;
+    margin-bottom: 1rem;
   }
 } 
