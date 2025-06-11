@@ -1,0 +1,502 @@
+<script setup lang="ts">
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { withBase, useData } from 'vitepress'
+import { getRecentComments, formatCommentDate, type WalineComment } from '../../utils/commentApi'
+
+// 判断是否在浏览器环境中
+const isBrowser = typeof window !== 'undefined'
+
+// 加载状态和错误状态
+const isLoading = ref(true)
+const hasError = ref(false)
+const errorMessage = ref('')
+const isRefreshing = ref(false) // 刷新状态
+
+// 滚动状态
+const scrollPosition = ref(0)
+const maxScroll = ref(0)
+
+// 滚动容器引用
+const containerRef = ref<HTMLElement | null>(null)
+
+// 评论数据
+const comments = ref<WalineComment[]>([])
+
+// 从VitePress获取文章信息
+const { theme } = useData()
+
+/**
+ * 获取文章标题
+ * @param url 文章路径
+ * @returns 文章标题
+ */
+function getArticleTitle(url: string): string {
+  // 从文章URL中提取路径
+  const path = url.replace(/^\//, '')
+  
+  // 特殊处理 about 页面
+  if (path === 'about.html') {
+    return '留痕之地-关于'
+  }
+  
+  // 尝试在主题配置中找到文章
+  if (theme.value && theme.value.sidebar) {
+    // 这里需要根据实际项目结构调整查找文章标题的逻辑
+    return path ? path.split('/').pop()?.replace('.html', '').replace(/%\w+/g, ' ') || '未知文章' : '首页'
+  }
+  
+  return path ? path.split('/').pop()?.replace('.html', '').replace(/%\w+/g, ' ') || '未知文章' : '首页'
+}
+
+/**
+ * 生成文章链接
+ * @param url 文章路径
+ * @returns 完整链接
+ */
+function getArticleLink(url: string): string {
+  return withBase(url)
+}
+
+/**
+ * 更新滚动位置
+ */
+function updateScrollPosition() {
+  if (!containerRef.value) return
+  scrollPosition.value = containerRef.value.scrollTop
+  
+  // 计算最大滚动距离
+  maxScroll.value = containerRef.value.scrollHeight - containerRef.value.clientHeight
+}
+
+/**
+ * 平滑滚动评论区
+ * @param delta 滚动增量
+ */
+function smoothScroll(delta) {
+  if (!containerRef.value) return
+  
+  const targetScroll = containerRef.value.scrollTop + delta
+  
+  // 使用原生动画API实现平滑滚动
+  containerRef.value.scrollTo({
+    top: targetScroll,
+    behavior: 'smooth'
+  })
+}
+
+/**
+ * 设置滚动事件
+ */
+function setupScrollEvents() {
+  if (!containerRef.value) return
+  
+  // 监听滚轮事件，优化滚动体验
+  containerRef.value.addEventListener('wheel', (e) => {
+    e.preventDefault()
+    
+    // 控制滚动速度，使其更平滑
+    const scrollAmount = e.deltaY * 0.8
+    smoothScroll(scrollAmount)
+  }, { passive: false })
+  
+  // 初始化滚动位置
+  updateScrollPosition()
+}
+
+/**
+ * 获取最近评论
+ * @param forceRefresh 是否强制刷新
+ */
+async function fetchRecentComments(forceRefresh = false) {
+  if (!isBrowser) return
+  
+  if (forceRefresh) {
+    isRefreshing.value = true
+  } else {
+    isLoading.value = true
+  }
+  
+  hasError.value = false
+  
+  try {
+    // 使用API获取最近评论，传入forceRefresh参数
+    const data = await getRecentComments(7, forceRefresh)
+    comments.value = data
+  } catch (error) {
+    console.error('获取最近评论失败:', error)
+    hasError.value = true
+    errorMessage.value = error instanceof Error ? error.message : '未知错误'
+  } finally {
+    isLoading.value = false
+    isRefreshing.value = false
+  }
+}
+
+onMounted(() => {
+  if (isBrowser) {
+    // 页面加载时始终强制刷新获取最新评论
+    fetchRecentComments(true).then(() => {
+      // 评论加载完成后，设置滚动事件
+      setTimeout(() => {
+        if (containerRef.value) {
+          // 移除直接监听的scroll事件，由setupScrollEvents统一管理
+          containerRef.value.removeEventListener('scroll', updateScrollPosition)
+          containerRef.value.addEventListener('scroll', updateScrollPosition)
+          setupScrollEvents() // 设置增强的滚动事件处理
+          updateScrollPosition() // 初始更新滚动位置
+        }
+      }, 100)
+    })
+  }
+})
+
+onBeforeUnmount(() => {
+  // 清理滚动事件监听
+  if (containerRef.value) {
+    containerRef.value.removeEventListener('scroll', updateScrollPosition)
+    containerRef.value.removeEventListener('wheel', () => {})
+  }
+})
+</script>
+
+<template>
+  <div class="recent-comments-container">
+    <h3 class="section-title">最新评论</h3>
+    
+    <!-- 内容区域 -->
+    <div v-if="!isLoading && !hasError && comments.length > 0" class="comments-content-area">
+      <!-- 顶部渐变遮罩 -->
+      <div class="fade-mask top" :style="{ opacity: scrollPosition > 0 ? 1 : 0 }"></div>
+      
+      <div class="comments-content" ref="containerRef" @scroll="updateScrollPosition">
+        <div v-for="comment in comments" :key="comment.objectId" class="comment-item">
+          <div class="comment-header">
+            <div class="comment-user">
+              <span class="nick">{{ comment.nick }}</span>
+              <span class="connector">发表在</span>
+              <a class="article-link" :href="getArticleLink(comment.url)">
+                {{ getArticleTitle(comment.url) }}
+              </a>
+            </div>
+            <div class="comment-time">{{ formatCommentDate(comment.insertedAt) }}</div>
+          </div>
+          <div class="comment-body" v-html="comment.comment"></div>
+        </div>
+      </div>
+      
+      <!-- 底部渐变遮罩 -->
+      <div class="fade-mask bottom" :style="{ opacity: scrollPosition < (maxScroll - 2) ? 1 : 0 }"></div>
+    </div>
+    
+    <!-- 加载状态 -->
+    <div v-else-if="isLoading" class="comments-content-area">
+      <!-- 顶部渐变遮罩 -->
+      <div class="fade-mask top" style="opacity: 0"></div>
+      
+      <div class="comments-content loading-content">
+        <div v-for="i in 5" :key="i" class="comment-item skeleton-item">
+          <div class="comment-header">
+            <div class="skeleton-user"></div>
+            <div class="skeleton-time"></div>
+          </div>
+          <div class="comment-body">
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line"></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 加载状态下的底部渐变遮罩 -->
+      <div class="fade-mask bottom" style="opacity: 1"></div>
+    </div>
+    
+    <!-- 空状态 -->
+    <div v-else-if="!hasError && comments.length === 0" class="comments-empty">
+      <div class="empty-message">暂无评论</div>
+    </div>
+    
+    <!-- 错误状态 -->
+    <div v-else class="comments-error">
+      <div class="error-message">加载评论失败: {{ errorMessage }}</div>
+      <button class="retry-button" @click="fetchRecentComments(true)">重试</button>
+    </div>
+    
+    <!-- 刷新叠加层 -->
+    <div class="comments-overlay" v-if="isRefreshing">
+      <div class="refresh-spinner"></div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.recent-comments-container {
+  margin-bottom: 2rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.section-title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--vp-c-divider);
+  margin-bottom: 16px; /* 与热力图保持一致 */
+}
+
+/* 评论内容区域 */
+.comments-content-area {
+  position: relative;
+  height: 330px;
+  overflow: hidden;
+  margin-top: 16px;
+}
+
+.comments-content {
+  padding: 20px 0;
+  height: 100%;
+  overflow-y: auto;
+  
+  /* 完全隐藏滚动条 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+/* 隐藏WebKit浏览器的滚动条 */
+.comments-content::-webkit-scrollbar {
+  display: none;
+}
+
+/* 渐变遮罩 */
+.fade-mask {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 20px;
+  pointer-events: none; /* 允许点击穿透 */
+  z-index: 10;
+  transition: opacity 0.3s ease;
+}
+
+.fade-mask.top {
+  top: 0;
+  background: linear-gradient(to bottom, var(--vp-c-bg), transparent);
+}
+
+.fade-mask.bottom {
+  bottom: 0;
+  background: linear-gradient(to top, var(--vp-c-bg), transparent);
+}
+
+/* 评论项 */
+.comment-item {
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  background-color: var(--vp-c-bg-soft);
+  margin-bottom: 0.5rem;
+}
+
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--vp-c-text-3);
+  line-height: 1.2;
+}
+
+.comment-user {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.comment-user .nick {
+  font-weight: 700; /* 加粗用户名 */
+  color: var(--vp-c-brand);
+}
+
+.comment-user .connector {
+  opacity: 0.8;
+}
+
+.article-link {
+  color: var(--vp-c-text-3);
+  text-decoration: none;
+  transition: color 0.2s ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100px;
+}
+
+.article-link:hover {
+  color: var(--vp-c-brand);
+}
+
+.comment-time {
+  font-size: 0.7rem;
+  color: var(--vp-c-text-3);
+  opacity: 0.8;
+  flex-shrink: 0;
+  margin-left: 0.25rem;
+}
+
+.comment-body {
+  font-size: 0.85rem;
+  color: var(--vp-c-text-1);
+  word-break: break-word;
+  line-height: 1.4;
+  max-height: 3.5em; /* 显示2.5行 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* 表情包样式特殊处理 */
+.comment-body :deep(.wl-emoji) {
+  display: inline-block;
+  height: 1.2em;
+  max-height: 1.2em;
+  vertical-align: text-bottom;
+  width: auto;
+}
+
+/* 骨架屏样式 */
+.loading-content .comment-item {
+  animation: pulse 1.5s infinite alternate;
+}
+
+.skeleton-user {
+  width: 100px;
+  height: 12px;
+  background: linear-gradient(90deg, var(--vp-c-bg) 25%, var(--vp-c-bg-mute) 50%, var(--vp-c-bg) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 2px;
+}
+
+.skeleton-time {
+  width: 40px;
+  height: 10px;
+  background: linear-gradient(90deg, var(--vp-c-bg) 25%, var(--vp-c-bg-mute) 50%, var(--vp-c-bg) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 2px;
+}
+
+.skeleton-line {
+  height: 10px;
+  background: linear-gradient(90deg, var(--vp-c-bg) 25%, var(--vp-c-bg-mute) 50%, var(--vp-c-bg) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 2px;
+  margin-bottom: 0.35rem;
+}
+
+.skeleton-line:first-child {
+  width: 100%;
+}
+
+.skeleton-line:last-child {
+  width: 80%;
+  margin-bottom: 0;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* 空状态和错误状态 */
+.comments-empty,
+.comments-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 330px;
+  color: var(--vp-c-text-2);
+  background-color: var(--vp-c-bg-soft);
+  border-radius: 6px;
+}
+
+.empty-message,
+.error-message {
+  font-size: 0.8rem;
+  margin-bottom: 0.75rem;
+}
+
+.retry-button {
+  padding: 0.2rem 0.8rem;
+  border: none;
+  border-radius: 4px;
+  background-color: var(--vp-c-brand);
+  color: white;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.retry-button:hover {
+  background-color: var(--vp-c-brand-dark);
+}
+
+/* 刷新叠加层 */
+.comments-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(var(--vp-c-bg-rgb), 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+}
+
+.refresh-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid transparent;
+  border-top-color: var(--vp-c-brand);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 响应式布局 */
+@media (max-width: 768px) {
+  .comment-header {
+    font-size: 0.7rem;
+  }
+  
+  .comment-body {
+    font-size: 0.8rem;
+  }
+}
+</style> 

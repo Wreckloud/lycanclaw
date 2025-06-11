@@ -14,12 +14,16 @@ import './styles/index.css';
 // 导入echarts
 import * as echarts from 'echarts';
 
+// 导入API
+import { preloadRecentComments } from './utils/commentApi';
+
 // 使用异步组件实现按需加载
 const AsyncArticleMetadata = defineAsyncComponent(() => import('./components/ArticleMetadata.vue'));
 const AsyncPostList = defineAsyncComponent(() => import('./components/PostList.vue'));
 const AsyncDataPanel = defineAsyncComponent(() => import('./components/DataPanel.vue'));
 const AsyncPostTitle = defineAsyncComponent(() => import('./components/PostTitle.vue'));
 const AsyncComment = defineAsyncComponent(() => import('./components/Comment.vue'));
+const AsyncRecentComments = defineAsyncComponent(() => import('./components/home/RecentComments.vue'));
 
 /**
  * 清除不蒜子缓存
@@ -71,6 +75,21 @@ function updateBusuanziCount() {
   }
 }
 
+/**
+ * 预加载网站数据
+ * 提前加载网站统计、最新评论等数据，避免页面切换时卡顿
+ */
+function preloadSiteData() {
+  if (typeof window === 'undefined') return;
+  
+  // 在页面加载完成后，预加载评论数据
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      preloadRecentComments();
+    }, 2000); // 延迟2秒预加载，避免影响首屏渲染
+  });
+}
+
 export default {
   extends: DefaultTheme,
   
@@ -81,6 +100,7 @@ export default {
     app.component('DataPanel', AsyncDataPanel);
     app.component('PostTitle', AsyncPostTitle);
     app.component('Comment', AsyncComment);
+    app.component('RecentComments', AsyncRecentComments);
     
     // 全局注册echarts
     app.config.globalProperties.$echarts = echarts;
@@ -106,6 +126,8 @@ export default {
       initZoom();
       // 更新不蒜子统计
       updateBusuanziCount();
+      // 预加载网站数据
+      preloadSiteData();
     });
     
     // 路由变化时重新初始化缩放和浏览量统计

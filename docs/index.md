@@ -26,6 +26,7 @@ hero:
 import RecentPosts from './.vitepress/theme/components/home/RecentPosts.vue'
 import StatsPanel from './.vitepress/theme/components/home/StatsPanel.vue'
 import ContributionHeatmap from './.vitepress/theme/components/home/ContributionHeatmap.vue'
+import RecentComments from './.vitepress/theme/components/home/RecentComments.vue'
 </script>
 
 
@@ -45,9 +46,13 @@ import ContributionHeatmap from './.vitepress/theme/components/home/Contribution
     <div class="home-section stats-section">
       <StatsPanel />
     </div>
-  <!-- 贡献热力图 -->
+    <!-- 贡献热力图 -->
     <div class="home-section heatmap-section">
       <ContributionHeatmap />
+    </div>
+    <!-- 最新评论 -->
+    <div class="home-section comments-section">
+      <RecentComments />
     </div>
   </div>
 </div>
@@ -56,7 +61,7 @@ import ContributionHeatmap from './.vitepress/theme/components/home/Contribution
 /* 主页整体容器 */
 .home-container {
   display: grid;
-  grid-template-columns: 1.8fr 1.2fr; /* 调整左右比例，给右侧更多空间 */
+  grid-template-columns: 2fr 1fr; /* 调整左右比例，给右侧更多空间 */
   grid-template-areas: "content sidebar";
   gap: 2rem;
   margin-top: 2rem;

@@ -28,7 +28,7 @@ function countWord(data) {
 const recentPosts = ref([])
 const isLoading = ref(true)
 const hasError = ref(false)
-const maxPosts = 5 // 显示最多5篇最新文章
+const maxPosts = 6 // 显示最多6篇最新文章
 
 onMounted(async () => {
   // 确保只在浏览器环境中执行
