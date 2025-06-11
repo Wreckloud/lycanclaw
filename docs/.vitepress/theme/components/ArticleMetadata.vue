@@ -21,57 +21,98 @@ const hasCreationDate = computed(() => !!frontmatter.value.date)
 const creationDate = computed(() => {
   if (!frontmatter.value.date) return null
   
-  // 直接从日期字符串中提取年月日时分秒，避免时区转换问题
-  const dateStr = String(frontmatter.value.date).replace(/^['"]|['"]$/g, '')
-  const match = dateStr.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/)
+  // 获取原始日期字符串(可能是ISO格式或原始格式)
+  const rawDateStr = String(frontmatter.value.date)
   
-  if (match) {
+  // 尝试匹配YYYY-MM-DD HH:MM:SS格式
+  const regularMatch = rawDateStr.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/)
+  if (regularMatch) {
     return {
-      year: parseInt(match[1], 10),
-      month: parseInt(match[2], 10),
-      day: parseInt(match[3], 10),
-      hours: parseInt(match[4], 10),
-      minutes: parseInt(match[5], 10),
-      seconds: parseInt(match[6], 10)
+      year: parseInt(regularMatch[1], 10),
+      month: parseInt(regularMatch[2], 10),
+      day: parseInt(regularMatch[3], 10),
+      hours: parseInt(regularMatch[4], 10),
+      minutes: parseInt(regularMatch[5], 10),
+      seconds: parseInt(regularMatch[6], 10),
+      rawString: rawDateStr
     }
   }
   
-  // 如果无法提取，则回退到Date对象
-  try {
-    return new Date(dateStr)
-  } catch (e) {
-    console.error('无法解析日期:', frontmatter.value.date)
-    return null
+  // 尝试匹配ISO格式 YYYY-MM-DDTHH:MM:SS.sssZ
+  const isoMatch = rawDateStr.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/)
+  if (isoMatch) {
+    return {
+      year: parseInt(isoMatch[1], 10),
+      month: parseInt(isoMatch[2], 10),
+      day: parseInt(isoMatch[3], 10),
+      hours: parseInt(isoMatch[4], 10),
+      minutes: parseInt(isoMatch[5], 10),
+      seconds: parseInt(isoMatch[6], 10),
+      rawString: rawDateStr
+    }
   }
+  
+  // 回退到frontmatter中的原始日期
+  if (typeof frontmatter.value.date === 'string') {
+    return { rawString: frontmatter.value.date }
+  }
+  
+  // 最后尝试使用日期对象(将被格式化函数处理)
+  return { rawString: rawDateStr }
 })
 
 // 格式化日期，显示年月日时分秒
 const formattedDate = computed(() => {
   if (!creationDate.value) return ''
   
-  // 如果是我们自己解析的日期对象
-  if (typeof creationDate.value === 'object' && 'year' in creationDate.value) {
-    const date = creationDate.value
+  // 如果能提取年月日时分秒，则使用提取的数据进行格式化
+  if (typeof creationDate.value === 'object' && 'year' in creationDate.value && 
+      'month' in creationDate.value && 'day' in creationDate.value) {
+    // 使用类型断言解决TypeScript类型检查错误
+    interface DateParts {
+      year: number;
+      month: number;
+      day: number;
+      hours?: number;
+      minutes?: number;
+      seconds?: number;
+    }
+    
+    const date = creationDate.value as unknown as DateParts
     const year = date.year
     const month = date.month.toString().padStart(2, '0')
     const day = date.day.toString().padStart(2, '0')
-    const hours = date.hours.toString().padStart(2, '0')
-    const minutes = date.minutes.toString().padStart(2, '0')
-    const seconds = date.seconds.toString().padStart(2, '0')
+    const hours = date.hours?.toString().padStart(2, '0') || '00'
+    const minutes = date.minutes?.toString().padStart(2, '0') || '00'
+    const seconds = date.seconds?.toString().padStart(2, '0') || '00'
     
     return `${year}年${month}月${day}日 ${hours}:${minutes}:${seconds}`
   }
   
-  // 否则使用Date对象
-  const date = creationDate.value
-  const year = date.getFullYear()
-  const month = (date.getMonth() + 1).toString().padStart(2, '0')
-  const day = date.getDate().toString().padStart(2, '0')
-  const hours = date.getHours().toString().padStart(2, '0')
-  const minutes = date.getMinutes().toString().padStart(2, '0')
-  const seconds = date.getSeconds().toString().padStart(2, '0')
+  // 如果有原始字符串，尝试从中提取信息
+  if ('rawString' in creationDate.value) {
+    const rawDateStr = creationDate.value.rawString
+    
+    // 尝试匹配YYYY-MM-DD HH:MM:SS格式
+    const regularMatch = rawDateStr.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/)
+    if (regularMatch) {
+      const [_, year, month, day, hours, minutes, seconds] = regularMatch
+      return `${year}年${month}月${day}日 ${hours}:${minutes}:${seconds}`
+    }
+    
+    // 尝试匹配ISO格式 YYYY-MM-DDTHH:MM:SS.sssZ
+    const isoMatch = rawDateStr.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/)
+    if (isoMatch) {
+      const [_, year, month, day, hours, minutes, seconds] = isoMatch
+      return `${year}年${month}月${day}日 ${hours}:${minutes}:${seconds}`
+    }
+    
+    // 如果都无法匹配，返回原始字符串
+    return rawDateStr
+  }
   
-  return `${year}年${month}月${day}日 ${hours}:${minutes}:${seconds}`
+  // 最后的备选方案，返回任何可能的字符串表示
+  return String(creationDate.value)
 })
 
 // 计算字数
