@@ -113,6 +113,17 @@ watch(() => route.path, () => {
   // 延迟执行以确保DOM更新完成
   setTimeout(() => {
     initWaline()
+    
+    // 手动设置输入框占位符
+    setTimeout(() => {
+      const nickInput = document.querySelector('.wl-header .wl-nick')
+      const mailInput = document.querySelector('.wl-header .wl-mail')
+      const linkInput = document.querySelector('.wl-header .wl-link')
+      
+      if (nickInput) nickInput.setAttribute('placeholder', '愿世人以何之称')
+      if (mailInput) mailInput.setAttribute('placeholder', '传信之途，用于回应与头像') 
+      if (linkInput) linkInput.setAttribute('placeholder', '可留空, 留者可引人入汝之博客')
+    }, 500)
   }, 100)
 })
 
@@ -435,6 +446,17 @@ input:focus {
   margin: 6px 0;
   word-break: break-word;
   overflow-wrap: break-word;
+}
+
+/* 设置占位符文本 - 通过CSS方式覆盖默认占位符 */
+.wl-header .wl-nick::placeholder {
+  content: "称谓";
+}
+.wl-header .wl-mail::placeholder {
+  content: "邮箱";
+}
+.wl-header .wl-link::placeholder {
+  content: "网址";
 }
 
 /* 评论回复内容样式 */
