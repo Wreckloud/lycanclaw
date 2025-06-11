@@ -61,18 +61,22 @@ const initWaline = async () => {
       texRenderer: undefined,
       // 本地化文字
       locale: {
+        nick: '称谓',
+        nickError: '昵称不能少于3个字符',
+        mail: '邮箱',
+        mailError: '请填写正确的邮件地址',
+        link: '网址',
+        optional: '可选',
         placeholder: '行者,欲留下何言？',
         sofa: '风静人稀，尚无行者留声。',
-        comment: '评论',
+        submit: '提交',
         like: '点赞',
         cancelLike: '取消点赞',
-        replyPlaceholder: '回复 @{at}',
-        admin: '管理员',
-        level0: '潜水',
-        level1: '冒泡',
-        level2: '活跃',
-        level3: '话痨',
-        more: '更多...',
+        reply: '回复',
+        cancelReply: '取消回复',
+        comment: '评论',
+        refresh: '刷新',
+        more: '加载更多...',
         preview: '预览',
         emoji: '表情',
         uploadImage: '上传图片',
@@ -81,16 +85,17 @@ const initWaline = async () => {
         hours: '小时前',
         days: '天前',
         now: '刚刚',
-        loading: '加载中...',
+        uploading: '正在上传',
         login: '登录',
         logout: '退出',
+        admin: '管理员',
         sticky: '置顶',
         word: '字',
         wordHint: '评论字数应在 $0 到 $1 字之间',
-        // 输入框占位符配置
-        nick: '称谓',
-        mail: '邮箱',
-        link: '网址',
+        anonymous: '匿名',
+        gif: '表情包',
+        gifSearchPlaceholder: '搜索表情包',
+        replyPlaceholder: '回复 @{at}',
       },
       login: 'enable',
       // 错误处理
@@ -142,6 +147,17 @@ onMounted(() => {
       initWaline()
       // 存储清理函数，用于卸载时调用
       window.__walineCleanup = setupThemeWatcher()
+      
+      // 手动设置输入框占位符
+      setTimeout(() => {
+        const nickInput = document.querySelector('.wl-header .wl-nick')
+        const mailInput = document.querySelector('.wl-header .wl-mail')
+        const linkInput = document.querySelector('.wl-header .wl-link')
+        
+        if (nickInput) nickInput.setAttribute('placeholder', '称谓')
+        if (mailInput) mailInput.setAttribute('placeholder', '邮箱')
+        if (linkInput) linkInput.setAttribute('placeholder', '网址')
+      }, 500)
     }, 200)
   }
 })
