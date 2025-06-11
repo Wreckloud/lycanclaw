@@ -108,25 +108,6 @@ const initWaline = async () => {
   }
 }
 
-// 监听路由变化重新初始化评论
-watch(() => route.path, () => {
-  // 延迟执行以确保DOM更新完成
-  setTimeout(() => {
-    initWaline()
-    
-    // 手动设置输入框占位符
-    setTimeout(() => {
-      const nickInput = document.querySelector('.wl-header .wl-nick')
-      const mailInput = document.querySelector('.wl-header .wl-mail')
-      const linkInput = document.querySelector('.wl-header .wl-link')
-      
-      if (nickInput) nickInput.setAttribute('placeholder', '愿世人以何之称')
-      if (mailInput) mailInput.setAttribute('placeholder', '传信之途，用于回应与头像') 
-      if (linkInput) linkInput.setAttribute('placeholder', '可留空, 留者可引人入汝之博客')
-    }, 500)
-  }, 100)
-})
-
 /**
  * 设置主题变化监听器
  * @returns {Function} 清理函数
@@ -165,9 +146,9 @@ onMounted(() => {
         const mailInput = document.querySelector('.wl-header .wl-mail')
         const linkInput = document.querySelector('.wl-header .wl-link')
         
-        if (nickInput) nickInput.setAttribute('placeholder', '称谓')
-        if (mailInput) mailInput.setAttribute('placeholder', '邮箱')
-        if (linkInput) linkInput.setAttribute('placeholder', '网址')
+        if (nickInput) nickInput.setAttribute('placeholder', '愿世人以何之称')
+        if (mailInput) mailInput.setAttribute('placeholder', '传信之途用于回应')
+        if (linkInput) linkInput.setAttribute('placeholder', '可跳转进汝之博客')
       }, 500)
     }, 200)
   }
@@ -285,13 +266,11 @@ html.dark .waline-container {
 }
 
 .wl-header .wl-header-item label {
-  font-size: 13px;
   color: var(--vp-c-text-2);
 }
 
 .wl-header .wl-input {
   width: 100%;
-  height: 28px;
   background-color: var(--vp-c-bg);
   font-size: 13px;
 }
@@ -418,6 +397,9 @@ input:focus {
 @media (max-width: 768px) {
   .waline-container {
     --waline-avatar-size: 32px;
+  }
+  .wl-header .wl-header-item label{
+    width: 50px;
   }
   
   .wl-card {
