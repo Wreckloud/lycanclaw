@@ -143,8 +143,8 @@ onMounted(() => {
   }
 })
       
-// 将onBeforeUnmount移到顶层
-      onBeforeUnmount(() => {
+// 组件卸载时的清理函数
+onBeforeUnmount(() => {
   // 清理主题观察器
   if (typeof window !== 'undefined' && window.__walineCleanup) {
     window.__walineCleanup()
@@ -152,8 +152,8 @@ onMounted(() => {
   }
   
   // 销毁Waline实例
-        if (walineInstance) {
-          walineInstance.destroy()
+  if (walineInstance) {
+    walineInstance.destroy()
     walineInstance = null
   }
 })
@@ -212,7 +212,6 @@ html.dark .waline-container {
   background: transparent;
 }
 
-
 /* 元信息项 */
 .wl-meta span {
   font-size: 8px !important;
@@ -237,8 +236,6 @@ html.dark .waline-container {
   margin-right: 4px;
 }
 
-/* 回复区样式 */
-
 /* 引用样式 */
 .wl-quote {
   border-left: 1px dashed var(--vp-c-divider) !important;
@@ -250,7 +247,6 @@ html.dark .waline-container {
   margin-bottom: 16px;
   border: 1px solid var(--waline-border-color) !important;
   border-radius: 6px !important;
-
 }
 
 .wl-header .wl-header-item {
@@ -328,7 +324,7 @@ html.dark .waline-container {
   z-index: 100;
   border: 1px solid var(--waline-border-color);
   border-radius: 4px;
-  background-color: var(--vp-c-bg);
+  background-color: var(--vp-c-bg-soft) !important;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   max-height: 300px;
   overflow-y: auto;
@@ -340,10 +336,32 @@ html.dark .waline-container {
   z-index: 100;
   border: 1px solid var(--waline-border-color);
   border-radius: 4px;
-  background-color: var(--vp-c-bg);
+  background-color: var(--vp-c-bg-soft) !important;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   max-height: 300px;
   overflow-y: auto;
+}
+
+/* 表情选择器内部标签 */
+.wl-tab {
+  background-color: var(--vp-c-bg) !important;
+  border-bottom: 1px solid var(--waline-border-color);
+}
+
+/* 表情选择器内容区域 */
+.wl-tabs {
+  background-color: var(--vp-c-bg-soft) !important;
+}
+
+/* 表情选项卡内容 */
+.wl-tab-content {
+  background-color: var(--vp-c-bg-soft) !important;
+}
+
+/* 表情项悬浮状态 */
+.wl-emoji-item:hover {
+  background-color: var(--vp-c-bg-alt) !important;
+  border-radius: 4px;
 }
 
 /* 隐藏Markdown指南按钮 */

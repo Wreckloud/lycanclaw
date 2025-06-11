@@ -127,11 +127,11 @@ function createParticles(event) {
   const colors = ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899']
   
   // 根据设备性能动态调整粒子数量
-  let particles = 24 // 增加粒子数量到24个
+  let particles = 36 // 增加粒子数量到24个
   
   // 移动设备检测（简易版）- 降低粒子数量
   if (window.innerWidth <= 768) {
-    particles = 12 // 移动设备使用12个粒子
+    particles = 24 // 移动设备使用12个粒子
   }
   
   // 创建Canvas元素
@@ -214,7 +214,7 @@ function createParticles(event) {
       color,
       alpha: 1,
       rotation: 0,
-      rotationSpeed: (Math.random() * 0.8 - 0.4) * Math.PI / 180 * 6 // 增加旋转速度
+      rotationSpeed: (Math.random() * 0.8 - 0.4) * Math.PI / 180 * 12 // 增加旋转速度
     })
   }
   

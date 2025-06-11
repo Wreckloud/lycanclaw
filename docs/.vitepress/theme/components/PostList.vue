@@ -47,45 +47,43 @@ const pageNumbers = computed(() => {
   
   if (totalPages.value <= maxVisiblePages) {
     // 如果总页数少于最大显示页码，则显示所有页码
-    for (let i = 1; i <= totalPages.value; i++) {
-      pages.push(i)
-    }
-  } else {
-    // 总是显示第一页
-    pages.push(1)
-    
-    // 计算中间页码的起始和结束
-    let start = Math.max(2, currentPage.value - 1)
-    let end = Math.min(totalPages.value - 1, currentPage.value + 1)
-    
-    // 如果当前页靠近开始，多显示几个后面的页码
-    if (currentPage.value <= 3) {
-      end = Math.min(totalPages.value - 1, 4)
-    }
-    
-    // 如果当前页靠近结束，多显示几个前面的页码
-    if (currentPage.value >= totalPages.value - 2) {
-      start = Math.max(2, totalPages.value - 3)
-    }
-    
-    // 如果第一页和起始页之间有间隔，添加省略号
-    if (start > 2) {
-      pages.push('...')
-    }
-    
-    // 添加中间页码
-    for (let i = start; i <= end; i++) {
-      pages.push(i)
-    }
-    
-    // 如果结束页和最后一页之间有间隔，添加省略号
-    if (end < totalPages.value - 1) {
-      pages.push('...')
-    }
-    
-    // 总是显示最后一页
-    pages.push(totalPages.value)
+    return Array.from({ length: totalPages.value }, (_, i) => i + 1)
   }
+  
+  // 总是显示第一页
+  pages.push(1)
+  
+  // 计算中间页码的起始和结束
+  let start = Math.max(2, currentPage.value - 1)
+  let end = Math.min(totalPages.value - 1, currentPage.value + 1)
+  
+  // 如果当前页靠近开始，多显示几个后面的页码
+  if (currentPage.value <= 3) {
+    end = Math.min(totalPages.value - 1, 4)
+  }
+  
+  // 如果当前页靠近结束，多显示几个前面的页码
+  if (currentPage.value >= totalPages.value - 2) {
+    start = Math.max(2, totalPages.value - 3)
+  }
+  
+  // 如果第一页和起始页之间有间隔，添加省略号
+  if (start > 2) {
+    pages.push('...')
+  }
+  
+  // 添加中间页码
+  for (let i = start; i <= end; i++) {
+    pages.push(i)
+  }
+  
+  // 如果结束页和最后一页之间有间隔，添加省略号
+  if (end < totalPages.value - 1) {
+    pages.push('...')
+  }
+  
+  // 总是显示最后一页
+  pages.push(totalPages.value)
   
   return pages
 })
@@ -161,8 +159,8 @@ function formatDate(dateString) {
   if (isNaN(date.getTime())) return ''
   
   const year = date.getFullYear()
-  const month = (date.getMonth() + 1).toString().padStart(2, '0')
-  const day = date.getDate().toString().padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
   
   return `${year}年${month}月${day}日`
 }
@@ -202,8 +200,10 @@ function getPostExcerpt(post) {
     <!-- 文章列表 -->
     <template v-else>
       <div v-for="post in paginatedPosts" :key="post.url" class="post-item">
-        <a :href="withBase(post.url)" class="post-link">
-          <h2 class="post-item-title">{{ post.frontmatter.title }}</h2>
+        <div class="post-content">
+          <h2 class="post-item-title">
+            <a :href="withBase(post.url)" class="title-link">{{ post.frontmatter.title }}</a>
+          </h2>
           
           <!-- 文章摘要：优先使用description -->
           <p class="post-excerpt">{{ getPostExcerpt(post) }}</p>
@@ -220,7 +220,7 @@ function getPostExcerpt(post) {
               </template>
             </span>
           </div>
-        </a>
+        </div>
       </div>
       
       <!-- 分页导航 -->
@@ -278,21 +278,32 @@ function getPostExcerpt(post) {
   border-bottom: none;
 }
 
-.post-link {
+.post-content {
   display: block;
-  text-decoration: none;
   color: var(--vp-c-text-1);
 }
 
-.post-link:hover .post-item-title {
+.title-link {
+  display: inline-block;
+  text-decoration: none;
+  color: var(--vp-c-text-1);
+  transition: color 0.2s;
+  font-weight: 700;
+}
+
+.title-link:hover {
   color: var(--vp-c-brand-1);
 }
 
 .post-item-title {
   font-size: 1.4rem;
-  margin: 0 0 0.5rem 0;
-  transition: color 0.2s;
+  margin: 0;
   color: var(--vp-c-text-1);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.8rem;
+  width: 100%;
+  border-bottom: none;
+  font-weight: 700;
 }
 
 .post-excerpt {

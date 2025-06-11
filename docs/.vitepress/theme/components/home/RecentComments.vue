@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted } from 'vue'
 import { withBase, useData } from 'vitepress'
 import { getRecentComments, formatCommentDate, type WalineComment } from '../../utils/commentApi'
 
@@ -69,41 +69,6 @@ function updateScrollPosition() {
 }
 
 /**
- * 平滑滚动评论区
- * @param delta 滚动增量
- */
-function smoothScroll(delta) {
-  if (!containerRef.value) return
-  
-  const targetScroll = containerRef.value.scrollTop + delta
-  
-  // 使用原生动画API实现平滑滚动
-  containerRef.value.scrollTo({
-    top: targetScroll,
-    behavior: 'smooth'
-  })
-}
-
-/**
- * 设置滚动事件
- */
-function setupScrollEvents() {
-  if (!containerRef.value) return
-  
-  // 监听滚轮事件，优化滚动体验
-  containerRef.value.addEventListener('wheel', (e) => {
-    e.preventDefault()
-    
-    // 控制滚动速度，使其更平滑
-    const scrollAmount = e.deltaY * 0.8
-    smoothScroll(scrollAmount)
-  }, { passive: false })
-  
-  // 初始化滚动位置
-  updateScrollPosition()
-}
-
-/**
  * 获取最近评论
  * @param forceRefresh 是否强制刷新
  */
@@ -136,25 +101,12 @@ onMounted(() => {
   if (isBrowser) {
     // 页面加载时始终强制刷新获取最新评论
     fetchRecentComments(true).then(() => {
-      // 评论加载完成后，设置滚动事件
-      setTimeout(() => {
-        if (containerRef.value) {
-          // 移除直接监听的scroll事件，由setupScrollEvents统一管理
-          containerRef.value.removeEventListener('scroll', updateScrollPosition)
-          containerRef.value.addEventListener('scroll', updateScrollPosition)
-          setupScrollEvents() // 设置增强的滚动事件处理
-          updateScrollPosition() // 初始更新滚动位置
-        }
-      }, 100)
+      // 评论加载完成后设置滚动监听
+      if (containerRef.value) {
+        containerRef.value.addEventListener('scroll', updateScrollPosition)
+        updateScrollPosition() // 初始更新滚动位置
+      }
     })
-  }
-})
-
-onBeforeUnmount(() => {
-  // 清理滚动事件监听
-  if (containerRef.value) {
-    containerRef.value.removeEventListener('scroll', updateScrollPosition)
-    containerRef.value.removeEventListener('wheel', () => {})
   }
 })
 </script>
@@ -337,6 +289,7 @@ onBeforeUnmount(() => {
 
 .article-link:hover {
   color: var(--vp-c-brand);
+  text-decoration: underline;
 }
 
 .comment-time {

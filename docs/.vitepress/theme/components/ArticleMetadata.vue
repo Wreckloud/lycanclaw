@@ -162,7 +162,7 @@ watch(() => page.value.relativePath, () => {
       clearTimeout(pageViewUpdateTimeout)
     }
     pageViewUpdateTimeout = setTimeout(() => {
-      fetchPageViewCount()
+    fetchPageViewCount()
       pageViewUpdateTimeout = null
     }, 500) // 500ms节流延迟
   }, 0)
@@ -248,9 +248,9 @@ defineOptions({
 }
 
 .icon {
-  display: inline-block;
+    display: inline-block;
   transform: translate(0px, 2px);
-  margin-right: 4px;
+    margin-right: 4px;
 }
 
 /* 加载占位符样式 */

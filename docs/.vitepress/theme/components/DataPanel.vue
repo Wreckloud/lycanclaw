@@ -56,7 +56,7 @@ const fetchVisitorCount = async () => {
     }
   } catch (error) {
     console.error('获取站点访问量失败:', error)
-  }
+      }
 }
 
 /**

@@ -85,8 +85,8 @@ function formatDate(dateString) {
   const date = new Date(cleanDateString)
   if (isNaN(date.getTime())) return ''
   
-  const month = (date.getMonth() + 1).toString().padStart(2, '0')
-  const day = date.getDate().toString().padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
   
   return `${month}月${day}日`
 }
@@ -125,8 +125,10 @@ function getPostExcerpt(post) {
     <!-- 文章列表 -->
     <template v-else>
       <div v-for="post in recentPosts" :key="post.url" class="post-item">
-        <a :href="withBase(post.url)" class="post-link">
-          <h3 class="post-item-title">{{ post.frontmatter.title }}</h3>
+        <div class="post-content">
+          <h3 class="post-item-title">
+            <a :href="withBase(post.url)" class="title-link">{{ post.frontmatter.title }}</a>
+          </h3>
           
           <!-- 文章摘要：优先使用description -->
           <p class="post-excerpt">{{ getPostExcerpt(post) }}</p>
@@ -143,7 +145,7 @@ function getPostExcerpt(post) {
               </template>
             </span>
           </div>
-        </a>
+        </div>
       </div>
       
       <!-- 无文章提示 -->
@@ -183,20 +185,28 @@ function getPostExcerpt(post) {
   margin-bottom: 0.5rem;
 }
 
-.post-link {
+.post-content {
   display: block;
-  text-decoration: none;
   color: var(--vp-c-text-1);
 }
 
-.post-link:hover .post-item-title {
+.title-link {
+  display: inline-block;
+  text-decoration: none;
+  color: var(--vp-c-text-1);
+  transition: color 0.2s;
+  font-weight: 700;
+}
+
+.title-link:hover {
+  text-decoration: underline;
   color: var(--vp-c-brand-1);
 }
 
 .post-item-title {
   font-size: 1.2rem;
-  margin: 0 0 0.5rem 0;
-  transition: color 0.2s;
+  margin: 0;
+  margin-bottom: 0.5rem;
   color: var(--vp-c-text-1);
   font-weight: 700;
 }

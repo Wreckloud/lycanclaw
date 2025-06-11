@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/前端框架/新增的测试文章.md",
+                "file": "thoughts/测试.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "新增的测试文章"
+              "title": "测试"
             }
           }
         ]
@@ -40,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/前端框架/新增的测试文章.md",
+                "file": "thoughts/测试.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "新增的测试文章 的大纲"
+              "title": "测试 的大纲"
             }
           },
           {
@@ -152,11 +152,12 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "609913dcbebc90fd",
+  "active": "f1a5ae53903c2eca",
   "lastOpenFiles": [
-    "public/knowledge-stats.json",
     "thoughts/獠牙下的野蔷薇.md",
+    "thoughts/测试.md",
     "knowledge/前端框架/新增的测试文章.md",
+    "public/knowledge-stats.json",
     "thoughts/竟然被回关.md",
     "thoughts/光不在彼方.md",
     "thoughts/从一盏灯开始的文明.md",
@@ -199,7 +200,6 @@
     "public/images/文章资源/vuex-状态管理",
     "vitepress-container-demo.md",
     "public/images/文章资源/vue-x-状态管理",
-    "images/文章资源/网页结构骨架-html",
     "点子合集.canvas"
   ]
 }
