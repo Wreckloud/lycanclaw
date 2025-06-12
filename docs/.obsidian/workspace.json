@@ -13,48 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "thoughts/数字世界的构建手册.md",
+                "file": "thoughts/竟然被回关.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "数字世界的构建手册"
-            }
-          },
-          {
-            "id": "f7b6fd7a4478f70f",
-            "type": "leaf",
-            "state": {
-              "type": "image",
-              "state": {
-                "file": "public/images/文章资源/数字世界的构建手册/file-20250612000822808.jpg"
-              },
-              "icon": "lucide-image",
-              "title": "file-20250612000822808"
-            }
-          },
-          {
-            "id": "1aaab99e7f6448f4",
-            "type": "leaf",
-            "state": {
-              "type": "image",
-              "state": {
-                "file": "public/images/文章资源/数字世界的构建手册/file-20250612000816606.jpg"
-              },
-              "icon": "lucide-image",
-              "title": "file-20250612000816606"
-            }
-          },
-          {
-            "id": "3894c7bc2038414e",
-            "type": "leaf",
-            "state": {
-              "type": "image",
-              "state": {
-                "file": "public/images/文章资源/数字世界的构建手册/file-20250612000805895.jpg"
-              },
-              "icon": "lucide-image",
-              "title": "file-20250612000805895"
+              "title": "竟然被回关"
             }
           }
         ]
@@ -76,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "thoughts/数字世界的构建手册.md",
+                "file": "thoughts/竟然被回关.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "数字世界的构建手册 的大纲"
+              "title": "竟然被回关 的大纲"
             }
           },
           {
@@ -190,8 +154,12 @@
   },
   "active": "f1a5ae53903c2eca",
   "lastOpenFiles": [
-    "public/images/文章资源/数字世界的构建手册/file-20250612000822808.jpg",
+    "public/images/文章资源/竟然被回关/file-20250613003011268.jpg",
+    "public/images/文章资源/竟然被回关/file-20250613002953237.jpg",
+    "public/images/文章资源/竟然被回关/file-20250612210808860.jpg",
+    "public/images/文章资源/竟然被回关/file-20250612210457164.jpg",
     "thoughts/数字世界的构建手册.md",
+    "public/images/文章资源/数字世界的构建手册/file-20250612000822808.jpg",
     "public/images/文章资源/数字世界的构建手册/file-20250612000816606.jpg",
     "public/images/文章资源/数字世界的构建手册/file-20250612000805895.jpg",
     "public/images/文章资源/数字世界的构建手册/file-20250612000853185.jpg",
@@ -207,11 +175,8 @@
     "thoughts/从一盏灯开始的文明.md",
     "thoughts/互联网与星辰大海.md",
     "public/images/文章资源/互联网与星辰大海/file-20250611230101428.jpg",
-    "public/images/文章资源/互联网与星辰大海/file-20250611230049938.jpg",
     "public/images/文章资源/互联网与星辰大海",
     "knowledge/前端基础/未命名.md",
-    "public/images/文章资源/环境变量/file-20250611225312015.jpg",
-    "public/images/文章资源/环境变量/file-20250611225305721.jpg",
     "public/images/文章资源/环境变量",
     "thoughts/测试.md",
     "knowledge/前端框架/新增的测试文章.md",
