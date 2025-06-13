@@ -50,19 +50,43 @@
   }
 }
 
-/* 仅修复代码块动画问题，不改变原有布局 */
+/* 代码块自动换行设置 */
 .vp-doc div[class*='language-'] {
   /* 代码块只使用淡入动画，不使用位移动画 */
   animation: fade-only 0.6s ease-out;
-  overflow: hidden !important; /* 隐藏滚动条 */
+  overflow: auto !important; /* 保留滚动条以防需要 */
 }
 
 .vp-doc div[class*='language-'] pre {
-  overflow: hidden !important; /* 隐藏滚动条 */
+  white-space: pre-wrap !important; /* 允许自动换行 */
+  word-break: break-all !important; /* 在任何位置换行 */
+  overflow-wrap: break-word !important; /* 长单词也会换行 */
 }
 
 .vp-doc div[class*='language-'] code {
-  overflow: hidden !important; /* 隐藏滚动条 */
+  white-space: pre-wrap !important; /* 允许自动换行 */
+  word-break: break-all !important; /* 在任何位置换行 */
+  overflow-wrap: break-word !important; /* 长单词也会换行 */
+}
+
+/* 确保行号正确显示并随换行调整 */
+.vp-doc div[class*='language-'] .line-numbers {
+  white-space: pre-wrap !important;
+  counter-reset: line;
+}
+
+.vp-doc div[class*='language-'] .line-numbers .line {
+  counter-increment: line;
+  position: relative;
+}
+
+.vp-doc div[class*='language-'] .line-numbers .line::before {
+  content: counter(line);
+  display: inline-block;
+  width: 1.5em;
+  text-align: right;
+  margin-right: 0.5em;
+  color: var(--vp-c-text-3);
 }
 
 @keyframes fade-only {
