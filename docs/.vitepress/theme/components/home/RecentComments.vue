@@ -2,9 +2,14 @@
 import { ref, onMounted } from 'vue'
 import { withBase, useData } from 'vitepress'
 import { getRecentComments, formatCommentDate, type WalineComment } from '../../utils/commentApi'
+import { useIntersectionObserver } from '@vueuse/core'
 
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
+
+// 添加滚动观察引用
+const sectionRef = ref<HTMLElement | null>(null)
+const isVisible = ref(false)
 
 // 加载状态和错误状态
 const isLoading = ref(true)
@@ -24,6 +29,22 @@ const comments = ref<WalineComment[]>([])
 
 // 从VitePress获取文章信息
 const { theme } = useData()
+
+// 使用VueUse的useIntersectionObserver来检测元素是否进入视口
+if (isBrowser) {
+  onMounted(() => {
+    const { stop } = useIntersectionObserver(
+      sectionRef,
+      ([{ isIntersecting }]) => {
+        if (isIntersecting) {
+          isVisible.value = true
+          stop() // 只触发一次动画
+        }
+      },
+      { threshold: 0.2 } // 当20%的元素可见时触发
+    )
+  })
+}
 
 /**
  * 获取文章标题
@@ -112,16 +133,27 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="recent-comments-container">
-    <h3 class="section-title">最新评论</h3>
+  <div class="recent-comments-container" ref="sectionRef">
+    <h3 class="section-title" :class="{ 'animate-in': isVisible }">最新评论</h3>
     
     <!-- 内容区域 -->
-    <div v-if="!isLoading && !hasError && comments.length > 0" class="comments-content-area">
+    <div 
+      v-if="!isLoading && !hasError && comments.length > 0" 
+      class="comments-content-area"
+      :class="{ 'animate-in': isVisible }"
+      style="--anim-delay: 0.2s"
+    >
       <!-- 顶部渐变遮罩 -->
       <div class="fade-mask top" :style="{ opacity: scrollPosition > 0 ? 1 : 0 }"></div>
       
       <div class="comments-content" ref="containerRef" @scroll="updateScrollPosition">
-        <div v-for="comment in comments" :key="comment.objectId" class="comment-item">
+        <div 
+          v-for="(comment, index) in comments" 
+          :key="comment.objectId" 
+          class="comment-item"
+          :class="{ 'animate-item': isVisible }"
+          :style="{ '--item-delay': `${index * 0.08 + 0.3}s` }"
+        >
           <div class="comment-header">
             <div class="comment-user">
               <span class="nick">{{ comment.nick }}</span>
@@ -141,7 +173,12 @@ onMounted(() => {
     </div>
     
     <!-- 加载状态 -->
-    <div v-else-if="isLoading" class="comments-content-area">
+    <div 
+      v-else-if="isLoading" 
+      class="comments-content-area"
+      :class="{ 'animate-in': isVisible }"
+      style="--anim-delay: 0.2s"
+    >
       <!-- 顶部渐变遮罩 -->
       <div class="fade-mask top" style="opacity: 0"></div>
       
@@ -185,6 +222,32 @@ onMounted(() => {
   margin-bottom: 2rem;
   overflow: hidden;
   position: relative;
+}
+
+/* 添加动画样式 */
+.animate-in {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.6s ease forwards;
+  animation-delay: var(--anim-delay, 0s);
+}
+
+.animate-item {
+  opacity: 0;
+  transform: translateY(15px);
+  animation: fadeInUp 0.5s ease forwards;
+  animation-delay: var(--item-delay, 0s);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .section-title {

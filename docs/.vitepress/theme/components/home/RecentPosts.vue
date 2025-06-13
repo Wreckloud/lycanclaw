@@ -1,9 +1,30 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { withBase } from 'vitepress'
+import { useIntersectionObserver } from '@vueuse/core'
 
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
+
+// 添加滚动观察引用
+const containerRef = ref(null)
+const isVisible = ref(false)
+
+// 使用VueUse的useIntersectionObserver来检测元素是否进入视口
+if (isBrowser) {
+  onMounted(() => {
+    const { stop } = useIntersectionObserver(
+      containerRef,
+      ([{ isIntersecting }]) => {
+        if (isIntersecting) {
+          isVisible.value = true
+          stop() // 只触发一次动画
+        }
+      },
+      { threshold: 0.2 } // 当20%的元素可见时触发
+    )
+  })
+}
 
 // 内联实现countWord函数
 function countWord(data) {
@@ -109,8 +130,8 @@ function getPostExcerpt(post) {
 </script>
 
 <template>
-  <div class="recent-posts">
-    <h2 class="section-title">近期动态</h2>
+  <div class="recent-posts" ref="containerRef">
+    <h2 class="section-title" :class="{ 'animate-in': isVisible }">近期动态</h2>
     
     <!-- 加载中状态 -->
     <div v-if="isLoading" class="loading">
@@ -124,7 +145,13 @@ function getPostExcerpt(post) {
     
     <!-- 文章列表 -->
     <template v-else>
-      <div v-for="post in recentPosts" :key="post.url" class="post-item">
+      <div 
+        v-for="(post, index) in recentPosts" 
+        :key="post.url" 
+        class="post-item"
+        :class="{ 'animate-in': isVisible }"
+        :style="{ '--anim-delay': `${index * 0.1 + 0.1}s` }"
+      >
         <div class="post-content">
           <h3 class="post-item-title">
             <a :href="withBase(post.url)" class="title-link">{{ post.frontmatter.title }}</a>
@@ -154,7 +181,7 @@ function getPostExcerpt(post) {
       </div>
       
       <!-- 查看更多链接 -->
-      <div v-else class="view-more">
+      <div v-else class="view-more" :class="{ 'animate-in': isVisible }" style="--anim-delay: 0.7s">
         <a href="/thoughts/" class="view-more-link">查看更多 →</a>
       </div>
     </template>
@@ -164,6 +191,25 @@ function getPostExcerpt(post) {
 <style scoped>
 .recent-posts {
   margin: 2rem 0;
+}
+
+/* 添加动画样式 */
+.animate-in {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.6s ease forwards;
+  animation-delay: var(--anim-delay, 0s);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .section-title {
