@@ -1,33 +1,90 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { withBase } from 'vitepress'
 import { useIntersectionObserver } from '@vueuse/core'
 
+// 类型定义
+interface Post {
+  url: string
+  relativePath: string
+  frontmatter: {
+    title: string
+    date: string
+    publish: boolean
+    description?: string
+    tags?: string[]
+  }
+  content: string
+  excerpt?: string
+}
+
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
 
-// 添加滚动观察引用
-const containerRef = ref(null)
+// 组件引用和状态
+const containerRef = ref<HTMLElement | null>(null)
 const isVisible = ref(false)
+const recentPosts = ref<Post[]>([])
+const isLoading = ref(true)
+const hasError = ref(false)
+const maxPosts = 6 // 显示最多6篇最新文章
 
 // 使用VueUse的useIntersectionObserver来检测元素是否进入视口
-if (isBrowser) {
-  onMounted(() => {
-    const { stop } = useIntersectionObserver(
-      containerRef,
-      ([{ isIntersecting }]) => {
-        if (isIntersecting) {
-          isVisible.value = true
-          stop() // 只触发一次动画
-        }
-      },
-      { threshold: 0.2 } // 当20%的元素可见时触发
+onMounted(() => {
+  if (!isBrowser) return
+
+  // 加载文章数据
+  fetchPosts()
+  
+  // 设置滚动动画
+  const { stop } = useIntersectionObserver(
+    containerRef,
+    ([{ isIntersecting }]) => {
+      if (isIntersecting) {
+        isVisible.value = true
+        stop() // 只触发一次动画
+      }
+    },
+    { threshold: 0.2 } // 当20%的元素可见时触发
+  )
+})
+
+// 加载文章数据
+async function fetchPosts() {
+  if (!isBrowser) return
+  
+  try {
+    // 从生成的JSON文件获取数据
+    const response = await fetch(withBase('/posts.json'))
+    if (!response.ok) {
+      throw new Error('加载文章数据失败')
+    }
+    
+    const posts = await response.json()
+    
+    // 严格过滤，只显示publish为true的随想文章
+    const filteredPosts = posts.filter((post: Post) => 
+      post.frontmatter.publish === true && 
+      post.relativePath.startsWith('thoughts/') &&
+      post.relativePath !== 'thoughts/index.md' &&
+      post.relativePath !== 'thoughts/tags.md'
     )
-  })
+    
+    // 按日期排序，取最新的几篇
+    recentPosts.value = filteredPosts
+      .sort((a: Post, b: Post) => new Date(b.frontmatter.date).getTime() - new Date(a.frontmatter.date).getTime())
+      .slice(0, maxPosts)
+    
+    isLoading.value = false
+  } catch (error) {
+    console.error('Error loading posts:', error)
+    hasError.value = true
+    isLoading.value = false
+  }
 }
 
 // 内联实现countWord函数
-function countWord(data) {
+function countWord(data: string): number {
   const pattern = /[a-zA-Z0-9_\u0392-\u03C9\u00C0-\u00FF\u0600-\u06FF\u0400-\u04FF]+|[\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3040-\u309F\uAC00-\uD7AF]+/g
   const m = data.match(pattern)
   let count = 0
@@ -45,48 +102,8 @@ function countWord(data) {
   return count
 }
 
-// 最近的随想文章
-const recentPosts = ref([])
-const isLoading = ref(true)
-const hasError = ref(false)
-const maxPosts = 6 // 显示最多6篇最新文章
-
-onMounted(async () => {
-  // 确保只在浏览器环境中执行
-  if (!isBrowser) return
-  
-  try {
-    // 从生成的JSON文件获取数据
-    const response = await fetch(withBase('/posts.json'))
-    if (!response.ok) {
-      throw new Error('加载文章数据失败')
-    }
-    
-    const posts = await response.json()
-    
-    // 严格过滤，只显示publish为true的随想文章
-    const filteredPosts = posts.filter(post => 
-      post.frontmatter.publish === true && 
-      post.relativePath.startsWith('thoughts/') &&
-      post.relativePath !== 'thoughts/index.md' &&
-      post.relativePath !== 'thoughts/tags.md'
-    )
-    
-    // 按日期排序，取最新的5篇
-    recentPosts.value = filteredPosts
-      .sort((a, b) => new Date(b.frontmatter.date) - new Date(a.frontmatter.date))
-      .slice(0, maxPosts)
-    
-    isLoading.value = false
-  } catch (error) {
-    console.error('Error loading posts:', error)
-    hasError.value = true
-    isLoading.value = false
-  }
-})
-
 // 格式化日期
-function formatDate(dateString) {
+function formatDate(dateString: string): string {
   if (!dateString) return ''
   
   // 处理可能带引号的日期字符串
@@ -113,13 +130,13 @@ function formatDate(dateString) {
 }
 
 // 计算阅读时间
-function calculateReadTime(content) {
+function calculateReadTime(content: string): number {
   const wordCount = countWord(content || '')
   return Math.ceil(wordCount / 300)
 }
 
 // 获取文章摘要，优先使用description
-function getPostExcerpt(post) {
+function getPostExcerpt(post: Post): string {
   // 优先使用frontmatter中的description
   if (post.frontmatter.description) {
     return post.frontmatter.description
@@ -166,10 +183,14 @@ function getPostExcerpt(post) {
             <span class="post-read-time">约{{ calculateReadTime(post.content) }}分钟读完</span>
             <span class="post-separator">/</span>
             <span class="post-category">随想</span>
-            <span v-if="post.frontmatter.tags && post.frontmatter.tags.length" class="post-tags">
-              <template v-for="(tag, index) in post.frontmatter.tags" :key="index">
-                <span class="post-tag">#{{ tag }}</span>
-              </template>
+            <span v-if="post.frontmatter.tags?.length" class="post-tags">
+              <span 
+                v-for="(tag, index) in post.frontmatter.tags" 
+                :key="index"
+                class="post-tag"
+              >
+                #{{ tag }}
+              </span>
             </span>
           </div>
         </div>
@@ -193,10 +214,16 @@ function getPostExcerpt(post) {
   margin: 2rem 0;
 }
 
-/* 添加动画样式 */
-.animate-in {
+/* 添加动画样式 - 默认设置为不可见 */
+.section-title,
+.post-item,
+.view-more {
   opacity: 0;
   transform: translateY(20px);
+}
+
+/* 当元素可见时应用动画 */
+.animate-in {
   animation: fadeInUp 0.6s ease forwards;
   animation-delay: var(--anim-delay, 0s);
 }
@@ -373,7 +400,6 @@ function getPostExcerpt(post) {
   .post-excerpt {
     font-size: 0.85rem;
     margin: 0.5rem 0;
-    -webkit-line-clamp: 2;
   }
   
   .post-meta {

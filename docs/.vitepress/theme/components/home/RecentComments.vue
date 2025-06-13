@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { withBase, useData } from 'vitepress'
 import { getRecentComments, formatCommentDate, type WalineComment } from '../../utils/commentApi'
 import { useIntersectionObserver } from '@vueuse/core'
@@ -7,49 +7,60 @@ import { useIntersectionObserver } from '@vueuse/core'
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
 
-// 添加滚动观察引用
+// 组件引用和状态
 const sectionRef = ref<HTMLElement | null>(null)
+const containerRef = ref<HTMLElement | null>(null)
 const isVisible = ref(false)
+const comments = ref<WalineComment[]>([])
 
 // 加载状态和错误状态
 const isLoading = ref(true)
 const hasError = ref(false)
 const errorMessage = ref('')
-const isRefreshing = ref(false) // 刷新状态
+const isRefreshing = ref(false)
 
 // 滚动状态
 const scrollPosition = ref(0)
 const maxScroll = ref(0)
 
-// 滚动容器引用
-const containerRef = ref<HTMLElement | null>(null)
-
-// 评论数据
-const comments = ref<WalineComment[]>([])
-
 // 从VitePress获取文章信息
 const { theme } = useData()
 
-// 使用VueUse的useIntersectionObserver来检测元素是否进入视口
-if (isBrowser) {
-  onMounted(() => {
-    const { stop } = useIntersectionObserver(
-      sectionRef,
-      ([{ isIntersecting }]) => {
-        if (isIntersecting) {
-          isVisible.value = true
-          stop() // 只触发一次动画
-        }
-      },
-      { threshold: 0.2 } // 当20%的元素可见时触发
-    )
+// 组件挂载
+onMounted(() => {
+  if (!isBrowser) return
+
+  // 设置滚动动画
+  const { stop } = useIntersectionObserver(
+    sectionRef,
+    ([{ isIntersecting }]) => {
+      if (isIntersecting) {
+        isVisible.value = true
+        stop() // 只触发一次动画
+      }
+    },
+    { threshold: 0.2 } // 当20%的元素可见时触发
+  )
+
+  // 加载最新评论
+  fetchRecentComments(true).then(() => {
+    // 评论加载完成后设置滚动监听
+    if (containerRef.value) {
+      containerRef.value.addEventListener('scroll', updateScrollPosition)
+      updateScrollPosition() // 初始更新滚动位置
+    }
   })
-}
+})
+
+// 组件卸载时移除事件监听
+onUnmounted(() => {
+  if (containerRef.value) {
+    containerRef.value.removeEventListener('scroll', updateScrollPosition)
+  }
+})
 
 /**
  * 获取文章标题
- * @param url 文章路径
- * @returns 文章标题
  */
 function getArticleTitle(url: string): string {
   // 从文章URL中提取路径
@@ -71,8 +82,6 @@ function getArticleTitle(url: string): string {
 
 /**
  * 生成文章链接
- * @param url 文章路径
- * @returns 完整链接
  */
 function getArticleLink(url: string): string {
   return withBase(url)
@@ -81,7 +90,7 @@ function getArticleLink(url: string): string {
 /**
  * 更新滚动位置
  */
-function updateScrollPosition() {
+function updateScrollPosition(): void {
   if (!containerRef.value) return
   scrollPosition.value = containerRef.value.scrollTop
   
@@ -91,9 +100,8 @@ function updateScrollPosition() {
 
 /**
  * 获取最近评论
- * @param forceRefresh 是否强制刷新
  */
-async function fetchRecentComments(forceRefresh = false) {
+async function fetchRecentComments(forceRefresh = false): Promise<void> {
   if (!isBrowser) return
   
   if (forceRefresh) {
@@ -117,19 +125,6 @@ async function fetchRecentComments(forceRefresh = false) {
     isRefreshing.value = false
   }
 }
-
-onMounted(() => {
-  if (isBrowser) {
-    // 页面加载时始终强制刷新获取最新评论
-    fetchRecentComments(true).then(() => {
-      // 评论加载完成后设置滚动监听
-      if (containerRef.value) {
-        containerRef.value.addEventListener('scroll', updateScrollPosition)
-        updateScrollPosition() // 初始更新滚动位置
-      }
-    })
-  }
-})
 </script>
 
 <template>
@@ -224,17 +219,29 @@ onMounted(() => {
   position: relative;
 }
 
-/* 添加动画样式 */
-.animate-in {
+/* 添加动画样式 - 默认设置为不可见 */
+.section-title {
   opacity: 0;
   transform: translateY(20px);
+}
+
+.comments-content-area {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.comment-item {
+  opacity: 0;
+  transform: translateY(15px);
+}
+
+/* 当元素可见时应用动画 */
+.animate-in {
   animation: fadeInUp 0.6s ease forwards;
   animation-delay: var(--anim-delay, 0s);
 }
 
 .animate-item {
-  opacity: 0;
-  transform: translateY(15px);
   animation: fadeInUp 0.5s ease forwards;
   animation-delay: var(--item-delay, 0s);
 }
