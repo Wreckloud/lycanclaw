@@ -212,6 +212,7 @@ function getPostExcerpt(post: Post): string {
 <style scoped>
 .recent-posts {
   margin: 2rem 0;
+  overflow: hidden !important;
 }
 
 /* 添加动画样式 - 默认设置为不可见 */

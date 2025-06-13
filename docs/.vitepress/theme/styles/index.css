@@ -283,3 +283,60 @@ input[type="reset"] {
       var(--vp-c-brand-3) 67%,
       var(--vp-c-brand-1) 100%);
 }
+
+/* 全局禁用组件内部滚动条 - 只允许页面级滚动 */
+.VPHomeHero,
+.VPHome,
+.VPContent,
+.VPContent .container,
+.VPContent section,
+.recent-posts,
+.post-item,
+.VPTeamMembersItem,
+.VPHomeFeatures,
+.VPHomeSponsors,
+[class*="component-"],
+[class*="-component"],
+div[class*="VPHome"],
+section, 
+article, 
+aside, 
+.custom-block,
+.post-excerpt,
+.animate-in,
+.fadeInUp,
+[style*="animation"],
+[style*="transform"],
+[class*="animate"],
+[class*="animation"],
+[class*="fade"],
+.waline-container,
+.wl-panel,
+.wl-editor,
+.post-list {
+  overflow: visible !important;
+  overflow-x: visible !important;
+  overflow-y: visible !important;
+}
+
+/* 特别针对RecentPosts组件 */
+.recent-posts,
+.recent-posts *,
+.post-item,
+.post-content,
+.post-excerpt {
+  overflow: visible !important;
+  overflow-x: visible !important;
+  overflow-y: visible !important;
+}
+
+/* 确保任何具有动画的元素不产生滚动条 */
+*[style*="animation"],
+*[style*="transform"],
+*[class*="animate"],
+*[class*="animation"],
+*[class*="fade"] {
+  overflow: visible !important;
+  overflow-x: visible !important;
+  overflow-y: visible !important;
+}
