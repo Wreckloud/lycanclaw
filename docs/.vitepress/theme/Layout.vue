@@ -34,9 +34,6 @@ const { frontmatter, page } = useData()
     
     <template #doc-before>
       <!-- 文档前内容 -->
-      <PageTransition>
-        <!-- 这里不需要内容，因为PageTransition是包装器 -->
-      </PageTransition>
     </template>
     
     <template #doc-after>
@@ -48,3 +45,9 @@ const { frontmatter, page } = useData()
     </template>
   </Layout>
 </template>
+
+<style scoped>
+.vp-doc-wrapper {
+  width: 100%;
+}
+</style>

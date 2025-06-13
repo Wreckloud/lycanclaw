@@ -14,16 +14,64 @@
       var(--vp-c-brand-1) 100%);
 }
 
-.dark {
-  --gradient-brand: linear-gradient(90deg,
-      var(--vp-c-brand-1) 0%,
-      var(--vp-c-brand-2) 50%,
-      var(--vp-c-brand-3) 100%);
-  --gradient-animated: linear-gradient(90deg,
-      var(--vp-c-brand-1) 0%,
-      var(--vp-c-brand-2) 33%,
-      var(--vp-c-brand-3) 67%,
-      var(--vp-c-brand-1) 100%);
+/* 路由过渡动画 - 淡入上浮效果，但使用优先级保证代码块不受影响 */
+.vp-doc {
+  animation: fade-slide-y 0.6s ease-out;
+}
+
+@keyframes fade-slide-y {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 页面切换过渡效果 - 适用于容器 */
+.VPContent {
+  transition: opacity 0.3s ease;
+}
+
+.VPContent .container {
+  animation: content-fade-in 0.8s ease-out;
+}
+
+@keyframes content-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 仅修复代码块动画问题，不改变原有布局 */
+.vp-doc div[class*='language-'] {
+  /* 代码块只使用淡入动画，不使用位移动画 */
+  animation: fade-only 0.6s ease-out;
+  overflow: hidden !important; /* 隐藏滚动条 */
+}
+
+.vp-doc div[class*='language-'] pre {
+  overflow: hidden !important; /* 隐藏滚动条 */
+}
+
+.vp-doc div[class*='language-'] code {
+  overflow: hidden !important; /* 隐藏滚动条 */
+}
+
+@keyframes fade-only {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* 移除移动设备点击时的蓝色高亮 */
@@ -42,6 +90,77 @@ input[type="submit"],
 input[type="reset"] {
   touch-action: manipulation;
 }
+
+/* 页面内容淡入上浮动画效果 */
+.VPContent {
+  animation: fade-in-up 0.8s ease-out;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 内容元素渐进式显示 */
+.VPDoc .container {
+  animation: content-appear 0.8s ease-out;
+}
+
+.VPDoc .content p,
+.VPDoc .content h1,
+.VPDoc .content h2,
+.VPDoc .content h3,
+.VPDoc .content h4,
+.VPDoc .content h5,
+.VPDoc .content h6,
+.VPDoc .content ul,
+.VPDoc .content ol,
+.VPDoc .content blockquote,
+.VPDoc .content pre,
+.VPDoc .content table {
+  animation: content-stagger 0.5s ease-out backwards;
+}
+
+@keyframes content-appear {
+  from {
+    opacity: 0.8;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes content-stagger {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 动画延迟，使元素错落有致地显示 */
+.VPDoc .content h1 { animation-delay: 0.1s; }
+.VPDoc .content h2 { animation-delay: 0.15s; }
+.VPDoc .content h3 { animation-delay: 0.2s; }
+.VPDoc .content p:nth-child(1) { animation-delay: 0.25s; }
+.VPDoc .content p:nth-child(2) { animation-delay: 0.3s; }
+.VPDoc .content p:nth-child(3) { animation-delay: 0.35s; }
+.VPDoc .content p:nth-child(4) { animation-delay: 0.4s; }
+.VPDoc .content p:nth-child(5) { animation-delay: 0.45s; }
+.VPDoc .content ul, 
+.VPDoc .content ol { animation-delay: 0.5s; }
+.VPDoc .content blockquote { animation-delay: 0.55s; }
+.VPDoc .content pre { animation-delay: 0.6s; }
+.VPDoc .content table { animation-delay: 0.65s; }
 
 .VPHero .name {
   background: var(--gradient-animated);
@@ -111,22 +230,6 @@ input[type="reset"] {
   }
 }
 
-/* 添加代码块自动换行样式 */
-.vp-doc div[class*='language-'] pre {
-  white-space: pre-wrap;       /* CSS3 */
-  word-wrap: break-word;       /* IE和Edge */
-}
-
-.vp-doc div[class*='language-'] code {
-  white-space: pre-wrap;       /* CSS3 */
-  word-wrap: break-word;       /* IE和Edge */
-}
-
-/* 确保行号保持在左侧 */
-.vp-doc div[class*='language-'] .line-numbers {
-  white-space: nowrap;
-}
-
 /* 猎识印记页面大纲目录文字不可选中 */
 .VPDocOutlineItem,
 .VPDocOutlineItem .outline-link,
@@ -147,4 +250,16 @@ input[type="reset"] {
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
+}
+
+.dark {
+  --gradient-brand: linear-gradient(90deg,
+      var(--vp-c-brand-1) 0%,
+      var(--vp-c-brand-2) 50%,
+      var(--vp-c-brand-3) 100%);
+  --gradient-animated: linear-gradient(90deg,
+      var(--vp-c-brand-1) 0%,
+      var(--vp-c-brand-2) 33%,
+      var(--vp-c-brand-3) 67%,
+      var(--vp-c-brand-1) 100%);
 }
