@@ -48,8 +48,8 @@ onMounted(() => {
       }
     },
     { 
-      threshold: [0.05], // 降低阈值，只需要5%进入视口就触发
-      rootMargin: '0px 0px -5% 0px' // 增加底部边距，更早触发
+      threshold: 0.005, // 降低阈值至1%，几乎一出现就触发
+      rootMargin: '0px 0px -1% 0px' // 增大底部边距，更早触发
     }
   )
 })

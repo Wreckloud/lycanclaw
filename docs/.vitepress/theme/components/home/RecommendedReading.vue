@@ -258,6 +258,7 @@ function formatDate(dateString: string): string {
         
         <!-- 轮播容器 -->
         <div class="carousel-container" ref="carouselRef" @scroll="handleScroll">
+          <div class="padding-spacer"></div>
           <div 
             v-for="post in recommendedPosts" 
             :key="post.url" 
@@ -285,6 +286,7 @@ function formatDate(dateString: string): string {
               </div>
             </div>
           </div>
+          <div class="padding-spacer"></div>
         </div>
         
         <!-- 右侧渐变遮罩 -->
@@ -343,12 +345,18 @@ function formatDate(dateString: string): string {
   display: none;
 }
 
+/* 左右两端的填充空白，确保首尾卡片显示在中间 */
+.padding-spacer {
+  flex: 0 0 calc((100% - 70%) / 2);
+  min-width: calc((100% - 70%) / 2);
+}
+
 /* 左右渐变遮罩 */
 .fade-mask {
   position: absolute;
   top: 0;
   height: 100%;
-  width: 60px;
+  width: 80px;
   z-index: 10;
   pointer-events: none;
   transition: opacity 0.3s ease;
@@ -366,10 +374,10 @@ function formatDate(dateString: string): string {
 
 /* 文章卡片样式 */
 .post-card {
-  flex: 0 0 90%;
-  width: 90%;
-  padding: 1rem 1rem 1.2rem;
-  margin-right: 1%;
+  flex: 0 0 70%;
+  width: 70%;
+  padding: 1rem 1.2rem 1.2rem;
+  margin: 0 0.5rem;
   box-sizing: border-box;
   scroll-snap-align: center;
   border-bottom: none;
@@ -473,6 +481,13 @@ function formatDate(dateString: string): string {
   margin-bottom: 0.5rem;
   color: var(--vp-c-text-1);
   font-weight: 700;
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.5;
 }
 
 .post-excerpt {
@@ -483,8 +498,9 @@ function formatDate(dateString: string): string {
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
+  max-height: 4.8rem;
 }
 
 .post-meta {
@@ -493,7 +509,7 @@ function formatDate(dateString: string): string {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  margin-bottom: 0.2rem;
+  margin-top: 0.5rem;
   opacity: 0.8;
 }
 
@@ -539,12 +555,17 @@ function formatDate(dateString: string): string {
   }
   
   .fade-mask {
-    width: 40px;
+    width: 60px;
   }
 
   .post-card {
-    flex: 0 0 95%;
-    width: 95%;
+    flex: 0 0 80%;
+    width: 80%;
+  }
+  
+  .padding-spacer {
+    flex: 0 0 calc((100% - 80%) / 2);
+    min-width: calc((100% - 80%) / 2);
   }
   
   .post-item-title {
@@ -569,13 +590,18 @@ function formatDate(dateString: string): string {
   }
 
   .fade-mask {
-    width: 30px;
+    width: 40px;
   }
 
   .post-card {
-    flex: 0 0 100%;
-    width: 100%;
-    padding: 0.8rem 0.5rem;
+    flex: 0 0 90%;
+    width: 90%;
+    padding: 0.8rem 0.7rem;
+  }
+  
+  .padding-spacer {
+    flex: 0 0 calc((100% - 90%) / 2);
+    min-width: calc((100% - 90%) / 2);
   }
 
   .post-item-title {

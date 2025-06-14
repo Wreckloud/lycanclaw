@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 // 接收属性
 const props = defineProps({
@@ -23,6 +23,18 @@ let lastParticleTime = 0 // 上次创建粒子的时间
 let lastClickTime = 0 // 上次点击的时间
 const THROTTLE_INTERVAL = 200 // 粒子效果节流间隔（毫秒）
 const CLICK_THROTTLE = 80 // 点击事件节流间隔（毫秒）
+
+// 点击提示相关
+const widgetRef = ref(null) // 组件引用
+const showClickHint = ref(false)
+let hintTimer = null
+let hintHideTimer = null
+let observerInstance = null
+let hintAutoCloseTimer = null // 提示自动关闭计时器
+const hintShownBefore = ref(false) // 标记提示是否已经显示过
+
+// 鼠标悬停状态
+const isHovered = ref(false)
 
 // 催更消息配置
 const encourageMessages = {
@@ -323,6 +335,67 @@ function encourageUpdate(event) {
   
   // 重置连击计时器
   resetComboTimer()
+  
+  // 点击后隐藏提示
+  hideClickHint()
+}
+
+// 设置交叉观察器，检测组件何时进入视口
+function setupIntersectionObserver() {
+  if (typeof IntersectionObserver === 'undefined' || !widgetRef.value) return;
+  
+  observerInstance = new IntersectionObserver((entries) => {
+    const entry = entries[0];
+    
+    if (entry.isIntersecting) {
+      // 组件可见，设置计时器
+      if (!hintTimer && !hintShownBefore.value) {
+        hintTimer = setTimeout(() => {
+          // 1秒后显示提示，除非已点击过催更
+          if (encourageCount.value === 0) {
+            showClickHint.value = true;
+            
+            // 设置6秒后自动关闭并不再显示
+            if (hintAutoCloseTimer) {
+              clearTimeout(hintAutoCloseTimer);
+            }
+            
+            hintAutoCloseTimer = setTimeout(() => {
+              hideClickHint();
+              hintShownBefore.value = true; // 标记已经显示过，不再显示
+            }, 6000);
+          }
+          hintTimer = null;
+        }, 1000);
+      }
+    } else {
+      // 组件不可见，清除计时器
+      hideClickHint();
+    }
+  }, { threshold: 0.5 }); // 当50%的组件可见时触发
+  
+  observerInstance.observe(widgetRef.value);
+}
+
+// 隐藏点击提示
+function hideClickHint() {
+  showClickHint.value = false;
+  
+  // 清除相关计时器
+  if (hintTimer) {
+    clearTimeout(hintTimer);
+    hintTimer = null;
+  }
+  
+  if (hintHideTimer) {
+    clearTimeout(hintHideTimer);
+    hintHideTimer = null;
+  }
+  
+  if (hintAutoCloseTimer) {
+    clearTimeout(hintAutoCloseTimer);
+    hintAutoCloseTimer = null;
+  }
 }
 
 // 格式化数字
@@ -339,10 +412,83 @@ function formatNumber(num) {
     return (num / 100000000).toFixed(1).replace(/\.0$/, '') + '亿'
   }
 }
+
+// 尝试从localStorage获取提示是否已显示过
+function loadHintShownState() {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const hasShown = localStorage.getItem('encourageHintShown');
+      if (hasShown === 'true') {
+        hintShownBefore.value = true;
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load hint state from localStorage');
+  }
+}
+
+// 保存提示已显示状态到localStorage
+function saveHintShownState() {
+  try {
+    if (typeof localStorage !== 'undefined' && hintShownBefore.value) {
+      localStorage.setItem('encourageHintShown', 'true');
+    }
+  } catch (e) {
+    console.error('Failed to save hint state to localStorage');
+  }
+}
+
+// 组件挂载和卸载时的处理
+onMounted(() => {
+  // 初始化时不显示提示，等待用户交互
+  showClickHint.value = false;
+  
+  // 读取提示是否已显示过
+  loadHintShownState();
+  
+  // 延迟一点点设置交叉观察器，确保DOM已渲染
+  setTimeout(() => {
+    setupIntersectionObserver();
+  }, 200);
+})
+
+onUnmounted(() => {
+  // 清理所有计时器
+  if (drawerTimer) clearTimeout(drawerTimer);
+  if (comboResetTimer) clearTimeout(comboResetTimer);
+  if (hintTimer) clearTimeout(hintTimer);
+  if (hintHideTimer) clearTimeout(hintHideTimer);
+  if (hintAutoCloseTimer) clearTimeout(hintAutoCloseTimer);
+  
+  // 保存提示已显示状态
+  saveHintShownState();
+  
+  // 清理交叉观察器
+  if (observerInstance) {
+    observerInstance.disconnect();
+    observerInstance = null;
+  }
+})
+
+// 处理鼠标悬停
+function handleMouseEnter() {
+  isHovered.value = true;
+}
+
+// 处理鼠标离开
+function handleMouseLeave() {
+  isHovered.value = false;
+}
 </script>
 
 <template>
-  <div class="stats-card clickable-area" @click="encourageUpdate">
+  <div 
+    class="stats-card clickable-area" 
+    @click="encourageUpdate"
+    @mouseenter="handleMouseEnter"
+    @mouseleave="handleMouseLeave"
+    ref="widgetRef"
+  >
     <div class="stats-value">{{ formatNumber(animatedCount) }}<span class="plus-mark">+</span></div>
     <div class="stats-label">本月更新</div>
     
@@ -353,6 +499,17 @@ function formatNumber(num) {
           <div class="drawer-content">
             {{ drawerMessage }}
           </div>
+        </div>
+      </div>
+    </transition>
+    
+    <!-- 点击提示 -->
+    <transition name="hint-slide">
+      <div class="click-hint-container" v-if="(showClickHint && !hintShownBefore) || isHovered">
+        <div class="gradient-mask"></div>
+        <div class="click-hint-content">
+          <div class="arrow-up">^</div>
+          <div class="hint-text">点击催更</div>
         </div>
       </div>
     </transition>
@@ -448,6 +605,7 @@ function formatNumber(num) {
   height: 100%;
   overflow: hidden;
   pointer-events: none;
+  z-index: 10; /* 提高抽屉容器的z-index */
 }
 
 .drawer {
@@ -463,7 +621,7 @@ function formatNumber(num) {
   color: white;
   font-weight: 600;
   text-align: center;
-  z-index: 5;
+  z-index: 10; /* 提高抽屉的z-index */
   will-change: transform; /* 提示浏览器这个元素将会变化 */
   transform: translateZ(0); /* 启用硬件加速 */
 }
@@ -478,6 +636,65 @@ function formatNumber(num) {
   justify-content: center;
 }
 
+/* 点击提示样式 */
+.click-hint-container {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 45px; /* 增加高度 */
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 5; /* 确保z-index低于抽屉 */
+}
+
+.gradient-mask {
+  position: absolute;
+  left: -10px; /* 扩展宽度 */
+  right: -10px;
+  bottom: 0;
+  height: 100%;
+  background: linear-gradient(to top, var(--vp-c-bg) 40%, transparent 100%);
+  opacity: 1; /* 增加不透明度 */
+  z-index: -1;
+}
+
+.click-hint-content {
+  position: absolute;
+  left: 0;
+  bottom: 0; /* 调整整个内容区域位置 */
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.arrow-up {
+  font-size: 1.2rem; /* 减小箭头大小 */
+  color: var(--vp-c-text-2);
+  font-weight: bold;
+  animation: bounce 0.8s infinite alternate;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  margin-bottom: -15px; /* 让箭头更靠近文字 */
+}
+
+.hint-text {
+  font-size: 0.8rem; /* 减小文字大小 */
+  color: var(--vp-c-text-2);
+  font-weight: 500; /* 稍微加粗文字 */
+  padding-bottom: 4px; /* 增加底部内边距 */
+}
+
+@keyframes bounce {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-2px); /* 减少移动距离 */
+  }
+}
+
 /* 抽屉滑动动画 */
 .drawer-slide-enter-active,
 .drawer-slide-leave-active {
@@ -487,6 +704,27 @@ function formatNumber(num) {
 .drawer-slide-enter-from,
 .drawer-slide-leave-to {
   transform: translateY(100%);
+}
+
+/* 点击提示滑动动画 */
+.hint-slide-enter-active,
+.hint-slide-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hint-slide-enter-from,
+.hint-slide-leave-to {
+  transform: translateY(100%);
+  opacity: 0;
+}
+
+/* 确保遮罩也有动画效果 */
+.click-hint-container .gradient-mask {
+  transition: opacity 0.3s ease;
+}
+
+.hint-slide-leave-active .gradient-mask {
+  opacity: 0 !important;
 }
 
 /* 浮动消息样式 */
@@ -562,6 +800,18 @@ function formatNumber(num) {
   .drawer-content {
     font-size: 1rem;
   }
+  
+  .click-hint-container {
+    height: 38px; /* 移动端稍微矮一点 */
+  }
+  
+  .arrow-up {
+    font-size: 1.1rem;
+  }
+  
+  .hint-text {
+    font-size: 0.75rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -591,6 +841,19 @@ function formatNumber(num) {
   
   .drawer-content {
     font-size: 0.9rem;
+  }
+  
+  .click-hint-container {
+    height: 36px; /* 小屏幕设备稍微矮一点 */
+  }
+  
+  .arrow-up {
+    font-size: 1.1rem;
+  }
+  
+  .hint-text {
+    font-size: 0.75rem;
+    margin-top: -1px;
   }
 }
 </style> 

@@ -293,7 +293,7 @@ async function fetchRecentComments(forceRefresh = false): Promise<void> {
   position: absolute;
   left: 0;
   right: 0;
-  height: 20px;
+  height: 40px; /* 增加遮罩高度 */
   pointer-events: none; /* 允许点击穿透 */
   z-index: 10;
   transition: opacity 0.3s ease;
