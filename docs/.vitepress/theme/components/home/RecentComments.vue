@@ -214,7 +214,6 @@ async function fetchRecentComments(forceRefresh = false): Promise<void> {
 
 <style scoped>
 .recent-comments-container {
-  margin-bottom: 2rem;
   overflow: hidden;
   position: relative;
 }

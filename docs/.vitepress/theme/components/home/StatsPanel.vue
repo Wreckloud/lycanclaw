@@ -534,7 +534,6 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .stats-panel {
-  margin: 2rem 0;
   position: relative;
 }
 

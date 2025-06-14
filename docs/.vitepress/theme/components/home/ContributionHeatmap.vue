@@ -544,7 +544,6 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .contribution-heatmap {
-  margin-bottom: 2rem;
   overflow: hidden;
 }
 

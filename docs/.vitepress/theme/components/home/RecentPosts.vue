@@ -211,7 +211,6 @@ function getPostExcerpt(post: Post): string {
 
 <style scoped>
 .recent-posts {
-  margin: 2rem 0;
   overflow: hidden !important;
 }
 
@@ -356,7 +355,7 @@ function getPostExcerpt(post: Post): string {
 /* 移动端适配 */
 @media (max-width: 959px) {
   .recent-posts {
-    margin: 1.5rem 0;
+    /* margin: 1.5rem 0; 移除此行 */
   }
   
   .section-title {
@@ -380,7 +379,7 @@ function getPostExcerpt(post: Post): string {
 
 @media (max-width: 480px) {
   .recent-posts {
-    margin: 1rem 0;
+    /* margin: 1rem 0; 移除此行 */
   }
   
   .section-title {
