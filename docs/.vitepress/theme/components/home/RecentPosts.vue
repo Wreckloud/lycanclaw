@@ -42,17 +42,14 @@ onMounted(() => {
     postsRef,
     ([{ isIntersecting }]) => {
       if (isIntersecting) {
-        // 获取元素位置确保充分进入视口
-        const rect = postsRef.value?.getBoundingClientRect();
-        if (rect && rect.top < window.innerHeight * 0.9) {
-          isVisible.value = true
-          stop() // 只触发一次动画
-        }
+        // 直接触发动画，不再检查元素位置
+        isVisible.value = true
+        stop() // 只触发一次动画
       }
     },
     { 
-      threshold: [0.1], // 降低阈值，只需要20%进入视口就触发
-      rootMargin: '0px 0px -10% 0px' // 增加底部边距，提前触发
+      threshold: [0.05], // 降低阈值，只需要5%进入视口就触发
+      rootMargin: '0px 0px -5% 0px' // 增加底部边距，更早触发
     }
   )
 })

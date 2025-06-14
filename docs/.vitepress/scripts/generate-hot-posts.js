@@ -105,37 +105,37 @@ const http = {
     let retries = config.maxRetries;
     
     while (retries >= 0) {
-      try {
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'User-Agent': 'Node.js/HotPostsGenerator',
-            'Accept': 'application/json'
-          },
-          mode: 'cors',
-          credentials: 'omit'
-        });
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`请求失败: ${response.status} ${response.statusText}`);
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'Node.js/HotPostsGenerator',
+          'Accept': 'application/json'
+        },
+        mode: 'cors',
+        credentials: 'omit'
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`请求失败: ${response.status} ${response.statusText}`);
           console.error(`响应内容: ${errorText.substring(0, 500)}`);
-          throw new Error(`HTTP错误: ${response.status} ${response.statusText}`);
-        }
-        
-        // 先克隆响应，再读取内容
-        const responseClone = response.clone();
-        
-        // 尝试解析JSON
-        try {
+        throw new Error(`HTTP错误: ${response.status} ${response.statusText}`);
+      }
+      
+      // 先克隆响应，再读取内容
+      const responseClone = response.clone();
+      
+      // 尝试解析JSON
+      try {
           const contentType = response.headers.get('content-type');
           if (DEBUG) console.log(`响应Content-Type: ${contentType}`);
           
           if (contentType && contentType.includes('application/json')) {
-            const data = await response.json();
+        const data = await response.json();
             if (DEBUG) console.log(`JSON响应: ${JSON.stringify(data).substring(0, 200)}`);
-            return data;
+        return data;
           } else {
             // 非JSON响应，读取为文本
             const text = await response.text();
@@ -148,14 +148,14 @@ const http = {
               return text;
             }
           }
-        } catch (jsonError) {
-          // 如果JSON解析失败，尝试获取原始文本
-          const text = await responseClone.text();
-          console.error(`JSON解析失败: ${jsonError.message}`);
+      } catch (jsonError) {
+        // 如果JSON解析失败，尝试获取原始文本
+        const text = await responseClone.text();
+        console.error(`JSON解析失败: ${jsonError.message}`);
           console.error(`原始响应: ${text.substring(0, 500)}`);
-          throw new Error(`JSON解析失败: ${jsonError.message}`);
-        }
-      } catch (error) {
+        throw new Error(`JSON解析失败: ${jsonError.message}`);
+      }
+    } catch (error) {
         retries--;
         if (retries >= 0) {
           console.log(`请求失败，将在${config.retryDelay}ms后重试，剩余重试次数: ${retries}`);
@@ -163,7 +163,7 @@ const http = {
           continue;
         }
         console.error(`请求错误(已重试${config.maxRetries}次): ${url}`, error);
-        throw error;
+      throw error;
       }
     }
   },
@@ -175,38 +175,38 @@ const http = {
     let retries = config.maxRetries;
     
     while (retries >= 0) {
-      try {
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'User-Agent': 'Node.js/HotPostsGenerator',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify(data),
-          mode: 'cors',
-          credentials: 'omit'
-        });
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`请求失败: ${response.status} ${response.statusText}`);
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'Node.js/HotPostsGenerator',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(data),
+        mode: 'cors',
+        credentials: 'omit'
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`请求失败: ${response.status} ${response.statusText}`);
           console.error(`响应内容: ${errorText.substring(0, 500)}`);
-          throw new Error(`HTTP错误: ${response.status} ${response.statusText}`);
-        }
-        
-        // 先克隆响应，再读取内容
-        const responseClone = response.clone();
-        
-        // 尝试解析JSON
-        try {
+        throw new Error(`HTTP错误: ${response.status} ${response.statusText}`);
+      }
+      
+      // 先克隆响应，再读取内容
+      const responseClone = response.clone();
+      
+      // 尝试解析JSON
+      try {
           const contentType = response.headers.get('content-type');
           if (DEBUG) console.log(`响应Content-Type: ${contentType}`);
           
           if (contentType && contentType.includes('application/json')) {
-            const data = await response.json();
+        const data = await response.json();
             if (DEBUG) console.log(`JSON响应: ${JSON.stringify(data).substring(0, 200)}`);
-            return data;
+        return data;
           } else {
             // 非JSON响应，读取为文本
             const text = await response.text();
@@ -219,14 +219,14 @@ const http = {
               return text;
             }
           }
-        } catch (jsonError) {
-          // 如果JSON解析失败，尝试获取原始文本
-          const text = await responseClone.text();
-          console.error(`JSON解析失败: ${jsonError.message}`);
+      } catch (jsonError) {
+        // 如果JSON解析失败，尝试获取原始文本
+        const text = await responseClone.text();
+        console.error(`JSON解析失败: ${jsonError.message}`);
           console.error(`原始响应: ${text.substring(0, 500)}`);
-          throw new Error(`JSON解析失败: ${jsonError.message}`);
-        }
-      } catch (error) {
+        throw new Error(`JSON解析失败: ${jsonError.message}`);
+      }
+    } catch (error) {
         retries--;
         if (retries >= 0) {
           console.log(`请求失败，将在${config.retryDelay}ms后重试，剩余重试次数: ${retries}`);
@@ -234,7 +234,7 @@ const http = {
           continue;
         }
         console.error(`请求错误(已重试${config.maxRetries}次): ${url}`, error);
-        throw error;
+      throw error;
       }
     }
   }

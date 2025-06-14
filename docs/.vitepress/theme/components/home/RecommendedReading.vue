@@ -458,28 +458,25 @@ function formatDate(dateString: string): string {
   margin-right: 1%;
   box-sizing: border-box;
   scroll-snap-align: center;
-  border-bottom: 1px dashed var(--vp-c-divider);
+  border-bottom: none; /* 移除实线边框 */
   position: relative;
+  margin-bottom: 0.5rem;
 }
 
-/* 添加顶部和底部实线 */
-.post-card::before,
+/* 只保留虚线分隔 */
 .post-card::after {
   content: '';
   position: absolute;
+  bottom: 0; /* 调整位置 */
   left: 0;
-  right: 0;
+  width: 100%;
   height: 1px;
-  background-color: var(--vp-c-divider);
+  border-bottom: 1px dashed var(--vp-c-divider);
+  opacity: 0.8; /* 稍微提高不透明度 */
 }
 
+/* 移除之前的样式 */
 .post-card::before {
-  top: 0;
-}
-
-.post-card::after {
-  bottom: 0;
-  /* 移除底部实线，改用边距解决重叠问题 */
   display: none;
 }
 
@@ -583,23 +580,24 @@ function formatDate(dateString: string): string {
 }
 
 .post-meta {
-  font-size: 0.8rem;
-  color: var(--vp-c-text-3);
+  font-size: 0.75rem; /* 缩小字体 */
+  color: var(--vp-c-text-3); /* 减淡颜色 */
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   margin-bottom: 0.2rem;
+  opacity: 0.8; /* 降低不透明度 */
 }
 
 .post-date,
 .post-hot,
 .post-category {
-  margin-right: 4px;
+  margin-right: 3px; /* 减小间距 */
 }
 
 .post-separator {
-  margin: 0 4px;
-  opacity: 0.6;
+  margin: 0 3px; /* 减小分隔符间距 */
+  opacity: 0.5; /* 降低分隔符不透明度 */
 }
 
 .post-hot {
@@ -609,7 +607,7 @@ function formatDate(dateString: string): string {
 }
 
 .hot-icon {
-  font-size: 0.8rem;
+  font-size: 0.75rem; /* 缩小图标 */
 }
 
 .hot-score {
