@@ -56,11 +56,11 @@ export default {
     app.config.globalProperties.$echarts = echarts;
   },
   
-  // 使用自定义页脚，但保持VitePress对侧边栏页面的页脚隐藏规则
+  // 使用自定义布局
   Layout: MyLayout,
   
   setup() {
-    // 获取frontmatter和route
+    // 获取route
     const route = useRoute();
     
     // 初始化图片缩放功能

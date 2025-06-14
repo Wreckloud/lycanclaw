@@ -6,9 +6,7 @@
 
 export const recommendedPosts = [
   // 在这里添加您想要推荐的文章
-  '/thoughts/光不在彼方.html',
-  '/thoughts/竟然被回关.html',
-  '/thoughts/笔记本 Wi-Fi 消失的解决方法.html',
-  '/thoughts/从一盏灯开始的文明.html',
-  '/thoughts/远古卷轴.html'
+  '/thoughts/獠牙下的野蔷薇.html',
+  '/thoughts/远古卷轴.html',
+  '/thoughts/光不在彼方.html'
 ]; 

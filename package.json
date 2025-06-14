@@ -19,7 +19,7 @@
     "generate-data": "pnpm run generate-posts && pnpm run generate-knowledge-stats && pnpm run generate-recommended"
   },
   "dependencies": {
-    "@vueuse/core": "^13.3.0",
+    "@vueuse/core": "^10.9.0",
     "@waline/client": "^3.5.7",
     "echarts": "^5.6.0",
     "gray-matter": "^4.0.3"
