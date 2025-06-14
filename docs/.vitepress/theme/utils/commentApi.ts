@@ -147,6 +147,27 @@ export function preloadRecentComments(count: number = 5): void {
 }
 
 /**
+ * 处理API返回的评论数据
+ * @param data API返回的数据
+ * @returns 处理后的评论数组
+ */
+function processCommentResponse(data: any): WalineComment[] {
+  // 检查是否为新版API格式：{errno: 0, errmsg: '', data: [...]}
+  if (data && typeof data === 'object' && 'errno' in data && 'data' in data) {
+    console.log('[CommentAPI] 检测到新版API格式');
+    return Array.isArray(data.data) ? data.data : [];
+  }
+  
+  // 如果是数组，直接返回
+  if (Array.isArray(data)) {
+    return data;
+  }
+  
+  console.error('[CommentAPI] 无法处理的评论数据格式:', typeof data);
+  return [];
+}
+
+/**
  * 获取最新评论
  * @param count 获取的评论数量，默认为5
  * @param forceRefresh 是否强制刷新（忽略缓存）
@@ -175,15 +196,18 @@ export async function getRecentComments(count: number = 5, forceRefresh: boolean
   const fetchPromise = (async () => {
     try {
       // 获取最新评论
-      const url = `${WALINE_SERVER_URL}/comment?type=recent&count=${count}&_t=${Date.now()}`;
+      const apiUrl = `${WALINE_SERVER_URL}/comment`;
+      const url = `${apiUrl}?type=recent&count=${count}&_t=${Date.now()}`;
       const data = await http.get(url);
       
-      // Waline最新评论API返回的是数组
-      if (Array.isArray(data)) {
-        saveRecentCommentsToCache(data);
-        return data;
+      // 处理API响应
+      const comments = processCommentResponse(data);
+      
+      if (comments.length > 0) {
+        saveRecentCommentsToCache(comments);
+        return comments;
       } else {
-        console.error('[CommentAPI] 评论数据格式不正确', data);
+        console.log('[CommentAPI] 没有获取到评论数据');
         return [];
       }
     } catch (error) {
@@ -213,10 +237,39 @@ export async function getCommentCount(path: string): Promise<number> {
   if (!path) return 0;
   
   try {
-    const url = `${WALINE_SERVER_URL}/comment?type=count&url=${encodeURIComponent(path)}`;
+    const apiUrl = `${WALINE_SERVER_URL}/comment`;
+    const url = `${apiUrl}?type=count&url=${encodeURIComponent(path)}`;
     const data = await http.get(url);
     
-    return typeof data === 'number' ? data : 0;
+    // 处理不同格式的返回值
+    if (typeof data === 'number') {
+      return data;
+    } else if (data && typeof data === 'object') {
+      // 检查是否有新API格式的结构
+      if ('errno' in data && 'data' in data) {
+        return typeof data.data === 'number' ? data.data : 0;
+      }
+      
+      // 检查是否直接返回了路径映射
+      if (path in data) {
+        return typeof data[path] === 'number' ? data[path] : 0;
+      }
+      
+      // 尝试不同的路径格式
+      const pathWithoutSlash = path.startsWith('/') ? path.substring(1) : path;
+      const pathWithSlash = path.startsWith('/') ? path : `/${path}`;
+      
+      if (pathWithoutSlash in data) {
+        return typeof data[pathWithoutSlash] === 'number' ? data[pathWithoutSlash] : 0;
+      }
+      
+      if (pathWithSlash in data) {
+        return typeof data[pathWithSlash] === 'number' ? data[pathWithSlash] : 0;
+      }
+    }
+    
+    console.error('[CommentAPI] 无法解析评论数据:', data);
+    return 0;
   } catch (error) {
     console.error('[CommentAPI] 获取评论数失败:', error);
     return 0;

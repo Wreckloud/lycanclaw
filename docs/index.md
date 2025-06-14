@@ -39,12 +39,7 @@ import RecentComments from './.vitepress/theme/components/home/RecentComments.vu
     <div class="home-section recommended-reading-section">
       <RecommendedReading 
         :maxPosts="5" 
-        strategy="hot" 
-        :customPaths="[
-          '/thoughts/光不在彼方.html',
-          '/thoughts/竟然被回关.html',
-          '/thoughts/笔记本 Wi-Fi 消失的解决方法.html'
-        ]"
+        strategy="custom" 
       />
     </div>
     <!-- 近期动态 -->

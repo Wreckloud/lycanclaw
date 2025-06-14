@@ -2,20 +2,16 @@
 import { ref, onMounted, computed, onBeforeUnmount, nextTick } from 'vue'
 import { withBase } from 'vitepress'
 import { useIntersectionObserver } from '@vueuse/core'
-// 导入现有的API工具
-import { getCommentCount } from '../../utils/commentApi'
-import { getPageView } from '../../utils/pageViewApi'
+// 导入推荐文章配置
+import { recommendedPosts as configuredPostsPaths } from '../../../config/recommended-posts.js'
 
 // 类型定义
-interface HotPost {
+interface Post {
   url: string
   title: string
   description: string
   date: string
-  tags?: string[]
-  hotScore: number
-  commentCount: number
-  pageviews: number
+  tags: string[]
 }
 
 // 判断是否在浏览器环境中
@@ -23,10 +19,9 @@ const isBrowser = typeof window !== 'undefined'
 
 // 组件引用和状态
 const sectionRef = ref<HTMLElement | null>(null)
-const containerRef = ref<HTMLElement | null>(null)
 const carouselRef = ref<HTMLElement | null>(null)
 const isVisible = ref(false)
-const recommendedPosts = ref<HotPost[]>([])
+const recommendedPosts = ref<Post[]>([])
 const isLoading = ref(true)
 const hasError = ref(false)
 
@@ -38,20 +33,10 @@ const autoplayInterval = ref<number | null>(null)
 
 // 组件属性
 const props = defineProps({
-  // 自定义文章路径，优先使用
-  customPaths: {
-    type: Array as () => string[],
-    default: () => []
-  },
   // 最大显示文章数量
   maxPosts: {
     type: Number,
     default: 5
-  },
-  // 推荐策略：'hot'(热度), 'most-commented'(评论最多), 'most-viewed'(浏览最多), 'custom'(自定义)
-  strategy: {
-    type: String,
-    default: 'hot'
   },
   // 自动轮播间隔（毫秒），0表示不自动轮播
   autoplaySpeed: {
@@ -78,8 +63,8 @@ onMounted(() => {
       }
     },
     {
-      threshold: 0.75, // 要求组件大部分在视口内才触发
-      rootMargin: '0px 0px -10% 0px' // 适当调整触发区域
+      threshold: 0.75,
+      rootMargin: '0px 0px -10% 0px'
     }
   )
 })
@@ -91,10 +76,7 @@ function updateCurrentIndex() {
   const scrollLeft = carouselRef.value.scrollLeft;
   const cardWidth = carouselRef.value.clientWidth;
   
-  // 计算当前索引
   currentIndex.value = Math.round(scrollLeft / cardWidth);
-  
-  // 更新滚动位置
   scrollPosition.value = scrollLeft;
   maxScroll.value = carouselRef.value.scrollWidth - carouselRef.value.clientWidth;
 }
@@ -103,29 +85,23 @@ function updateCurrentIndex() {
 function scrollToCard(index: number) {
   if (!carouselRef.value || !recommendedPosts.value.length) return;
   
-  // 确保索引在合法范围内
   const safeIndex = Math.max(0, Math.min(index, recommendedPosts.value.length - 1));
-  
-  // 计算目标滚动位置
   const cardWidth = carouselRef.value.clientWidth;
   const targetScroll = safeIndex * cardWidth;
   
-  // 平滑滚动
   carouselRef.value.scrollTo({
     left: targetScroll,
     behavior: 'smooth'
   });
   
-  // 更新当前索引
   currentIndex.value = safeIndex;
 }
 
-// 切换到前一个卡片
+// 切换到前一个或后一个卡片
 function prevCard() {
   scrollToCard(currentIndex.value - 1);
 }
 
-// 切换到后一个卡片
 function nextCard() {
   scrollToCard(currentIndex.value + 1);
 }
@@ -135,7 +111,7 @@ function handleScroll() {
   updateCurrentIndex();
 }
 
-// 开始自动轮播
+// 控制自动轮播
 function startAutoplay() {
   if (props.autoplaySpeed > 0 && recommendedPosts.value.length > 1) {
     autoplayInterval.value = window.setInterval(() => {
@@ -145,7 +121,6 @@ function startAutoplay() {
   }
 }
 
-// 停止自动轮播
 function stopAutoplay() {
   if (autoplayInterval.value) {
     clearInterval(autoplayInterval.value);
@@ -153,26 +128,18 @@ function stopAutoplay() {
   }
 }
 
-// 组件挂载后设置事件监听
+// 事件监听设置
 onMounted(() => {
   if (!isBrowser) return;
   
-  // 在数据加载完成后设置滚动监听
   fetchPosts().then(() => {
     nextTick(() => {
       if (carouselRef.value) {
-        // 添加滚动事件监听
         carouselRef.value.addEventListener('scroll', handleScroll);
-        
-        // 初始化滚动位置状态
         updateCurrentIndex();
-        
-        // 启动自动轮播
         startAutoplay();
         
-        // 鼠标进入时暂停自动轮播
         carouselRef.value.addEventListener('mouseenter', stopAutoplay);
-        // 鼠标离开时恢复自动轮播
         carouselRef.value.addEventListener('mouseleave', startAutoplay);
       }
     });
@@ -182,7 +149,6 @@ onMounted(() => {
 // 组件卸载前移除事件监听
 onBeforeUnmount(() => {
   if (isBrowser) {
-    // 清除自动轮播
     stopAutoplay();
     
     if (carouselRef.value) {
@@ -193,79 +159,51 @@ onBeforeUnmount(() => {
   }
 });
 
-// 获取热门文章数据
+// 获取推荐文章数据
 async function fetchPosts() {
   if (!isBrowser) return
   
   try {
-    // 使用自定义文章路径
-    if (props.customPaths.length > 0 && props.strategy === 'custom') {
-      // 从posts.json获取所有文章
-      const postsResponse = await fetch(withBase('/posts.json'))
-      if (!postsResponse.ok) {
-        throw new Error('加载文章数据失败')
+    isLoading.value = true
+    hasError.value = false
+    
+    // 尝试从预生成的recommended-posts.json获取数据
+    try {
+      const response = await fetch(withBase('/recommended-posts.json'))
+      if (response.ok) {
+        recommendedPosts.value = await response.json()
+        isLoading.value = false
+        return
       }
-      
-      const allPosts = await postsResponse.json()
-      
-      // 过滤出自定义路径的文章
-      const filteredPosts = allPosts.filter((post: any) => 
-        props.customPaths.some(path => post.url.endsWith(path))
-      )
-      
-      // 对于自定义文章，可以实时获取评论数和浏览量
-      const postsWithStats = await Promise.all(
-        filteredPosts.map(async (post: any) => {
-          // 使用封装好的API获取评论数和浏览量
-          const commentCount = await getCommentCount(post.url)
-          const pageviews = await getPageView(post.url, 1)
-          
-          return {
-            url: post.url,
-            title: post.frontmatter.title,
-            description: post.frontmatter.description || post.excerpt || '',
-            date: post.frontmatter.date,
-            tags: post.frontmatter.tags || [],
-            hotScore: 0, // 自定义模式下不计算热度
-            commentCount,
-            pageviews
-          }
-        })
-      )
-      
-      recommendedPosts.value = postsWithStats.slice(0, props.maxPosts)
-    } else {
-      // 从生成的热门文章数据中获取
-      try {
-        // 尝试从public目录获取
-        const response = await fetch(withBase('/hot-posts.json'))
-        if (!response.ok) {
-          throw new Error('无法加载热门文章数据')
-        }
-        
-        let posts = await response.json()
-        
-        // 根据不同策略排序
-        switch (props.strategy) {
-          case 'most-commented':
-            posts.sort((a: HotPost, b: HotPost) => b.commentCount - a.commentCount)
-            break
-          case 'most-viewed':
-            posts.sort((a: HotPost, b: HotPost) => b.pageviews - a.pageviews)
-            break
-          case 'hot':
-          default:
-            // 默认已按热度排序，无需重排
-            break
-        }
-        
-        recommendedPosts.value = posts.slice(0, props.maxPosts)
-      } catch (error) {
-        console.error('加载热门文章数据失败:', error)
-        throw new Error('无法加载热门文章数据，请确保文件存在')
-      }
+    } catch (e) {
+      // 如果预生成数据不存在，则从posts.json获取
     }
     
+    // 从posts.json获取所有文章
+    const postsResponse = await fetch(withBase('/posts.json'))
+    if (!postsResponse.ok) {
+      throw new Error('加载文章数据失败')
+    }
+    
+    const allPosts = await postsResponse.json()
+    
+    // 使用配置文件中的推荐文章
+    const posts = configuredPostsPaths
+      .map(postPath => {
+        const originalPost = allPosts.find(post => post.url === postPath)
+        if (!originalPost) return null
+        
+        return {
+          url: originalPost.url,
+          title: originalPost.frontmatter.title,
+          description: originalPost.frontmatter.description || originalPost.excerpt || '',
+          date: originalPost.frontmatter.date,
+          tags: originalPost.frontmatter.tags || []
+        }
+      })
+      .filter(post => post !== null)
+    
+    recommendedPosts.value = posts.slice(0, props.maxPosts)
     isLoading.value = false
   } catch (error) {
     console.error('Error loading recommended posts:', error)
@@ -278,10 +216,7 @@ async function fetchPosts() {
 function formatDate(dateString: string): string {
   if (!dateString) return ''
 
-  // 处理可能带引号的日期字符串
   const cleanDateString = String(dateString).replace(/^['"]|['"]$/g, '')
-
-  // 直接从日期字符串中提取年月日
   const match = cleanDateString.match(/(\d{4})-(\d{2})-(\d{2})/)
 
   if (match) {
@@ -291,7 +226,6 @@ function formatDate(dateString: string): string {
     return `${month}月${day}日`
   }
 
-  // 如果无法提取，则回退到Date对象
   const date = new Date(cleanDateString)
   if (isNaN(date.getTime())) return ''
 
@@ -339,26 +273,6 @@ function formatDate(dateString: string): string {
 
               <div class="post-meta">
                 <span class="post-date">{{ formatDate(post.date) }}</span>
-                <span class="post-separator">/</span>
-
-                <!-- 如果是hot策略，显示热度 -->
-                <span v-if="strategy === 'hot'" class="post-hot">
-                  <span class="hot-icon">🔥</span>
-                  <span class="hot-score">{{ Math.round(post.hotScore) }}热度</span>
-                </span>
-
-                <!-- 如果是most-commented策略，显示评论数 -->
-                <span v-else-if="strategy === 'most-commented'" class="post-hot">
-                  <span class="hot-icon">💬</span>
-                  <span class="hot-score">{{ post.commentCount }}评论</span>
-                </span>
-
-                <!-- 如果是most-viewed策略，显示浏览量 -->
-                <span v-else-if="strategy === 'most-viewed'" class="post-hot">
-                  <span class="hot-icon">👀</span>
-                  <span class="hot-score">{{ post.pageviews }}浏览</span>
-                </span>
-
                 <span class="post-separator">/</span>
                 <span class="post-category">推荐</span>
 
@@ -418,10 +332,10 @@ function formatDate(dateString: string): string {
   width: 100%;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   scroll-behavior: smooth;
-  padding-bottom: 0.5rem; /* 为分割线留出空间 */
+  padding-bottom: 0.5rem;
 }
 
 /* 隐藏WebKit浏览器的滚动条 */
@@ -458,7 +372,7 @@ function formatDate(dateString: string): string {
   margin-right: 1%;
   box-sizing: border-box;
   scroll-snap-align: center;
-  border-bottom: none; /* 移除实线边框 */
+  border-bottom: none;
   position: relative;
   margin-bottom: 0.5rem;
 }
@@ -467,17 +381,12 @@ function formatDate(dateString: string): string {
 .post-card::after {
   content: '';
   position: absolute;
-  bottom: 0; /* 调整位置 */
+  bottom: 0;
   left: 0;
   width: 100%;
   height: 1px;
   border-bottom: 1px dashed var(--vp-c-divider);
-  opacity: 0.8; /* 稍微提高不透明度 */
-}
-
-/* 移除之前的样式 */
-.post-card::before {
-  display: none;
+  opacity: 0.8;
 }
 
 /* 底部指示器 */
@@ -506,7 +415,7 @@ function formatDate(dateString: string): string {
   transform: scale(1.2);
 }
 
-/* 添加动画样式 - 默认设置为不可见 */
+/* 动画样式 */
 .section-title,
 .carousel-wrapper,
 .carousel-indicators {
@@ -514,7 +423,6 @@ function formatDate(dateString: string): string {
   transform: translateY(20px);
 }
 
-/* 当元素可见时应用动画 */
 .animate-in {
   animation: fadeInUp 0.6s ease forwards;
   animation-delay: var(--anim-delay, 0s);
@@ -580,39 +488,23 @@ function formatDate(dateString: string): string {
 }
 
 .post-meta {
-  font-size: 0.75rem; /* 缩小字体 */
-  color: var(--vp-c-text-3); /* 减淡颜色 */
+  font-size: 0.75rem;
+  color: var(--vp-c-text-3);
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   margin-bottom: 0.2rem;
-  opacity: 0.8; /* 降低不透明度 */
+  opacity: 0.8;
 }
 
 .post-date,
-.post-hot,
 .post-category {
-  margin-right: 3px; /* 减小间距 */
+  margin-right: 3px;
 }
 
 .post-separator {
-  margin: 0 3px; /* 减小分隔符间距 */
-  opacity: 0.5; /* 降低分隔符不透明度 */
-}
-
-.post-hot {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.hot-icon {
-  font-size: 0.75rem; /* 缩小图标 */
-}
-
-.hot-score {
-  font-weight: 400;
-  color: var(--vp-c-text-3);
+  margin: 0 3px;
+  opacity: 0.5;
 }
 
 .post-tags {
@@ -684,7 +576,6 @@ function formatDate(dateString: string): string {
     flex: 0 0 100%;
     width: 100%;
     padding: 0.8rem 0.5rem;
-    border-bottom-width: 1px;
   }
 
   .post-item-title {
