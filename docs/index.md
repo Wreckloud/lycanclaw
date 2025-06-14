@@ -24,6 +24,7 @@ hero:
 
 <script setup>
 import RecentPosts from './.vitepress/theme/components/home/RecentPosts.vue'
+import RecommendedReading from './.vitepress/theme/components/home/RecommendedReading.vue'
 import StatsPanel from './.vitepress/theme/components/home/StatsPanel.vue'
 import ContributionHeatmap from './.vitepress/theme/components/home/ContributionHeatmap.vue'
 import RecentComments from './.vitepress/theme/components/home/RecentComments.vue'
@@ -34,6 +35,18 @@ import RecentComments from './.vitepress/theme/components/home/RecentComments.vu
 <div class="home-container">
   <!-- 左侧主要内容区域 -->
   <div class="home-content-area">
+    <!-- 推荐阅读 -->
+    <div class="home-section recommended-reading-section">
+      <RecommendedReading 
+        :maxPosts="5" 
+        strategy="hot" 
+        :customPaths="[
+          '/thoughts/光不在彼方.html',
+          '/thoughts/竟然被回关.html',
+          '/thoughts/笔记本 Wi-Fi 消失的解决方法.html'
+        ]"
+      />
+    </div>
     <!-- 近期动态 -->
     <div class="home-section recent-posts-section">
       <RecentPosts />

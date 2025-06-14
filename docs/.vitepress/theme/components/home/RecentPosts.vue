@@ -23,6 +23,7 @@ const isBrowser = typeof window !== 'undefined'
 
 // 组件引用和状态
 const containerRef = ref<HTMLElement | null>(null)
+const postsRef = ref<HTMLElement | null>(null) // 专门用于动画触发的引用
 const isVisible = ref(false)
 const recentPosts = ref<Post[]>([])
 const isLoading = ref(true)
@@ -36,16 +37,23 @@ onMounted(() => {
   // 加载文章数据
   fetchPosts()
   
-  // 设置滚动动画
+  // 设置滚动动画 - 使用专门的postsRef元素确保独立触发
   const { stop } = useIntersectionObserver(
-    containerRef,
+    postsRef,
     ([{ isIntersecting }]) => {
       if (isIntersecting) {
-        isVisible.value = true
-        stop() // 只触发一次动画
+        // 获取元素位置确保充分进入视口
+        const rect = postsRef.value?.getBoundingClientRect();
+        if (rect && rect.top < window.innerHeight * 0.9) {
+          isVisible.value = true
+          stop() // 只触发一次动画
+        }
       }
     },
-    { threshold: 0.2 } // 当20%的元素可见时触发
+    { 
+      threshold: [0.1], // 降低阈值，只需要20%进入视口就触发
+      rootMargin: '0px 0px -10% 0px' // 增加底部边距，提前触发
+    }
   )
 })
 
@@ -162,36 +170,38 @@ function getPostExcerpt(post: Post): string {
     
     <!-- 文章列表 -->
     <template v-else>
-      <div 
-        v-for="(post, index) in recentPosts" 
-        :key="post.url" 
-        class="post-item"
-        :class="{ 'animate-in': isVisible }"
-        :style="{ '--anim-delay': `${index * 0.1 + 0.1}s` }"
-      >
-        <div class="post-content">
-          <h3 class="post-item-title">
-            <a :href="withBase(post.url)" class="title-link">{{ post.frontmatter.title }}</a>
-          </h3>
-          
-          <!-- 文章摘要：优先使用description -->
-          <p class="post-excerpt">{{ getPostExcerpt(post) }}</p>
-          
-          <div class="post-meta">
-            <span class="post-date">{{ formatDate(post.frontmatter.date) }}</span>
-            <span class="post-separator">/</span>
-            <span class="post-read-time">约{{ calculateReadTime(post.content) }}分钟读完</span>
-            <span class="post-separator">/</span>
-            <span class="post-category">随想</span>
-            <span v-if="post.frontmatter.tags?.length" class="post-tags">
-              <span 
-                v-for="(tag, index) in post.frontmatter.tags" 
-                :key="index"
-                class="post-tag"
-              >
-                #{{ tag }}
+      <div ref="postsRef" class="posts-container">
+        <div 
+          v-for="(post, index) in recentPosts" 
+          :key="post.url" 
+          class="post-item"
+          :class="{ 'animate-in': isVisible }"
+          :style="{ '--anim-delay': `${index * 0.1 + 0.1}s` }"
+        >
+          <div class="post-content">
+            <h3 class="post-item-title">
+              <a :href="withBase(post.url)" class="title-link">{{ post.frontmatter.title }}</a>
+            </h3>
+            
+            <!-- 文章摘要：优先使用description -->
+            <p class="post-excerpt">{{ getPostExcerpt(post) }}</p>
+            
+            <div class="post-meta">
+              <span class="post-date">{{ formatDate(post.frontmatter.date) }}</span>
+              <span class="post-separator">/</span>
+              <span class="post-read-time">约{{ calculateReadTime(post.content) }}分钟读完</span>
+              <span class="post-separator">/</span>
+              <span class="post-category">随想</span>
+              <span v-if="post.frontmatter.tags?.length" class="post-tags">
+                <span 
+                  v-for="(tag, index) in post.frontmatter.tags" 
+                  :key="index"
+                  class="post-tag"
+                >
+                  #{{ tag }}
+                </span>
               </span>
-            </span>
+            </div>
           </div>
         </div>
       </div>
@@ -212,6 +222,12 @@ function getPostExcerpt(post: Post): string {
 <style scoped>
 .recent-posts {
   overflow: hidden !important;
+}
+
+/* 文章列表容器 - 用于交叉观察 */
+.posts-container {
+  position: relative;
+  width: 100%;
 }
 
 /* 添加动画样式 - 默认设置为不可见 */
@@ -354,9 +370,6 @@ function getPostExcerpt(post: Post): string {
 
 /* 移动端适配 */
 @media (max-width: 959px) {
-  .recent-posts {
-    /* margin: 1.5rem 0; 移除此行 */
-  }
   
   .section-title {
     font-size: 1.5rem;

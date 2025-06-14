@@ -199,9 +199,13 @@ export async function getPageView(path?: string, fallbackValue: number = 1): Pro
   }
   
   try {
-    // 从Waline API获取
+    // 从Waline API获取 - 根据API文档调整路径格式
+    // 参考: https://waline.js.org/reference/server/api.html
     const url = `${WALINE_SERVER_URL}/article?path=${encodeURIComponent(currentPath)}`;
+    debug(`API请求URL: ${url}`);
+    
     const data = await http.get(url);
+    debug(`API响应数据类型: ${typeof data}, 值: ${JSON.stringify(data)}`);
     
     // Waline返回的是数字
     if (typeof data === 'number') {
@@ -258,9 +262,13 @@ export async function updatePageView(path?: string): Promise<boolean> {
   try {
     updatingPaths.add(currentPath);
     
-    // 使用Waline API更新
-    const url = `${WALINE_SERVER_URL}/article?path=${encodeURIComponent(currentPath)}`;
-    const data = await http.post(url, {});
+    // 使用Waline API更新 - 根据API文档修正
+    const url = `${WALINE_SERVER_URL}/article`;
+    const body = { path: currentPath };
+    debug(`更新浏览量API请求: ${url}, 请求体:`, body);
+    
+    const data = await http.post(url, body);
+    debug(`更新浏览量响应: ${JSON.stringify(data)}`);
     
     // 如果有返回值，更新缓存
     if (data && typeof data === 'number' && data > 0) {

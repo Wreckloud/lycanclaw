@@ -500,7 +500,6 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="contribution-heatmap">
-    <h3 class="section-title">字数热力图</h3>
     
     <!-- 加载中状态 -->
     <div v-if="isLoading" class="loading">
@@ -547,13 +546,6 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-.section-title {
-  font-size: 1.4rem;
-  font-weight: 600;
-  color: var(--vp-c-text-1);
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--vp-c-divider);
-}
 
 .loading, .error {
   text-align: center;
