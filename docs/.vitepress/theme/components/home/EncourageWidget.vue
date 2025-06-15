@@ -33,6 +33,10 @@ let observerInstance = null
 let hintAutoCloseTimer = null // 提示自动关闭计时器
 const hintShownBefore = ref(false) // 标记提示是否已经显示过
 
+// 时间配置（单位：秒）
+const HINT_DISPLAY_DELAY = 20 // 点击提示显示延迟
+const HINT_AUTO_CLOSE_TIME = 6 // 提示自动关闭时间
+
 // 鼠标悬停状态
 const isHovered = ref(false)
 
@@ -351,11 +355,11 @@ function setupIntersectionObserver() {
       // 组件可见，设置计时器
       if (!hintTimer && !hintShownBefore.value) {
         hintTimer = setTimeout(() => {
-          // 1秒后显示提示，除非已点击过催更
+          // 显示提示，除非已点击过催更
           if (encourageCount.value === 0) {
             showClickHint.value = true;
             
-            // 设置6秒后自动关闭并不再显示
+            // 设置自动关闭并不再显示
             if (hintAutoCloseTimer) {
               clearTimeout(hintAutoCloseTimer);
             }
@@ -363,10 +367,10 @@ function setupIntersectionObserver() {
             hintAutoCloseTimer = setTimeout(() => {
               hideClickHint();
               hintShownBefore.value = true; // 标记已经显示过，不再显示
-            }, 6000);
+            }, HINT_AUTO_CLOSE_TIME * 1000);
           }
           hintTimer = null;
-        }, 1000);
+        }, HINT_DISPLAY_DELAY * 1000);
       }
     } else {
       // 组件不可见，清除计时器

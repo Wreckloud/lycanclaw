@@ -340,3 +340,34 @@ aside,
   overflow-x: visible !important;
   overflow-y: visible !important;
 }
+
+/* 恢复侧边栏的滚动功能 - 使用高优先级选择器确保覆盖之前的规则 */
+html body .VPSidebar,
+body .VPSidebar,
+#app .VPSidebar,
+.VPDoc .VPSidebar {
+  overflow: auto !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  max-height: 100vh !important;
+}
+
+html body .VPSidebarItems,
+body .VPSidebarItems,
+#app .VPSidebarItems,
+.VPDoc .VPSidebarItems {
+  overflow: auto !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  max-height: 100% !important;
+}
+
+/* 针对VitePress的知识笔记侧边栏特定选择器 */
+.VPNavbarTitle + .VPNavbar + .VPSidebar,
+.VPSidebar > .nav,
+.VPSidebar > .nav > .VPSidebarNav,
+.VPSidebar > .nav > .VPSidebarNav > .group {
+  overflow: auto !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}

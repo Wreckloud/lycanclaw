@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "thoughts/竟然被回关.md",
+                "file": "thoughts/未命名.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "竟然被回关"
+              "title": "未命名"
             }
           }
         ]
@@ -40,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "thoughts/竟然被回关.md",
+                "file": "thoughts/未命名.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "竟然被回关 的大纲"
+              "title": "未命名 的大纲"
             }
           },
           {
@@ -154,12 +154,13 @@
   },
   "active": "f1a5ae53903c2eca",
   "lastOpenFiles": [
+    "thoughts/竟然被回关.md",
+    "thoughts/未命名.md",
     "thoughts/笔记本 Wi-Fi 消失的解决方法.md",
     "thoughts/从一盏灯开始的文明.md",
     "thoughts/光不在彼方.md",
     "thoughts/互联网与星辰大海.md",
     "thoughts/环境变量.md",
-    "thoughts/竟然被回关.md",
     "thoughts/獠牙下的野蔷薇.md",
     "thoughts/数字世界的构建手册.md",
     "thoughts/远古卷轴.md",
@@ -195,7 +196,6 @@
     "debug-sort.log",
     "knowledge/前端工具库/Element-Plus 定制主题（SCSS 方案）.md",
     "knowledge/前端工具库/ESLint+Prettier 代码规范自动化.md",
-    "knowledge/前端工具库/Git-版本控制.md",
     "public/images/文章资源/axios-现代化的-ajax-请求工具",
     "public/images/文章资源/git-版本控制",
     "knowledge/前端工具库",
