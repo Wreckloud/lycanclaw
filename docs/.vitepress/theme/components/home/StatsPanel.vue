@@ -20,6 +20,15 @@ const stats = reactive({
 // 添加可视性状态追踪
 const isVisible = ref(false)
 const containerRef = ref(null)
+const animationTriggerRef = ref(null) // 专门用于动画触发的引用
+
+// 判断是否为PC布局
+const isPcLayout = ref(isBrowser ? window.innerWidth >= 960 : true)
+
+// 更新布局状态函数
+const updateLayoutState = () => {
+  isPcLayout.value = window.innerWidth >= 960
+}
 
 // 催更消息配置 - 可以根据需要自定义不同次数的消息
 const encourageMessages = {
@@ -351,6 +360,11 @@ function animateNumbers() {
   }
 }
 
+// 处理动画触发
+const handleAnimationTrigger = () => {
+  // 移除此方法的实现，不再需要
+}
+
 // 观察元素是否进入视口
 function setupIntersectionObserver() {
   if (!isBrowser || !window.IntersectionObserver) return
@@ -365,19 +379,22 @@ function setupIntersectionObserver() {
         observer.unobserve(entry.target)
       }
     })
-  }, { threshold: 0.5, rootMargin: '0px' }) // 提高threshold值到0.5，组件需要50%进入视口才触发动画
+  }, { 
+    threshold: 0.7, // 提高阈值至70%，组件大部分进入视口后才触发
+    rootMargin: '0px 0px -15% 0px' // 设置负边距，延迟触发
+  })
   
-  // 获取统计面板元素并观察它
+  // 获取动画触发专用元素并观察它
   setTimeout(() => {
-    if (containerRef.value) {
-      observer.observe(containerRef.value)
+    if (animationTriggerRef.value) {
+      observer.observe(animationTriggerRef.value)
     }
   }, 100) // 短暂延迟确保DOM已渲染
   
   // 返回清理函数
   return () => {
-    if (isBrowser && containerRef.value && observer) {
-      observer.unobserve(containerRef.value)
+    if (isBrowser && animationTriggerRef.value && observer) {
+      observer.unobserve(animationTriggerRef.value)
       observer.disconnect()
     }
   }
@@ -385,11 +402,22 @@ function setupIntersectionObserver() {
 
 // 加载数据
 let cleanup = null
+let resizeListener = null
+
 onMounted(async () => {
   // 确保只在浏览器环境中执行
   if (!isBrowser) return
   
   try {
+    // 初始化布局状态
+    updateLayoutState()
+    
+    // 监听窗口大小变化
+    resizeListener = () => {
+      updateLayoutState()
+    }
+    window.addEventListener('resize', resizeListener)
+    
     // 尝试从localStorage读取催更次数
     try {
       if (window.localStorage) {
@@ -482,11 +510,17 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   if (cleanup) cleanup()
   if (drawerTimer) clearTimeout(drawerTimer)
+  if (isBrowser) {
+    window.removeEventListener('resize', resizeListener)
+  }
 })
 </script>
 
 <template>
-  <div class="stats-panel" ref="containerRef">
+  <div class="stats-panel" ref="containerRef" :class="{ 'is-visible': isVisible }">
+    <!-- 添加一个专门用于触发动画的元素 -->
+    <div ref="animationTriggerRef" class="animation-trigger"></div>
+    
     <h2 class="section-title" :class="{ 'animate-in': isVisible }">数据统计</h2>
     
     <!-- 加载中状态 -->
@@ -502,12 +536,12 @@ onBeforeUnmount(() => {
     <!-- 统计数据展示 -->
     <div v-else class="stats-container">
       <div class="stats-grid">
-        <encourage-widget 
-          :post-count="stats.currentMonthPosts" 
-          :animated-count="stats.animatedCurrentMonthPosts" 
-          :class="{ 'animate-in': isVisible }" 
-          style="--anim-delay: 0.1s"
-        />
+        <div class="encourage-widget-container" style="--anim-delay: 0.1s">
+          <encourage-widget 
+            :post-count="stats.currentMonthPosts" 
+            :animated-count="stats.animatedCurrentMonthPosts"
+          />
+        </div>
         
         <div class="stats-card" :class="{ 'animate-in': isVisible }" style="--anim-delay: 0.2s">
           <div class="stats-value">{{ formatNumber(stats.animatedThoughtsCount) }}</div>
@@ -547,12 +581,38 @@ onBeforeUnmount(() => {
   overflow: hidden !important;
 }
 
+/* 为动画触发器设置样式 */
+.animation-trigger {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+}
+
 /* 添加动画样式 - 默认设置为不可见 */
 .section-title,
-.stats-card,
-encourage-widget {
+.stats-card {
   opacity: 0;
   transform: translateY(20px);
+}
+
+/* 为EncourageWidget添加专门的容器样式 */
+.encourage-widget-container {
+  opacity: 0; /* 初始设置为不可见 */
+  transform: translateY(20px); /* 与其他元素保持一致的初始位置 */
+  transition: opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.8s cubic-bezier(0.22, 1, 0.36, 1); /* 使用与fadeInUp相同的动画曲线 */
+  transition-delay: var(--anim-delay, 0s); /* 添加延迟支持 */
+}
+
+/* 当父组件可见时显示EncourageWidget */
+.stats-panel.is-visible .encourage-widget-container,
+.stats-container .animate-in ~ .encourage-widget-container {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* 当元素可见时应用动画 */

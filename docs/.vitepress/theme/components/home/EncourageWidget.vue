@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 
 // 接收属性
 const props = defineProps({
@@ -12,6 +12,52 @@ const props = defineProps({
     default: 0
   }
 })
+
+// 添加内部动画状态
+const internalAnimatedCount = ref(0)
+const animationStarted = ref(false)
+
+// 监听外部动画计数变化
+watch(() => props.animatedCount, (newValue) => {
+  // 只有当外部动画计数大于0时才更新内部值
+  // 不再自动触发动画
+  internalAnimatedCount.value = newValue
+}, { immediate: true })
+
+// 启动数字动画
+function startCountAnimation() {
+  if (animationStarted.value) return
+  
+  animationStarted.value = true
+  const targetValue = props.postCount
+  const duration = 2000 // 动画持续时间（毫秒）
+  const framesPerSecond = 60
+  const totalFrames = duration / 1000 * framesPerSecond
+  let currentFrame = 0
+  
+  // 重置动画起始值
+  internalAnimatedCount.value = 0
+  
+  // 使用requestAnimationFrame实现平滑动画
+  function animate() {
+    currentFrame++
+    const progress = currentFrame / totalFrames
+    
+    // 使用easeOutQuart缓动函数
+    const easeProgress = 1 - Math.pow(1 - progress, 4)
+    
+    internalAnimatedCount.value = Math.round(easeProgress * targetValue)
+    
+    if (currentFrame < totalFrames) {
+      requestAnimationFrame(animate)
+    } else {
+      // 确保最终值精确
+      internalAnimatedCount.value = targetValue
+    }
+  }
+  
+  requestAnimationFrame(animate)
+}
 
 // 催更状态
 const encourageCount = ref(0)
@@ -493,7 +539,7 @@ function handleMouseLeave() {
     @mouseleave="handleMouseLeave"
     ref="widgetRef"
   >
-    <div class="stats-value">{{ formatNumber(animatedCount) }}<span class="plus-mark">+</span></div>
+    <div class="stats-value">{{ formatNumber(internalAnimatedCount) }}<span class="plus-mark">+</span></div>
     <div class="stats-label">本月更新</div>
     
     <!-- 抽屉组件 -->

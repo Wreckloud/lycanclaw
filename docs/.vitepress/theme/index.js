@@ -118,7 +118,7 @@ export default {
     // 全局注册echarts
     app.config.globalProperties.$echarts = echarts;
     
-    // 添加路由钩子，在页面变化时执行高度同步
+    // 在路由变化时处理高度同步
     if (typeof window !== 'undefined') {
       router.onAfterRouteChanged = () => {
         // 检查当前是否在首页

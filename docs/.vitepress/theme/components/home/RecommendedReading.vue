@@ -20,10 +20,19 @@ const isBrowser = typeof window !== 'undefined'
 // 组件引用和状态
 const sectionRef = ref<HTMLElement | null>(null)
 const carouselRef = ref<HTMLElement | null>(null)
+const animationTriggerRef = ref<HTMLElement | null>(null) // 专门用于动画触发
 const isVisible = ref(false)
 const recommendedPosts = ref<Post[]>([])
 const isLoading = ref(true)
 const hasError = ref(false)
+
+// 判断是否为PC布局
+const isPcLayout = ref(isBrowser ? window.innerWidth >= 960 : true)
+
+// 更新布局状态函数
+const updateLayoutState = () => {
+  isPcLayout.value = window.innerWidth >= 960
+}
 
 // 轮播状态
 const currentIndex = ref(0)
@@ -45,16 +54,41 @@ const props = defineProps({
   }
 })
 
+// 处理全局动画触发
+const handleAnimationTrigger = () => {
+  // 移除此方法的实现，不再需要
+}
+
+// 事件清理函数
+// let animationTriggerListener: (() => void) | null = null
+let resizeListener: (() => void) | null = null
+let observerStop: (() => void) | null = null
+
 // 使用VueUse的useIntersectionObserver来检测元素是否进入视口
 onMounted(() => {
   if (!isBrowser) return
+
+  // 初始化布局状态
+  updateLayoutState()
+  
+  // 监听窗口大小变化
+  resizeListener = () => {
+    updateLayoutState()
+  }
+  window.addEventListener('resize', resizeListener)
+  
+  // 移除动画触发事件监听
+  // animationTriggerListener = () => {
+  //   handleAnimationTrigger()
+  // }
+  // document.addEventListener('triggerAnimation', animationTriggerListener)
 
   // 加载文章数据
   fetchPosts()
 
   // 设置滚动动画
   const { stop } = useIntersectionObserver(
-    sectionRef,
+    animationTriggerRef,
     ([{ isIntersecting }]) => {
       // 确保动画只被触发一次
       if (isIntersecting && !isVisible.value) {
@@ -63,10 +97,11 @@ onMounted(() => {
       }
     },
     {
-      threshold: 0.5,
-      rootMargin: '0px'
+      threshold: 0.7,
+      rootMargin: '0px 0px -15% 0px'
     }
   )
+  observerStop = stop
 })
 
 // 更新当前卡片索引
@@ -156,6 +191,18 @@ onBeforeUnmount(() => {
       carouselRef.value.removeEventListener('mouseenter', stopAutoplay);
       carouselRef.value.removeEventListener('mouseleave', startAutoplay);
     }
+    
+    // 清理动画和布局相关的监听器
+    if (resizeListener) {
+      window.removeEventListener('resize', resizeListener)
+    }
+    // 移除动画触发事件监听
+    // if (animationTriggerListener) {
+    //   document.removeEventListener('triggerAnimation', animationTriggerListener)
+    // }
+    if (observerStop) {
+      observerStop()
+    }
   }
 });
 
@@ -238,6 +285,9 @@ function formatDate(dateString: string): string {
 
 <template>
   <div class="recommended-reading" ref="sectionRef">
+    <!-- 添加专门用于触发动画的元素 -->
+    <div ref="animationTriggerRef" class="animation-trigger"></div>
+
     <h2 class="section-title" :class="{ 'animate-in': isVisible }">推荐阅读</h2>
 
     <!-- 加载中状态 -->
@@ -318,6 +368,17 @@ function formatDate(dateString: string): string {
   overflow: hidden !important;
   position: relative;
   min-height: 100px;
+}
+
+/* 添加动画触发器样式 */
+.animation-trigger {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
 }
 
 /* 轮播容器样式 */

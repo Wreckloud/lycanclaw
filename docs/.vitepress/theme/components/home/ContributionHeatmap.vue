@@ -28,10 +28,12 @@ const isBrowser = typeof window !== 'undefined'
 // 引用DOM元素
 const heatmapRef = ref(null)
 const containerRef = ref(null)
+const animationTriggerRef = ref(null) // 添加动画触发元素引用
 
 // 滚动状态
 const scrollPosition = ref(0)
 const maxScroll = ref(0)
+const isVisible = ref(false) // 添加可见性状态
 
 // 组件状态
 const isLoading = ref(true)
@@ -238,13 +240,56 @@ function setupHorizontalScroll() {
     
     // 初始化滚动位置
     updateScrollPosition()
-    
-    // 设置初始位置到最右侧（最新数据）
-    nextTick(() => {
-      if (containerRef.value) {
-        containerRef.value.scrollLeft = containerRef.value.scrollWidth - containerRef.value.clientWidth;
+  }
+}
+
+// 执行滚动动画 - 从左到右的滚动效果
+function performScrollAnimation() {
+  if (!containerRef.value) return
+  
+  // 先滚动到最左侧
+  containerRef.value.scrollLeft = 0
+  
+  // 稍微延迟后滚动到最右侧，产生动画效果
+  setTimeout(() => {
+    const targetScroll = containerRef.value.scrollWidth - containerRef.value.clientWidth
+    containerRef.value.scrollTo({
+      left: targetScroll,
+      behavior: 'smooth'
+    })
+  }, 300)
+}
+
+// 观察元素是否进入视口
+function setupIntersectionObserver() {
+  if (!isBrowser || !window.IntersectionObserver) return
+  
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting && !isVisible.value) {
+        isVisible.value = true
+        // 触发滚动动画
+        performScrollAnimation()
+        observer.unobserve(entry.target)
       }
-    });
+    })
+  }, { 
+    threshold: 0.1, // 降低阈值，只需要30%进入视口就触发
+    rootMargin: '0px 0px 0px 0px' // 移除负边距，不再延迟触发
+  })
+  
+  // 观察动画触发元素
+  setTimeout(() => {
+    if (animationTriggerRef.value) {
+      observer.observe(animationTriggerRef.value)
+    }
+  }, 100)
+  
+  return () => {
+    if (animationTriggerRef.value && observer) {
+      observer.unobserve(animationTriggerRef.value)
+      observer.disconnect()
+    }
   }
 }
 
@@ -288,11 +333,6 @@ function initChart() {
     // 更新滚动状态
     nextTick(() => {
       updateScrollPosition()
-      
-      // 设置初始位置到最右侧（最新数据）
-      if (containerRef.value) {
-        containerRef.value.scrollLeft = containerRef.value.scrollWidth - containerRef.value.clientWidth;
-      }
     })
   } catch (err) {
     console.error('Error initializing heatmap:', err)
@@ -366,6 +406,7 @@ function handleResize() {
 
 // 保存需要清理的资源
 let cleanupThemeListener = null;
+let cleanupObserver = null; // 添加观察器清理变量
 
 onMounted(async () => {
   // 确保只在浏览器环境中执行
@@ -467,6 +508,7 @@ onMounted(async () => {
       setTimeout(() => {
         initChart()
         setupHorizontalScroll() // 设置横向滚动
+        cleanupObserver = setupIntersectionObserver() // 设置交叉观察器
       }, 100) // 添加一点延迟，以确保DOM完全渲染
     })
   } catch (error) {
@@ -482,6 +524,11 @@ onBeforeUnmount(() => {
     // 清理主题监听器
     if (cleanupThemeListener) {
       cleanupThemeListener()
+    }
+    
+    // 清理观察器
+    if (cleanupObserver) {
+      cleanupObserver()
     }
     
     // 清理事件监听器
@@ -500,6 +547,8 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="contribution-heatmap">
+    <!-- 添加动画触发元素 -->
+    <div ref="animationTriggerRef" class="animation-trigger"></div>
     
     <!-- 加载中状态 -->
     <div v-if="isLoading" class="loading">
@@ -544,8 +593,19 @@ onBeforeUnmount(() => {
 <style scoped>
 .contribution-heatmap {
   overflow: hidden;
+  position: relative;
 }
 
+/* 为动画触发器设置样式 */
+.animation-trigger {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+}
 
 .loading, .error {
   text-align: center;
