@@ -1,10 +1,12 @@
 ---
-title: 包管理器
+title: npm开始的JS包管理器
 date: 2024-04-29 19:32:23
 description: 前端开发环境必备指南：Node.js安装与npm、Yarn、pnpm包管理工具的全面对比与配置
 publish: true
 tags:
-  - 计算机世界观
+  - npm
+  - yarn
+  - pnpm
 ---
 
 # 序

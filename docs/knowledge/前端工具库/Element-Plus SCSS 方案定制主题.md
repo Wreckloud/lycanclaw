@@ -1,9 +1,11 @@
 ---
 title: Element-Plus 定制主题（SCSS 方案）
-date: '2025-06-07 17:19:28'
+date: 2025-06-07 17:19:28
 description: 这是一篇新文章!
 publish: true
 tags:
+  - Element-Pluse
+  - scss
 ---
 
 默认样式用得不顺眼？想调调主色、字体、边距？

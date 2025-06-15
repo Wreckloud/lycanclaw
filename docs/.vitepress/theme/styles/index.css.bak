@@ -1,0 +1,117 @@
+/* 导入变量样式 */
+@import './var.css';
+
+/* 全局平滑滚动 - 使页面内锚点导航更加丝滑 */
+html {
+  scroll-behavior: smooth;
+}
+
+/* 首页LycanClaw标题渐变效果 */
+:root {
+  --gradient-brand: linear-gradient(90deg,
+      var(--vp-c-brand-1) 0%,
+      var(--vp-c-brand-2) 50%,
+      var(--vp-c-brand-3) 100%);
+  --gradient-animated: linear-gradient(90deg,
+      var(--vp-c-brand-1) 0%,
+      var(--vp-c-brand-2) 33%,
+      var(--vp-c-brand-3) 67%,
+      var(--vp-c-brand-1) 100%);
+}
+
+/* 移除移动设备点击时的蓝色高亮 */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 可点击元素增强触摸体验 */
+a, button, 
+[role="button"], 
+.clickable,
+[class*="clickable"],
+[class*="selectable"],
+input[type="button"], 
+input[type="submit"],
+input[type="reset"] {
+  touch-action: manipulation;
+}
+
+/* 页脚布局 */
+#app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.VPContent {
+  flex: 1;
+}
+
+.VPFooter {
+  margin-top: auto;
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid var(--vp-c-gutter);
+  padding: 32px 24px;
+  background-color: var(--vp-c-bg);
+}
+
+@media (max-width: 640px) {
+  .VPFooter {
+    padding: 24px 24px;
+  }
+}
+
+/* 猎识印记页面大纲目录文字不可选中 */
+.VPDocOutlineItem,
+.VPDocOutlineItem .outline-link,
+.VPDocOutlineItem .outline-title {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* 侧边栏导航文字不可选中 */
+.VPSidebar,
+.VPSidebarItem,
+.VPSidebarItem .text,
+.VPSidebarItem .link,
+.VPSidebarItem h2 {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.dark {
+  --gradient-brand: linear-gradient(90deg,
+      var(--vp-c-brand-1) 0%,
+      var(--vp-c-brand-2) 50%,
+      var(--vp-c-brand-3) 100%);
+  --gradient-animated: linear-gradient(90deg,
+      var(--vp-c-brand-1) 0%,
+      var(--vp-c-brand-2) 33%,
+      var(--vp-c-brand-3) 67%,
+      var(--vp-c-brand-1) 100%);
+}
+
+/* 优化大纲链接悬停效果与动画 */
+.VPDocOutlineItem .outline-link {
+  transition: color 0.2s, transform 0.2s;
+}
+
+.VPDocOutlineItem .outline-link:hover {
+  transform: translateX(3px);
+}
+
+.VPDocOutlineItem .outline-link.active {
+  transition: color 0.3s, transform 0.3s;
+}
+
+/* 为移动端设备增强平滑滚动体验 */
+@media (max-width: 768px) {
+  html {
+    scroll-padding-top: 70px; /* 为固定的导航栏预留空间 */
+  }
+}

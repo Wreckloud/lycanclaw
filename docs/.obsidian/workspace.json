@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/前端工具库/包管理器.md",
+                "file": "knowledge/前端工具库/ESLint+Prettier 代码规范自动化.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "包管理器"
+              "title": "ESLint+Prettier 代码规范自动化"
             }
           }
         ]
@@ -40,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/前端工具库/包管理器.md",
+                "file": "knowledge/前端工具库/ESLint+Prettier 代码规范自动化.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "包管理器 的大纲"
+              "title": "ESLint+Prettier 代码规范自动化 的大纲"
             }
           },
           {
@@ -152,10 +152,13 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "609913dcbebc90fd",
+  "active": "f1a5ae53903c2eca",
   "lastOpenFiles": [
+    "knowledge/前端工具库/npm开始的JS包管理器.md",
+    "knowledge/前端工具库/ESLint+Prettier 代码规范自动化.md",
+    "knowledge/前端工具库/Git-版本控制.md",
+    "knowledge/前端工具库/Element-Plus SCSS 方案定制主题.md",
     "thoughts/獠牙下的野蔷薇.md",
-    "knowledge/前端工具库/包管理器.md",
     "thoughts/竟然被回关.md",
     "thoughts/笔记本 Wi-Fi 消失的解决方法.md",
     "thoughts/从一盏灯开始的文明.md",
@@ -192,10 +195,7 @@
     "thoughts/未命名3.md",
     "thoughts/未命名2.md",
     "thoughts/未命名1.md",
-    "thoughts/tags.md",
     "debug-sort.log",
-    "knowledge/前端工具库/Element-Plus 定制主题（SCSS 方案）.md",
-    "knowledge/前端工具库/ESLint+Prettier 代码规范自动化.md",
     "public/images/文章资源/axios-现代化的-ajax-请求工具",
     "public/images/文章资源/git-版本控制",
     "knowledge/前端工具库",
