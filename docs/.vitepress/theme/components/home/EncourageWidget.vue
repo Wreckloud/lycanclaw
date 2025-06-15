@@ -77,11 +77,14 @@ let hintTimer = null
 let hintHideTimer = null
 let observerInstance = null
 let hintAutoCloseTimer = null // 提示自动关闭计时器
-const hintShownBefore = ref(false) // 标记提示是否已经显示过
+
+// 交互状态跟踪（仅当前会话有效）
+const hasClickedInSession = ref(false)  // 是否点击过
+const hasHoveredInSession = ref(false)  // 是否悬浮过
 
 // 时间配置（单位：秒）
-const HINT_DISPLAY_DELAY = 20 // 点击提示显示延迟
-const HINT_AUTO_CLOSE_TIME = 6 // 提示自动关闭时间
+const HINT_DISPLAY_DELAY = 20 // 测试用3秒，正式是20秒
+const HINT_AUTO_CLOSE_TIME = 7 // 提示自动关闭时间
 
 // 鼠标悬停状态
 const isHovered = ref(false)
@@ -131,8 +134,10 @@ function getEncourageMessage(count) {
 
 // 显示浮动消息
 function showFloatingMessage(event, count) {
-  const x = event.clientX
-  const y = event.clientY
+  // 通过事件相对于目标的位置计算，更可靠的方法获取实际点击位置
+  const rect = event.currentTarget.getBoundingClientRect()
+  const x = (event.touches && event.touches[0] ? event.touches[0].clientX : event.clientX)
+  const y = (event.touches && event.touches[0] ? event.touches[0].clientY : event.clientY)
   
   // 随机参数 - 增加横向和垂直方向上的偏移
   const angle = Math.random() * 40 - 20  // 更夸张的角度范围，从 ±10 变为 ±20
@@ -205,10 +210,14 @@ function createParticles(event) {
     return
   }
   
+  // 重要：实时获取视窗大小，而不是依赖event时的窗口大小
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+  
   // 设置Canvas样式
   canvas.className = 'particle-canvas'
-  canvas.width = window.innerWidth
-  canvas.height = window.innerHeight
+  canvas.width = viewportWidth
+  canvas.height = viewportHeight
   canvas.style.position = 'fixed'
   canvas.style.left = '0'
   canvas.style.top = '0'
@@ -219,9 +228,9 @@ function createParticles(event) {
   
   document.body.appendChild(canvas)
   
-  // 获取点击位置
-  const x = event.clientX
-  const y = event.clientY
+  // 获取点击位置，同时处理触摸事件
+  const x = (event.touches && event.touches[0] ? event.touches[0].clientX : event.clientX)
+  const y = (event.touches && event.touches[0] ? event.touches[0].clientY : event.clientY)
   
   // 创建粒子数组
   const particlesArray = []
@@ -388,6 +397,9 @@ function encourageUpdate(event) {
   
   // 点击后隐藏提示
   hideClickHint()
+  
+  // 记录本次会话已经点击过
+  hasClickedInSession.value = true
 }
 
 // 设置交叉观察器，检测组件何时进入视口
@@ -399,22 +411,20 @@ function setupIntersectionObserver() {
     
     if (entry.isIntersecting) {
       // 组件可见，设置计时器
-      if (!hintTimer && !hintShownBefore.value) {
+      // 只有在没点击过且没悬浮过的情况下才设置自动显示计时器
+      if (!hintTimer && !hasClickedInSession.value && !hasHoveredInSession.value) {
         hintTimer = setTimeout(() => {
-          // 显示提示，除非已点击过催更
-          if (encourageCount.value === 0) {
-            showClickHint.value = true;
-            
-            // 设置自动关闭并不再显示
-            if (hintAutoCloseTimer) {
-              clearTimeout(hintAutoCloseTimer);
-            }
-            
-            hintAutoCloseTimer = setTimeout(() => {
-              hideClickHint();
-              hintShownBefore.value = true; // 标记已经显示过，不再显示
-            }, HINT_AUTO_CLOSE_TIME * 1000);
+          showClickHint.value = true;
+          
+          // 设置自动关闭
+          if (hintAutoCloseTimer) {
+            clearTimeout(hintAutoCloseTimer);
           }
+          
+          hintAutoCloseTimer = setTimeout(() => {
+            hideClickHint();
+          }, HINT_AUTO_CLOSE_TIME * 1000);
+          
           hintTimer = null;
         }, HINT_DISPLAY_DELAY * 1000);
       }
@@ -463,38 +473,27 @@ function formatNumber(num) {
   }
 }
 
-// 尝试从localStorage获取提示是否已显示过
-function loadHintShownState() {
-  try {
-    if (typeof localStorage !== 'undefined') {
-      const hasShown = localStorage.getItem('encourageHintShown');
-      if (hasShown === 'true') {
-        hintShownBefore.value = true;
-      }
-    }
-  } catch (e) {
-    console.error('Failed to load hint state from localStorage');
+// 处理鼠标悬停
+function handleMouseEnter() {
+  isHovered.value = true;
+  hasHoveredInSession.value = true; // 记录已经悬浮过
+  
+  // 悬浮后清除自动显示计时器，避免后续自动显示
+  if (hintTimer) {
+    clearTimeout(hintTimer);
+    hintTimer = null;
   }
 }
 
-// 保存提示已显示状态到localStorage
-function saveHintShownState() {
-  try {
-    if (typeof localStorage !== 'undefined' && hintShownBefore.value) {
-      localStorage.setItem('encourageHintShown', 'true');
-    }
-  } catch (e) {
-    console.error('Failed to save hint state to localStorage');
-  }
+// 处理鼠标离开
+function handleMouseLeave() {
+  isHovered.value = false;
 }
 
 // 组件挂载和卸载时的处理
 onMounted(() => {
   // 初始化时不显示提示，等待用户交互
   showClickHint.value = false;
-  
-  // 读取提示是否已显示过
-  loadHintShownState();
   
   // 延迟一点点设置交叉观察器，确保DOM已渲染
   setTimeout(() => {
@@ -510,31 +509,19 @@ onUnmounted(() => {
   if (hintHideTimer) clearTimeout(hintHideTimer);
   if (hintAutoCloseTimer) clearTimeout(hintAutoCloseTimer);
   
-  // 保存提示已显示状态
-  saveHintShownState();
-  
   // 清理交叉观察器
   if (observerInstance) {
     observerInstance.disconnect();
     observerInstance = null;
   }
 })
-
-// 处理鼠标悬停
-function handleMouseEnter() {
-  isHovered.value = true;
-}
-
-// 处理鼠标离开
-function handleMouseLeave() {
-  isHovered.value = false;
-}
 </script>
 
 <template>
   <div 
     class="stats-card clickable-area" 
     @click="encourageUpdate"
+    @touchstart="encourageUpdate"
     @mouseenter="handleMouseEnter"
     @mouseleave="handleMouseLeave"
     ref="widgetRef"
@@ -553,9 +540,9 @@ function handleMouseLeave() {
       </div>
     </transition>
     
-    <!-- 点击提示 -->
+    <!-- 点击提示 - 根据条件显示 -->
     <transition name="hint-slide">
-      <div class="click-hint-container" v-if="(showClickHint && !hintShownBefore) || isHovered">
+      <div class="click-hint-container" v-if="(showClickHint || (isHovered && !hasClickedInSession))">
         <div class="gradient-mask"></div>
         <div class="click-hint-content">
           <div class="arrow-up">^</div>
@@ -573,11 +560,11 @@ function handleMouseLeave() {
         :key="msg.id"
         class="floating-message"
         :style="{
-          '--x-pos': `${msg.x}px`,
-          '--y-pos': `${msg.y}px`,
-          '--angle': `${msg.angle}deg`,
-          '--scale': msg.scale,
-          '--opacity': msg.opacity,
+          'position': 'fixed',
+          'left': `${msg.x}px`,
+          'top': `${msg.y}px`,
+          'transform': `translate(-50%, -50%) rotate(${msg.angle}deg) scale(${msg.scale})`,
+          'opacity': msg.opacity,
           'color': msg.color,
           'font-size': msg.fontSize
         }"
