@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { useThrottle, useDebounceFn, useThrottleFn } from '@vueuse/core'
 
 // 接收属性
 const props = defineProps({
@@ -69,6 +70,9 @@ let lastParticleTime = 0 // 上次创建粒子的时间
 let lastClickTime = 0 // 上次点击的时间
 const THROTTLE_INTERVAL = 200 // 粒子效果节流间隔（毫秒）
 const CLICK_THROTTLE = 80 // 点击事件节流间隔（毫秒）
+
+// 使用VueUse的useThrottleFn替代节流变量
+const createParticlesThrottled = useThrottleFn(createParticles, 200)
 
 // 点击提示相关
 const widgetRef = ref(null) // 组件引用
@@ -357,14 +361,8 @@ function resetComboTimer() {
   }, 3000)
 }
 
-// 催更功能（节流版）
-function encourageUpdate(event) {
-  const now = Date.now()
-  
-  // 如果点击过于频繁，跳过处理
-  if (now - lastClickTime < CLICK_THROTTLE) return
-  lastClickTime = now
-  
+// 催更功能（使用VueUse的useThrottleFn实现节流）
+const encourageUpdateThrottled = useThrottleFn((event) => {
   // 增加计数
   encourageCount.value++
   
@@ -375,7 +373,7 @@ function encourageUpdate(event) {
   showFloatingMessage(event, encourageCount.value)
   
   // 创建粒子效果
-  createParticles(event)
+  createParticlesThrottled(event)
   
   // 更新抽屉消息
   drawerMessage.value = text
@@ -400,6 +398,11 @@ function encourageUpdate(event) {
   
   // 记录本次会话已经点击过
   hasClickedInSession.value = true
+}, 80)
+
+// 将原始函数更新为调用节流版本
+function encourageUpdate(event) {
+  encourageUpdateThrottled(event)
 }
 
 // 设置交叉观察器，检测组件何时进入视口
@@ -473,8 +476,8 @@ function formatNumber(num) {
   }
 }
 
-// 处理鼠标悬停
-function handleMouseEnter() {
+// 处理鼠标悬停 - 使用防抖优化
+const handleMouseEnterDebounced = useDebounceFn(() => {
   isHovered.value = true;
   hasHoveredInSession.value = true; // 记录已经悬浮过
   
@@ -483,11 +486,20 @@ function handleMouseEnter() {
     clearTimeout(hintTimer);
     hintTimer = null;
   }
+}, 50)
+
+// 处理鼠标离开 - 使用防抖优化
+const handleMouseLeaveDebounced = useDebounceFn(() => {
+  isHovered.value = false;
+}, 50)
+
+// 更新处理函数调用
+function handleMouseEnter() {
+  handleMouseEnterDebounced()
 }
 
-// 处理鼠标离开
 function handleMouseLeave() {
-  isHovered.value = false;
+  handleMouseLeaveDebounced()
 }
 
 // 组件挂载和卸载时的处理

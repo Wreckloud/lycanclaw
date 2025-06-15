@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { withBase, useData } from 'vitepress'
 import { getRecentComments, formatCommentDate, type WalineComment } from '../../utils/commentApi'
-import { useIntersectionObserver } from '@vueuse/core'
+import { useIntersectionObserver, useScroll, useAsyncState } from '@vueuse/core'
 
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
@@ -11,17 +11,27 @@ const isBrowser = typeof window !== 'undefined'
 const sectionRef = ref<HTMLElement | null>(null)
 const containerRef = ref<HTMLElement | null>(null)
 const isVisible = ref(false)
-const comments = ref<WalineComment[]>([])
+
+// 使用VueUse useAsyncState来管理评论加载
+const { 
+  state: comments, 
+  isLoading, 
+  error, 
+  execute: refreshComments 
+} = useAsyncState(
+  () => isBrowser ? getRecentComments(7, true) : Promise.resolve([]), 
+  [] as WalineComment[],
+  { immediate: false, resetOnExecute: true }
+)
 
 // 加载状态和错误状态
-const isLoading = ref(true)
 const hasError = ref(false)
 const errorMessage = ref('')
 const isRefreshing = ref(false)
 
-// 滚动状态
-const scrollPosition = ref(0)
-const maxScroll = ref(0)
+// 使用VueUse的useScroll跟踪滚动位置
+const { arrivedState, y: scrollPosition } = useScroll(containerRef)
+const { top: isAtTop, bottom: isAtBottom } = arrivedState
 
 // 从VitePress获取文章信息
 const { theme } = useData()
@@ -36,28 +46,35 @@ onMounted(() => {
     ([{ isIntersecting }]) => {
       if (isIntersecting) {
         isVisible.value = true
-        stop() // 只触发一次动画
+        stop() // 只触发一次
       }
     },
-    { threshold: 0.2 } // 当20%的元素可见时触发
+    { 
+      threshold: 0.2,
+      immediate: true
+    }
   )
 
   // 加载最新评论
-  fetchRecentComments(true).then(() => {
-    // 评论加载完成后设置滚动监听
-    if (containerRef.value) {
-      containerRef.value.addEventListener('scroll', updateScrollPosition)
-      updateScrollPosition() // 初始更新滚动位置
-    }
-  })
+  loadComments()
 })
 
-// 组件卸载时移除事件监听
-onUnmounted(() => {
-  if (containerRef.value) {
-    containerRef.value.removeEventListener('scroll', updateScrollPosition)
+// 获取最新评论
+async function loadComments(forceRefresh = false) {
+  if (!isBrowser) return
+  
+  isRefreshing.value = forceRefresh
+  hasError.value = false
+  
+  try {
+    await refreshComments()
+  } catch (e) {
+    hasError.value = true
+    errorMessage.value = e instanceof Error ? e.message : '未知错误'
+  } finally {
+    isRefreshing.value = false
   }
-})
+}
 
 /**
  * 获取文章标题
@@ -86,45 +103,6 @@ function getArticleTitle(url: string): string {
 function getArticleLink(url: string): string {
   return withBase(url)
 }
-
-/**
- * 更新滚动位置
- */
-function updateScrollPosition(): void {
-  if (!containerRef.value) return
-  scrollPosition.value = containerRef.value.scrollTop
-  
-  // 计算最大滚动距离
-  maxScroll.value = containerRef.value.scrollHeight - containerRef.value.clientHeight
-}
-
-/**
- * 获取最近评论
- */
-async function fetchRecentComments(forceRefresh = false): Promise<void> {
-  if (!isBrowser) return
-  
-  if (forceRefresh) {
-    isRefreshing.value = true
-  } else {
-    isLoading.value = true
-  }
-  
-  hasError.value = false
-  
-  try {
-    // 使用API获取最近评论，传入forceRefresh参数
-    const data = await getRecentComments(7, forceRefresh)
-    comments.value = data
-  } catch (error) {
-    console.error('获取最近评论失败:', error)
-    hasError.value = true
-    errorMessage.value = error instanceof Error ? error.message : '未知错误'
-  } finally {
-    isLoading.value = false
-    isRefreshing.value = false
-  }
-}
 </script>
 
 <template>
@@ -139,9 +117,9 @@ async function fetchRecentComments(forceRefresh = false): Promise<void> {
       style="--anim-delay: 0.2s"
     >
       <!-- 顶部渐变遮罩 -->
-      <div class="fade-mask top" :style="{ opacity: scrollPosition > 0 ? 1 : 0 }"></div>
+      <div class="fade-mask top" :style="{ opacity: !isAtTop ? 1 : 0 }"></div>
       
-      <div class="comments-content" ref="containerRef" @scroll="updateScrollPosition">
+      <div class="comments-content" ref="containerRef">
         <div 
           v-for="(comment, index) in comments" 
           :key="comment.objectId" 
@@ -164,7 +142,7 @@ async function fetchRecentComments(forceRefresh = false): Promise<void> {
       </div>
       
       <!-- 底部渐变遮罩 -->
-      <div class="fade-mask bottom" :style="{ opacity: scrollPosition < (maxScroll - 2) ? 1 : 0 }"></div>
+      <div class="fade-mask bottom" :style="{ opacity: !isAtBottom ? 1 : 0 }"></div>
     </div>
     
     <!-- 加载状态 -->
@@ -202,7 +180,7 @@ async function fetchRecentComments(forceRefresh = false): Promise<void> {
     <!-- 错误状态 -->
     <div v-else class="comments-error">
       <div class="error-message">加载评论失败: {{ errorMessage }}</div>
-      <button class="retry-button" @click="fetchRecentComments(true)">重试</button>
+      <button class="retry-button" @click="loadComments(true)">重试</button>
     </div>
     
     <!-- 刷新叠加层 -->

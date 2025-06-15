@@ -120,12 +120,16 @@ onMounted(async () => {
       post.relativePath !== 'thoughts/tags.md'
     )
     
-    // 验证文章URL是否有效
-    if (isBrowser && window.location.pathname.includes('/thoughts/') && 
+    // 验证文章URL是否有效 - 仅对非目录路径进行检查
+    if (isBrowser && 
+        window.location.pathname.includes('/thoughts/') && 
+        window.location.pathname !== '/thoughts/' && // 排除根目录
+        !window.location.pathname.endsWith('/index.html') && // 排除索引页
         !thoughtsPosts.value.some(post => post.url === window.location.pathname)) {
-      // 当前路径是一个thoughts文章，但在posts.json中找不到
-      // 这可能是因为文件已被删除
-      console.warn('当前文章可能已被删除:', window.location.pathname)
+      // 只在开发环境下显示警告
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('文章未在列表中找到:', window.location.pathname)
+      }
     }
     
     isLoading.value = false

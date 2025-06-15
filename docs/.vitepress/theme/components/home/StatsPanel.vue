@@ -1,6 +1,14 @@
 <script setup>
-import { ref, onMounted, reactive, onBeforeUnmount } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { withBase } from 'vitepress'
+import { 
+  useLocalStorage, 
+  useThrottleFn,
+  useBrowserLocation, 
+  useWindowSize, 
+  useIntersectionObserver,
+  useEventListener
+} from '@vueuse/core'
 import EncourageWidget from './EncourageWidget.vue'
 
 // 判断是否在浏览器环境中
@@ -22,53 +30,45 @@ const isVisible = ref(false)
 const containerRef = ref(null)
 const animationTriggerRef = ref(null) // 专门用于动画触发的引用
 
-// 判断是否为PC布局
-const isPcLayout = ref(isBrowser ? window.innerWidth >= 960 : true)
+// 使用VueUse的useWindowSize替代手动实现的窗口大小检测
+const { width: windowWidth } = useWindowSize()
+const isPcLayout = ref(windowWidth.value >= 960)
 
 // 更新布局状态函数
 const updateLayoutState = () => {
-  isPcLayout.value = window.innerWidth >= 960
+  isPcLayout.value = windowWidth.value >= 960
 }
 
-// 催更消息配置 - 可以根据需要自定义不同次数的消息
-const encourageMessages = {
-  1: '催更成功！作者已收到通知~', // 第一次催更
-  2: '催更x2！作者表示压力山大...',
-  3: '催更x3！作者开始掉头发了...',
-  5: '催更x5！作者正在熬夜码字中...',
-  10: '催更x10！作者已经趴下了...',
-  20: '催更x20！再催作者要罢工了！',
-  50: '催更x50！您是真爱粉无误！',
-  100: '催更x100！恭喜解锁成就【催更狂魔】',
-  // 可以根据需要添加更多特定次数的消息
-}
-
-// 定义消息的颜色列表
-const messageColors = [
-  '#f59e0b', // 橙色
-  '#10b981', // 绿色
-  '#3b82f6', // 蓝色
-  '#8b5cf6', // 紫色
-  '#ec4899', // 粉色
-  '#ef4444', // 红色
-  '#14b8a6', // 青色
-  '#f97316', // 深橙色
-];
-
+// 催更相关状态
 const isLoading = ref(true)
 const hasError = ref(false)
 const animationStarted = ref(false)
-const encourageCount = ref(0) // 催更计数器
-const activeMessages = ref([]) // 当前活跃的消息列表
-let messageIdCounter = 0 // 消息ID计数器
+// 使用VueUse的useLocalStorage替代手动存储逻辑
+const encourageCount = useLocalStorage('lycanClawEncourageCount', 0)
+const activeMessages = ref([])
+let messageIdCounter = 0
+
+// 使用VueUse的useThrottleFn为粒子效果添加节流
+const createParticlesThrottled = useThrottleFn(createParticles, 200)
 
 // 抽屉相关
-const isDrawerVisible = ref(false) // 抽屉是否可见
-const drawerMessage = ref('') // 抽屉中显示的消息
-let drawerTimer = null // 抽屉自动关闭的计时器
+const isDrawerVisible = ref(false)
+const drawerMessage = ref('')
+let drawerTimer = null
 
-// 获取催更消息
+// 用于获取催更消息的函数
 function getEncourageMessage(count) {
+  const encourageMessages = {
+    1: '催更成功！作者已收到通知~',
+    2: '催更x2！作者表示压力山大...',
+    3: '催更x3！作者开始掉头发了...',
+    5: '催更x5！作者正在熬夜码字中...',
+    10: '催更x10！作者已经趴下了...',
+    20: '催更x20！再催作者要罢工了！',
+    50: '催更x50！您是真爱粉无误！',
+    100: '催更x100！恭喜解锁成就【催更狂魔】',
+  }
+  
   // 如果有精确匹配的消息，直接返回
   if (encourageMessages[count]) {
     return encourageMessages[count];
@@ -94,17 +94,23 @@ function getEncourageMessage(count) {
 
 // 显示简短的"催更x"消息在鼠标点击处
 function showFloatingMessage(event, count) {
-  const x = event.clientX;
-  const y = event.clientY;
+  const messageColors = [
+    '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', 
+    '#ec4899', '#ef4444', '#14b8a6', '#f97316'
+  ];
+  
+  // 获取正确的点击坐标（处理触摸事件）
+  const x = (event.touches && event.touches[0] ? event.touches[0].clientX : event.clientX);
+  const y = (event.touches && event.touches[0] ? event.touches[0].clientY : event.clientY);
   
   // 随机参数
-  const angle = Math.random() * 20 - 10; // -10度到10度
-  const offsetX = Math.random() * 40 - 20; // -20到20像素的偏移
-  const offsetY = Math.random() * 20 - 30; // 向上偏移多一点
+  const angle = Math.random() * 20 - 10;
+  const offsetX = Math.random() * 40 - 20;
+  const offsetY = Math.random() * 20 - 30;
   const color = messageColors[Math.floor(Math.random() * messageColors.length)];
   const id = messageIdCounter++;
   
-  // 创建消息对象 - 只显示"催更"或"催更xN"
+  // 创建消息对象
   const displayMessage = count === 1 ? '催更' : `催更x${count}`;
   
   const messageObj = {
@@ -133,25 +139,25 @@ function showFloatingMessage(event, count) {
     // 然后在动画结束后移除消息
     setTimeout(() => {
       activeMessages.value = activeMessages.value.filter(m => m.id !== id);
-    }, 500); // 与CSS过渡时间匹配
-  }, 1500); // 显示1.5秒后开始淡出
+    }, 500);
+  }, 1500);
 }
 
 // 创建星星粒子效果
-function createParticles(event, cardElement) {
+function createParticles(event) {
   const colors = ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
-  const particles = 30; // 粒子数量
+  const particles = 30;
   
   // 创建粒子容器
   const particleContainer = document.createElement('div');
   particleContainer.className = 'particle-container';
-  document.body.appendChild(particleContainer); // 添加到body而不是卡片
+  document.body.appendChild(particleContainer);
   
-  // 获取点击位置相对于视口的坐标
-  const x = event.clientX;
-  const y = event.clientY;
+  // 获取正确的点击坐标（处理触摸事件）
+  const x = (event.touches && event.touches[0] ? event.touches[0].clientX : event.clientX);
+  const y = (event.touches && event.touches[0] ? event.touches[0].clientY : event.clientY);
   
-  // 设置容器位置到点击位置
+  // 设置容器样式
   particleContainer.style.position = 'fixed';
   particleContainer.style.left = '0';
   particleContainer.style.top = '0';
@@ -168,16 +174,16 @@ function createParticles(event, cardElement) {
     // 随机样式
     const size = Math.random() * 8 + 4;
     const color = colors[Math.floor(Math.random() * colors.length)];
-    const angle = Math.random() * Math.PI * 2; // 随机角度
-    const velocity = Math.random() * 3 + 2;    // 随机速度
-    const lifetime = Math.random() * 1000 + 1000; // 生命周期
+    const angle = Math.random() * Math.PI * 2;
+    const velocity = Math.random() * 3 + 2;
+    const lifetime = Math.random() * 1000 + 1000;
     
-    // 设置星星形状 - 使用CSS制作星星
+    // 设置星星形状
     particle.innerHTML = `<svg width="${size*2}" height="${size*2}" viewBox="0 0 24 24" fill="${color}">
       <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
     </svg>`;
     
-    // 设置初始位置和样式
+    // 设置初始位置
     particle.style.position = 'absolute';
     particle.style.left = `${x}px`;
     particle.style.top = `${y}px`;
@@ -187,7 +193,7 @@ function createParticles(event, cardElement) {
     
     // 计算速度分量
     const vx = Math.cos(angle) * velocity;
-    const vy = Math.sin(angle) * velocity - 1; // 添加向上的偏移
+    const vy = Math.sin(angle) * velocity - 1;
     
     // 粒子运动动画
     let startTime = null;
@@ -225,7 +231,7 @@ function createParticles(event, cardElement) {
 }
 
 // 催更功能
-function encourageUpdate(event) {
+const encourageUpdate = useThrottleFn((event) => {
   encourageCount.value++;
   
   // 使用配置获取消息
@@ -235,20 +241,15 @@ function encourageUpdate(event) {
   showFloatingMessage(event, encourageCount.value);
   
   // 创建粒子效果
-  createParticles(event, event.currentTarget);
+  createParticlesThrottled(event);
   
   // 更新抽屉消息
   drawerMessage.value = text;
   
   // 处理连续点击的情况
-  if (isDrawerVisible.value) {
-    // 如果抽屉已经可见，则更新消息但不重新开始动画
-    // 清除自动关闭的计时器
-    if (drawerTimer) {
-      clearTimeout(drawerTimer);
-    }
+  if (isDrawerVisible.value && drawerTimer) {
+    clearTimeout(drawerTimer);
   } else {
-    // 如果抽屉不可见，则显示抽屉
     isDrawerVisible.value = true;
   }
   
@@ -256,16 +257,7 @@ function encourageUpdate(event) {
   drawerTimer = setTimeout(() => {
     isDrawerVisible.value = false;
   }, 3000);
-  
-  // 持久化保存催更次数
-  try {
-    if (isBrowser && window.localStorage) {
-      localStorage.setItem('lycanClawEncourageCount', encourageCount.value);
-    }
-  } catch (e) {
-    console.error('Failed to save encourage count to localStorage', e);
-  }
-}
+}, 80);
 
 // 内联实现countWord函数
 function countWord(data) {
@@ -290,20 +282,13 @@ function countWord(data) {
 function formatNumber(num) {
   if (num === undefined || num === null) return '0'
   
-  // 小于10000，使用逗号分隔
   if (num < 10000) {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-  }
-  // 小于1百万，使用k
-  else if (num < 1000000) {
+  } else if (num < 1000000) {
     return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'k'
-  }
-  // 小于1亿，使用M
-  else if (num < 100000000) {
+  } else if (num < 100000000) {
     return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M'
-  }
-  // 大于1亿，使用亿
-  else {
+  } else {
     return (num / 100000000).toFixed(1).replace(/\.0$/, '') + '亿'
   }
 }
@@ -320,7 +305,7 @@ function animateNumbers() {
   if (!animationStarted.value) {
     animationStarted.value = true
     
-    const duration = 2000 // 动画持续时间（毫秒）
+    const duration = 2000
     const framesPerSecond = 60
     const totalFrames = duration / 1000 * framesPerSecond
     let currentFrame = 0
@@ -360,75 +345,32 @@ function animateNumbers() {
   }
 }
 
-// 处理动画触发
-const handleAnimationTrigger = () => {
-  // 移除此方法的实现，不再需要
-}
-
-// 观察元素是否进入视口
-function setupIntersectionObserver() {
-  if (!isBrowser || !window.IntersectionObserver) return
-  
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
+// 使用VueUse的useIntersectionObserver
+if (isBrowser) {
+  useIntersectionObserver(
+    animationTriggerRef,
+    ([{ isIntersecting }]) => {
+      if (isIntersecting) {
         isVisible.value = true
         if (!isLoading.value && !animationStarted.value) {
           animateNumbers()
         }
-        observer.unobserve(entry.target)
       }
-    })
-  }, { 
-    threshold: 0.7, // 提高阈值至70%，组件大部分进入视口后才触发
-    rootMargin: '0px 0px -15% 0px' // 设置负边距，延迟触发
-  })
-  
-  // 获取动画触发专用元素并观察它
-  setTimeout(() => {
-    if (animationTriggerRef.value) {
-      observer.observe(animationTriggerRef.value)
+    },
+    { 
+      threshold: 0.7,
+      rootMargin: '0px 0px -15% 0px' 
     }
-  }, 100) // 短暂延迟确保DOM已渲染
-  
-  // 返回清理函数
-  return () => {
-    if (isBrowser && animationTriggerRef.value && observer) {
-      observer.unobserve(animationTriggerRef.value)
-      observer.disconnect()
-    }
-  }
+  )
 }
 
 // 加载数据
-let cleanup = null
-let resizeListener = null
-
 onMounted(async () => {
-  // 确保只在浏览器环境中执行
   if (!isBrowser) return
   
   try {
-    // 初始化布局状态
-    updateLayoutState()
-    
-    // 监听窗口大小变化
-    resizeListener = () => {
-      updateLayoutState()
-    }
-    window.addEventListener('resize', resizeListener)
-    
-    // 尝试从localStorage读取催更次数
-    try {
-      if (window.localStorage) {
-        const savedCount = localStorage.getItem('lycanClawEncourageCount');
-        if (savedCount) {
-          encourageCount.value = parseInt(savedCount, 10);
-        }
-      }
-    } catch (e) {
-      console.error('Failed to load encourage count from localStorage', e);
-    }
+    // 自动更新布局状态
+    useEventListener(window, 'resize', updateLayoutState)
     
     // 从生成的JSON文件获取数据
     const response = await fetch(withBase('/posts.json'))
@@ -461,44 +403,34 @@ onMounted(async () => {
       if (knowledgeResponse.ok) {
         const knowledgeStats = await knowledgeResponse.json()
         
-        // 累加知识笔记的字数
+        // 累加知识笔记的字数和本月文章数
         knowledgeStats.forEach(item => {
           if (item.wordCount) {
             totalWords += item.wordCount
           }
           
-          // 累加本月知识笔记的数量
-          if (item.date) {
-            const postDate = new Date(item.date)
-            if (isCurrentMonth(postDate)) {
-              currentMonthCount++
-            }
+          if (item.date && isCurrentMonth(new Date(item.date))) {
+            currentMonthCount++
           }
         })
       }
     } catch (knowledgeError) {
-      // 忽略知识笔记统计数据的加载错误，不影响主要功能
+      // 忽略错误，不影响主要功能
     }
     
     // 计算本月发布的文章数
     thoughtsPosts.forEach(post => {
-      if (post.frontmatter.date) {
-        const postDate = new Date(post.frontmatter.date)
-        if (isCurrentMonth(postDate)) {
-          currentMonthCount++
-        }
+      if (post.frontmatter.date && isCurrentMonth(new Date(post.frontmatter.date))) {
+        currentMonthCount++
       }
     })
     
     // 更新统计数据
     stats.currentMonthPosts = currentMonthCount
     stats.thoughtsCount = thoughtsPosts.length
-    stats.thoughtsWords = totalWords // 现在包含知识笔记的字数
+    stats.thoughtsWords = totalWords
     
     isLoading.value = false
-    
-    // 设置交叉观察器，当元素进入视口时启动动画
-    cleanup = setupIntersectionObserver()
   } catch (error) {
     console.error('Error loading stats data:', error)
     hasError.value = true
@@ -508,11 +440,7 @@ onMounted(async () => {
 
 // 组件卸载时的清理函数
 onBeforeUnmount(() => {
-  if (cleanup) cleanup()
   if (drawerTimer) clearTimeout(drawerTimer)
-  if (isBrowser) {
-    window.removeEventListener('resize', resizeListener)
-  }
 })
 </script>
 
@@ -651,9 +579,6 @@ onBeforeUnmount(() => {
 .error {
   color: var(--vp-c-danger);
 }
-.stats-panel{
-  
-}
 
 .stats-container {
   display: flex;
@@ -722,7 +647,7 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  pointer-events: none; /* 允许点击穿透到卡片 */
+  pointer-events: none;
 }
 
 .drawer {
