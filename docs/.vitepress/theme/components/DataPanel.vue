@@ -14,6 +14,9 @@ const { hasSidebar } = useSidebar()
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
 
+// 删除可视性状态和引用
+const containerRef = ref(null)
+
 // ===== 版权年份相关 =====
 // 当前年份
 const currentYear = new Date().getFullYear()
@@ -92,7 +95,7 @@ onBeforeUnmount(() => {
 
 <template>
   <!-- 只在没有侧边栏时显示页脚 -->
-  <footer v-if="!hasSidebar" class="VPFooter">
+  <footer v-if="!hasSidebar" ref="containerRef" class="VPFooter">
     <div class="container">
       <!-- 页脚内容 -->
       <div class="footer-content">
@@ -130,6 +133,8 @@ onBeforeUnmount(() => {
   padding: 24px 24px;
   background-color: var(--vp-c-bg);
 }
+
+/* 删除动画样式 */
 
 .container {
   margin: 0 auto;

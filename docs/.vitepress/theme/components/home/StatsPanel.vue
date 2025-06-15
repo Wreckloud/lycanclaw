@@ -17,6 +17,10 @@ const stats = reactive({
   animatedThoughtsWords: 0,
 })
 
+// 添加可视性状态追踪
+const isVisible = ref(false)
+const containerRef = ref(null)
+
 // 催更消息配置 - 可以根据需要自定义不同次数的消息
 const encourageMessages = {
   1: '催更成功！作者已收到通知~', // 第一次催更
@@ -353,28 +357,28 @@ function setupIntersectionObserver() {
   
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      if (entry.isIntersecting && !animationStarted.value && !isLoading.value) {
-        animateNumbers()
+      if (entry.isIntersecting) {
+        isVisible.value = true
+        if (!isLoading.value && !animationStarted.value) {
+          animateNumbers()
+        }
+        observer.unobserve(entry.target)
       }
     })
-  }, { threshold: 0.2 }) // 当20%的元素可见时触发
+  }, { threshold: 0.5, rootMargin: '0px' }) // 提高threshold值到0.5，组件需要50%进入视口才触发动画
   
   // 获取统计面板元素并观察它
   setTimeout(() => {
-    const statsPanel = document.querySelector('.stats-panel')
-    if (statsPanel) {
-      observer.observe(statsPanel)
+    if (containerRef.value) {
+      observer.observe(containerRef.value)
     }
   }, 100) // 短暂延迟确保DOM已渲染
   
   // 返回清理函数
   return () => {
-    if (isBrowser) {
-      const statsPanel = document.querySelector('.stats-panel')
-      if (statsPanel && observer) {
-        observer.unobserve(statsPanel)
-        observer.disconnect()
-      }
+    if (isBrowser && containerRef.value && observer) {
+      observer.unobserve(containerRef.value)
+      observer.disconnect()
     }
   }
 }
@@ -482,8 +486,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="stats-panel">
-    <h2 class="section-title">数据统计</h2>
+  <div class="stats-panel" ref="containerRef">
+    <h2 class="section-title" :class="{ 'animate-in': isVisible }">数据统计</h2>
     
     <!-- 加载中状态 -->
     <div v-if="isLoading" class="loading">
@@ -498,14 +502,19 @@ onBeforeUnmount(() => {
     <!-- 统计数据展示 -->
     <div v-else class="stats-container">
       <div class="stats-grid">
-        <encourage-widget :post-count="stats.currentMonthPosts" :animated-count="stats.animatedCurrentMonthPosts" />
+        <encourage-widget 
+          :post-count="stats.currentMonthPosts" 
+          :animated-count="stats.animatedCurrentMonthPosts" 
+          :class="{ 'animate-in': isVisible }" 
+          style="--anim-delay: 0.1s"
+        />
         
-        <div class="stats-card">
+        <div class="stats-card" :class="{ 'animate-in': isVisible }" style="--anim-delay: 0.2s">
           <div class="stats-value">{{ formatNumber(stats.animatedThoughtsCount) }}</div>
           <div class="stats-label">随想总数</div>
         </div>
         
-        <div class="stats-card">
+        <div class="stats-card" :class="{ 'animate-in': isVisible }" style="--anim-delay: 0.3s">
           <div class="stats-value">{{ formatNumber(stats.animatedThoughtsWords) }}</div>
           <div class="stats-label">总字数</div>
         </div>
@@ -535,6 +544,32 @@ onBeforeUnmount(() => {
 <style scoped>
 .stats-panel {
   position: relative;
+  overflow: hidden !important;
+}
+
+/* 添加动画样式 - 默认设置为不可见 */
+.section-title,
+.stats-card,
+encourage-widget {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+/* 当元素可见时应用动画 */
+.animate-in {
+  animation: fadeInUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: var(--anim-delay, 0s);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .section-title {
@@ -555,6 +590,9 @@ onBeforeUnmount(() => {
 
 .error {
   color: var(--vp-c-danger);
+}
+.stats-panel{
+  
 }
 
 .stats-container {

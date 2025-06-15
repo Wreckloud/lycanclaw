@@ -63,8 +63,8 @@ onMounted(() => {
       }
     },
     {
-      threshold: 0.75,
-      rootMargin: '0px 0px -10% 0px'
+      threshold: 0.5,
+      rootMargin: '0px'
     }
   )
 })
@@ -432,14 +432,14 @@ function formatDate(dateString: string): string {
 }
 
 .animate-in {
-  animation: fadeInUp 0.6s ease forwards;
+  animation: fadeInUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   animation-delay: var(--anim-delay, 0s);
 }
 
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(30px);
   }
 
   to {

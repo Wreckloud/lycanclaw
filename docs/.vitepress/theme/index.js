@@ -40,10 +40,73 @@ function preloadSiteData() {
   });
 }
 
+// 同步首页推荐阅读和数据统计组件高度
+const syncSectionHeights = () => {
+  if (typeof window === 'undefined') return
+  
+  // 确保只在PC视图下执行
+  const isPcView = window.innerWidth >= 960
+  if (!isPcView) return
+  
+  // 获取需要同步高度的容器
+  const syncContainers = document.querySelectorAll('.sync-height-container')
+  if (syncContainers.length < 2) return
+  
+  // 重置高度以获取自然高度
+  syncContainers.forEach(container => {
+    container.style.minHeight = 'auto'
+  })
+  
+  // 立即尝试同步一次
+  requestAnimationFrame(() => {
+    let maxHeight = 0
+    syncContainers.forEach(container => {
+      maxHeight = Math.max(maxHeight, container.offsetHeight)
+    })
+    
+    if (maxHeight > 0) {
+      syncContainers.forEach(container => {
+        container.style.minHeight = `${maxHeight}px`
+      })
+    }
+  })
+  
+  // 等待组件渲染完成后再次同步
+  setTimeout(() => {
+    // 查找最大高度
+    let maxHeight = 0
+    syncContainers.forEach(container => {
+      const height = container.offsetHeight
+      maxHeight = Math.max(maxHeight, height)
+    })
+    
+    // 设置相同的高度
+    if (maxHeight > 0) {
+      syncContainers.forEach(container => {
+        container.style.minHeight = `${maxHeight}px`
+      })
+    }
+    
+    // 组件动画完成后再同步一次
+    setTimeout(() => {
+      let finalMaxHeight = 0
+      syncContainers.forEach(container => {
+        finalMaxHeight = Math.max(finalMaxHeight, container.scrollHeight)
+      })
+      
+      if (finalMaxHeight > 0) {
+        syncContainers.forEach(container => {
+          container.style.minHeight = `${finalMaxHeight}px`
+        })
+      }
+    }, 1000) // 等待动画完成
+  }, 800) // 增加延迟时间，确保组件完全加载
+}
+
 export default {
   extends: DefaultTheme,
   
-  enhanceApp({ app }) {
+  enhanceApp({ app, router, siteData }) {
     // 注册全局组件（使用异步组件）
     app.component('ArticleMetadata', AsyncArticleMetadata);
     app.component('PostList', AsyncPostList);
@@ -54,6 +117,29 @@ export default {
     
     // 全局注册echarts
     app.config.globalProperties.$echarts = echarts;
+    
+    // 添加路由钩子，在页面变化时执行高度同步
+    if (typeof window !== 'undefined') {
+      router.onAfterRouteChanged = () => {
+        // 检查当前是否在首页
+        if (router.route.path === '/') {
+          // 等待Vue组件渲染
+          setTimeout(syncSectionHeights, 300)
+          
+          // 监听窗口大小变化，重新调整高度
+          window.addEventListener('resize', syncSectionHeights)
+        } else {
+          // 不在首页时，移除事件监听
+          window.removeEventListener('resize', syncSectionHeights)
+        }
+      }
+      
+      // 初始加载时，如果是首页则执行同步
+      if (router.route.path === '/') {
+        setTimeout(syncSectionHeights, 300)
+        window.addEventListener('resize', syncSectionHeights)
+      }
+    }
   },
   
   // 使用自定义布局
