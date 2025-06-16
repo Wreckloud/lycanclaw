@@ -1,0 +1,52 @@
+/* 
+ * 代码块滚动条修复
+ * 专门处理代码块在动画过程中出现的滚动条问题
+ */
+
+/* 隐藏代码块容器的垂直滚动条 */
+.vp-doc div[class*="language-"] {
+  overflow-y: hidden !important;
+}
+
+/* 代码预览区域 - 隐藏垂直滚动条但允许水平滚动 */
+.vp-doc div[class*="language-"] pre {
+  overflow-y: hidden !important;
+  overflow-x: auto !important;
+}
+
+/* 处理WebKit浏览器的滚动条 */
+.vp-doc div[class*="language-"] pre::-webkit-scrollbar {
+  height: 6px !important; /* 只保留水平滚动条高度 */
+}
+
+.vp-doc div[class*="language-"] pre::-webkit-scrollbar-thumb {
+  background: var(--vp-c-divider) !important; /* 滚动条颜色 */
+  border-radius: 3px !important;
+}
+
+/* 隐藏WebKit浏览器的垂直滚动条 */
+.vp-doc div[class*="language-"] pre::-webkit-scrollbar-vertical {
+  display: none !important;
+}
+
+/* 处理代码内容元素 */
+.vp-doc div[class*="language-"] pre code {
+  overflow-y: hidden !important;
+}
+
+/* Firefox浏览器滚动条处理 */
+.vp-doc div[class*="language-"] pre {
+  scrollbar-width: thin !important; /* 细滚动条 */
+  scrollbar-color: var(--vp-c-divider) transparent !important; /* 滑块颜色 轨道颜色 */
+}
+
+/* 处理IE浏览器 */
+.vp-doc div[class*="language-"] pre {
+  -ms-overflow-style: -ms-autohiding-scrollbar !important;
+}
+
+/* 确保在动画过程中不显示垂直滚动条 */
+.vp-doc[style*="transform"] div[class*="language-"] pre,
+.vp-doc[style*="opacity"] div[class*="language-"] pre {
+  overflow-y: hidden !important;
+} 

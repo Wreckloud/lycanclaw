@@ -11,6 +11,8 @@ import MyLayout from './components/MyLayout.vue';
 
 // 导入自定义样式
 import './styles/index.css';
+// 导入代码块滚动条修复样式
+import './styles/codeblock-fix.css';
 // 导入echarts
 import * as echarts from 'echarts';
 
