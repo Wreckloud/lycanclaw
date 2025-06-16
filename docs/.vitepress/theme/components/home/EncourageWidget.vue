@@ -69,7 +69,6 @@ let comboResetTimer = null // 连击重置计时器
 let lastParticleTime = 0 // 上次创建粒子的时间
 let lastClickTime = 0 // 上次点击的时间
 const THROTTLE_INTERVAL = 200 // 粒子效果节流间隔（毫秒）
-const CLICK_THROTTLE = 80 // 点击事件节流间隔（毫秒）
 
 // 使用VueUse的useThrottleFn替代节流变量
 const createParticlesThrottled = useThrottleFn(createParticles, 200)
@@ -138,6 +137,9 @@ function getEncourageMessage(count) {
 
 // 显示浮动消息
 function showFloatingMessage(event, count) {
+  // 防止在event缺失或event.currentTarget为null时出错
+  if (!event || !event.currentTarget) return;
+  
   // 通过事件相对于目标的位置计算，更可靠的方法获取实际点击位置
   const rect = event.currentTarget.getBoundingClientRect()
   const x = (event.touches && event.touches[0] ? event.touches[0].clientX : event.clientX)
@@ -189,6 +191,9 @@ function showFloatingMessage(event, count) {
 
 // 创建粒子效果（Canvas优化版）
 function createParticles(event) {
+  // 防止在event缺失时出错
+  if (!event) return;
+  
   const now = Date.now()
   
   // 节流控制 - 如果距离上次粒子效果不到200ms，跳过创建新粒子
@@ -533,7 +538,6 @@ onUnmounted(() => {
   <div 
     class="stats-card clickable-area" 
     @click="encourageUpdate"
-    @touchstart="encourageUpdate"
     @mouseenter="handleMouseEnter"
     @mouseleave="handleMouseLeave"
     ref="widgetRef"

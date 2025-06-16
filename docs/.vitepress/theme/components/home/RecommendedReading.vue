@@ -42,9 +42,8 @@ const currentIndex = ref(0)
 const scrollPosition = ref(0)
 const maxScroll = ref(0)
 const isUserInteracting = ref(false) // 跟踪用户是否正在交互
-const isDragging = ref(false) // 是否正在拖动
-const touchStartX = ref(0) // 记录触摸开始位置
 const shouldDisableAutoplay = computed(() => recommendedPosts.value.length <= 1)
+const scrollResetTimer = ref<number | null>(null) // 存储定时器ID
 
 // 组件属性
 const props = defineProps({
@@ -109,16 +108,9 @@ const updateCurrentIndex = useDebounceFn(() => {
     currentIndex.value = newIndex
   }
   
+  // 更新滚动位置状态（用于渐变遮罩显示）
   scrollPosition.value = scrollLeft
   maxScroll.value = scrollableWidth
-  
-  // 如果不是在拖动，并且滚动位置偏离了理想位置，则自动调整
-  if (!isDragging.value) {
-    const idealScrollPosition = scrollProgress * maxIndex - newIndex
-    if (Math.abs(idealScrollPosition) > 0.1) {
-      scrollToCardByProgress(newIndex / maxIndex, false)
-    }
-  }
 }, 50) // 减少防抖时间以获得更快的响应
 
 // 根据进度比例滚动到指定位置
@@ -130,7 +122,7 @@ function scrollToCardByProgress(progress, smooth = true) {
   
   carouselRef.value.scrollTo({
     left: targetScroll,
-    behavior: smooth && !isDragging.value ? 'smooth' : 'auto'
+    behavior: smooth ? 'smooth' : 'auto'
   })
 }
 
@@ -190,6 +182,55 @@ function nextCard() {
 // 监听滚动事件
 function handleScroll() {
   updateCurrentIndex()
+  
+  // 当用户滚动时，暂停自动轮播
+  if (!isUserInteracting.value) {
+    isUserInteracting.value = true
+    pauseAutoplay()
+  }
+  
+  // 清除之前的定时器
+  if (scrollResetTimer.value) {
+    clearTimeout(scrollResetTimer.value)
+  }
+  
+  // 设置新的定时器，在滚动停止后恢复自动轮播
+  scrollResetTimer.value = window.setTimeout(() => {
+    isUserInteracting.value = false
+    if (!isHovered.value && props.autoplaySpeed > 0 && !shouldDisableAutoplay.value) {
+      resumeAutoplay()
+    }
+  }, 3000) // 滚动后3秒恢复自动轮播
+}
+
+// 处理触摸开始事件
+function handleTouchStart() {
+  isUserInteracting.value = true
+  pauseAutoplay()
+}
+
+// 处理触摸结束事件
+function handleTouchEnd() {
+  // 延迟重置用户交互状态，给用户一些时间查看当前卡片
+  setTimeout(() => {
+    isUserInteracting.value = false
+    if (!isHovered.value && props.autoplaySpeed > 0 && !shouldDisableAutoplay.value) {
+      resumeAutoplay()
+    }
+  }, 3000) // 触摸结束后3秒恢复自动轮播
+}
+
+// 鼠标悬停处理
+function handleMouseEnter() {
+  isHovered.value = true
+  pauseAutoplay()
+}
+
+function handleMouseLeave() {
+  isHovered.value = false
+  if (!isUserInteracting.value && props.autoplaySpeed > 0 && !shouldDisableAutoplay.value) {
+    resumeAutoplay()
+  }
 }
 
 // 处理键盘导航
@@ -212,7 +253,7 @@ function handleKeyDown(e: KeyboardEvent) {
 // 使用VueUse的useIntervalFn实现自动轮播
 const { pause: pauseAutoplay, resume: resumeAutoplay } = useIntervalFn(() => {
   // 如果只有一篇文章或用户正在交互，不进行自动轮播
-  if (shouldDisableAutoplay.value || isUserInteracting.value || isDragging.value) return
+  if (shouldDisableAutoplay.value || isUserInteracting.value) return
   
   // 轮播到下一个索引
   const nextIndex = (currentIndex.value + 1) % recommendedPosts.value.length
@@ -221,59 +262,6 @@ const { pause: pauseAutoplay, resume: resumeAutoplay } = useIntervalFn(() => {
 
 // 鼠标悬停状态
 const isHovered = ref(false)
-
-// 触摸和拖动处理
-function handleTouchStart(e: TouchEvent) {
-  if (shouldDisableAutoplay.value) return
-  isUserInteracting.value = true
-  isDragging.value = true
-  touchStartX.value = e.touches[0].clientX
-  pauseAutoplay()
-}
-
-function handleTouchEnd() {
-  if (shouldDisableAutoplay.value) return
-  isDragging.value = false
-  
-  // 滚动到最近的卡片位置
-  const cardWidth = carouselRef.value?.clientWidth || 0
-  const scrollLeft = carouselRef.value?.scrollLeft || 0
-  const targetIndex = Math.round(scrollLeft / cardWidth)
-  scrollToCard(targetIndex)
-  
-  // 延迟恢复自动播放，给用户一点时间查看当前卡片
-  setTimeout(() => {
-    isUserInteracting.value = false
-    if (!isHovered.value && props.autoplaySpeed > 0) {
-      resumeAutoplay()
-    }
-  }, 1000)
-}
-
-function handleTouchMove(e: TouchEvent) {
-  if (!isDragging.value || !carouselRef.value || shouldDisableAutoplay.value) return
-  
-  const touchCurrentX = e.touches[0].clientX
-  const diff = touchStartX.value - touchCurrentX
-  
-  // 根据拖动距离调整滚动位置
-  if (Math.abs(diff) > 5) { // 添加一个小阈值，避免微小移动触发滚动
-    carouselRef.value.scrollLeft += diff / 2 // 减少滚动速度，使其更自然
-    touchStartX.value = touchCurrentX
-  }
-}
-
-function handleMouseEnter() {
-  isHovered.value = true
-  pauseAutoplay()
-}
-
-function handleMouseLeave() {
-  isHovered.value = false
-  if (!isUserInteracting.value && !shouldDisableAutoplay.value && props.autoplaySpeed > 0) {
-    resumeAutoplay()
-  }
-}
 
 // 监听文章数量变化，调整当前索引
 watch(() => recommendedPosts.value.length, (newCount) => {
@@ -313,7 +301,6 @@ onMounted(async () => {
       // 监听事件
       useEventListener(carouselRef.value, 'scroll', handleScroll)
       useEventListener(carouselRef.value, 'touchstart', handleTouchStart)
-      useEventListener(carouselRef.value, 'touchmove', handleTouchMove)
       useEventListener(carouselRef.value, 'touchend', handleTouchEnd)
       useEventListener(carouselRef.value, 'mouseenter', handleMouseEnter)
       useEventListener(carouselRef.value, 'mouseleave', handleMouseLeave)
@@ -330,9 +317,14 @@ onMounted(async () => {
   })
 })
 
-// 组件卸载前停止自动轮播
+// 组件卸载前清理
 onBeforeUnmount(() => {
   pauseAutoplay()
+  
+  // 清除可能存在的定时器
+  if (scrollResetTimer.value) {
+    clearTimeout(scrollResetTimer.value)
+  }
 })
 
 // 获取推荐文章数据
@@ -552,11 +544,12 @@ function formatDate(dateString: string): string {
   display: flex;
   width: 100%;
   overflow-x: auto;
-  scroll-snap-type: x mandatory;
+  scroll-snap-type: x mandatory; /* 使用mandatory确保滚动停止在卡片上 */
   scrollbar-width: none;
   -ms-overflow-style: none;
-  scroll-behavior: smooth;
+  scroll-behavior: smooth; /* 使用smooth实现平滑滚动 */
   padding-bottom: 0.5rem;
+  -webkit-overflow-scrolling: touch; /* 增加iOS上的滚动惯性 */
 }
 
 /* 隐藏WebKit浏览器的滚动条 */
@@ -598,7 +591,7 @@ function formatDate(dateString: string): string {
   padding: 1rem 1.2rem 1.2rem;
   margin: 0 0.5rem;
   box-sizing: border-box;
-  scroll-snap-align: center;
+  scroll-snap-align: center; /* 确保卡片中心对齐 */
   border-bottom: none;
   position: relative;
   margin-bottom: 0.5rem;

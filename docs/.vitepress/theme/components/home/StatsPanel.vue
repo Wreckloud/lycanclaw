@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { withBase } from 'vitepress'
 import { 
   useLocalStorage, 
@@ -7,7 +7,8 @@ import {
   useBrowserLocation, 
   useWindowSize, 
   useIntersectionObserver,
-  useEventListener
+  useEventListener,
+  useMutationObserver
 } from '@vueuse/core'
 import EncourageWidget from './EncourageWidget.vue'
 
@@ -29,6 +30,7 @@ const stats = reactive({
 const isVisible = ref(false)
 const containerRef = ref(null)
 const animationTriggerRef = ref(null) // 专门用于动画触发的引用
+const statsValueRefs = ref([]) // 存储统计数值元素的引用
 
 // 使用VueUse的useWindowSize替代手动实现的窗口大小检测
 const { width: windowWidth } = useWindowSize()
@@ -364,13 +366,53 @@ if (isBrowser) {
   )
 }
 
+// 添加自适应字体大小的函数
+function adjustFontSizes() {
+  if (!isBrowser || !statsValueRefs.value.length) return
+  
+  // 获取每个数值元素
+  statsValueRefs.value.forEach(el => {
+    if (!el) return
+    
+    const container = el.parentElement
+    if (!container) return
+    
+    // 重置缩放以获取真实宽度
+    el.style.setProperty('--scale', '1')
+    
+    // 获取元素和容器的宽度
+    const elWidth = el.scrollWidth
+    const containerWidth = container.clientWidth - 16 // 减去内边距
+    
+    // 如果元素宽度超过容器宽度，计算并应用缩放比例
+    if (elWidth > containerWidth && containerWidth > 0) {
+      const scale = Math.min(0.95, containerWidth / elWidth)
+      el.style.setProperty('--scale', scale.toString())
+    } else {
+      el.style.setProperty('--scale', '1')
+    }
+  })
+}
+
+// 监视数字变化，调整字体大小
+watch(() => [stats.animatedThoughtsCount, stats.animatedThoughtsWords], () => {
+  // 等待DOM更新后再调整字体大小
+  nextTick(() => {
+    adjustFontSizes()
+  })
+})
+
 // 加载数据
 onMounted(async () => {
   if (!isBrowser) return
   
   try {
     // 自动更新布局状态
-    useEventListener(window, 'resize', updateLayoutState)
+    useEventListener(window, 'resize', () => {
+      updateLayoutState()
+      // 窗口大小变化时重新调整字体大小
+      adjustFontSizes()
+    })
     
     // 从生成的JSON文件获取数据
     const response = await fetch(withBase('/posts.json'))
@@ -431,6 +473,11 @@ onMounted(async () => {
     stats.thoughtsWords = totalWords
     
     isLoading.value = false
+    
+    // 数据加载完成后，等待DOM更新，然后调整字体大小
+    nextTick(() => {
+      adjustFontSizes()
+    })
   } catch (error) {
     console.error('Error loading stats data:', error)
     hasError.value = true
@@ -472,12 +519,12 @@ onBeforeUnmount(() => {
         </div>
         
         <div class="stats-card" :class="{ 'animate-in': isVisible }" style="--anim-delay: 0.2s">
-          <div class="stats-value">{{ formatNumber(stats.animatedThoughtsCount) }}</div>
+          <div class="stats-value" ref="statsValueRefs">{{ formatNumber(stats.animatedThoughtsCount) }}</div>
           <div class="stats-label">随想总数</div>
         </div>
         
         <div class="stats-card" :class="{ 'animate-in': isVisible }" style="--anim-delay: 0.3s">
-          <div class="stats-value">{{ formatNumber(stats.animatedThoughtsWords) }}</div>
+          <div class="stats-value" ref="statsValueRefs">{{ formatNumber(stats.animatedThoughtsWords) }}</div>
           <div class="stats-label">总字数</div>
         </div>
       </div>
@@ -623,9 +670,14 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
+  text-overflow: clip;
   user-select: none;
+  padding: 0 0.5rem;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  width: 100%;
 }
 
 .stats-label {
@@ -747,11 +799,39 @@ onBeforeUnmount(() => {
   .stats-value {
     font-size: 1.5rem;
     height: 2rem;
+    letter-spacing: -0.03em;
   }
   
   .stats-label {
     font-size: 0.85rem;
     height: 1.3rem;
+  }
+}
+
+/* 添加中等屏幕尺寸的断点，专门处理双列布局 */
+@media (min-width: 481px) and (max-width: 768px) {
+  .stats-grid {
+    gap: 0.6rem;
+  }
+  
+  .stats-value {
+    font-size: 1.3rem;
+    padding: 0 0.2rem;
+    letter-spacing: -0.04em;
+    height: 1.9rem;
+  }
+}
+
+/* 针对总字数特别长的情况 */
+.stats-card:last-child .stats-value {
+  font-size: 1.7rem;
+  letter-spacing: -0.03em;
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+  .stats-card:last-child .stats-value {
+    font-size: 1.2rem;
+    letter-spacing: -0.05em;
   }
 }
 
@@ -773,6 +853,19 @@ onBeforeUnmount(() => {
   .stats-label {
     font-size: 0.8rem;
     height: 1.2rem;
+  }
+  
+  .stats-card:last-child .stats-value {
+    font-size: 1.3rem;
+  }
+}
+
+/* 添加自动缩放功能，根据数字长度动态调整字体大小 */
+@media (max-width: 768px) {
+  .stats-value {
+    transform-origin: center;
+    transform: scale(var(--scale, 1));
+    transition: transform 0.2s ease;
   }
 }
 </style> 
