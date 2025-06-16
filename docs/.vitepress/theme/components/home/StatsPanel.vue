@@ -347,6 +347,15 @@ function animateNumbers() {
   }
 }
 
+// 添加一个带延迟的动画触发函数
+function delayedAnimateNumbers(delay = 200) {
+  if (!animationStarted.value) {
+    setTimeout(() => {
+      animateNumbers()
+    }, delay)
+  }
+}
+
 // 使用VueUse的useIntersectionObserver
 if (isBrowser) {
   useIntersectionObserver(
@@ -355,7 +364,7 @@ if (isBrowser) {
       if (isIntersecting) {
         isVisible.value = true
         if (!isLoading.value && !animationStarted.value) {
-          animateNumbers()
+          delayedAnimateNumbers()
         }
       }
     },
@@ -477,6 +486,11 @@ onMounted(async () => {
     // 数据加载完成后，等待DOM更新，然后调整字体大小
     nextTick(() => {
       adjustFontSizes()
+      
+      // 检查元素是否已可见，如果可见则立即触发动画
+      if (isVisible.value && !animationStarted.value) {
+        delayedAnimateNumbers()
+      }
     })
   } catch (error) {
     console.error('Error loading stats data:', error)
