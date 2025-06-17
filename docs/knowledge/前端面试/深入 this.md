@@ -14,17 +14,23 @@ tags:
 要判断 `this` 的值，首先得看当前是否处于严格模式。
 JavaScript 默认为非严格模式，开启严格模式可以使用 `'use strict'`：
 
-- 为整个脚本开启严格模式
+- 为整个脚本开启严格模式，将 `'use strict'` 写在 JS 文件**最前面**，前面不能有任何其他语句或注释
 
-```js
+```js{1}
 'use strict';
+
+// 整个文件都处于严格模式
+function test() {
+  console.log(this); // undefined
+}
 ```
 
-- 或者只为函数体开启严格模式
+- 或者只为函数体开启严格模式，写在函数内第一行
 
-```js
-function example() {
+```js{2}
+function test() {
   'use strict';
+  console.log(this); // undefined
 }
 ```
 
@@ -33,7 +39,7 @@ function example() {
 **非严格模式下**，`this` 总是指向一个对象（通常是全局对象）。
 **严格模式下**，`this` 可以是任意值，比如在某些调用方式下为 `undefined`。
 
-#### 全局执行环境
+### 全局执行环境
 
 无论是否使用严格模式，在全局作用域中使用 `this`，它都指向全局对象（在浏览器中即 `window`）：
 
@@ -41,7 +47,7 @@ function example() {
 console.log(this); // 浏览器中为 window
 ```
 
-#### 普通函数调用
+### 普通函数调用
 
 这是最容易出错的一类调用方式。直接调用函数时，`this` 的值受严格模式影响：
 
@@ -58,7 +64,7 @@ function test() {
 test(); // undefined
 ```
 
-#### 对象方法调用
+### 对象方法调用
 
 当函数作为对象的一个属性被调用时，`this` 指向该对象本身，也就是“谁调用，this 就指向谁”。
 
@@ -259,4 +265,197 @@ const addOne2 = curryAdd(1);
 console.log(addOne2(2)); // 3
 ```
 
-# 手写 call、apply、bind
+# 手写 call
+
+实现一个 `myCall` 方法，使其行为和原生 `Function.prototype.call` 一致：  
+可以指定函数执行时的 `this`，并传递参数。
+
+**目标**
+
+```js
+function func(a, b) {
+  console.log(this.name)
+  return a + b
+}
+
+const person = { name: 'wolf' }
+const res = func.myCall(person, 2, 8)
+console.log('返回值为：', res) // wolf, 返回值为：10
+```
+
+1. 将方法挂在函数原型上
+
+所有函数都是 `Function` 的实例，因此可在其原型对象上添加方法：
+
+```js
+Function.prototype.myCall = function () {
+  // ...
+}
+```
+
+这一步的核心是：**函数都可以访问这个方法**，因为 `func instanceof Function === true`。
+
+2. 把当前函数（this）临时挂到传入对象上
+
+我们需要让传入的对象调用这个函数，才能改变 `this` 指向：
+
+```js
+Function.prototype.myCall = function (thisArg) {
+  thisArg.fn = this // 将当前函数作为属性赋给传入对象
+}
+```
+
+例子中 `this` 指的是函数外的调用者 `func`，而 `thisArg` 是调用时传递的参数 `person`，所以我们临时执行的是 `person.fn()`。
+
+3. 支持传参
+
+调用 `call` 时，我们可能会传入多个参数，需要传进去给函数：
+
+```js
+Function.prototype.myCall = function (thisArg, ...args) {
+  thisArg.fn = this
+  const result = thisArg.fn(...args)
+  delete thisArg.fn
+  return result
+}
+```
+
+- 用剩余参数 `...args` 接收函数参数
+- 展开调用 `fn(...args)`
+- 调用后删除临时属性，防止污染原对象
+
+4. 使用 `Symbol` 调优
+
+原生 `call` 支持 `null` 和 `undefined` 被自动绑定为 `window`（非严格模式下）：
+
+```js
+Function.prototype.myCall = function (thisArg, ...args) {
+  const fnKey = Symbol() // 创建唯一键名，防止属性覆盖
+  // 不写做 this.key ，会把 key 当作字符串字面量。
+  thisArg[fnKey] = this  // 而我们需要用 obj[key] 才能把变量 key 的值当作属性名
+  const result = thisArg[fnKey](...args)
+  delete thisArg[fnKey]
+  return result
+}
+```
+
+- 使用 `Symbol` 创建唯一键名，避免与原对象属性冲突，提升调用安全性和健壮性。
+
+**完整实现示例**
+
+```js
+Function.prototype.myCall = function (thisArg, ...args) {
+  thisArg = (thisArg === null || thisArg === undefined)
+    ? window
+    : Object(thisArg) // 安全健壮地支持所有类型的 `thisArg` 传入
+
+  const fnKey = Symbol()
+  thisArg[fnKey] = this
+  const result = thisArg[fnKey](...args)
+  delete thisArg[fnKey]
+  return result
+}
+```
+
+# 手写 apply
+
+`apply` 和 `call` 最大区别是：`apply` 第二个参数是参数数组（或类数组），而 `call` 是逐个传参。
+
+我们可以借鉴 `myCall` 代码，区别只在于参数传递方式。
+
+```js{7-8}
+Function.prototype.myApply = function(thisArg, argsArray) {
+  thisArg = (thisArg === null || thisArg === undefined) ? window : Object(thisArg)
+
+  const fnKey = Symbol()
+  thisArg[fnKey] = this
+
+  // argsArray 可能为 null 或 undefined，调用时要做判断
+  const result = argsArray ? thisArg[fnKey](...argsArray) : thisArg[fnKey]()
+
+  delete thisArg[fnKey]
+  return result
+}
+```
+
+# 手写 bind
+
+`bind` 不像 `call`/`apply`，它不是立刻调用，而是给你一个“绑定了 this 和参数”的新函数，等你以后调用它时才真正执行。
+
+1. **预设参数（柯里化）**  
+   绑定时可以传参数，调用新函数时也可以传参数，两个参数会拼接起来。比如：
+
+   ```js
+   function f(a, b) { console.log(this.name, a, b) }
+   const bound = f.bind(obj, 1)  // 绑定this和第一个参数
+   bound(2)  // 输出 obj.name 1 2
+   ```
+
+先不考虑 `new` 的写法
+
+```js
+Function.prototype.myBind = function(thisArg, ...bindArgs) {
+  const self = this; // 保存调用 bind 的函数
+
+  return function(...callArgs) {
+    // 调用原函数，this 指向 thisArg，参数是绑定参数 + 调用参数
+    return self.apply(thisArg, [...bindArgs, ...callArgs]);
+  }
+}
+
+```
+
+2. **处理 new 调用**  
+   如果用 `new` 调用绑定函数，绑定的 `this` 会失效，`this` 指向新实例，而不是绑定对象。这点比较玄学，但必须实现。
+
+```js{6-8}
+Function.prototype.myBind = function(thisArg, ...bindArgs) {
+  const self = this;
+
+  function boundFn(...callArgs) {
+    // 判断是否用 new 调用
+    const isNew = this instanceof boundFn;
+    // 如果 new 调用，this 指向实例，否则指向绑定的 thisArg
+    const context = isNew ? this : thisArg;
+    return self.apply(context, [...bindArgs, ...callArgs]);
+  }
+
+  return boundFn;
+}
+
+```
+
+3. **修复原型链**  
+   返回的新函数会继承原函数的 `prototype`，防止 `new` 出错。
+
+```js{10-11}
+Function.prototype.myBind = function(thisArg, ...bindArgs) {
+  const self = this;
+
+  function boundFn(...callArgs) {
+    const isNew = this instanceof boundFn;
+    const context = isNew ? this : thisArg;
+    return self.apply(context, [...bindArgs, ...callArgs]);
+  }
+
+  // 继承原函数的 prototype
+  boundFn.prototype = Object.create(self.prototype);
+
+  return boundFn;
+}
+```
+
+**完整实现示例**
+
+```js
+Function.prototype.myBind = function(thisArg, ...bindArgs) {
+  const self = this
+  function boundFn(...callArgs) {
+    const isNew = this instanceof boundFn
+    const context = isNew ? this : thisArg
+    return self.apply(context, [...bindArgs, ...callArgs])
+  }
+  boundFn.prototype = Object.create(this.prototype)
+  return boundFn
+}
+```
