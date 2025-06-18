@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/前端框架/Vue 封装逻辑函数.md",
+                "file": "projects/online-shoping-vue3.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Vue 封装逻辑函数"
+              "title": "online-shoping-vue3"
             }
           }
         ]
@@ -40,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/前端框架/Vue 封装逻辑函数.md",
+                "file": "projects/online-shoping-vue3.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Vue 封装逻辑函数 的大纲"
+              "title": "online-shoping-vue3 的大纲"
             }
           },
           {
@@ -154,8 +154,8 @@
   },
   "active": "f1a5ae53903c2eca",
   "lastOpenFiles": [
-    "knowledge/前端框架/Router-路由缓存问题.md",
     "knowledge/前端框架/Vue 封装逻辑函数.md",
+    "knowledge/前端框架/Router-路由缓存问题.md",
     "knowledge/前端框架/VUE 2-渐进式框架.md",
     "knowledge/前端面试/ES6 - JavaScript 中的继承.md",
     "knowledge/前端面试/深入 this.md",
