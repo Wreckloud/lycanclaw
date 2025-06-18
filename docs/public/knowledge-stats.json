@@ -21,7 +21,7 @@
   },
   {
     "date": "2023-11-06 20:26:32",
-    "wordCount": 4586,
+    "wordCount": 4593,
     "relativePath": "knowledge/前端基础/网页行为逻辑-JavaScript.md"
   },
   {
@@ -60,6 +60,11 @@
     "relativePath": "knowledge/前端工具库/在项目重封装 Axios 请求.md"
   },
   {
+    "date": "2025-06-18 17:19:41",
+    "wordCount": 607,
+    "relativePath": "knowledge/前端框架/Router-路由缓存问题.md"
+  },
+  {
     "date": "2024-11-24 18:04:40",
     "wordCount": 9904,
     "relativePath": "knowledge/前端框架/VUE 2-渐进式框架.md"
@@ -75,6 +80,11 @@
     "relativePath": "knowledge/前端框架/Vue Router-路由管理.md"
   },
   {
+    "date": "2025-06-18T12:33:44.812Z",
+    "wordCount": 649,
+    "relativePath": "knowledge/前端框架/Vue 封装逻辑函数.md"
+  },
+  {
     "date": "2025-05-06 14:03:47",
     "wordCount": 4277,
     "relativePath": "knowledge/前端框架/Vue2状态管理-VUEX.md"
@@ -85,8 +95,13 @@
     "relativePath": "knowledge/前端框架/VUE3状态管理 - Pinia(替代Vuex).md"
   },
   {
+    "date": "2025-06-18 11:10:59",
+    "wordCount": 968,
+    "relativePath": "knowledge/前端面试/ES6 - JavaScript 中的继承.md"
+  },
+  {
     "date": "2025-06-16 11:01:55",
-    "wordCount": 1402,
+    "wordCount": 2454,
     "relativePath": "knowledge/前端面试/深入 this.md"
   }
 ]

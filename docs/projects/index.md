@@ -8,5 +8,5 @@ comment: false
 
 ## 项目列表
 
-- [进行中-VUE3实战-在线商城系统](./online-shoping-vue3.md) - 这是我跟着黑马程序员前端Vue3小兔鲜电商项目的实战
-- more...(我会加油的!)
+- [进行中-VUE3实战-在线商城系统](./online-shoping-vue3.md)
+- more...
