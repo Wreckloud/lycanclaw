@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "thoughts/每个人都拥有的言灵.md",
+                "file": "thoughts/电子音乐.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "每个人都拥有的言灵"
+              "title": "电子音乐"
             }
           }
         ]
@@ -40,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "thoughts/每个人都拥有的言灵.md",
+                "file": "thoughts/电子音乐.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "每个人都拥有的言灵 的大纲"
+              "title": "电子音乐 的大纲"
             }
           },
           {
@@ -141,7 +141,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 269.5
+    "width": 270.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -154,8 +154,10 @@
   },
   "active": "f1a5ae53903c2eca",
   "lastOpenFiles": [
-    "thoughts/电子音乐.md",
+    "music-player-demo.md",
+    "README.md",
     "thoughts/每个人都拥有的言灵.md",
+    "thoughts/电子音乐.md",
     "thoughts/远古卷轴.md",
     "about.md",
     "projects/online-shoping-vue3.md",
@@ -181,8 +183,6 @@
     "thoughts/竟然被回关.md",
     "thoughts/笔记本 Wi-Fi 消失的解决方法.md",
     "thoughts/从一盏灯开始的文明.md",
-    "thoughts/光不在彼方.md",
-    "thoughts/互联网与星辰大海.md",
     "public/images/文章资源/竟然被回关/file-20250613003011268.jpg",
     "public/images/文章资源/竟然被回关/file-20250613002953237.jpg",
     "public/images/文章资源/竟然被回关/file-20250612210808860.jpg",

@@ -9,6 +9,10 @@ import { useRoute } from 'vitepress';
 // 导入自定义布局组件（保留直接导入，因为它是必需的）
 import MyLayout from './components/MyLayout.vue';
 
+
+// 导入简单音乐播放器组件
+import SimpleMusicPlayer from './components/common/SimpleMusicPlayer.vue';
+
 // 导入自定义样式
 import './styles/index.css';
 // 导入代码块滚动条修复样式
@@ -116,6 +120,9 @@ export default {
     app.component('PostTitle', AsyncPostTitle);
     app.component('Comment', AsyncComment);
     app.component('RecentComments', AsyncRecentComments);
+    
+    // 注册简单音乐播放器组件
+    app.component('SimpleMusicPlayer', SimpleMusicPlayer);
     
     // 全局注册echarts
     app.config.globalProperties.$echarts = echarts;

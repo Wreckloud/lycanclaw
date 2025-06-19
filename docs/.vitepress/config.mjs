@@ -22,7 +22,7 @@ export default defineConfig({
     // 添加Content-Security-Policy
     ['meta', { 
       'http-equiv': 'Content-Security-Policy', 
-      content: "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https: https://secure.gravatar.com; connect-src 'self' https: wss:; font-src 'self' data:;" // 已移除不蒜子相关策略
+      content: "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https: https://secure.gravatar.com; connect-src 'self' https: wss: http:; font-src 'self' data:; frame-src 'self' https: http://music.163.com https://music.163.com; media-src 'self' https: http: blob: data:;" 
     }],
   ],
 
