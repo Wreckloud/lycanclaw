@@ -6,6 +6,7 @@ aside: true
 <script setup>
 import Greeting from './.vitepress/theme/components/about/Greeting.vue'
 import TypewriterWithTech from './.vitepress/theme/components/about/TypewriterWithTech.vue'
+import MusicRanking from './.vitepress/theme/components/home/MusicRanking.vue'
 </script>
 
 # 这里是维克罗德。
@@ -24,7 +25,12 @@ import TypewriterWithTech from './.vitepress/theme/components/about/TypewriterWi
 
 > 如果你偶尔在夜里迷路，愿这里的微光能成为你脚下的一个小小路标。
 
-我悄悄在这片原野边埋下了留言石柱，供路过的你停下片刻。你可以谈谈你看到的、想到的、也可以只留下一点只言片语。
+既然你还在这里,那我就再分享你一些东西吧!
+
+<MusicRanking />
+
+另外,
+我还悄悄在这片原野边埋下了留言石柱，供路过的你停下片刻。你可以谈谈你看到的、想到的、也可以只留下一点只言片语。
 
 <style>
 /* 只保留图片展示容器样式，其他样式移入组件中 */

@@ -32,28 +32,23 @@ async function fetchMusicRanking() {
   hasError.value = false
   
   try {
-    console.log('正在获取网易云音乐数据...')
     const response = await fetch('https://163api.qijieya.cn/user/record?uid=629126546&type=1')
     const data = await response.json()
-    
-    console.log('获取到的数据:', data)
     
     if (data.code !== 200 || !data.weekData || data.weekData.length === 0) {
       throw new Error('获取音乐排行榜失败')
     }
     
-    // 只取前5首歌
+    // 只取前5首歌，并优化图片尺寸（添加参数?param=120y120）
     const topFive = data.weekData.slice(0, 5).map((item: any) => ({
       id: String(item.song.id),
       name: item.song.name,
       artist: item.song.ar.map((a: any) => a.name).join('/'),
-      cover: item.song.al.picUrl.replace('http://', 'https://')
+      cover: item.song.al.picUrl.replace('http://', 'https://') + '?param=120y120'
     }))
     
-    console.log('处理后的前5首歌:', topFive)
     musicRanking.value = topFive
   } catch (error) {
-    console.error('获取数据出错:', error)
     hasError.value = true
   } finally {
     isLoading.value = false

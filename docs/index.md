@@ -28,7 +28,6 @@ import RecommendedReading from './.vitepress/theme/components/home/RecommendedRe
 import StatsPanel from './.vitepress/theme/components/home/StatsPanel.vue'
 import ContributionHeatmap from './.vitepress/theme/components/home/ContributionHeatmap.vue'
 import RecentComments from './.vitepress/theme/components/home/RecentComments.vue'
-import MusicRanking from './.vitepress/theme/components/home/MusicRanking.vue'
 import ScrollPrompt from './.vitepress/theme/components/home/ScrollPrompt.vue'
 </script>
 
@@ -63,10 +62,6 @@ import ScrollPrompt from './.vitepress/theme/components/home/ScrollPrompt.vue'
     <!-- 最新评论 -->
     <div class="home-section comments-section">
       <RecentComments />
-    </div>
-    <!-- 本周听歌榜 -->
-    <div class="home-section music-ranking-section">
-      <MusicRanking />
     </div>
   </div>
 </div>

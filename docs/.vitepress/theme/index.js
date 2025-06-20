@@ -9,6 +9,9 @@ import { useRoute } from 'vitepress';
 // 导入自定义布局组件（保留直接导入，因为它是必需的）
 import MyLayout from './components/MyLayout.vue';
 
+// 导入音频管理器和全局音乐播放器
+import audioManager from './utils/audioManager';
+import GlobalMusicPlayer from './components/common/GlobalMusicPlayer.vue';
 
 // 导入简单音乐播放器组件
 import SimpleMusicPlayer from './components/common/SimpleMusicPlayer.vue';
@@ -121,17 +124,18 @@ export default {
     app.component('Comment', AsyncComment);
     app.component('RecentComments', AsyncRecentComments);
     
-    // 注册简单音乐播放器组件
+    // 注册音乐播放器组件
     app.component('SimpleMusicPlayer', SimpleMusicPlayer);
+    app.component('GlobalMusicPlayer', GlobalMusicPlayer);
     
     // 全局注册echarts
     app.config.globalProperties.$echarts = echarts;
     
-    // 在路由变化时处理高度同步
+    // 在路由变化时处理高度同步和音频状态同步
     if (typeof window !== 'undefined') {
-      router.onAfterRouteChanged = () => {
+      router.onAfterRouteChanged = (to) => {
         // 检查当前是否在首页
-        if (router.route.path === '/') {
+        if (to.path === '/') {
           // 等待Vue组件渲染
           setTimeout(syncSectionHeights, 300)
           
@@ -141,6 +145,15 @@ export default {
           // 不在首页时，移除事件监听
           window.removeEventListener('resize', syncSectionHeights)
         }
+        
+        // 页面切换时同步音频状态
+        nextTick(() => {
+          // 确保所有组件都已加载完成
+          setTimeout(() => {
+            // 同步当前歌曲信息
+            audioManager.syncCurrentSongInfo();
+          }, 100);
+        });
       }
       
       // 初始加载时，如果是首页则执行同步
@@ -171,6 +184,13 @@ export default {
       initZoom();
       // 预加载网站数据
       preloadSiteData();
+      // 同步音频状态
+      if (typeof window !== 'undefined') {
+        // 确保所有组件都已加载完成
+        setTimeout(() => {
+          audioManager.syncCurrentSongInfo();
+        }, 100);
+      }
     });
     
     // 路由变化时重新初始化缩放

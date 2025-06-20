@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitepress'
 import { generateSidebar } from './plugins/index.js'
+import { proxyConfig } from './theme/utils/proxyConfig'
 
 // 使用自定义插件生成侧边栏
 const sidebar = generateSidebar({
@@ -45,6 +46,32 @@ export default defineConfig({
     
     // 代码块行号
     lineNumbers: true,
+  },
+
+  // 开发服务器配置
+  vite: {
+    server: {
+      // 添加代理配置，解决CORS问题
+      proxy: proxyConfig
+    },
+    
+    // 优化音频文件处理
+    optimizeDeps: {
+      exclude: ['@vueuse/core']
+    },
+    
+    // 改进构建配置
+    build: {
+      chunkSizeWarningLimit: 1000, // 增加块大小警告限制
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vue': ['vue'],
+            'vitepress': ['vitepress']
+          }
+        }
+      }
+    }
   },
 
   // 默认主题配置
