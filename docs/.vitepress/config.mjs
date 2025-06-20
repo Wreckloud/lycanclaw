@@ -62,15 +62,7 @@ export default defineConfig({
     
     // 改进构建配置
     build: {
-      chunkSizeWarningLimit: 1000, // 增加块大小警告限制
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            'vue': ['vue'],
-            'vitepress': ['vitepress']
-          }
-        }
-      }
+      chunkSizeWarningLimit: 1000 // 增加块大小警告限制
     }
   },
 
