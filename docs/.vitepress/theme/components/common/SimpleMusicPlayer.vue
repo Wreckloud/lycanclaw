@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import { useData } from 'vitepress'
+import { useIntersectionObserver } from '@vueuse/core'
 
 // 组件属性定义
 interface Props {
@@ -35,6 +36,8 @@ const isDragging = ref(false) // 是否正在拖动进度条
 const isAudioReady = ref(false) // 音频是否已准备好
 const debounceTimer = ref<number | null>(null) // 用于防抖操作
 const useNetease = ref(false) // 是否使用网易云播放器
+const isInitialRender = ref(true) // 是否是初始渲染
+const playerRef = ref<HTMLElement | null>(null) // 播放器元素引用
 
 // 歌曲信息状态
 const songInfo = ref({
@@ -268,6 +271,25 @@ watch(() => songInfo.value.url, (newUrl) => {
 
 // 生命周期钩子
 onMounted(async () => {
+  // 设置动画可见性检测
+  if (typeof window !== 'undefined' && playerRef.value) {
+    const { stop } = useIntersectionObserver(
+      playerRef,
+      ([{ isIntersecting }]) => {
+        if (isIntersecting) {
+          isVisible.value = true
+          stop() // 只触发一次
+        }
+      },
+      { threshold: 0.2 }
+    )
+  }
+
+  // 初始渲染完成后移除初始渲染标志
+  setTimeout(() => {
+    isInitialRender.value = false
+  }, 50)
+
   // 检查是否使用网易云ID
   if (props.neteaseid) {
     // 尝试加载网易云音乐信息
@@ -335,29 +357,14 @@ onMounted(async () => {
   audio.value.addEventListener('canplay', () => {
     isLoading.value = false
   })
-
-  // 添加可见性检测，触发动画
-  const observer = new IntersectionObserver(
-    ([entry]) => {
-      if (entry.isIntersecting) {
-        isVisible.value = true
-        observer.disconnect()
-      }
-    },
-    { threshold: 0.2 }
-  )
-
-  if (typeof window !== 'undefined') {
-    observer.observe(document.querySelector('.music-player') as Element)
-  }
 })
 </script>
 
 <template>
-  <div class="music-player" :class="{ 'dark-mode': isDark, 'animate-in': isVisible }">
+  <div class="music-player" ref="playerRef" :class="{ 'dark-mode': isDark, 'animate-in': isVisible, 'initial-render': isInitialRender }">
     <!-- 网易云iframe播放器 -->
     <iframe v-if="useNetease" 
-      class="netease-player"
+      class="netease-player animate-in"
       frameborder="no" 
       border="0" 
       marginwidth="0" 
@@ -371,7 +378,13 @@ onMounted(async () => {
     <div v-else class="player-container">
       <!-- 封面 -->
       <div class="cover-container" :class="{ 'animate-in': isVisible }" style="--anim-delay: 0.1s">
-        <img v-if="songInfo.cover" :src="songInfo.cover" :alt="songInfo.name" class="cover-image">
+        <!-- 骨架屏 -->
+        <div v-if="isLoading && !songInfo.cover" class="skeleton-cover">
+          <div class="skeleton-pulse"></div>
+        </div>
+        
+        <!-- 封面图片 -->
+        <img v-else-if="songInfo.cover" :src="songInfo.cover" :alt="songInfo.name" class="cover-image">
         <div v-else class="default-cover">
           <div class="music-note">♪</div>
         </div>
@@ -415,15 +428,24 @@ onMounted(async () => {
           <!-- 歌曲信息 -->
           <div class="song-info">
             <div class="title-container">
-              <h3 class="song-title">{{ songInfo.name }}</h3>
-              <span class="song-artist">- {{ songInfo.artist }}</span>
+              <!-- 歌曲标题骨架屏 -->
+              <div v-if="isLoading && !songInfo.name" class="skeleton-title"></div>
+              <h3 v-else class="song-title">{{ songInfo.name }}</h3>
+              
+              <!-- 艺术家骨架屏 -->
+              <div v-if="isLoading && !songInfo.artist" class="skeleton-artist"></div>
+              <span v-else class="song-artist">- {{ songInfo.artist }}</span>
             </div>
           </div>
           
           <!-- 时间信息 -->
           <div class="time-info">
-            <span class="current-time">{{ formattedCurrentTime }}</span>
-            <span class="duration">/ {{ formattedDuration }}</span>
+            <!-- 时间骨架屏 -->
+            <div v-if="isLoading" class="skeleton-time"></div>
+            <template v-else>
+              <span class="current-time">{{ formattedCurrentTime }}</span>
+              <span class="duration">/ {{ formattedDuration }}</span>
+            </template>
           </div>
         </div>
         
@@ -435,7 +457,11 @@ onMounted(async () => {
           @touchstart="startDrag"
           :class="{ 'dragging': isDragging }"
         >
-          <div class="progress-bar">
+          <!-- 进度条骨架屏 -->
+          <div v-if="isLoading" class="skeleton-progress">
+            <div class="skeleton-pulse"></div>
+          </div>
+          <div v-else class="progress-bar">
             <div class="progress-current" :style="{ width: `${progress}%` }"></div>
           </div>
         </div>
@@ -462,6 +488,13 @@ onMounted(async () => {
   opacity: 0;
   transform: translateY(20px);
   border-radius: 3px;
+  will-change: opacity, transform;
+}
+
+/* 避免初始闪烁 */
+.initial-render {
+  opacity: 0 !important;
+  transform: translateY(20px) !important;
 }
 
 /* 网易云播放器样式 */
@@ -495,13 +528,18 @@ onMounted(async () => {
 }
 
 @keyframes pulse {
-  0% { transform: scale(0.95); opacity: 0.8; }
-  50% { transform: scale(1.05); opacity: 1; }
-  100% { transform: scale(0.95); opacity: 0.8; }
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .animate-in {
-  animation: fadeInUp 0.6s ease forwards;
+  animation: fadeInUp 0.5s ease forwards;
   animation-delay: var(--anim-delay, 0s);
 }
 
@@ -548,6 +586,75 @@ onMounted(async () => {
   color: white;
 }
 
+/* 骨架屏样式 */
+.skeleton-cover {
+  width: 100%;
+  height: 100%;
+  background-color: var(--vp-c-bg-mute);
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-pulse {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    var(--vp-c-bg-mute) 25%, 
+    var(--vp-c-bg-soft) 50%, 
+    var(--vp-c-bg-mute) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.skeleton-title {
+  width: 120px;
+  height: 16px;
+  background: linear-gradient(90deg, 
+    var(--vp-c-bg-mute) 25%, 
+    var(--vp-c-bg-soft) 50%, 
+    var(--vp-c-bg-mute) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 2px;
+}
+
+.skeleton-artist {
+  width: 80px;
+  height: 12px;
+  margin-left: 8px;
+  background: linear-gradient(90deg, 
+    var(--vp-c-bg-mute) 25%, 
+    var(--vp-c-bg-soft) 50%, 
+    var(--vp-c-bg-mute) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 2px;
+}
+
+.skeleton-time {
+  width: 50px;
+  height: 12px;
+  background: linear-gradient(90deg, 
+    var(--vp-c-bg-mute) 25%, 
+    var(--vp-c-bg-soft) 50%, 
+    var(--vp-c-bg-mute) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 2px;
+}
+
+.skeleton-progress {
+  height: 4px;
+  width: 100%;
+  background-color: var(--vp-c-divider);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
 /* 加载状态 */
 .loading-overlay {
   position: absolute;
@@ -560,6 +667,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   pointer-events: auto;
+  backdrop-filter: blur(1px);
 }
 
 .loading-spinner {
@@ -616,6 +724,7 @@ onMounted(async () => {
   animation: fadeIn 0.2s ease;
   touch-action: manipulation; /* 优化触摸行为 */
   -webkit-tap-highlight-color: transparent; /* 移除iOS触摸高亮 */
+  backdrop-filter: blur(1px);
 }
 
 .play-button {

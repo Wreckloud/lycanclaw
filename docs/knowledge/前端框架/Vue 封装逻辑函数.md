@@ -1,3 +1,10 @@
+---
+title: Vue 封装逻辑函数
+date: 2025-06-18T19:46:36
+description: 这是一篇新文章!
+publish: true
+tags:
+---
 Vue 社区提倡：**按业务拆逻辑函数**。
 
 组件逻辑一多，`<script setup>` 就变成灾难现场。拆！按业务功能拆。  

@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "thoughts/电子音乐.md",
+                "file": "knowledge/前端框架/Router-路由缓存问题.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "电子音乐"
+              "title": "Router-路由缓存问题"
             }
           }
         ]
@@ -40,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "thoughts/电子音乐.md",
+                "file": "knowledge/前端框架/Router-路由缓存问题.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "电子音乐 的大纲"
+              "title": "Router-路由缓存问题 的大纲"
             }
           },
           {
@@ -154,16 +154,19 @@
   },
   "active": "f1a5ae53903c2eca",
   "lastOpenFiles": [
+    "knowledge/前端框架/Vue 封装逻辑函数.md",
+    "knowledge/前端框架/VUE 3-组合式API.md",
+    "knowledge/前端框架/VUE 2-渐进式框架.md",
+    "knowledge/前端框架/Router-路由缓存问题.md",
+    "thoughts/电子音乐.md",
+    "public/images/文章资源/电子音乐/file-20250620113207311.jpg",
+    "public/images/文章资源/电子音乐",
     "music-player-demo.md",
     "README.md",
     "thoughts/每个人都拥有的言灵.md",
-    "thoughts/电子音乐.md",
     "thoughts/远古卷轴.md",
     "about.md",
     "projects/online-shoping-vue3.md",
-    "knowledge/前端框架/Vue 封装逻辑函数.md",
-    "knowledge/前端框架/Router-路由缓存问题.md",
-    "knowledge/前端框架/VUE 2-渐进式框架.md",
     "knowledge/前端面试/ES6 - JavaScript 中的继承.md",
     "knowledge/前端面试/深入 this.md",
     "knowledge/前端基础/网页行为逻辑-JavaScript.md",
@@ -182,7 +185,6 @@
     "thoughts/獠牙下的野蔷薇.md",
     "thoughts/竟然被回关.md",
     "thoughts/笔记本 Wi-Fi 消失的解决方法.md",
-    "thoughts/从一盏灯开始的文明.md",
     "public/images/文章资源/竟然被回关/file-20250613003011268.jpg",
     "public/images/文章资源/竟然被回关/file-20250613002953237.jpg",
     "public/images/文章资源/竟然被回关/file-20250612210808860.jpg",
@@ -191,7 +193,6 @@
     "public/images/文章资源/数字世界的构建手册/file-20250612000816606.jpg",
     "public/images/文章资源/数字世界的构建手册/file-20250612000805895.jpg",
     "public/images/文章资源/数字世界的构建手册/file-20250612000853185.jpg",
-    "public/images/文章资源/数字世界的构建手册/file-20250612000843792.jpg",
     "public/images/文章资源/数字世界的构建手册",
     "public/images/文章资源/互联网与星辰大海",
     "public/images/文章资源/环境变量",
@@ -199,7 +200,6 @@
     "public/images/文章资源/竟然被回关",
     "debug-sort.log",
     "public/images/文章资源/axios-现代化的-ajax-请求工具",
-    "public/images/文章资源/git-版本控制",
     "点子合集.canvas"
   ]
 }
