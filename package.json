@@ -15,8 +15,9 @@
     "preview": "vitepress preview docs",
     "generate-posts": "node docs/.vitepress/scripts/generate-posts-data.js",
     "generate-knowledge-stats": "node docs/.vitepress/scripts/generate-knowledge-stats.js",
+    "generate-site-data": "node docs/.vitepress/scripts/generate-site-data.js",
     "generate-recommended": "node docs/.vitepress/scripts/generate-recommended-data.js",
-    "generate-data": "pnpm run generate-posts && pnpm run generate-knowledge-stats && pnpm run generate-recommended"
+    "generate-data": "pnpm run generate-site-data && pnpm run generate-recommended"
   },
   "dependencies": {
     "@vueuse/core": "^13.3.0",
