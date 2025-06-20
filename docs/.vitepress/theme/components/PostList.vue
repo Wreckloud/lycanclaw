@@ -2,9 +2,14 @@
 import { ref, onMounted, computed } from 'vue'
 import { useData } from 'vitepress'
 import { withBase } from 'vitepress'
+import { useIntersectionObserver } from '@vueuse/core'
 
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
+
+// 添加动画相关状态
+const sectionRef = ref(null)
+const isVisible = ref(false)
 
 // 内联实现countWord函数
 function countWord(data) {
@@ -96,6 +101,12 @@ function goToPage(page) {
     if (isBrowser) {
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
+    
+    // 重置动画状态，使新页面的文章也能有动画效果
+    isVisible.value = false
+    setTimeout(() => {
+      isVisible.value = true
+    }, 100)
   }
 }
 
@@ -133,6 +144,18 @@ onMounted(async () => {
     }
     
     isLoading.value = false
+    
+    // 设置交叉观察器来触发动画
+    if (sectionRef.value) {
+      const observer = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+          isVisible.value = true
+          observer.disconnect()
+        }
+      }, { threshold: 0.2 })
+      
+      observer.observe(sectionRef.value)
+    }
   } catch (error) {
     console.error('Error loading posts:', error)
     hasError.value = true
@@ -190,7 +213,7 @@ function getPostExcerpt(post) {
 </script>
 
 <template>
-  <div class="post-list">
+  <div class="post-list" ref="sectionRef">
     <!-- 加载中状态 -->
     <div v-if="isLoading" class="loading">
       <p>加载中...</p>
@@ -203,7 +226,13 @@ function getPostExcerpt(post) {
     
     <!-- 文章列表 -->
     <template v-else>
-      <div v-for="post in paginatedPosts" :key="post.url" class="post-item">
+      <div 
+        v-for="(post, index) in paginatedPosts" 
+        :key="post.url" 
+        class="post-item"
+        :class="{ 'post-item-animate': isVisible }"
+        :style="{ '--post-delay': `${index * 0.25 + 0.1}s` }"
+      >
         <div class="post-content">
           <h2 class="post-item-title">
             <a :href="withBase(post.url)" class="title-link">{{ post.frontmatter.title }}</a>
@@ -228,7 +257,12 @@ function getPostExcerpt(post) {
       </div>
       
       <!-- 分页导航 -->
-      <div v-if="totalPages > 1" class="pagination">
+      <div 
+        v-if="totalPages > 1" 
+        class="pagination"
+        :class="{ 'pagination-animate': isVisible }"
+        :style="{ '--pagination-delay': `${paginatedPosts.length * 0.25 + 0.3}s` }"
+      >
         <button 
           class="pagination-button" 
           :class="{ disabled: currentPage === 1 }"
@@ -270,16 +304,45 @@ function getPostExcerpt(post) {
 <style scoped>
 .post-list {
   margin-top: 2rem;
+  position: relative;
 }
 
+/* 动画相关样式 */
 .post-item {
   margin-bottom: 2rem;
   border-bottom: 1px dashed var(--vp-c-divider);
   padding-bottom: 1rem;
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.post-item-animate {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: var(--post-delay, 0s);
 }
 
 .post-item:last-child {
   border-bottom: none;
+}
+
+/* 分页动画 */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 2rem;
+  gap: 0.5rem;
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.pagination-animate {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: var(--pagination-delay, 0.5s);
 }
 
 .post-content {
@@ -353,15 +416,6 @@ function getPostExcerpt(post) {
 
 .error {
   color: var(--vp-c-danger);
-}
-
-/* 分页样式 */
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-top: 2rem;
-  gap: 0.5rem;
 }
 
 .pagination-button {
