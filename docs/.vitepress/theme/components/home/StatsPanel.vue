@@ -18,11 +18,11 @@ const isBrowser = typeof window !== 'undefined'
 // 统计数据
 const stats = reactive({
   currentMonthPosts: 0,  // 本月更新的文章数
-  thoughtsCount: 0,      // 随想文章数
-  thoughtsWords: 0,      // 随想文章总字数
+  totalPostsCount: 0,    // 文章总数（原随想文章数）
+  thoughtsWords: 0,      // 文章总字数
   // 动画相关
   animatedCurrentMonthPosts: 0,
-  animatedThoughtsCount: 0,
+  animatedTotalPostsCount: 0,
   animatedThoughtsWords: 0,
 })
 
@@ -313,12 +313,12 @@ function animateNumbers() {
     let currentFrame = 0
     
     const targetCurrentMonthPosts = stats.currentMonthPosts
-    const targetThoughtsCount = stats.thoughtsCount
+    const targetTotalPostsCount = stats.totalPostsCount
     const targetThoughtsWords = stats.thoughtsWords
     
     // 重置动画起始值
     stats.animatedCurrentMonthPosts = 0
-    stats.animatedThoughtsCount = 0
+    stats.animatedTotalPostsCount = 0
     stats.animatedThoughtsWords = 0
     
     // 使用requestAnimationFrame实现平滑动画
@@ -330,7 +330,7 @@ function animateNumbers() {
       const easeProgress = 1 - Math.pow(1 - progress, 4)
       
       stats.animatedCurrentMonthPosts = Math.round(easeProgress * targetCurrentMonthPosts)
-      stats.animatedThoughtsCount = Math.round(easeProgress * targetThoughtsCount)
+      stats.animatedTotalPostsCount = Math.round(easeProgress * targetTotalPostsCount)
       stats.animatedThoughtsWords = Math.round(easeProgress * targetThoughtsWords)
       
       if (currentFrame < totalFrames) {
@@ -338,7 +338,7 @@ function animateNumbers() {
       } else {
         // 确保最终值精确
         stats.animatedCurrentMonthPosts = targetCurrentMonthPosts
-        stats.animatedThoughtsCount = targetThoughtsCount
+        stats.animatedTotalPostsCount = targetTotalPostsCount
         stats.animatedThoughtsWords = targetThoughtsWords
       }
     }
@@ -404,7 +404,7 @@ function adjustFontSizes() {
 }
 
 // 监视数字变化，调整字体大小
-watch(() => [stats.animatedThoughtsCount, stats.animatedThoughtsWords], () => {
+watch(() => [stats.animatedTotalPostsCount, stats.animatedThoughtsWords], () => {
   // 等待DOM更新后再调整字体大小
   nextTick(() => {
     adjustFontSizes()
@@ -431,7 +431,7 @@ onMounted(async () => {
     
     const posts = await response.json()
     
-    // 只获取随想文章
+    // 获取随想文章
     const thoughtsPosts = posts.filter(post => 
       post.frontmatter.publish === true && 
       post.relativePath.startsWith('thoughts/') && 
@@ -439,8 +439,10 @@ onMounted(async () => {
       post.relativePath !== 'thoughts/tags.md'
     )
     
-    // 计算随想文章总字数
+    // 计算随想文章总字数和总数
     let totalWords = 0
+    let totalPostsCount = thoughtsPosts.length
+    
     thoughtsPosts.forEach(post => {
       totalWords += countWord(post.content || '')
     })
@@ -448,13 +450,22 @@ onMounted(async () => {
     // 初始化本月发布的文章数
     let currentMonthCount = 0
     
+    // 计算本月发布的随想文章数
+    thoughtsPosts.forEach(post => {
+      if (post.frontmatter.date && isCurrentMonth(new Date(post.frontmatter.date))) {
+        currentMonthCount++
+      }
+    })
+    
     // 尝试加载知识笔记统计数据
     try {
       const knowledgeResponse = await fetch(withBase('/knowledge-stats.json'))
       if (knowledgeResponse.ok) {
         const knowledgeStats = await knowledgeResponse.json()
         
-        // 累加知识笔记的字数和本月文章数
+        // 累加知识笔记的字数、总数和本月文章数
+        totalPostsCount += knowledgeStats.length
+        
         knowledgeStats.forEach(item => {
           if (item.wordCount) {
             totalWords += item.wordCount
@@ -469,16 +480,9 @@ onMounted(async () => {
       // 忽略错误，不影响主要功能
     }
     
-    // 计算本月发布的文章数
-    thoughtsPosts.forEach(post => {
-      if (post.frontmatter.date && isCurrentMonth(new Date(post.frontmatter.date))) {
-        currentMonthCount++
-      }
-    })
-    
     // 更新统计数据
     stats.currentMonthPosts = currentMonthCount
-    stats.thoughtsCount = thoughtsPosts.length
+    stats.totalPostsCount = totalPostsCount
     stats.thoughtsWords = totalWords
     
     isLoading.value = false
@@ -533,8 +537,8 @@ onBeforeUnmount(() => {
         </div>
         
         <div class="stats-card" :class="{ 'animate-in': isVisible }" style="--anim-delay: 0.2s">
-          <div class="stats-value" ref="statsValueRefs">{{ formatNumber(stats.animatedThoughtsCount) }}</div>
-          <div class="stats-label">随想总数</div>
+          <div class="stats-value" ref="statsValueRefs">{{ formatNumber(stats.animatedTotalPostsCount) }}</div>
+          <div class="stats-label">文章总数</div>
         </div>
         
         <div class="stats-card" :class="{ 'animate-in': isVisible }" style="--anim-delay: 0.3s">
