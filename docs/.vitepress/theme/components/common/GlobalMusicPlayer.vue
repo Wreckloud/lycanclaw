@@ -30,6 +30,10 @@ const isVisible = ref(false)
 const isExpanded = ref(true)
 // 是否正在拖动进度条
 const isDragging = ref(false)
+// 自动收起定时器
+const autoCollapseTimer = ref<number | null>(null)
+// 鼠标是否悬停在封面上
+const isHovering = ref(false)
 
 // 格式化时间
 function formatTime(seconds: number): string {
@@ -53,6 +57,12 @@ function togglePlay() {
     // 如果正在播放，则暂停
     audioService.pause()
     audioManager.pauseCurrent(currentSong.value.id)
+    
+    // 清除自动收起定时器
+    if (autoCollapseTimer.value) {
+      clearTimeout(autoCollapseTimer.value)
+      autoCollapseTimer.value = null
+    }
   } else {
     // 如果已暂停，则播放
     const songInfo = {
@@ -66,12 +76,46 @@ function togglePlay() {
       .catch(error => {
         console.error('播放失败:', error)
       })
+      
+    // 设置自动收起定时器
+    scheduleAutoCollapse()
   }
+}
+
+// 设置自动收起定时器
+function scheduleAutoCollapse() {
+  // 清除现有定时器
+  if (autoCollapseTimer.value) {
+    clearTimeout(autoCollapseTimer.value)
+  }
+  
+  // 5秒后自动收起
+  autoCollapseTimer.value = window.setTimeout(() => {
+    if (currentSong.value.isPlaying) {
+      isExpanded.value = false
+    }
+    autoCollapseTimer.value = null
+  }, 5000)
 }
 
 // 切换展开/收起状态
 function toggleExpand() {
   isExpanded.value = !isExpanded.value
+  
+  // 如果展开且正在播放，设置自动收起定时器
+  if (isExpanded.value && currentSong.value.isPlaying) {
+    scheduleAutoCollapse()
+  }
+}
+
+// 鼠标进入封面区域
+function handleMouseEnter() {
+  isHovering.value = true
+}
+
+// 鼠标离开封面区域
+function handleMouseLeave() {
+  isHovering.value = false
 }
 
 // 关闭播放器
@@ -82,6 +126,12 @@ function closePlayer() {
   if (currentSong.value.isPlaying) {
     audioService.pause()
     audioManager.pauseCurrent(currentSong.value.id)
+  }
+  
+  // 清除自动收起定时器
+  if (autoCollapseTimer.value) {
+    clearTimeout(autoCollapseTimer.value)
+    autoCollapseTimer.value = null
   }
 }
 
@@ -181,9 +231,14 @@ function stopDrag() {
 onMounted(() => {
   // 同步当前歌曲信息（从audioManager获取）
   const savedSongInfo = audioManager.getCurrentSongInfo();
-  if (savedSongInfo) {
+  if (savedSongInfo && savedSongInfo.isPlaying) {
     currentSong.value = savedSongInfo;
-    isVisible.value = true; // 如果有歌曲信息，则显示播放器
+    isVisible.value = true; // 只有在播放状态下才显示播放器
+    
+    // 如果正在播放，设置自动收起定时器
+    scheduleAutoCollapse();
+  } else {
+    isVisible.value = false; // 不在播放状态则隐藏
   }
   
   // 监听歌曲信息更新
@@ -201,9 +256,19 @@ onMounted(() => {
           ...songInfo
         }
         
-        // 如果有歌曲信息，则显示播放器
-        if (songInfo.id) {
+        // 只有在播放状态下才显示播放器
+        if (songInfo.id && songInfo.isPlaying) {
           isVisible.value = true
+          
+          // 设置自动收起定时器
+          scheduleAutoCollapse()
+        } else if (!songInfo.isPlaying) {
+          // 如果不是播放状态，可以考虑是否隐藏播放器
+          // 这里保留显示，但不再自动收起
+          if (autoCollapseTimer.value) {
+            clearTimeout(autoCollapseTimer.value)
+            autoCollapseTimer.value = null
+          }
         }
       } catch (e) {
         console.error('解析歌曲信息失败', e)
@@ -239,7 +304,20 @@ onMounted(() => {
         
         // 只更新当前播放的歌曲
         if (id === currentSong.value.id) {
-          currentSong.value.isPlaying = isPlaying === 'true'
+          const newPlayingState = isPlaying === 'true'
+          currentSong.value.isPlaying = newPlayingState
+          
+          // 如果开始播放，显示播放器并设置自动收起定时器
+          if (newPlayingState) {
+            isVisible.value = true
+            scheduleAutoCollapse()
+          } else {
+            // 如果停止播放，清除自动收起定时器
+            if (autoCollapseTimer.value) {
+              clearTimeout(autoCollapseTimer.value)
+              autoCollapseTimer.value = null
+            }
+          }
         }
       } catch (e) {
         console.error('解析播放状态信息失败', e)
@@ -271,9 +349,14 @@ onMounted(() => {
     })
   )
   
-  // 组件卸载时清理事件监听
+  // 组件卸载时清理事件监听和定时器
   onUnmounted(() => {
     unsubscribers.forEach(unsub => unsub())
+    
+    if (autoCollapseTimer.value) {
+      clearTimeout(autoCollapseTimer.value)
+      autoCollapseTimer.value = null
+    }
   })
 })
 </script>
@@ -282,17 +365,25 @@ onMounted(() => {
   <Transition name="slide-fade">
     <div v-if="isVisible" class="global-music-player" :class="{ 'expanded': isExpanded }">
       <!-- 封面区域 -->
-      <div class="cover-section">
-        <div class="cover-container" :class="{ 'rotating': currentSong.isPlaying }" @click="togglePlay">
+      <div class="cover-section" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
+        <div class="cover-container" @click="togglePlay">
           <img v-if="currentSong.cover" :src="currentSong.cover" :alt="currentSong.name" class="cover-image" />
           <div v-else class="cover-placeholder">
             <div class="music-note">♪</div>
           </div>
           
-          <!-- 播放遮罩层 -->
+          <!-- 播放按钮 - 在暂停时显示 -->
           <div v-if="!currentSong.isPlaying" class="play-overlay">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+          </div>
+          
+          <!-- 暂停按钮 - 在播放且鼠标悬停时显示 -->
+          <div v-if="currentSong.isPlaying && isHovering" class="pause-overlay">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="6" y1="4" x2="6" y2="20"></line>
+              <line x1="18" y1="4" x2="18" y2="20"></line>
             </svg>
           </div>
         </div>
@@ -397,10 +488,8 @@ onMounted(() => {
 .cover-container {
   width: 48px;
   height: 48px;
-  border-radius: 50%;
   overflow: hidden;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-  transition: transform 0.3s ease;
   position: relative;
   cursor: pointer;
 }
@@ -417,22 +506,26 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   color: white;
+}
+
+/* 暂停遮罩层 */
+.pause-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
   opacity: 0;
   transition: opacity 0.2s ease;
 }
 
-.cover-container:hover .play-overlay {
+.cover-section:hover .pause-overlay {
   opacity: 1;
-}
-
-/* 旋转动画 */
-@keyframes rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.cover-container.rotating {
-  animation: rotate 25s linear infinite;
 }
 
 .cover-image {

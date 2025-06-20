@@ -65,7 +65,14 @@ class AudioEventBus {
     // 处理特殊事件
     if (event === 'song-info-update') {
       try {
-        this.currentSongInfo = JSON.parse(data);
+        const songInfo = JSON.parse(data);
+        this.currentSongInfo = songInfo;
+        
+        // 只有在播放状态下才更新当前播放ID
+        if (songInfo.isPlaying) {
+          this.currentPlayingId = songInfo.id;
+          this.lastPlayedId = songInfo.id;
+        }
       } catch (e) {
         console.error('解析歌曲信息失败', e);
       }

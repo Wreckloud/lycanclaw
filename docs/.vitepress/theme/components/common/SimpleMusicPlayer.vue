@@ -90,6 +90,8 @@ function togglePlay() {
         audioService.play(audioId.value, songInfo.value, currentTime.value)
           .then(() => {
             isPlaying.value = true;
+            // 播放成功后发送歌曲信息给全局播放器
+            sendSongInfoToGlobalPlayer();
           })
           .catch(error => {
             // 只有当错误不是AbortError时才显示错误
@@ -357,6 +359,11 @@ async function loadAudioSource() {
       progress.value = (currentTime.value / duration.value) * 100 || 0;
       isAudioReady.value = true;
       isLoading.value = false;
+      
+      // 只有在播放状态下才发送歌曲信息给全局播放器
+      if (isPlaying.value) {
+        sendSongInfoToGlobalPlayer();
+      }
     } else {
       // 音频准备就绪
       isAudioReady.value = true;
@@ -368,24 +375,26 @@ async function loadAudioSource() {
       }
     }
     
-    // 发送歌曲信息给全局播放器
-    const songData = {
-      id: audioId.value,
-      name: songInfo.value.name,
-      artist: songInfo.value.artist,
-      cover: songInfo.value.cover,
-      isPlaying: isPlaying.value,
-      progress: progress.value,
-      duration: duration.value,
-      currentTime: currentTime.value
-    };
-    audioManager.emit('song-info-update', JSON.stringify(songData));
-    
   } catch (error) {
     console.error('加载音频源失败:', error);
     hasError.value = true;
     isLoading.value = false;
   }
+}
+
+// 发送歌曲信息给全局播放器
+function sendSongInfoToGlobalPlayer() {
+  const songData = {
+    id: audioId.value,
+    name: songInfo.value.name,
+    artist: songInfo.value.artist,
+    cover: songInfo.value.cover,
+    isPlaying: isPlaying.value,
+    progress: progress.value,
+    duration: duration.value,
+    currentTime: currentTime.value
+  };
+  audioManager.emit('song-info-update', JSON.stringify(songData));
 }
 
 // 生命周期钩子
