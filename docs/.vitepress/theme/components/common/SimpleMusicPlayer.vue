@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
 import { useData } from 'vitepress'
 import { useIntersectionObserver } from '@vueuse/core'
+import audioManager from '../../utils/audioManager'
 
 // 组件属性定义
 interface Props {
@@ -38,6 +39,18 @@ const debounceTimer = ref<number | null>(null) // 用于防抖操作
 const useNetease = ref(false) // 是否使用网易云播放器
 const isInitialRender = ref(true) // 是否是初始渲染
 const playerRef = ref<HTMLElement | null>(null) // 播放器元素引用
+const animationApplied = ref(false) // 标记动画是否已应用
+
+// 生成唯一的音频ID
+const audioId = computed(() => {
+  if (props.neteaseid) {
+    return `netease-${props.neteaseid}`;
+  } else if (props.url) {
+    return `url-${props.url}`;
+  } else {
+    return `player-${Date.now().toString()}`;
+  }
+});
 
 // 歌曲信息状态
 const songInfo = ref({
@@ -67,7 +80,11 @@ function togglePlay() {
     try {
       if (isPlaying.value) {
         audio.value?.pause()
+        audioManager.pauseCurrent(audioId.value);
       } else {
+        // 通知音频管理器当前音频开始播放
+        audioManager.setCurrentPlaying(audioId.value);
+        
         const playPromise = audio.value?.play()
         if (playPromise !== undefined) {
           playPromise.catch(error => {
@@ -94,6 +111,24 @@ function togglePlay() {
     debounceTimer.value = null
   }, 100)
 }
+
+// 暂停播放
+function pausePlay() {
+  if (!audio.value || !isPlaying.value) return;
+  audio.value.pause();
+  isPlaying.value = false;
+}
+
+// 重置播放进度
+function resetProgress() {
+  if (!audio.value) return;
+  audio.value.currentTime = 0;
+  currentTime.value = 0;
+  progress.value = 0;
+}
+
+// 注册音频暂停事件监听
+let unsubscribe: (() => void) | null = null;
 
 // 进度条拖动相关函数
 function startDrag(e: MouseEvent | TouchEvent) {
@@ -254,41 +289,52 @@ async function fetchNeteaseMusicInfo(id: string) {
   }
 }
 
-// 监听URL变化重新加载音频
-watch(() => songInfo.value.url, (newUrl) => {
-  if (!audio.value || !newUrl) return
-  
-  isPlaying.value = false
-  currentTime.value = 0
-  progress.value = 0
-  isLoading.value = true
-  hasError.value = false
-  isAudioReady.value = false
-  
-  // 重新加载音频
-  audio.value.load()
-})
-
 // 生命周期钩子
 onMounted(async () => {
+  // 默认初始显示骨架屏，准备状态
+  isLoading.value = true
+  
+  // 初始渲染完成后移除初始渲染标志
+  setTimeout(() => {
+    isInitialRender.value = false
+  }, 50)
+  
   // 设置动画可见性检测
   if (typeof window !== 'undefined' && playerRef.value) {
     const { stop } = useIntersectionObserver(
       playerRef,
       ([{ isIntersecting }]) => {
-        if (isIntersecting) {
+        if (isIntersecting && !animationApplied.value) {
           isVisible.value = true
+          animationApplied.value = true
           stop() // 只触发一次
         }
       },
-      { threshold: 0.2 }
+      { threshold: 0.2, immediate: true }
     )
   }
 
-  // 初始渲染完成后移除初始渲染标志
-  setTimeout(() => {
-    isInitialRender.value = false
-  }, 50)
+  // 创建事件监听器集合
+  const unsubscribers: Array<() => void> = [];
+  
+  // 订阅音频管理器的暂停事件
+  unsubscribers.push(audioManager.on('audio-pause', (id) => {
+    if (id === audioId.value && isPlaying.value) {
+      pausePlay();
+    }
+  }));
+  
+  // 订阅音频管理器的重置进度事件 
+  unsubscribers.push(audioManager.on('audio-reset', (id) => {
+    if (id === audioId.value) {
+      resetProgress();
+    }
+  }));
+  
+  // 合并注销函数
+  unsubscribe = () => {
+    unsubscribers.forEach(unsub => unsub());
+  };
 
   // 检查是否使用网易云ID
   if (props.neteaseid) {
@@ -341,6 +387,7 @@ onMounted(async () => {
     isPlaying.value = false
     currentTime.value = 0
     progress.value = 0
+    audioManager.pauseCurrent(audioId.value);
   })
   
   audio.value.addEventListener('error', (e) => {
@@ -358,10 +405,40 @@ onMounted(async () => {
     isLoading.value = false
   })
 })
+
+// 组件卸载时清理事件监听
+onUnmounted(() => {
+  if (unsubscribe) {
+    unsubscribe();
+  }
+  
+  // 如果组件卸载时正在播放，通知管理器
+  if (isPlaying.value) {
+    audioManager.pauseCurrent(audioId.value);
+  }
+})
+
+// 监听URL变化重新加载音频
+watch(() => songInfo.value.url, (newUrl) => {
+  if (!audio.value || !newUrl) return
+  
+  isPlaying.value = false
+  currentTime.value = 0
+  progress.value = 0
+  isLoading.value = true
+  hasError.value = false
+  isAudioReady.value = false
+  
+  // 通知音频管理器当前音频已停止播放
+  audioManager.pauseCurrent(audioId.value);
+  
+  // 重新加载音频
+  audio.value.load()
+})
 </script>
 
 <template>
-  <div class="music-player" ref="playerRef" :class="{ 'dark-mode': isDark, 'animate-in': isVisible, 'initial-render': isInitialRender }">
+  <div class="music-player" ref="playerRef" :class="{ 'dark-mode': isDark, 'animate-in': isVisible && !isInitialRender, 'initial-render': isInitialRender }">
     <!-- 网易云iframe播放器 -->
     <iframe v-if="useNetease" 
       class="netease-player animate-in"
@@ -377,7 +454,7 @@ onMounted(async () => {
     <!-- 自定义播放器 -->
     <div v-else class="player-container">
       <!-- 封面 -->
-      <div class="cover-container" :class="{ 'animate-in': isVisible }" style="--anim-delay: 0.1s">
+      <div class="cover-container" :class="{ 'animate-in': isVisible && !isInitialRender }" style="--anim-delay: 0.1s">
         <!-- 骨架屏 -->
         <div v-if="isLoading && !songInfo.cover" class="skeleton-cover">
           <div class="skeleton-pulse"></div>
@@ -423,7 +500,7 @@ onMounted(async () => {
       </div>
       
       <!-- 播放器控制区 -->
-      <div class="controls-container" :class="{ 'animate-in': isVisible }" style="--anim-delay: 0.2s">
+      <div class="controls-container" :class="{ 'animate-in': isVisible && !isInitialRender }" style="--anim-delay: 0.2s">
         <div class="player-top">
           <!-- 歌曲信息 -->
           <div class="song-info">
@@ -432,9 +509,16 @@ onMounted(async () => {
               <div v-if="isLoading && !songInfo.name" class="skeleton-title"></div>
               <h3 v-else class="song-title">{{ songInfo.name }}</h3>
               
-              <!-- 艺术家骨架屏 -->
-              <div v-if="isLoading && !songInfo.artist" class="skeleton-artist"></div>
-              <span v-else class="song-artist">- {{ songInfo.artist }}</span>
+              <!-- 艺术家骨架屏（宽屏幕） -->
+              <div v-if="isLoading && !songInfo.artist" class="skeleton-artist hide-narrow"></div>
+              <span v-else class="song-artist hide-narrow">- {{ songInfo.artist }}</span>
+            </div>
+            
+            <!-- 艺术家信息（窄屏幕显示） -->
+            <div class="artist-container-narrow">
+              <!-- 艺术家骨架屏（窄屏幕） -->
+              <div v-if="isLoading && !songInfo.artist" class="skeleton-artist-narrow"></div>
+              <span v-else class="song-artist-narrow">{{ songInfo.artist }}</span>
             </div>
           </div>
           
@@ -480,14 +564,15 @@ onMounted(async () => {
 
 <style scoped>
 .music-player {
-  margin: 16px 0;
+  margin: 0; /* 移除外边距，让父元素控制 */
   width: 100%;
   overflow: hidden;
   background-color: var(--vp-c-bg-soft);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
-  opacity: 0;
-  transform: translateY(20px);
   border-radius: 3px;
+  /* 显示为可见，但准备动画 */
+  opacity: 1;
+  transform: translateY(0);
   will-change: opacity, transform;
 }
 
@@ -495,6 +580,7 @@ onMounted(async () => {
 .initial-render {
   opacity: 0 !important;
   transform: translateY(20px) !important;
+  transition: none !important;
 }
 
 /* 网易云播放器样式 */
@@ -634,6 +720,20 @@ onMounted(async () => {
   border-radius: 2px;
 }
 
+.skeleton-artist-narrow {
+  width: 100px;
+  height: 12px;
+  margin-top: 4px;
+  background: linear-gradient(90deg, 
+    var(--vp-c-bg-mute) 25%, 
+    var(--vp-c-bg-soft) 50%, 
+    var(--vp-c-bg-mute) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 2px;
+  display: none;
+}
+
 .skeleton-time {
   width: 50px;
   height: 12px;
@@ -724,7 +824,6 @@ onMounted(async () => {
   animation: fadeIn 0.2s ease;
   touch-action: manipulation; /* 优化触摸行为 */
   -webkit-tap-highlight-color: transparent; /* 移除iOS触摸高亮 */
-  backdrop-filter: blur(1px);
 }
 
 .play-button {
@@ -776,18 +875,24 @@ onMounted(async () => {
 .player-top {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  flex-wrap: nowrap;
 }
 
 .song-info {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding-right: 8px; /* 为时间信息留出空间 */
 }
 
 .title-container {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: nowrap; /* 不允许标题和艺术家信息换行 */
+  overflow: hidden; /* 防止内容溢出 */
 }
 
 .song-title {
@@ -798,6 +903,7 @@ onMounted(async () => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: calc(100% - 10px); /* 防止与后面的内容重叠 */
 }
 
 .song-artist {
@@ -806,6 +912,39 @@ onMounted(async () => {
   color: var(--vp-c-text-2);
   opacity: 0.8;
   white-space: nowrap;
+  flex-shrink: 0; /* 不允许缩小 */
+  margin-left: 8px;
+}
+
+/* 窄屏幕下的艺术家样式 */
+.artist-container-narrow {
+  margin-top: 2px;
+  display: none; /* 默认隐藏 */
+  width: 100%; /* 占据整行 */
+  overflow: hidden; /* 防止溢出 */
+}
+
+.song-artist-narrow {
+  font-size: 0.75rem;
+  color: var(--vp-c-text-2);
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block; /* 块级显示 */
+}
+
+/* 时间信息样式 */
+.time-info {
+  font-size: 0.75rem;
+  color: var(--vp-c-text-2);
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  margin-left: auto; /* 推到右侧 */
 }
 
 /* 进度条样式 */
@@ -867,27 +1006,55 @@ onMounted(async () => {
   opacity: 1;
 }
 
-.time-info {
-  font-size: 0.75rem;
-  color: var(--vp-c-text-2);
-  opacity: 0.8;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.current-time {
-  color: var(--vp-c-brand);
-}
-
 /* 响应式布局 */
 @media (max-width: 480px) {
-  .song-artist {
-    font-size: 0.75rem;
+  .controls-container {
+    padding: 8px 12px;
+  }
+}
+
+/* 窄屏幕适配 */
+@media (max-width: 350px) {
+  /* 隐藏常规位置的艺术家信息 */
+  .hide-narrow {
+    display: none;
+  }
+  
+  /* 显示窄屏幕下的艺术家信息 */
+  .artist-container-narrow {
+    display: block;
+  }
+  
+  /* 调整标题宽度，确保不与时间重叠 */
+  .song-title {
+    max-width: calc(100% - 60px); /* 为时间信息预留至少60px宽度 */
+  }
+  
+  /* 确保时间信息不重叠 */
+  .time-info {
+    position: absolute; /* 使用绝对定位 */
+    top: 12px; /* 与顶部保持一致 */
+    right: 16px; /* 与右侧保持一致 */
+  }
+  
+  /* 调整标题容器宽度 */
+  .title-container {
+    width: calc(100% - 65px); /* 不超过时间信息的位置 */
+  }
+}
+
+/* 针对更窄屏幕的特别处理 */
+@media (max-width: 290px) {
+  .time-info {
+    right: 12px; /* 在更窄的屏幕上减少右边距 */
+  }
+  
+  .song-title {
+    max-width: calc(100% - 50px); /* 进一步减小标题最大宽度 */
   }
   
   .controls-container {
-    padding: 8px 12px;
+    padding: 12px 12px 8px; /* 减少内边距 */
   }
 }
 
@@ -898,5 +1065,10 @@ onMounted(async () => {
 
 .dark-mode .progress-bar {
   background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* 添加回缺少的样式 */
+.current-time {
+  color: var(--vp-c-brand);
 }
 </style> 
