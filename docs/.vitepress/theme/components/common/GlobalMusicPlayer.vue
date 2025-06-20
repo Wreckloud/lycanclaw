@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, onUnmounted, watch } from 'vue'
 import audioManager from '../../utils/audioManager'
+import audioService from '../../utils/audioService'
 
 // 当前播放歌曲的信息
 const currentSong = ref<{
@@ -25,8 +26,8 @@ const currentSong = ref<{
 
 // 是否显示播放器
 const isVisible = ref(false)
-// 是否显示详细信息
-const showDetail = ref(false)
+// 是否显示详细信息（展开状态）
+const isExpanded = ref(true)
 // 是否正在拖动进度条
 const isDragging = ref(false)
 
@@ -50,21 +51,43 @@ function togglePlay() {
   
   if (currentSong.value.isPlaying) {
     // 如果正在播放，则暂停
-    audioManager.emit('global-pause', currentSong.value.id)
+    audioService.pause()
+    audioManager.pauseCurrent(currentSong.value.id)
   } else {
     // 如果已暂停，则播放
-    audioManager.emit('global-play', currentSong.value.id)
+    const songInfo = {
+      name: currentSong.value.name,
+      artist: currentSong.value.artist,
+      cover: currentSong.value.cover,
+      url: ''  // 这里URL可能为空，但audioService会从缓存中恢复
+    }
+    
+    audioService.play(currentSong.value.id, songInfo, currentSong.value.currentTime)
+      .catch(error => {
+        console.error('播放失败:', error)
+      })
   }
 }
 
-// 切换详情显示
-function toggleDetail() {
-  showDetail.value = !showDetail.value
+// 切换展开/收起状态
+function toggleExpand() {
+  isExpanded.value = !isExpanded.value
+}
+
+// 关闭播放器
+function closePlayer() {
+  isVisible.value = false
+  
+  // 如果正在播放，先暂停
+  if (currentSong.value.isPlaying) {
+    audioService.pause()
+    audioManager.pauseCurrent(currentSong.value.id)
+  }
 }
 
 // 设置进度
 function setProgress(e: MouseEvent) {
-  if (!currentSong.value.id || isDragging.value) return
+  if (!currentSong.value.id || !currentSong.value.isPlaying || isDragging.value) return
   
   const progressBar = e.currentTarget as HTMLElement
   const rect = progressBar.getBoundingClientRect()
@@ -72,24 +95,34 @@ function setProgress(e: MouseEvent) {
   
   // 限制百分比在0-1之间
   const boundedPercent = Math.max(0, Math.min(1, percent))
+  const newTime = boundedPercent * currentSong.value.duration
   
-  // 发送进度更新事件
-  audioManager.emit('global-seek', currentSong.value.id + ':' + (boundedPercent * currentSong.value.duration))
+  // 直接使用audioService设置进度
+  audioService.seek(newTime)
 }
 
 // 开始拖动进度条
-function startDrag(e: MouseEvent) {
-  if (!currentSong.value.id) return
+function startDrag(e: MouseEvent | TouchEvent) {
+  if (!currentSong.value.id || !currentSong.value.isPlaying) return
   
   isDragging.value = true
-  updateProgressFromEvent(e)
   
-  // 添加全局事件监听
-  document.addEventListener('mousemove', updateProgressFromEvent)
-  document.addEventListener('mouseup', stopDrag)
+  if (e.type === 'touchstart') {
+    updateProgressFromTouch(e as TouchEvent)
+    
+    // 添加触摸事件监听
+    document.addEventListener('touchmove', updateProgressFromTouch, { passive: false })
+    document.addEventListener('touchend', stopDrag)
+  } else {
+    updateProgressFromEvent(e as MouseEvent)
+    
+    // 添加鼠标事件监听
+    document.addEventListener('mousemove', updateProgressFromEvent)
+    document.addEventListener('mouseup', stopDrag)
+  }
 }
 
-// 从事件更新进度
+// 从鼠标事件更新进度
 function updateProgressFromEvent(e: MouseEvent) {
   if (!isDragging.value || !currentSong.value.id) return
   
@@ -98,6 +131,26 @@ function updateProgressFromEvent(e: MouseEvent) {
   
   const rect = progressBar.getBoundingClientRect()
   let percent = (e.clientX - rect.left) / rect.width
+  
+  // 限制百分比在0-1之间
+  percent = Math.max(0, Math.min(1, percent))
+  
+  currentSong.value.progress = percent * 100
+}
+
+// 从触摸事件更新进度
+function updateProgressFromTouch(e: TouchEvent) {
+  if (!isDragging.value || !currentSong.value.id) return
+  
+  // 阻止触摸事件的默认行为（如滚动）
+  e.preventDefault()
+  
+  const progressBar = document.querySelector('.global-progress-bar') as HTMLElement
+  if (!progressBar) return
+  
+  const touch = e.touches[0] || e.changedTouches[0]
+  const rect = progressBar.getBoundingClientRect()
+  let percent = (touch.clientX - rect.left) / rect.width
   
   // 限制百分比在0-1之间
   percent = Math.max(0, Math.min(1, percent))
@@ -114,12 +167,14 @@ function stopDrag() {
   // 计算新的播放位置
   const newTime = (currentSong.value.progress / 100) * currentSong.value.duration
   
-  // 发送进度更新事件
-  audioManager.emit('global-seek', currentSong.value.id + ':' + newTime)
+  // 直接使用audioService设置进度
+  audioService.seek(newTime)
   
   // 移除全局事件监听
   document.removeEventListener('mousemove', updateProgressFromEvent)
   document.removeEventListener('mouseup', stopDrag)
+  document.removeEventListener('touchmove', updateProgressFromTouch)
+  document.removeEventListener('touchend', stopDrag)
 }
 
 // 监听音频事件
@@ -128,7 +183,7 @@ onMounted(() => {
   const savedSongInfo = audioManager.getCurrentSongInfo();
   if (savedSongInfo) {
     currentSong.value = savedSongInfo;
-    isVisible.value = savedSongInfo.isPlaying;
+    isVisible.value = true; // 如果有歌曲信息，则显示播放器
   }
   
   // 监听歌曲信息更新
@@ -146,8 +201,8 @@ onMounted(() => {
           ...songInfo
         }
         
-        // 只有在歌曲正在播放时才显示全局控件
-        if (songInfo.isPlaying) {
+        // 如果有歌曲信息，则显示播放器
+        if (songInfo.id) {
           isVisible.value = true
         }
       } catch (e) {
@@ -184,23 +239,7 @@ onMounted(() => {
         
         // 只更新当前播放的歌曲
         if (id === currentSong.value.id) {
-          const wasPlaying = currentSong.value.isPlaying
           currentSong.value.isPlaying = isPlaying === 'true'
-          
-          // 根据播放状态决定是否显示全局控件
-          if (currentSong.value.isPlaying) {
-            isVisible.value = true
-          } else if (wasPlaying) {
-            // 如果是从播放状态变为暂停状态，延迟隐藏播放器
-            // 这样用户可以在暂停后仍能看到控件并重新播放
-            setTimeout(() => {
-              // 再次检查是否仍处于暂停状态，如果是则隐藏
-              if (!currentSong.value.isPlaying) {
-                isVisible.value = false
-                showDetail.value = false
-              }
-            }, 5000) // 5秒后隐藏
-          }
         }
       } catch (e) {
         console.error('解析播放状态信息失败', e)
@@ -212,9 +251,8 @@ onMounted(() => {
   unsubscribers.push(
     audioManager.on('song-ended', (id) => {
       if (id === currentSong.value.id) {
-        // 歌曲结束后隐藏全局控件
-        isVisible.value = false
-        showDetail.value = false
+        // 歌曲结束后不隐藏播放器，只更新状态
+        currentSong.value.isPlaying = false
       }
     })
   )
@@ -227,7 +265,7 @@ onMounted(() => {
         const songInfo = audioManager.getCurrentSongInfo();
         if (songInfo) {
           currentSong.value = songInfo;
-          isVisible.value = songInfo.isPlaying;
+          isVisible.value = true;
         }
       }
     })
@@ -242,76 +280,77 @@ onMounted(() => {
 
 <template>
   <Transition name="slide-fade">
-    <div v-if="isVisible" class="global-music-player" :class="{ 'show-detail': showDetail }">
-      <!-- 简洁模式 -->
-      <div class="player-compact">
-        <!-- 封面 -->
-        <div class="cover-container" @click="toggleDetail">
+    <div v-if="isVisible" class="global-music-player" :class="{ 'expanded': isExpanded }">
+      <!-- 封面区域 -->
+      <div class="cover-section">
+        <div class="cover-container" :class="{ 'rotating': currentSong.isPlaying }" @click="togglePlay">
           <img v-if="currentSong.cover" :src="currentSong.cover" :alt="currentSong.name" class="cover-image" />
-          <div v-else class="cover-placeholder"></div>
-        </div>
-        
-        <!-- 控制区 -->
-        <div class="controls">
-          <!-- 播放/暂停按钮 -->
-          <button class="control-btn play-btn" @click="togglePlay">
-            <svg v-if="currentSong.isPlaying" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="6" y="4" width="4" height="16"></rect>
-              <rect x="14" y="4" width="4" height="16"></rect>
-            </svg>
-            <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <div v-else class="cover-placeholder">
+            <div class="music-note">♪</div>
+          </div>
+          
+          <!-- 播放遮罩层 -->
+          <div v-if="!currentSong.isPlaying" class="play-overlay">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polygon points="5 3 19 12 5 21 5 3"></polygon>
             </svg>
-          </button>
-          
-          <!-- 展开/收起按钮 -->
-          <button class="control-btn expand-btn" @click="toggleDetail">
-            <svg v-if="showDetail" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="18 15 12 9 6 15"></polyline>
-            </svg>
-            <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
-          </button>
+          </div>
         </div>
+        
+        <!-- 收起状态下的展开按钮 -->
+        <button v-if="!isExpanded" class="control-btn expand-toggle-btn" @click="toggleExpand" aria-label="展开">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
       </div>
       
-      <!-- 详细模式 -->
-      <div class="player-detail" v-if="showDetail">
-        <!-- 歌曲信息 -->
+      <!-- 详细信息区域 -->
+      <div v-if="isExpanded" class="player-detail">
+        <!-- 歌曲信息和进度条 -->
         <div class="song-info">
-          <div class="song-name">{{ currentSong.name }}</div>
-          <div class="song-artist">{{ currentSong.artist }}</div>
+          <div class="song-title-row">
+            <div class="song-name">{{ currentSong.name || '未知歌曲' }}</div>
+            <div class="time-info">
+              <span class="current-time">{{ formattedCurrentTime }}</span>
+              <span class="duration">/ {{ formattedDuration }}</span>
+            </div>
+          </div>
+          
+          <div class="song-artist">{{ currentSong.artist || '未知艺术家' }}</div>
+          
+          <!-- 进度条 -->
+          <div 
+            class="global-progress-bar" 
+            :class="{ 'disabled': !currentSong.isPlaying }"
+            @click="setProgress"
+            @mousedown="startDrag"
+            @touchstart="startDrag"
+          >
+            <div class="progress-bg"></div>
+            <div class="progress-fill" :style="{ width: `${currentSong.progress}%` }"></div>
+            <div class="progress-handle" :style="{ left: `${currentSong.progress}%` }" :class="{ 'visible': isDragging || currentSong.isPlaying }"></div>
+          </div>
         </div>
         
-        <!-- 进度条 -->
-        <div 
-          class="global-progress-bar" 
-          @click="setProgress"
-          @mousedown="startDrag"
-        >
-          <div class="progress-bg"></div>
-          <div class="progress-fill" :style="{ width: `${currentSong.progress}%` }"></div>
-          <div class="progress-handle" :style="{ left: `${currentSong.progress}%` }"></div>
-        </div>
-        
-        <!-- 时间信息 -->
-        <div class="time-info">
-          <span class="current-time">{{ formattedCurrentTime }}</span>
-          <span class="duration">{{ formattedDuration }}</span>
-        </div>
-        
-        <!-- 播放/暂停按钮 (大尺寸) -->
-        <div class="center-play-control">
-          <button class="control-btn play-btn-large" @click="togglePlay">
-            <svg v-if="currentSong.isPlaying" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="6" y="4" width="4" height="16"></rect>
-              <rect x="14" y="4" width="4" height="16"></rect>
-            </svg>
-            <svg v-else xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="5 3 19 12 5 21 5 3"></polygon>
-            </svg>
-          </button>
+        <!-- 控制按钮区 -->
+        <div class="controls-row">
+          <div class="right-controls">
+            <!-- 收起按钮 -->
+            <button class="control-btn collapse-btn" @click="toggleExpand" aria-label="收起">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            </button>
+            
+            <!-- 关闭按钮 -->
+            <button class="control-btn close-btn" @click="closePlayer" aria-label="关闭">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -330,25 +369,70 @@ onMounted(() => {
   z-index: 100;
   overflow: hidden;
   transition: all 0.3s ease;
-  max-width: 300px;
+  width: 72px; /* 默认宽度，只显示封面 */
   border-right: 1px solid var(--vp-c-divider);
   border-top: 1px solid var(--vp-c-divider);
   border-bottom: 1px solid var(--vp-c-divider);
+  display: flex;
+  flex-direction: row;
+  height: 60px; /* 固定高度 */
 }
 
-.player-compact {
+/* 展开状态 */
+.global-music-player.expanded {
+  width: 280px;
+}
+
+/* 封面区域 */
+.cover-section {
+  width: 60px;
+  height: 60px;
+  position: relative;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  padding: 8px;
+  justify-content: center;
 }
 
 .cover-container {
-  width: 40px;
-  height: 40px;
-  border-radius: 4px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
   overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease;
+  position: relative;
   cursor: pointer;
-  flex-shrink: 0;
+}
+
+/* 播放遮罩层 */
+.play-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.cover-container:hover .play-overlay {
+  opacity: 1;
+}
+
+/* 旋转动画 */
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.cover-container.rotating {
+  animation: rotate 25s linear infinite;
 }
 
 .cover-image {
@@ -360,60 +444,88 @@ onMounted(() => {
 .cover-placeholder {
   width: 100%;
   height: 100%;
-  background-color: var(--vp-c-bg-alt);
+  background: linear-gradient(135deg, var(--vp-c-brand) 0%, var(--vp-c-brand-dark) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.controls {
-  display: flex;
-  align-items: center;
-  margin-left: 8px;
+.music-note {
+  font-size: 24px;
+  color: white;
 }
 
-.control-btn {
-  background: transparent;
-  border: none;
-  color: var(--vp-c-text-1);
-  cursor: pointer;
-  padding: 4px;
+/* 收起状态下的展开按钮 */
+.expand-toggle-btn {
+  position: absolute;
+  right: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: var(--vp-c-bg-soft);
+  border: 1px solid var(--vp-c-divider);
   border-radius: 50%;
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s;
+  cursor: pointer;
+  padding: 0;
+  color: var(--vp-c-text-2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.control-btn:hover {
-  background-color: var(--vp-c-bg-alt);
-}
-
-.play-btn {
-  margin: 0 4px;
-}
-
-/* 详细模式样式 */
+/* 详细信息区域 */
 .player-detail {
-  padding: 0 12px 12px;
+  flex-grow: 1;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: 220px;
+  animation: slide-in-right 0.3s ease-out;
+  height: 100%;
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 .song-info {
-  margin-bottom: 8px;
-  text-align: center;
+  flex: 1;
+  min-width: 0;
+  padding-right: 8px;
+}
+
+.song-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: -6px;
 }
 
 .song-name {
   font-weight: 500;
   color: var(--vp-c-text-1);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+  padding-right: 4px;
 }
 
 .song-artist {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--vp-c-text-2);
   white-space: nowrap;
   overflow: hidden;
@@ -421,10 +533,16 @@ onMounted(() => {
 }
 
 .global-progress-bar {
-  height: 4px;
+  height: 3px;
   position: relative;
   cursor: pointer;
-  margin: 8px 0;
+  touch-action: none;
+  width: 100%;
+}
+
+.global-progress-bar.disabled {
+  cursor: default;
+  opacity: 0.7;
 }
 
 .progress-bg {
@@ -450,43 +568,75 @@ onMounted(() => {
 .progress-handle {
   position: absolute;
   top: 50%;
-  width: 12px;
-  height: 12px;
+  width: 8px;
+  height: 8px;
   background-color: var(--vp-c-brand);
   border-radius: 50%;
   transform: translate(-50%, -50%);
   display: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-.global-progress-bar:hover .progress-handle {
+.global-progress-bar:not(.disabled):hover .progress-handle,
+.progress-handle.visible {
   display: block;
 }
 
 .time-info {
   display: flex;
-  justify-content: space-between;
-  font-size: 0.7rem;
-  color: var(--vp-c-text-2);
-  margin-bottom: 8px;
-}
-
-.center-play-control {
-  display: flex;
-  justify-content: center;
   align-items: center;
-  margin-top: 4px;
+  font-size: 0.65rem;
+  color: var(--vp-c-text-2);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.play-btn-large {
-  width: 40px;
-  height: 40px;
-  padding: 8px;
-  background-color: var(--vp-c-brand-light);
-  color: white;
+.current-time {
+  color: var(--vp-c-brand);
+  margin-right: 2px;
 }
 
-.play-btn-large:hover {
-  background-color: var(--vp-c-brand);
+.controls-row {
+  display: flex;
+  align-items: center;
+}
+
+.control-btn {
+  background: transparent;
+  border: none;
+  color: var(--vp-c-text-1);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.control-btn:hover {
+  background-color: var(--vp-c-bg-alt);
+}
+
+.right-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.collapse-btn, .close-btn {
+  width: 20px;
+  height: 20px;
+  padding: 2px;
+}
+
+.close-btn {
+  color: var(--vp-c-text-2);
+}
+
+.close-btn:hover {
+  color: var(--vp-c-text-1);
+  background-color: rgba(220, 38, 38, 0.1);
 }
 
 /* 动画 */
@@ -500,7 +650,7 @@ onMounted(() => {
 
 .slide-fade-enter-from,
 .slide-fade-leave-to {
-  transform: translateX(-20px);
+  transform: translateX(-60px);
   opacity: 0;
 }
 
@@ -508,6 +658,27 @@ onMounted(() => {
 @media (max-width: 768px) {
   .global-music-player {
     bottom: 20px;
+  }
+  
+  .global-music-player.expanded {
+    width: 260px;
+  }
+  
+  .player-detail {
+    width: 200px;
+    padding: 8px 10px;
+  }
+}
+
+/* 小屏幕设备适配 */
+@media (max-width: 370px) {
+  .global-music-player.expanded {
+    width: 220px;
+  }
+  
+  .player-detail {
+    width: 160px;
+    padding: 8px 6px;
   }
 }
 </style> 

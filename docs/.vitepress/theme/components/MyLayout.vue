@@ -2,6 +2,7 @@
 import DefaultTheme from 'vitepress/theme'
 import PostTitle from './PostTitle.vue'
 import DataPanel from './DataPanel.vue'
+import GlobalMusicPlayer from './common/GlobalMusicPlayer.vue'
 import { useRoute, useData } from 'vitepress'
 import { ref, onMounted, onUnmounted, computed, defineAsyncComponent } from 'vue'
 
@@ -135,6 +136,9 @@ onUnmounted(() => {
       <DataPanel />
     </template>
   </Layout>
+  
+  <!-- 全局音乐播放器 -->
+  <GlobalMusicPlayer />
   
   <!-- 返回顶部按钮 -->
   <Transition name="slide-fade">
