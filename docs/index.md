@@ -28,6 +28,7 @@ import RecommendedReading from './.vitepress/theme/components/home/RecommendedRe
 import StatsPanel from './.vitepress/theme/components/home/StatsPanel.vue'
 import ContributionHeatmap from './.vitepress/theme/components/home/ContributionHeatmap.vue'
 import RecentComments from './.vitepress/theme/components/home/RecentComments.vue'
+import ScrollPrompt from './.vitepress/theme/components/home/ScrollPrompt.vue'
 </script>
 
 
@@ -64,6 +65,9 @@ import RecentComments from './.vitepress/theme/components/home/RecentComments.vu
     </div>
   </div>
 </div>
+
+<!-- 滚动提示组件 -->
+<ScrollPrompt />
 
 <style scoped>
 /* 主页整体容器 */
