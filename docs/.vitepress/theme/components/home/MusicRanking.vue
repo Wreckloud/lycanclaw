@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { addCorsProxy } from '../../utils/proxyConfig'
 
 // 简化的状态
 const isLoading = ref(true)
@@ -32,7 +33,7 @@ async function fetchMusicRanking() {
   hasError.value = false
   
   try {
-    const response = await fetch('https://163api.qijieya.cn/user/record?uid=629126546&type=1')
+    const response = await fetch(addCorsProxy('https://163api.qijieya.cn/user/record?uid=629126546&type=1'))
     const data = await response.json()
     
     if (data.code !== 200 || !data.weekData || data.weekData.length === 0) {
