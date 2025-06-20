@@ -29,12 +29,21 @@ const hasError = ref(false)
 const errorMessage = ref('')
 const isRefreshing = ref(false)
 
-// 使用VueUse的useScroll跟踪滚动位置
-const { arrivedState, y: scrollPosition } = useScroll(containerRef)
-const { top: isAtTop, bottom: isAtBottom } = arrivedState
+// 滚动状态
+const isAtTop = ref(true)
+const isAtBottom = ref(false)
 
 // 从VitePress获取文章信息
 const { theme } = useData()
+
+// 更新滚动位置和状态
+function updateScrollPosition() {
+  if (!containerRef.value) return
+  
+  const container = containerRef.value
+  isAtTop.value = container.scrollTop <= 0
+  isAtBottom.value = container.scrollTop + container.clientHeight >= container.scrollHeight
+}
 
 // 组件挂载
 onMounted(() => {
@@ -57,6 +66,11 @@ onMounted(() => {
 
   // 加载最新评论
   loadComments()
+  
+  // 初始化滚动状态
+  setTimeout(() => {
+    updateScrollPosition()
+  }, 100)
 })
 
 // 获取最新评论
@@ -117,9 +131,9 @@ function getArticleLink(url: string): string {
       style="--anim-delay: 0.2s"
     >
       <!-- 顶部渐变遮罩 -->
-      <div class="fade-mask top" :style="{ opacity: !isAtTop ? 1 : 0 }"></div>
+      <div class="fade-mask top" :style="{ opacity: isAtTop ? 0 : 1 }"></div>
       
-      <div class="comments-content" ref="containerRef">
+      <div class="comments-content" ref="containerRef" @scroll="updateScrollPosition">
         <div 
           v-for="(comment, index) in comments" 
           :key="comment.objectId" 
@@ -142,7 +156,7 @@ function getArticleLink(url: string): string {
       </div>
       
       <!-- 底部渐变遮罩 -->
-      <div class="fade-mask bottom" :style="{ opacity: !isAtBottom ? 1 : 0 }"></div>
+      <div class="fade-mask bottom" :style="{ opacity: isAtBottom ? 0 : 1 }"></div>
     </div>
     
     <!-- 加载状态 -->
@@ -269,21 +283,24 @@ function getArticleLink(url: string): string {
 /* 渐变遮罩 */
 .fade-mask {
   position: absolute;
-  left: 0;
-  right: 0;
-  height: 40px; /* 增加遮罩高度 */
-  pointer-events: none; /* 允许点击穿透 */
   z-index: 10;
+  pointer-events: none; /* 允许点击穿透 */
   transition: opacity 0.3s ease;
 }
 
 .fade-mask.top {
   top: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
   background: linear-gradient(to bottom, var(--vp-c-bg), transparent);
 }
 
 .fade-mask.bottom {
   bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
   background: linear-gradient(to top, var(--vp-c-bg), transparent);
 }
 
@@ -497,6 +514,11 @@ function getArticleLink(url: string): string {
   
   .comment-body {
     font-size: 0.8rem;
+  }
+  
+  .fade-mask.top,
+  .fade-mask.bottom {
+    height: 30px;
   }
 }
 </style> 
