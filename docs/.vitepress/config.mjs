@@ -20,6 +20,8 @@ export default defineConfig({
   // fav图标配置
   head: [
     ['link', { rel: 'icon', href: '/logo.png' }], // 网站图标，需要在public文件夹中添加logo.png
+    // 添加字体预加载配置
+    ['link', { rel: 'preload', href: '/assets/inter-roman-latin.Di8DUHzh.woff2', as: 'font', type: 'font/woff2', crossorigin: 'anonymous' }],
     // 添加Content-Security-Policy
     ['meta', { 
       'http-equiv': 'Content-Security-Policy', 

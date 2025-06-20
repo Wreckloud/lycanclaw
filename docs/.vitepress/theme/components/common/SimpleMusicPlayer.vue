@@ -287,7 +287,7 @@ async function fetchNeteaseMusicInfo(id: string) {
       name: song.name,
       artist: song.ar.map((a: any) => a.name).join('/'),
       cover: song.al.picUrl,
-      url: urlData.data[0].url
+      url: urlData.data[0].url.replace('http:', 'https:')
     }
     
     isLoading.value = false
