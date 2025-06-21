@@ -29,6 +29,7 @@ import StatsPanel from './.vitepress/theme/components/home/StatsPanel.vue'
 import ContributionHeatmap from './.vitepress/theme/components/home/ContributionHeatmap.vue'
 import RecentComments from './.vitepress/theme/components/home/RecentComments.vue'
 import ScrollPrompt from './.vitepress/theme/components/home/ScrollPrompt.vue'
+import HomeMusicPlayer from './.vitepress/theme/components/home/HomeMusicPlayer.vue'
 </script>
 
 
@@ -62,6 +63,10 @@ import ScrollPrompt from './.vitepress/theme/components/home/ScrollPrompt.vue'
     <!-- 最新评论 -->
     <div class="home-section comments-section">
       <RecentComments />
+    </div>
+    <!-- 随机音乐 -->
+    <div class="home-section music-section">
+      <HomeMusicPlayer />
     </div>
   </div>
 </div>

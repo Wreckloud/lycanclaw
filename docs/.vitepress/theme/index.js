@@ -13,8 +13,9 @@ import MyLayout from './components/MyLayout.vue';
 import audioManager from './utils/audioManager';
 import GlobalMusicPlayer from './components/common/GlobalMusicPlayer.vue';
 
-// 导入简单音乐播放器组件
+// 导入音乐播放器组件
 import SimpleMusicPlayer from './components/common/SimpleMusicPlayer.vue';
+import HomeMusicPlayer from './components/home/HomeMusicPlayer.vue';
 
 // 导入自定义样式
 import './styles/index.css';
@@ -127,6 +128,7 @@ export default {
     // 注册音乐播放器组件
     app.component('SimpleMusicPlayer', SimpleMusicPlayer);
     app.component('GlobalMusicPlayer', GlobalMusicPlayer);
+    app.component('HomeMusicPlayer', HomeMusicPlayer);
     
     // 全局注册echarts
     app.config.globalProperties.$echarts = echarts;

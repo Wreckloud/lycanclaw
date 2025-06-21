@@ -342,6 +342,9 @@ function closePlayer() {
     audioManager.pauseCurrent(currentSong.value.id)
   }
   
+  // 发送播放器关闭事件，通知其他组件
+  audioManager.emit('player-closed', currentSong.value.id)
+  
   // 清除自动收起定时器
   if (autoCollapseTimer.value) {
     clearTimeout(autoCollapseTimer.value)
@@ -773,7 +776,7 @@ onMounted(() => {
 
 /* 展开状态 */
 .global-music-player.expanded {
-  width: 280px; /* 缩小为原来的2/3 */
+  width: 280px;
 }
 
 /* 触摸设备特有样式 */
@@ -906,11 +909,12 @@ onMounted(() => {
   background-color: var(--vp-c-bg-alt); /* 移除绿色背景，使用主题默认颜色 */
   display: flex;
   flex-direction: column;
+  flex-shrink: 0; /* 防止被挤压 */
 }
 
 /* 收起状态的控制面板 */
 .controls-panel.collapsed {
-  width: 26px; /* 缩小为原来的2/3 */
+  width: 26px; /* 固定宽度 */
   height: 100%;
   justify-content: center;
   gap: 8px;
@@ -918,7 +922,7 @@ onMounted(() => {
 
 /* 展开状态的控制面板 */
 .controls-panel.expanded {
-  width: 26px; /* 缩小为原来的2/3 */
+  width: 26px; /* 固定宽度 */
   height: 100%;
   justify-content: center;
   gap: 8px;
@@ -961,6 +965,8 @@ onMounted(() => {
   animation: slide-in-right 0.3s ease-out;
   height: 100%;
   position: relative;
+  min-width: 0; /* 允许内容收缩 */
+  overflow: hidden; /* 防止内容溢出 */
 }
 
 @keyframes slide-in-right {
@@ -976,7 +982,9 @@ onMounted(() => {
 
 .song-info {
   flex: 1;
-  min-width: 0;
+  min-width: 0; /* 允许内容收缩 */
+  width: 100%; /* 确保占满可用空间 */
+  overflow: hidden; /* 防止内容溢出 */
 }
 
 .song-title-row {
@@ -985,6 +993,7 @@ onMounted(() => {
   align-items: center;
   width: 100%;
   margin-bottom: -6px;
+  position: relative;
 }
 
 .song-name {
@@ -996,7 +1005,7 @@ onMounted(() => {
   text-overflow: ellipsis;
   flex: 1;
   min-width: 0;
-  padding-right: 4px;
+  padding-right: 60px;
   user-select: none; /* 防止文字被选中 */
 }
 
@@ -1007,6 +1016,19 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   user-select: none; /* 防止文字被选中 */
+  margin-right: 5px; /* 确保右侧有一点空间 */
+}
+
+.time-info {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-size: 0.75rem;
+  color: var(--vp-c-text-2);
+  opacity: 0.8;
+  width: 55px;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .global-progress-bar {
@@ -1015,7 +1037,10 @@ onMounted(() => {
   cursor: pointer;
   touch-action: none;
   width: 100%;
-  margin-top: 6px;
+  margin-bottom: 6px;
+  margin-left: 0;
+  z-index: 2; /* 确保进度条在最上层 */
+  padding: 8px 0; /* 增加上下内边距，确保圆点可见 */
 }
 
 .global-progress-bar.disabled {
@@ -1025,35 +1050,24 @@ onMounted(() => {
 
 .progress-bg {
   position: absolute;
-  top: 0;
+  top: 8px; /* 调整位置以适应内边距 */
   left: 0;
   right: 0;
-  bottom: 0;
+  height: 3px; /* 明确设置高度 */
   background-color: var(--vp-c-bg-alt);
   border-radius: 2px;
 }
 
 .progress-fill {
   position: absolute;
-  top: 0;
+  top: 8px; /* 调整位置以适应内边距 */
   left: 0;
-  height: 100%;
+  height: 3px; /* 明确设置高度 */
   background-color: var(--vp-c-brand);
   border-radius: 2px;
   transition: width 0.1s linear;
 }
 
-.progress-handle {
-  position: absolute;
-  top: 50%;
-  width: 8px;
-  height: 8px;
-  background-color: var(--vp-c-brand);
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  display: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
 
 .global-progress-bar:not(.disabled):hover .progress-handle,
 .progress-handle.visible {
@@ -1097,7 +1111,7 @@ onMounted(() => {
   }
   
   .global-music-player.expanded {
-    width: 300px;
+    width: 260px; /* 移动端稍微缩小宽度 */
   }
   
   .player-detail {

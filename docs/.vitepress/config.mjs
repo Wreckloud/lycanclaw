@@ -86,9 +86,9 @@ export default defineConfig({
       { text: '关于', link: '/about' }
     ],
 
-    // 社交链接
+    // 社交链接 - 移除GitHub图标，由随机音乐按钮替代
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/Wreckloud/lycanclaw' } // 修改为您的GitHub仓库
+      // { icon: 'github', link: 'https://github.com/Wreckloud/lycanclaw' } // 已由随机音乐按钮替代
     ],
 
     // 移动端菜单文字

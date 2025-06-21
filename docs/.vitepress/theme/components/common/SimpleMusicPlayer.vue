@@ -527,6 +527,16 @@ onMounted(() => {
     }
   }));
   
+  // 监听全局播放器关闭事件
+  unsubscribers.push(audioManager.on('player-closed', (id) => {
+    // 如果关闭的是当前正在播放的音频，重置进度条
+    if (id === audioId.value) {
+      progress.value = 0;
+      currentTime.value = 0;
+      isPlaying.value = false;
+    }
+  }));
+  
   // 合并注销函数
   unsubscribe = () => {
     unsubscribers.forEach(unsub => unsub());
