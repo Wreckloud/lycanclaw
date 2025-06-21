@@ -6,7 +6,7 @@ aside: true
 <script setup>
 import Greeting from './.vitepress/theme/components/about/Greeting.vue'
 import TypewriterWithTech from './.vitepress/theme/components/about/TypewriterWithTech.vue'
-import MusicRanking from './.vitepress/theme/components/home/MusicRanking.vue'
+import MusicRanking from './.vitepress/theme/components/about/MusicRanking.vue'
 </script>
 
 # 这里是维克罗德。
