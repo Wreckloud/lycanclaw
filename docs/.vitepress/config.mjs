@@ -7,7 +7,8 @@ const sidebar = generateSidebar({
   docsRoot: 'docs',
   scanDirs: ['knowledge'], // 只为knowledge目录生成侧边栏
   useTitleFromFrontmatter: true,
-  sortByName: true
+  sortByName: true,
+  excludeDirs: ['drafts'] // 排除草稿文件夹
 });
 
 // VitePress配置

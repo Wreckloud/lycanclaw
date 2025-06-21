@@ -123,7 +123,7 @@ function getArticleLink(url: string): string {
   <div class="recent-comments-container" ref="sectionRef">
     <h3 class="section-title" :class="{ 'animate-in': isVisible }">最新评论</h3>
     
-    <!-- 内容区域 -->
+    <!-- 内容区域：有评论且已加载完成时显示 -->
     <div 
       v-if="!isLoading && !hasError && comments.length > 0" 
       class="comments-content-area"
@@ -159,9 +159,9 @@ function getArticleLink(url: string): string {
       <div class="fade-mask bottom" :style="{ opacity: isAtBottom ? 0 : 1 }"></div>
     </div>
     
-    <!-- 加载状态 -->
+    <!-- 加载状态：只在组件可见时显示 -->
     <div 
-      v-else-if="isLoading" 
+      v-else-if="isLoading && isVisible" 
       class="comments-content-area"
       :class="{ 'animate-in': isVisible }"
       style="--anim-delay: 0.2s"
@@ -186,19 +186,19 @@ function getArticleLink(url: string): string {
       <div class="fade-mask bottom" style="opacity: 1"></div>
     </div>
     
-    <!-- 空状态 -->
-    <div v-else-if="!hasError && comments.length === 0" class="comments-empty">
+    <!-- 空状态：只在组件可见且没有评论时显示 -->
+    <div v-else-if="!hasError && comments.length === 0 && isVisible" class="comments-empty">
       <div class="empty-message">暂无评论</div>
     </div>
     
-    <!-- 错误状态 -->
-    <div v-else class="comments-error">
+    <!-- 错误状态：只在组件可见且有错误时显示 -->
+    <div v-else-if="hasError && isVisible" class="comments-error">
       <div class="error-message">加载评论失败: {{ errorMessage }}</div>
       <button class="retry-button" @click="loadComments(true)">重试</button>
     </div>
     
-    <!-- 刷新叠加层 -->
-    <div class="comments-overlay" v-if="isRefreshing">
+    <!-- 刷新叠加层：只在主动刷新时显示 -->
+    <div class="comments-overlay" v-if="isRefreshing && isVisible">
       <div class="refresh-spinner"></div>
     </div>
   </div>

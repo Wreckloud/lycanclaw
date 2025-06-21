@@ -155,18 +155,18 @@ function getPostExcerpt(post: Post): string {
   <div class="recent-posts" ref="containerRef">
     <h2 class="section-title" :class="{ 'animate-in': isVisible }">近期动态</h2>
     
-    <!-- 加载中状态 -->
-    <div v-if="isLoading" class="loading">
+    <!-- 加载中状态：只在组件可见时显示 -->
+    <div v-if="isLoading && isVisible" class="loading">
       <p>加载中...</p>
     </div>
     
-    <!-- 错误状态 -->
-    <div v-else-if="hasError" class="error">
+    <!-- 错误状态：只在组件可见时显示 -->
+    <div v-else-if="hasError && isVisible" class="error">
       <p>加载文章失败，请刷新页面重试</p>
     </div>
     
-    <!-- 文章列表 -->
-    <template v-else>
+    <!-- 文章列表：在不加载或组件可见时显示 -->
+    <template v-else-if="!isLoading || isVisible">
       <div ref="postsRef" class="posts-container">
         <div 
           v-for="(post, index) in recentPosts" 
@@ -203,8 +203,8 @@ function getPostExcerpt(post: Post): string {
         </div>
       </div>
       
-      <!-- 无文章提示 -->
-      <div v-if="recentPosts.length === 0" class="no-posts">
+      <!-- 无文章提示：只在组件可见时显示 -->
+      <div v-if="recentPosts.length === 0 && isVisible" class="no-posts">
         <p>暂无文章</p>
       </div>
       

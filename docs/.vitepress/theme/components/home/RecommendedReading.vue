@@ -11,6 +11,8 @@ import {
 } from '@vueuse/core'
 // 导入推荐文章配置
 import { recommendedPosts as configuredPostsPaths } from '../../../config/recommended-posts.js'
+// 导入滚动状态
+import { useScrollState } from '../../composables/useScrollState'
 
 // 类型定义
 interface Post {
@@ -32,6 +34,9 @@ const isVisible = ref(false)
 const recommendedPosts = ref<Post[]>([])
 const isLoading = ref(true)
 const hasError = ref(false)
+
+// 获取滚动状态
+const { hasScrolled } = useScrollState()
 
 // 使用VueUse的useWindowSize获取窗口尺寸
 const { width } = useWindowSize()
@@ -282,16 +287,37 @@ onMounted(async () => {
   const { stop } = useIntersectionObserver(
     animationTriggerRef,
     ([{ isIntersecting }]) => {
-      if (isIntersecting && !isVisible.value) {
+      // 只有当元素可见且用户已经滚动时才触发动画
+      if (isIntersecting && hasScrolled.value && !isVisible.value) {
         isVisible.value = true
         stop()
       }
     },
     {
-      threshold: 0.7,
-      rootMargin: '0px 0px -15% 0px'
+      threshold: 0.5,  // 降低阈值，与StatsPanel保持一致
+      rootMargin: '0px 0px -20% 0px'  // 调整边距，使其在双列布局时与数据统计组件同步触发
     }
   )
+  
+  // 监听滚动状态变化，当用户滚动且元素在视口内时触发动画
+  watch(hasScrolled, (newValue) => {
+    if (newValue && !isVisible.value) {
+      // 手动检查元素是否在视口内
+      const observer = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+          isVisible.value = true
+          observer.disconnect()
+        }
+      }, {
+        threshold: 0.5,
+        rootMargin: '0px 0px -20% 0px'
+      })
+      
+      if (animationTriggerRef.value) {
+        observer.observe(animationTriggerRef.value)
+      }
+    }
+  })
   
   // 加载文章数据
   await fetchPosts()
@@ -408,18 +434,18 @@ function formatDate(dateString: string): string {
 
     <h2 class="section-title" :class="{ 'animate-in': isVisible }">推荐阅读</h2>
 
-    <!-- 加载中状态 -->
-    <div v-if="isLoading" class="loading">
+    <!-- 加载中状态：只在组件可见时显示 -->
+    <div v-if="isLoading && isVisible" class="loading">
       <p>加载中...</p>
     </div>
 
-    <!-- 错误状态 -->
-    <div v-else-if="hasError" class="error">
+    <!-- 错误状态：只在组件可见时显示 -->
+    <div v-else-if="hasError && isVisible" class="error">
       <p>加载推荐文章失败，请刷新页面重试</p>
     </div>
 
-    <!-- 轮播卡片 -->
-    <template v-else>
+    <!-- 轮播卡片：只有在不加载或组件可见时显示 -->
+    <template v-else-if="!isLoading || isVisible">
       <div 
         class="carousel-wrapper" 
         :class="{ 
@@ -505,8 +531,8 @@ function formatDate(dateString: string): string {
         ></button>
       </div>
       
-      <!-- 无文章提示 -->
-      <div v-if="recommendedPosts.length === 0" class="no-posts">
+      <!-- 无文章提示：只在组件可见时显示 -->
+      <div v-if="recommendedPosts.length === 0 && isVisible" class="no-posts">
         <p>暂无推荐文章</p>
       </div>
     </template>

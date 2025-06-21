@@ -37,7 +37,7 @@ function getAllMarkdownFiles(dir, fileList = []) {
     const filePath = path.join(dir, file)
     if (fs.statSync(filePath).isDirectory()) {
       // 递归处理子目录，但排除特定目录
-      if (file !== '.obsidian' && file !== '.git' && !file.startsWith('.')) {
+      if (file !== '.obsidian' && file !== '.git' && !file.startsWith('.') && file !== 'drafts') {
         getAllMarkdownFiles(filePath, fileList)
       }
     } else if (file.endsWith('.md') && file !== 'index.md' && file !== 'tags.md') {

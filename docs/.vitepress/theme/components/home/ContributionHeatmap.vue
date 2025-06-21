@@ -550,25 +550,25 @@ onBeforeUnmount(() => {
     <!-- 添加动画触发元素 -->
     <div ref="animationTriggerRef" class="animation-trigger"></div>
     
-    <!-- 加载中状态 -->
-    <div v-if="isLoading" class="loading">
+    <!-- 加载中状态：只在组件可见时显示 -->
+    <div v-if="isLoading && isVisible" class="loading">
       <p>加载中...</p>
     </div>
     
-    <!-- 错误状态 -->
-    <div v-else-if="hasError" class="error">
+    <!-- 错误状态：只在组件可见时显示 -->
+    <div v-else-if="hasError && isVisible" class="error">
       <p>加载热力图数据失败，请刷新重试</p>
     </div>
     
-    <!-- 热力图展示 -->
-    <div v-else class="heatmap-outer">
+    <!-- 热力图展示：只有在不加载或组件可见时显示 -->
+    <div v-else-if="!isLoading || isVisible" class="heatmap-outer">
       <div class="scroll-wrapper">
         <!-- 左侧渐变遮罩 -->
         <div class="fade-mask left" :style="{ opacity: scrollPosition > 0 ? 1 : 0 }"></div>
 
         <!-- 热力图容器 -->
         <div class="heatmap-container" ref="containerRef" @scroll="updateScrollPosition">
-        <div ref="heatmapRef" class="heatmap-chart"></div>
+          <div ref="heatmapRef" class="heatmap-chart"></div>
         </div>
         
         <!-- 右侧渐变遮罩 -->
@@ -576,16 +576,16 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="legend">
-          <span class="legend-text">字数贡献</span>
-          <div class="legend-squares">
+        <span class="legend-text">字数贡献</span>
+        <div class="legend-squares">
           <span class="legend-square" :style="{ backgroundColor: isDark ? '#2d333b' : '#ebedf0' }"></span>
           <span class="legend-square" :style="{ backgroundColor: isDark ? '#0e4429' : '#c6e48b' }"></span>
           <span class="legend-square" :style="{ backgroundColor: isDark ? '#006d32' : '#7bc96f' }"></span>
           <span class="legend-square" :style="{ backgroundColor: isDark ? '#26a641' : '#239a3b' }"></span>
           <span class="legend-square" :style="{ backgroundColor: isDark ? '#39d353' : '#196127' }"></span>
-          </div>
-          <span class="legend-text">更多</span>
         </div>
+        <span class="legend-text">更多</span>
+      </div>
     </div>
   </div>
 </template>

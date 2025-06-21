@@ -9,6 +9,7 @@ import matter from 'front-matter'
  * @param {string[]} options.scanDirs - 要扫描的目录数组
  * @param {boolean} options.useTitleFromFrontmatter - 是否使用frontmatter中的标题
  * @param {boolean} options.sortByName - 是否按名称排序
+ * @param {string[]} options.excludeDirs - 要排除的目录数组
  * @returns {Object} - 侧边栏配置对象
  */
 export function generateSidebar(options = {}) {
@@ -17,6 +18,7 @@ export function generateSidebar(options = {}) {
     scanDirs = ['knowledge'],
     useTitleFromFrontmatter = true,
     sortByName = true,
+    excludeDirs = [],
   } = options;
   
   const sidebar = {};
@@ -26,7 +28,13 @@ export function generateSidebar(options = {}) {
     const dirPath = path.join(process.cwd(), docsRoot, dirName);
     
     if (fs.existsSync(dirPath)) {
-      sidebar[`/${dirName}/`] = processSidebarStructure(dirPath, `/${dirName}/`, useTitleFromFrontmatter, sortByName);
+      sidebar[`/${dirName}/`] = processSidebarStructure(
+        dirPath, 
+        `/${dirName}/`, 
+        useTitleFromFrontmatter, 
+        sortByName, 
+        excludeDirs
+      );
     }
   }
   
@@ -39,9 +47,10 @@ export function generateSidebar(options = {}) {
  * @param {string} urlPrefix - URL前缀
  * @param {boolean} useTitleFromFrontmatter - 是否使用frontmatter中的标题
  * @param {boolean} sortByName - 是否按名称排序
+ * @param {string[]} excludeDirs - 要排除的目录数组
  * @returns {Array} - 侧边栏项数组
  */
-function processSidebarStructure(dirPath, urlPrefix, useTitleFromFrontmatter, sortByName) {
+function processSidebarStructure(dirPath, urlPrefix, useTitleFromFrontmatter, sortByName, excludeDirs = []) {
   const items = [];
   const files = fs.readdirSync(dirPath);
   
@@ -83,7 +92,8 @@ function processSidebarStructure(dirPath, urlPrefix, useTitleFromFrontmatter, so
   // 处理子目录
   const subDirs = files.filter(file => {
     const fullPath = path.join(dirPath, file);
-    return fs.statSync(fullPath).isDirectory() && !file.startsWith('.');
+    return fs.statSync(fullPath).isDirectory() && !file.startsWith('.') &&
+      !excludeDirs.includes(file); // 排除指定的目录
   });
   
   // 按名称排序子目录
@@ -98,7 +108,8 @@ function processSidebarStructure(dirPath, urlPrefix, useTitleFromFrontmatter, so
       subDirPath, 
       `${urlPrefix}${subDir}/`, 
       useTitleFromFrontmatter,
-      sortByName
+      sortByName,
+      excludeDirs
     );
     
     // 获取子目录名称或索引文件中的标题

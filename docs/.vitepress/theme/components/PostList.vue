@@ -9,6 +9,7 @@ const isBrowser = typeof window !== 'undefined'
 
 // 添加动画相关状态
 const sectionRef = ref(null)
+const animationTriggerRef = ref(null) // 添加专门的动画触发引用
 const isVisible = ref(false)
 
 // 内联实现countWord函数
@@ -123,10 +124,11 @@ onMounted(async () => {
     
     const posts = await response.json()
     
-    // 严格过滤，只显示publish为true的随想文章
+    // 严格过滤，只显示publish为true的随想文章，排除草稿文件
     thoughtsPosts.value = posts.filter(post => 
       post.frontmatter.publish === true && 
       post.relativePath.startsWith('thoughts/') &&
+      !post.relativePath.startsWith('drafts/') &&
       post.relativePath !== 'thoughts/index.md' &&
       post.relativePath !== 'thoughts/tags.md'
     )
@@ -145,16 +147,21 @@ onMounted(async () => {
     
     isLoading.value = false
     
-    // 设置交叉观察器来触发动画
-    if (sectionRef.value) {
-      const observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting) {
-          isVisible.value = true
-          observer.disconnect()
+    // 使用useIntersectionObserver来触发动画
+    if (animationTriggerRef.value) {
+      const { stop } = useIntersectionObserver(
+        animationTriggerRef,
+        ([{ isIntersecting }]) => {
+          if (isIntersecting) {
+            isVisible.value = true
+            stop()  // 只触发一次
+          }
+        }, 
+        { 
+          threshold: 0.1,  // 降低阈值，让元素更早触发
+          rootMargin: '0px 0px -10% 0px'  // 增大底部边距，提前触发
         }
-      }, { threshold: 0.2 })
-      
-      observer.observe(sectionRef.value)
+      )
     }
   } catch (error) {
     console.error('Error loading posts:', error)
@@ -214,18 +221,21 @@ function getPostExcerpt(post) {
 
 <template>
   <div class="post-list" ref="sectionRef">
-    <!-- 加载中状态 -->
-    <div v-if="isLoading" class="loading">
+    <!-- 添加专门用于动画触发的元素 -->
+    <div ref="animationTriggerRef" class="animation-trigger"></div>
+    
+    <!-- 加载中状态：只在组件可见且正在加载时显示 -->
+    <div v-if="isLoading && isVisible" class="loading">
       <p>加载中...</p>
     </div>
     
-    <!-- 错误状态 -->
-    <div v-else-if="hasError" class="error">
+    <!-- 错误状态：只在组件可见且有错误时显示 -->
+    <div v-else-if="hasError && isVisible" class="error">
       <p>加载文章失败，请刷新页面重试</p>
     </div>
     
-    <!-- 文章列表 -->
-    <template v-else>
+    <!-- 文章列表：只有在不加载或组件可见时显示 -->
+    <template v-else-if="!isLoading || isVisible">
       <div 
         v-for="(post, index) in paginatedPosts" 
         :key="post.url" 
@@ -293,8 +303,8 @@ function getPostExcerpt(post) {
         </button>
       </div>
       
-      <!-- 无文章提示 -->
-      <div v-if="thoughtsPosts.length === 0" class="no-posts">
+      <!-- 无文章提示：只在组件可见且没有文章时显示 -->
+      <div v-if="thoughtsPosts.length === 0 && isVisible" class="no-posts">
         <p>暂无文章</p>
       </div>
     </template>
@@ -305,6 +315,17 @@ function getPostExcerpt(post) {
 .post-list {
   margin-top: 2rem;
   position: relative;
+}
+
+/* 添加动画触发器样式 */
+.animation-trigger {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
 }
 
 /* 动画相关样式 */
