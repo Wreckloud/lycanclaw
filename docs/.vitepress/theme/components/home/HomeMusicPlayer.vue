@@ -24,7 +24,7 @@ const isHovering = ref(false)
 
 // 计算属性：按钮显示的文本，随机听或当前歌曲标题
 const buttonText = computed(() => {
-  return showTitle.value ? currentSongInfo.value.name : '随机播放'
+  return showTitle.value ? currentSongInfo.value.name : '随机听音乐'
 })
 
 // 格式化滚动标题的样式
@@ -119,37 +119,63 @@ const coverRotationStyle = computed(() => {
   }
 })
 
-// 获取网易云音乐红心歌单数据
-async function fetchFavoritePlaylist() {
+// 获取网易云音乐排行榜数据
+async function fetchMusicRanking() {
   if (typeof window === 'undefined') return
   
   isLoading.value = true
   hasError.value = false
   
   try {
-    // 使用用户提供的红心歌单ID
-    const response = await fetch(addCorsProxy('https://163api.qijieya.cn/playlist/detail?id=973818739'))
+    // 添加时间戳避免缓存问题
+    const response = await fetch(addCorsProxy('https://163api.qijieya.cn/user/record?uid=629126546&type=1&timestamp=' + new Date().getTime()))
     const data = await response.json()
     
-    if (data.code !== 200 || !data.playlist || !data.playlist.tracks || data.playlist.tracks.length === 0) {
-      throw new Error('获取歌单失败')
+    if (data.code !== 200 || !data.weekData || data.weekData.length === 0) {
+      throw new Error('获取音乐排行榜失败')
     }
     
+    console.log(`成功获取听歌排行榜，共 ${data.weekData.length} 首歌曲`)
+    
     // 处理所有的歌曲数据
-    const songs = data.playlist.tracks.map((item: any) => ({
-      id: String(item.id),
-      name: item.name,
-      artist: item.ar.map((a: any) => a.name).join('/'),
-      cover: item.al.picUrl.replace('http://', 'https://') + '?param=120y120'
+    const songs = data.weekData.map((item: any) => ({
+      id: String(item.song.id),
+      name: item.song.name,
+      artist: item.song.ar.map((a: any) => a.name).join('/'),
+      cover: item.song.al.picUrl.replace('http://', 'https://') + '?param=120y120'
     }))
     
-    favoritePlaylist.value = songs
+    // 打乱歌曲顺序以增强随机性
+    const shuffledSongs = shuffleArray([...songs])
+    favoritePlaylist.value = shuffledSongs
+    
+    console.log(`排行榜数据处理完成，共 ${favoritePlaylist.value.length} 首歌曲可播放`)
   } catch (error) {
-    console.error('获取歌单失败:', error)
+    console.error('获取音乐排行榜失败:', error)
     hasError.value = true
+    
+    // 如果之前已经有数据，保留现有数据
+    if (favoritePlaylist.value.length === 0) {
+      // 如果没有数据，添加一个默认歌曲以防止页面崩溃
+      favoritePlaylist.value = [{
+        id: '1824020871',
+        name: '默认歌曲 - 获取排行榜失败',
+        artist: '未知艺术家',
+        cover: 'https://p2.music.126.net/6y-UleORITEDbvrOLV0Q8A==/5639395138885805.jpg?param=120y120'
+      }]
+    }
   } finally {
     isLoading.value = false
   }
+}
+
+// Fisher-Yates 洗牌算法，用于打乱数组顺序
+function shuffleArray<T>(array: T[]): T[] {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
 }
 
 // 获取歌曲详细信息并播放（包括音频URL）
@@ -159,13 +185,28 @@ async function fetchSongDetailAndPlay(song: any) {
   isLoading.value = true
   
   try {
-    // 获取音乐URL
-    const musicResponse = await fetch(addCorsProxy(`https://163api.qijieya.cn/song/url?id=${song.id}`))
+    console.log(`正在获取歌曲 "${song.name}" 的URL...`)
+    
+    // 获取音乐URL，添加时间戳避免缓存
+    const musicResponse = await fetch(addCorsProxy(`https://163api.qijieya.cn/song/url?id=${song.id}&timestamp=${new Date().getTime()}`))
     const musicData = await musicResponse.json()
     
-    if (musicData.code !== 200 || !musicData.data || !musicData.data[0]?.url) {
-      throw new Error('获取音乐URL失败')
+    if (musicData.code !== 200) {
+      throw new Error(`获取音乐URL失败: 错误代码 ${musicData.code}`)
     }
+    
+    if (!musicData.data || musicData.data.length === 0) {
+      throw new Error('获取音乐URL失败: 返回数据为空')
+    }
+    
+    if (!musicData.data[0]?.url) {
+      // 如果URL为空，可能是因为版权限制
+      console.warn(`歌曲 "${song.name}" 无法播放，可能是因为版权限制，尝试播放下一首`)
+      playNextSong()
+      return
+    }
+    
+    console.log(`成功获取歌曲URL: ${musicData.data[0].url}`)
     
     // 创建完整的歌曲信息对象
     const songInfo = {
@@ -197,16 +238,24 @@ async function fetchSongDetailAndPlay(song: any) {
           duration: 0,
           currentTime: 0
         }))
+        
+        console.log(`正在播放: ${song.name} - ${song.artist}`)
       })
       .catch(error => {
-        console.error('播放失败:', error)
+        console.error(`播放失败: ${song.name}`, error)
         isPlaying.value = false
         showTitle.value = false
+        
+        // 自动尝试播放下一首
+        setTimeout(() => playNextSong(), 1000)
       })
   } catch (error) {
-    console.error('获取歌曲详情失败:', error)
+    console.error(`获取歌曲详情失败: ${song.name}`, error)
     isPlaying.value = false
     showTitle.value = false
+    
+    // 自动尝试播放下一首
+    setTimeout(() => playNextSong(), 1000)
   } finally {
     isLoading.value = false
   }
@@ -214,12 +263,21 @@ async function fetchSongDetailAndPlay(song: any) {
 
 // 随机播放一首歌
 function playRandomSong() {
-  if (isLoading.value || favoritePlaylist.value.length === 0) return
+  if (isLoading.value) return
+  
+  if (favoritePlaylist.value.length === 0) {
+    console.warn('歌单为空，无法播放')
+    // 尝试重新获取歌单
+    fetchMusicRanking()
+    return
+  }
   
   // 真正随机选择一首歌
   const randomIndex = Math.floor(Math.random() * favoritePlaylist.value.length)
   currentSongIndex.value = randomIndex
   const randomSong = favoritePlaylist.value[randomIndex]
+  
+  console.log(`随机选择歌曲: ${randomSong.name}，索引: ${randomIndex}，共${favoritePlaylist.value.length}首`)
   
   // 获取详细信息并播放
   fetchSongDetailAndPlay(randomSong)
@@ -359,8 +417,8 @@ function setupEventListeners() {
 onMounted(() => {
   if (typeof window === 'undefined') return
   
-  // 获取红心歌单数据
-  fetchFavoritePlaylist()
+  // 获取排行榜数据
+  fetchMusicRanking()
   
   // 设置事件监听
   setupEventListeners()
@@ -391,8 +449,8 @@ onUnmounted(() => {
 
 <template>
   <div class="home-music-player" ref="containerRef" :class="{ 'animate-in': isVisible }">
-    <h3 class="section-title">随机歌曲</h3>
-    <p class="section-description">歌曲随机来自于我的网易云红心歌单，感谢大佬提供的API接口！</p>
+    <h3 class="section-title">随机音乐</h3>
+    <p class="section-description">歌曲随机来自我的网易云听歌排行榜，感谢API提供者！</p>
     <div class="music-content">
       <div class="player-container">
         <!-- 封面区域 -->
