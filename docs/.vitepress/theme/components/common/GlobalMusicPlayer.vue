@@ -28,12 +28,18 @@ const currentSong = ref<{
 const isVisible = ref(false)
 // 是否显示详细信息（展开状态）
 const isExpanded = ref(true)
+// 是否显示封面（二级折叠状态）
+const showCover = ref(true)
 // 是否正在拖动进度条
 const isDragging = ref(false)
 // 自动收起定时器
 const autoCollapseTimer = ref<number | null>(null)
+// 三级折叠定时器
+const miniModeTimer = ref<number | null>(null)
 // 鼠标是否悬停在封面上
 const isHovering = ref(false)
+// 是否是触摸设备
+const isTouchDevice = ref(false)
 
 // 封面旋转角度
 const coverRotation = ref(0)
@@ -129,7 +135,12 @@ function resetRotation() {
 }
 
 // 切换播放/暂停
-function togglePlay() {
+function togglePlay(event?: Event) {
+  // 如果是三级折叠状态，禁用播放/暂停功能
+  if (!showCover.value) {
+    return
+  }
+  
   if (!currentSong.value.id) return
   
   if (currentSong.value.isPlaying) {
@@ -144,6 +155,17 @@ function togglePlay() {
     if (autoCollapseTimer.value) {
       clearTimeout(autoCollapseTimer.value)
       autoCollapseTimer.value = null
+    }
+    
+    // 清除三级折叠定时器
+    if (miniModeTimer.value) {
+      clearTimeout(miniModeTimer.value)
+      miniModeTimer.value = null
+    }
+    
+    // 如果是三级折叠状态，恢复封面显示
+    if (!showCover.value) {
+      showCover.value = true
     }
   } else {
     // 如果已暂停，则播放
@@ -174,22 +196,129 @@ function scheduleAutoCollapse() {
     clearTimeout(autoCollapseTimer.value)
   }
   
-  // 5秒后自动收起
+  // 3秒后直接进入三级折叠（只显示控制按钮）
   autoCollapseTimer.value = window.setTimeout(() => {
     if (currentSong.value.isPlaying) {
       isExpanded.value = false
+      showCover.value = false // 直接进入三级折叠
     }
     autoCollapseTimer.value = null
-  }, 5000)
+  }, 3000) // 从5秒改为3秒
 }
 
+// 不再需要单独的三级折叠定时器
+// function scheduleMiniMode() {
+//   if (miniModeTimer.value) {
+//     clearTimeout(miniModeTimer.value)
+//   }
+//   
+//   miniModeTimer.value = window.setTimeout(() => {
+//     if (currentSong.value.isPlaying && !isExpanded.value) {
+//       showCover.value = false
+//     }
+//     miniModeTimer.value = null
+//   }, 10000)
+// }
+
 // 切换展开/收起状态
-function toggleExpand() {
-  isExpanded.value = !isExpanded.value
+function toggleExpand(event?: Event) {
+  // 检查是否是触摸事件
+  const isTouchEvent = event && (event.type === 'touchend' || (event as any).pointerType === 'touch')
   
-  // 如果展开且正在播放，设置自动收起定时器
-  if (isExpanded.value && currentSong.value.isPlaying) {
-    scheduleAutoCollapse()
+  // 如果是触摸设备或触摸事件
+  if (isTouchDevice.value || isTouchEvent) {
+    // 触摸设备上，直接展开到完整状态
+    if (!isExpanded.value || !showCover.value) {
+      isExpanded.value = true
+      showCover.value = true
+      
+      // 如果正在播放，设置自动收起定时器
+      if (currentSong.value.isPlaying) {
+        scheduleAutoCollapse()
+      }
+      return
+    }
+    
+    // 如果已经是完全展开状态，则收起到三级折叠
+    isExpanded.value = false
+    showCover.value = false
+    return
+  }
+  
+  // 以下是鼠标设备的逻辑
+  // 如果当前是三级折叠状态，先恢复到完全展开
+  if (!showCover.value) {
+    showCover.value = true
+    isExpanded.value = true
+    
+    // 如果正在播放，设置自动收起定时器
+    if (currentSong.value.isPlaying) {
+      scheduleAutoCollapse()
+    }
+    return
+  }
+  
+  // 如果当前是二级折叠状态，恢复到完全展开
+  if (!isExpanded.value && showCover.value) {
+    isExpanded.value = true
+    
+    // 如果正在播放，设置自动收起定时器
+    if (currentSong.value.isPlaying) {
+      scheduleAutoCollapse()
+    }
+    return
+  }
+  
+  // 如果当前是完全展开状态，直接进入三级折叠
+  if (isExpanded.value) {
+    isExpanded.value = false
+    showCover.value = false
+  }
+}
+
+// 鼠标进入播放器
+function handlePlayerMouseEnter() {
+  // 清除所有自动收起定时器
+  if (autoCollapseTimer.value) {
+    clearTimeout(autoCollapseTimer.value)
+    autoCollapseTimer.value = null
+  }
+  
+  if (miniModeTimer.value) {
+    clearTimeout(miniModeTimer.value)
+    miniModeTimer.value = null
+  }
+  
+  // 如果是三级折叠状态，恢复到二级折叠
+  if (!showCover.value) {
+    showCover.value = true
+    isExpanded.value = false // 确保只显示到二级折叠
+  }
+}
+
+// 鼠标离开播放器
+function handlePlayerMouseLeave() {
+  // 只有在播放状态下才设置自动收起定时器
+  if (currentSong.value.isPlaying) {
+    // 清除现有定时器
+    if (autoCollapseTimer.value) {
+      clearTimeout(autoCollapseTimer.value)
+    }
+    
+    // 设置新的定时器，2秒后收起
+    autoCollapseTimer.value = window.setTimeout(() => {
+      // 如果是完全展开状态，直接收起到三级折叠
+      if (isExpanded.value) {
+        isExpanded.value = false
+        showCover.value = false
+      } 
+      // 如果是二级折叠状态，收起到三级折叠
+      else if (showCover.value) {
+        showCover.value = false
+      }
+      
+      autoCollapseTimer.value = null
+    }, 2000)
   }
 }
 
@@ -218,6 +347,22 @@ function closePlayer() {
     clearTimeout(autoCollapseTimer.value)
     autoCollapseTimer.value = null
   }
+  
+  // 清除三级折叠定时器
+  if (miniModeTimer.value) {
+    clearTimeout(miniModeTimer.value)
+    miniModeTimer.value = null
+  }
+  
+  // 重置状态
+  isExpanded.value = true
+  showCover.value = true
+  
+  // 停止封面旋转
+  stopRotation()
+  
+  // 重置旋转角度
+  resetRotation()
 }
 
 // 设置进度
@@ -312,8 +457,21 @@ function stopDrag() {
   document.removeEventListener('touchend', stopDrag)
 }
 
-// 监听音频事件
+// 检测是否是触摸设备
+function detectTouchDevice() {
+  isTouchDevice.value = 'ontouchstart' in window || 
+    navigator.maxTouchPoints > 0 ||
+    (navigator as any).msMaxTouchPoints > 0
+}
+
+// 组件挂载时
 onMounted(() => {
+  // 检测是否是触摸设备
+  detectTouchDevice()
+  
+  // 监听窗口大小变化，重新检测设备类型
+  window.addEventListener('resize', detectTouchDevice)
+  
   // 同步当前歌曲信息（从audioManager获取）
   const savedSongInfo = audioManager.getCurrentSongInfo();
   if (savedSongInfo && savedSongInfo.isPlaying) {
@@ -335,6 +493,9 @@ onMounted(() => {
       try {
         const songInfo = JSON.parse(data)
         
+        // 检查是否是新的歌曲
+        const isNewSong = currentSong.value.id !== songInfo.id
+        
         // 更新歌曲信息
         currentSong.value = {
           ...currentSong.value,
@@ -344,6 +505,12 @@ onMounted(() => {
         // 只有在播放状态下才显示播放器
         if (songInfo.id && songInfo.isPlaying) {
           isVisible.value = true
+          
+          // 如果是新歌曲，完全展开播放器
+          if (isNewSong) {
+            isExpanded.value = true
+            showCover.value = true
+          }
           
           // 设置自动收起定时器
           scheduleAutoCollapse()
@@ -439,9 +606,14 @@ onMounted(() => {
           currentSong.value = songInfo;
           isVisible.value = true;
           
-          // 如果新歌曲是播放状态，开始旋转
+          // 切换歌曲时，完全展开播放器
+          isExpanded.value = true;
+          showCover.value = true;
+          
+          // 如果新歌曲是播放状态，开始旋转并设置自动收起定时器
           if (songInfo.isPlaying) {
             startRotation();
+            scheduleAutoCollapse();
           }
         }
       }
@@ -457,8 +629,16 @@ onMounted(() => {
       autoCollapseTimer.value = null
     }
     
+    if (miniModeTimer.value) {
+      clearTimeout(miniModeTimer.value)
+      miniModeTimer.value = null
+    }
+    
     // 停止封面旋转动画
     stopRotation()
+    
+    // 移除窗口大小变化监听器
+    window.removeEventListener('resize', detectTouchDevice)
   })
   
   // 初始化时，如果有正在播放的歌曲，开始旋转
@@ -470,9 +650,11 @@ onMounted(() => {
 
 <template>
   <Transition name="slide-fade">
-    <div v-if="isVisible" class="global-music-player" :class="{ 'expanded': isExpanded }">
-      <!-- 封面区域 -->
-      <div class="cover-section" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
+    <div v-if="isVisible" class="global-music-player" 
+      :class="{ 'expanded': isExpanded, 'mini-mode': !showCover, 'touch-device': isTouchDevice }" 
+      @mouseenter="handlePlayerMouseEnter" @mouseleave="handlePlayerMouseLeave">
+      <!-- 封面区域 - 在二级和一级折叠状态下显示 -->
+      <div v-if="showCover" class="cover-section" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
         <div class="cover-container" @click="togglePlay">
           <div class="rotating-cover" :style="coverRotationStyle">
             <img v-if="currentSong.cover" :src="currentSong.cover" :alt="currentSong.name" class="cover-image" />
@@ -500,12 +682,12 @@ onMounted(() => {
       
       <!-- 控制按钮区域 - 收起状态 -->
       <div v-if="!isExpanded" class="controls-panel collapsed">
-        <button class="control-btn expand-btn" @click="toggleExpand" aria-label="展开">
+        <button class="control-btn expand-btn" @click="toggleExpand" @touchend.prevent="toggleExpand($event)" aria-label="展开">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="9 18 15 12 9 6"></polyline>
           </svg>
         </button>
-        <button class="control-btn close-btn" @click="closePlayer" aria-label="关闭">
+        <button class="control-btn close-btn" @click="closePlayer" @touchend.prevent="closePlayer" aria-label="关闭">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -513,7 +695,7 @@ onMounted(() => {
         </button>
       </div>
 
-      <!-- 详细信息区域 -->
+      <!-- 详细信息区域 - 只在一级折叠（完全展开）状态下显示 -->
       <div v-if="isExpanded" class="player-detail">
         <!-- 歌曲信息和进度条 -->
         <div class="song-info">
@@ -544,12 +726,12 @@ onMounted(() => {
 
       <!-- 控制按钮区域 - 展开状态 -->
       <div v-if="isExpanded" class="controls-panel expanded">
-        <button class="control-btn collapse-btn" @click="toggleExpand" aria-label="收起">
+        <button class="control-btn collapse-btn" @click="toggleExpand" @touchend.prevent="toggleExpand($event)" aria-label="收起">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
         </button>
-        <button class="control-btn close-btn" @click="closePlayer" aria-label="关闭">
+        <button class="control-btn close-btn" @click="closePlayer" @touchend.prevent="closePlayer" aria-label="关闭">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -571,10 +753,12 @@ onMounted(() => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   z-index: 100;
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1); /* 使用更平滑的过渡曲线 */
   display: flex;
   flex-direction: row;
   height: 60px; /* 固定高度 */
+  user-select: none; /* 防止文字被选中 */
+  will-change: width; /* 提示浏览器优化宽度变化的性能 */
 }
 
 /* 收起状态 */
@@ -582,9 +766,39 @@ onMounted(() => {
   width: 86px; /* 缩小为原来的2/3 */
 }
 
+/* 三级折叠状态 - 只显示控制按钮 */
+.global-music-player.mini-mode {
+  width: 26px; /* 只有控制面板的宽度 */
+}
+
 /* 展开状态 */
 .global-music-player.expanded {
   width: 280px; /* 缩小为原来的2/3 */
+}
+
+/* 触摸设备特有样式 */
+/* 增加按钮点击区域 */
+.global-music-player.touch-device .control-btn {
+  width: 24px;
+  height: 24px;
+  padding: 4px;
+}
+
+/* 确保三级折叠状态下的按钮更容易点击 */
+.global-music-player.touch-device.mini-mode .controls-panel.collapsed {
+  width: 30px;
+  padding: 0 2px;
+}
+
+/* 触摸设备下，按钮不需要悬浮效果 */
+.global-music-player.touch-device .control-btn:hover {
+  transform: none;
+  background-color: transparent;
+}
+
+/* 但保留点击效果 */
+.global-music-player.touch-device .control-btn:active {
+  transform: scale(0.9);
 }
 
 /* 封面区域 */
@@ -724,11 +938,17 @@ onMounted(() => {
   padding: 0;
   margin: 0 auto;
   border-radius: 2px;
+  -webkit-tap-highlight-color: transparent; /* 移除移动端点击高亮 */
 }
 
 .control-btn:hover {
   background-color: var(--vp-c-bg-mute); /* 使用主题默认悬停颜色 */
   color: var(--vp-c-text-1);
+  transform: scale(1.1); /* 轻微放大效果 */
+}
+
+.control-btn:active {
+  transform: scale(0.95); /* 点击时的按压效果 */
 }
 
 /* 详细信息区域 */
@@ -777,6 +997,7 @@ onMounted(() => {
   flex: 1;
   min-width: 0;
   padding-right: 4px;
+  user-select: none; /* 防止文字被选中 */
 }
 
 .song-artist {
@@ -785,6 +1006,7 @@ onMounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  user-select: none; /* 防止文字被选中 */
 }
 
 .global-progress-bar {
@@ -845,6 +1067,7 @@ onMounted(() => {
   color: var(--vp-c-text-2);
   white-space: nowrap;
   flex-shrink: 0;
+  user-select: none; /* 防止文字被选中 */
 }
 
 .current-time {
