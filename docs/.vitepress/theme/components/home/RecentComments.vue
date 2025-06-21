@@ -10,6 +10,7 @@ const isBrowser = typeof window !== 'undefined'
 // 组件引用和状态
 const sectionRef = ref<HTMLElement | null>(null)
 const containerRef = ref<HTMLElement | null>(null)
+const animationTriggerRef = ref<HTMLElement | null>(null)
 const isVisible = ref(false)
 
 // 使用VueUse useAsyncState来管理评论加载
@@ -51,7 +52,7 @@ onMounted(() => {
 
   // 设置滚动动画
   const { stop } = useIntersectionObserver(
-    sectionRef,
+    animationTriggerRef,
     ([{ isIntersecting }]) => {
       if (isIntersecting) {
         isVisible.value = true
@@ -59,8 +60,8 @@ onMounted(() => {
       }
     },
     { 
-      threshold: 0.2,
-      immediate: true
+      threshold: 0.5,
+      rootMargin: '0px 0px -5% 0px'
     }
   )
 
@@ -121,6 +122,9 @@ function getArticleLink(url: string): string {
 
 <template>
   <div class="recent-comments-container" ref="sectionRef">
+    <!-- 添加专门用于动画触发的元素 -->
+    <div ref="animationTriggerRef" class="animation-trigger"></div>
+    
     <h3 class="section-title" :class="{ 'animate-in': isVisible }">最新评论</h3>
     
     <!-- 内容区域：有评论且已加载完成时显示 -->
@@ -208,6 +212,17 @@ function getArticleLink(url: string): string {
 .recent-comments-container {
   overflow: hidden;
   position: relative;
+}
+
+/* 为动画触发器设置样式 */
+.animation-trigger {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
 }
 
 /* 添加动画样式 - 默认设置为不可见 */
