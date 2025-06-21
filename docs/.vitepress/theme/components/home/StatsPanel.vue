@@ -11,8 +11,6 @@ import {
   useMutationObserver
 } from '@vueuse/core'
 import EncourageWidget from './EncourageWidget.vue'
-// 导入滚动状态
-import { useScrollState } from '../../composables/useScrollState'
 
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
@@ -33,9 +31,6 @@ const isVisible = ref(false)
 const containerRef = ref(null)
 const animationTriggerRef = ref(null) // 专门用于动画触发的引用
 const statsValueRefs = ref([]) // 存储统计数值元素的引用
-
-// 获取滚动状态
-const { hasScrolled } = useScrollState()
 
 // 使用VueUse的useWindowSize替代手动实现的窗口大小检测
 const { width: windowWidth } = useWindowSize()
@@ -366,7 +361,7 @@ if (isBrowser) {
   useIntersectionObserver(
     animationTriggerRef,
     ([{ isIntersecting }]) => {
-      if (isIntersecting && hasScrolled.value) {
+      if (isIntersecting) {
         isVisible.value = true
         if (!isLoading.value && !animationStarted.value) {
           delayedAnimateNumbers()
@@ -378,29 +373,6 @@ if (isBrowser) {
       rootMargin: '0px 0px -15% 0px' 
     }
   )
-  
-  // 监听滚动状态变化，当用户滚动且元素在视口内时触发动画
-  watch(hasScrolled, (newValue) => {
-    if (newValue && !isVisible.value) {
-      // 手动检查元素是否在视口内
-      const observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting) {
-          isVisible.value = true
-          if (!isLoading.value && !animationStarted.value) {
-            delayedAnimateNumbers()
-          }
-          observer.disconnect()
-        }
-      }, {
-        threshold: 0.7,
-        rootMargin: '0px 0px -15% 0px'
-      })
-      
-      if (animationTriggerRef.value) {
-        observer.observe(animationTriggerRef.value)
-      }
-    }
-  })
 }
 
 // 添加自适应字体大小的函数

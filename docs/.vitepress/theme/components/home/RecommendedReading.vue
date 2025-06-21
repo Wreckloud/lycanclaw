@@ -11,8 +11,6 @@ import {
 } from '@vueuse/core'
 // 导入推荐文章配置
 import { recommendedPosts as configuredPostsPaths } from '../../../config/recommended-posts.js'
-// 导入滚动状态
-import { useScrollState } from '../../composables/useScrollState'
 
 // 类型定义
 interface Post {
@@ -34,9 +32,6 @@ const isVisible = ref(false)
 const recommendedPosts = ref<Post[]>([])
 const isLoading = ref(true)
 const hasError = ref(false)
-
-// 获取滚动状态
-const { hasScrolled } = useScrollState()
 
 // 使用VueUse的useWindowSize获取窗口尺寸
 const { width } = useWindowSize()
@@ -287,8 +282,7 @@ onMounted(async () => {
   const { stop } = useIntersectionObserver(
     animationTriggerRef,
     ([{ isIntersecting }]) => {
-      // 只有当元素可见且用户已经滚动时才触发动画
-      if (isIntersecting && hasScrolled.value && !isVisible.value) {
+      if (isIntersecting && !isVisible.value) {
         isVisible.value = true
         stop()
       }
@@ -298,26 +292,6 @@ onMounted(async () => {
       rootMargin: '0px 0px -20% 0px'  // 调整边距，使其在双列布局时与数据统计组件同步触发
     }
   )
-  
-  // 监听滚动状态变化，当用户滚动且元素在视口内时触发动画
-  watch(hasScrolled, (newValue) => {
-    if (newValue && !isVisible.value) {
-      // 手动检查元素是否在视口内
-      const observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting) {
-          isVisible.value = true
-          observer.disconnect()
-        }
-      }, {
-        threshold: 0.5,
-        rootMargin: '0px 0px -20% 0px'
-      })
-      
-      if (animationTriggerRef.value) {
-        observer.observe(animationTriggerRef.value)
-      }
-    }
-  })
   
   // 加载文章数据
   await fetchPosts()
