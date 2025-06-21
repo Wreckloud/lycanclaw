@@ -35,6 +35,13 @@ const autoCollapseTimer = ref<number | null>(null)
 // 鼠标是否悬停在封面上
 const isHovering = ref(false)
 
+// 封面旋转角度
+const coverRotation = ref(0)
+// 封面旋转动画ID
+const rotationAnimationId = ref<number | null>(null)
+// 上次暂停时的角度
+const lastPausedRotation = ref(0)
+
 // 格式化时间
 function formatTime(seconds: number): string {
   if (isNaN(seconds) || !isFinite(seconds)) return '0:00'
@@ -48,6 +55,78 @@ function formatTime(seconds: number): string {
 const formattedCurrentTime = computed(() => formatTime(currentSong.value.currentTime))
 // 计算属性：格式化的总时长
 const formattedDuration = computed(() => formatTime(currentSong.value.duration))
+// 计算属性：封面旋转样式
+const coverRotationStyle = computed(() => {
+  return {
+    transform: `rotate(${coverRotation.value}deg)`
+  }
+})
+
+// 开始封面旋转动画
+function startRotation() {
+  if (rotationAnimationId.value) return
+  
+  const startTime = performance.now()
+  // 从上次暂停的角度开始旋转
+  const startRotation = lastPausedRotation.value
+  coverRotation.value = startRotation
+  
+  // 每秒旋转30度（缓慢旋转）
+  const rotationSpeed = 30 / 1000
+  
+  const animate = (currentTime: number) => {
+    const elapsedTime = currentTime - startTime
+    coverRotation.value = startRotation + (elapsedTime * rotationSpeed)
+    
+    // 保持在0-360度范围内
+    if (coverRotation.value >= 360) {
+      coverRotation.value -= 360
+    }
+    
+    rotationAnimationId.value = requestAnimationFrame(animate)
+  }
+  
+  rotationAnimationId.value = requestAnimationFrame(animate)
+}
+
+// 停止封面旋转动画
+function stopRotation() {
+  if (rotationAnimationId.value) {
+    cancelAnimationFrame(rotationAnimationId.value)
+    rotationAnimationId.value = null
+    // 保存当前角度
+    lastPausedRotation.value = coverRotation.value
+  }
+}
+
+// 重置封面旋转角度
+function resetRotation() {
+  // 如果正在旋转，先停止
+  stopRotation()
+  
+  // 动画过渡到0度
+  const startRotation = coverRotation.value
+  const startTime = performance.now()
+  const duration = 800 // 过渡时间，毫秒
+  
+  const animateReset = (currentTime: number) => {
+    const elapsedTime = currentTime - startTime
+    const progress = Math.min(elapsedTime / duration, 1)
+    
+    // 使用缓动函数使动画更自然
+    const easeOutProgress = 1 - Math.pow(1 - progress, 3)
+    coverRotation.value = startRotation * (1 - easeOutProgress)
+    
+    if (progress < 1) {
+      requestAnimationFrame(animateReset)
+    } else {
+      coverRotation.value = 0
+      lastPausedRotation.value = 0 // 重置暂停角度
+    }
+  }
+  
+  requestAnimationFrame(animateReset)
+}
 
 // 切换播放/暂停
 function togglePlay() {
@@ -57,6 +136,9 @@ function togglePlay() {
     // 如果正在播放，则暂停
     audioService.pause()
     audioManager.pauseCurrent(currentSong.value.id)
+    
+    // 停止封面旋转
+    stopRotation()
     
     // 清除自动收起定时器
     if (autoCollapseTimer.value) {
@@ -76,6 +158,9 @@ function togglePlay() {
       .catch(error => {
         console.error('播放失败:', error)
       })
+    
+    // 开始封面旋转
+    startRotation()
       
     // 设置自动收起定时器
     scheduleAutoCollapse()
@@ -305,18 +390,23 @@ onMounted(() => {
         // 只更新当前播放的歌曲
         if (id === currentSong.value.id) {
           const newPlayingState = isPlaying === 'true'
+          const previousPlayingState = currentSong.value.isPlaying
           currentSong.value.isPlaying = newPlayingState
           
           // 如果开始播放，显示播放器并设置自动收起定时器
           if (newPlayingState) {
             isVisible.value = true
             scheduleAutoCollapse()
-          } else {
+            // 开始封面旋转
+            startRotation()
+          } else if (previousPlayingState) { // 只在从播放状态变为暂停状态时执行
             // 如果停止播放，清除自动收起定时器
             if (autoCollapseTimer.value) {
               clearTimeout(autoCollapseTimer.value)
               autoCollapseTimer.value = null
             }
+            // 停止封面旋转
+            stopRotation()
           }
         }
       } catch (e) {
@@ -331,6 +421,8 @@ onMounted(() => {
       if (id === currentSong.value.id) {
         // 歌曲结束后不隐藏播放器，只更新状态
         currentSong.value.isPlaying = false
+        // 重置封面旋转
+        resetRotation()
       }
     })
   )
@@ -342,8 +434,15 @@ onMounted(() => {
       if (id && id !== currentSong.value.id) {
         const songInfo = audioManager.getCurrentSongInfo();
         if (songInfo) {
+          // 如果切换了新歌曲，重置封面旋转
+          resetRotation();
           currentSong.value = songInfo;
           isVisible.value = true;
+          
+          // 如果新歌曲是播放状态，开始旋转
+          if (songInfo.isPlaying) {
+            startRotation();
+          }
         }
       }
     })
@@ -357,7 +456,15 @@ onMounted(() => {
       clearTimeout(autoCollapseTimer.value)
       autoCollapseTimer.value = null
     }
+    
+    // 停止封面旋转动画
+    stopRotation()
   })
+  
+  // 初始化时，如果有正在播放的歌曲，开始旋转
+  if (savedSongInfo && savedSongInfo.isPlaying) {
+    startRotation();
+  }
 })
 </script>
 
@@ -367,9 +474,11 @@ onMounted(() => {
       <!-- 封面区域 -->
       <div class="cover-section" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
         <div class="cover-container" @click="togglePlay">
-          <img v-if="currentSong.cover" :src="currentSong.cover" :alt="currentSong.name" class="cover-image" />
-          <div v-else class="cover-placeholder">
-            <div class="music-note">♪</div>
+          <div class="rotating-cover" :style="coverRotationStyle">
+            <img v-if="currentSong.cover" :src="currentSong.cover" :alt="currentSong.name" class="cover-image" />
+            <div v-else class="cover-placeholder">
+              <div class="music-note">♪</div>
+            </div>
           </div>
           
           <!-- 播放按钮 - 在暂停时显示 -->
@@ -496,7 +605,33 @@ onMounted(() => {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
   position: relative;
   cursor: pointer;
+  border-radius: 50%; /* 使封面成为圆形 */
 }
+
+/* 旋转封面容器 */
+.rotating-cover {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  /* 使用更平滑的过渡效果 */
+  transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  will-change: transform; /* 提示浏览器优化变换 */
+}
+
+/* 移除唱片中心点样式 */
+/* .rotating-cover::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  background-color: var(--vp-c-bg-soft);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 2px var(--vp-c-divider);
+  z-index: 2;
+} */
 
 /* 播放遮罩层 */
 .play-overlay {

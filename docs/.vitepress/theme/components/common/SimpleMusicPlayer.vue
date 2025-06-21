@@ -86,6 +86,10 @@ function togglePlay() {
         audioManager.pauseCurrent(audioId.value);
         isPlaying.value = false;
       } else {
+        // 通知音频管理器切换当前播放的音频
+        // 这将触发current-audio-changed事件，使其他播放器重置进度条
+        audioManager.setCurrentPlaying(audioId.value);
+        
         // 播放音频
         audioService.play(audioId.value, songInfo.value, currentTime.value)
           .then(() => {
@@ -140,8 +144,8 @@ let unsubscribe: (() => void) | null = null;
 
 // 进度条拖动相关函数
 function startDrag(e: MouseEvent | TouchEvent) {
-  // 只有在音频准备就绪且正在播放时才允许拖动
-  if (!isAudioReady.value || !isPlaying.value) return
+  // 只要音频准备就绪就允许拖动，不再要求必须正在播放
+  if (!isAudioReady.value) return
   
   isDragging.value = true
   
@@ -214,8 +218,8 @@ function stopDrag(e?: MouseEvent | TouchEvent) {
 }
 
 function setProgress(e: MouseEvent) {
-  // 只有在音频准备就绪且正在播放时才允许设置进度
-  if (!isAudioReady.value || !isPlaying.value || isDragging.value) return
+  // 只要音频准备就绪就允许设置进度，不再要求必须正在播放
+  if (!isAudioReady.value || isDragging.value) return
   
   const progressBar = e.currentTarget as HTMLElement
   const rect = progressBar.getBoundingClientRect()
@@ -447,6 +451,8 @@ onMounted(() => {
   unsubscribers.push(audioManager.on('audio-reset', (id) => {
     if (id === audioId.value) {
       resetProgress();
+      // 确保视觉上的进度条也被重置
+      progress.value = 0;
     }
   }));
   
@@ -500,17 +506,24 @@ onMounted(() => {
     try {
       const [id, state] = data.split(':');
       if (id === audioId.value) {
-        const wasPlaying = isPlaying.value;
         isPlaying.value = state === 'true';
-        
-        // 如果从播放状态变为暂停状态，重置视觉进度条
-        if (wasPlaying && !isPlaying.value) {
-          // 保留当前时间点，但视觉上重置进度条
-          progress.value = 0;
-        }
+        // 移除以下代码，不再在暂停时重置进度条
+        // if (wasPlaying && !isPlaying.value) {
+        //   progress.value = 0;
+        // }
       }
     } catch (e) {
       console.error('解析播放状态变化失败', e);
+    }
+  }));
+  
+  // 监听当前音频变更事件
+  unsubscribers.push(audioManager.on('current-audio-changed', (id) => {
+    // 如果当前播放的不是这个组件的歌曲，重置进度条显示
+    if (id !== audioId.value && audioId.value) {
+      // 只重置视觉上的进度条，不影响实际的播放位置
+      progress.value = 0;
+      currentTime.value = 0;
     }
   }));
   
@@ -656,14 +669,14 @@ watch(() => songInfo.value.url, (newUrl) => {
           @click="setProgress" 
           @mousedown="startDrag"
           @touchstart="startDrag"
-          :class="{ 'dragging': isDragging, 'disabled': !isPlaying || !isAudioReady }"
+          :class="{ 'dragging': isDragging, 'disabled': !isAudioReady }"
         >
           <!-- 进度条骨架屏 -->
           <div v-if="isLoading" class="skeleton-progress">
             <div class="skeleton-pulse"></div>
           </div>
           <div v-else class="progress-bar">
-            <div class="progress-current" :style="{ width: `${isPlaying ? progress : 0}%` }"></div>
+            <div class="progress-current" :style="{ width: `${progress}%` }"></div>
           </div>
         </div>
       </div>
