@@ -387,15 +387,23 @@ onMounted(() => {
             </svg>
           </div>
         </div>
-        
-        <!-- 收起状态下的展开按钮 -->
-        <button v-if="!isExpanded" class="control-btn expand-toggle-btn" @click="toggleExpand" aria-label="展开">
+      </div>
+      
+      <!-- 控制按钮区域 - 收起状态 -->
+      <div v-if="!isExpanded" class="controls-panel collapsed">
+        <button class="control-btn expand-btn" @click="toggleExpand" aria-label="展开">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="9 18 15 12 9 6"></polyline>
           </svg>
         </button>
+        <button class="control-btn close-btn" @click="closePlayer" aria-label="关闭">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
-      
+
       <!-- 详细信息区域 -->
       <div v-if="isExpanded" class="player-detail">
         <!-- 歌曲信息和进度条 -->
@@ -423,26 +431,21 @@ onMounted(() => {
             <div class="progress-handle" :style="{ left: `${currentSong.progress}%` }" :class="{ 'visible': isDragging || currentSong.isPlaying }"></div>
           </div>
         </div>
-        
-        <!-- 控制按钮区 -->
-        <div class="controls-row">
-          <div class="right-controls">
-            <!-- 收起按钮 -->
-            <button class="control-btn collapse-btn" @click="toggleExpand" aria-label="收起">
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="15 18 9 12 15 6"></polyline>
-              </svg>
-            </button>
-            
-            <!-- 关闭按钮 -->
-            <button class="control-btn close-btn" @click="closePlayer" aria-label="关闭">
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-        </div>
+      </div>
+
+      <!-- 控制按钮区域 - 展开状态 -->
+      <div v-if="isExpanded" class="controls-panel expanded">
+        <button class="control-btn collapse-btn" @click="toggleExpand" aria-label="收起">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+        <button class="control-btn close-btn" @click="closePlayer" aria-label="关闭">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
     </div>
   </Transition>
@@ -460,18 +463,19 @@ onMounted(() => {
   z-index: 100;
   overflow: hidden;
   transition: all 0.3s ease;
-  width: 72px; /* 默认宽度，只显示封面 */
-  border-right: 1px solid var(--vp-c-divider);
-  border-top: 1px solid var(--vp-c-divider);
-  border-bottom: 1px solid var(--vp-c-divider);
   display: flex;
   flex-direction: row;
   height: 60px; /* 固定高度 */
 }
 
+/* 收起状态 */
+.global-music-player:not(.expanded) {
+  width: 86px; /* 缩小为原来的2/3 */
+}
+
 /* 展开状态 */
 .global-music-player.expanded {
-  width: 280px;
+  width: 280px; /* 缩小为原来的2/3 */
 }
 
 /* 封面区域 */
@@ -548,24 +552,48 @@ onMounted(() => {
   color: white;
 }
 
-/* 收起状态下的展开按钮 */
-.expand-toggle-btn {
-  position: absolute;
-  right: -10px;
-  top: 50%;
-  transform: translateY(-50%);
-  background-color: var(--vp-c-bg-soft);
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 50%;
-  width: 20px;
-  height: 20px;
+/* 控制按钮区域 */
+.controls-panel {
+  background-color: var(--vp-c-bg-alt); /* 移除绿色背景，使用主题默认颜色 */
+  display: flex;
+  flex-direction: column;
+}
+
+/* 收起状态的控制面板 */
+.controls-panel.collapsed {
+  width: 26px; /* 缩小为原来的2/3 */
+  height: 100%;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* 展开状态的控制面板 */
+.controls-panel.expanded {
+  width: 26px; /* 缩小为原来的2/3 */
+  height: 100%;
+  justify-content: center;
+  gap: 8px;
+}
+
+.control-btn {
+  background: transparent;
+  border: none;
+  color: var(--vp-c-text-2); /* 使用主题默认文本颜色 */
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 20px; /* 缩小按钮尺寸 */
+  height: 20px; /* 缩小按钮尺寸 */
   padding: 0;
-  color: var(--vp-c-text-2);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin: 0 auto;
+  border-radius: 2px;
+}
+
+.control-btn:hover {
+  background-color: var(--vp-c-bg-mute); /* 使用主题默认悬停颜色 */
+  color: var(--vp-c-text-1);
 }
 
 /* 详细信息区域 */
@@ -575,9 +603,9 @@ onMounted(() => {
   display: flex;
   flex-direction: row;
   align-items: center;
-  width: 220px;
   animation: slide-in-right 0.3s ease-out;
   height: 100%;
+  position: relative;
 }
 
 @keyframes slide-in-right {
@@ -594,7 +622,6 @@ onMounted(() => {
 .song-info {
   flex: 1;
   min-width: 0;
-  padding-right: 8px;
 }
 
 .song-title-row {
@@ -631,6 +658,7 @@ onMounted(() => {
   cursor: pointer;
   touch-action: none;
   width: 100%;
+  margin-top: 6px;
 }
 
 .global-progress-bar.disabled {
@@ -689,49 +717,6 @@ onMounted(() => {
   margin-right: 2px;
 }
 
-.controls-row {
-  display: flex;
-  align-items: center;
-}
-
-.control-btn {
-  background: transparent;
-  border: none;
-  color: var(--vp-c-text-1);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.control-btn:hover {
-  background-color: var(--vp-c-bg-alt);
-}
-
-.right-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.collapse-btn, .close-btn {
-  width: 20px;
-  height: 20px;
-  padding: 2px;
-}
-
-.close-btn {
-  color: var(--vp-c-text-2);
-}
-
-.close-btn:hover {
-  color: var(--vp-c-text-1);
-  background-color: rgba(220, 38, 38, 0.1);
-}
-
 /* 动画 */
 .slide-fade-enter-active {
   transition: all 0.3s ease-out;
@@ -754,11 +739,10 @@ onMounted(() => {
   }
   
   .global-music-player.expanded {
-    width: 260px;
+    width: 300px;
   }
   
   .player-detail {
-    width: 200px;
     padding: 8px 10px;
   }
 }
@@ -766,11 +750,10 @@ onMounted(() => {
 /* 小屏幕设备适配 */
 @media (max-width: 370px) {
   .global-music-player.expanded {
-    width: 220px;
+    width: 260px;
   }
   
   .player-detail {
-    width: 160px;
     padding: 8px 6px;
   }
 }
