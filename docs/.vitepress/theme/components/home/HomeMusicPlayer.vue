@@ -9,6 +9,9 @@ import { useData } from 'vitepress'
 // 获取主题模式
 const { isDark } = useData()
 
+// 默认封面图片路径
+const defaultCoverUrl = '/images/首页/default-cover.png'
+
 // 组件状态
 const containerRef = ref<HTMLElement | null>(null)
 const isPlaying = ref(false)
@@ -32,7 +35,7 @@ const isDragging = ref(false)  // 新增：是否正在拖动进度条
 
 // 计算属性：按钮显示的文本，随机听或当前歌曲标题
 const buttonText = computed(() => {
-  return showTitle.value ? currentSongInfo.value.name : '随机听音乐'
+  return showTitle.value ? currentSongInfo.value.name : '来听歌吧！'
 })
 
 // 格式化滚动标题的样式
@@ -514,10 +517,12 @@ onUnmounted(() => {
               loading="lazy"
               :alt="currentSongInfo.name" 
               class="cover-image" />
-            <!-- 默认占位图 -->
-            <div v-else class="cover-placeholder">
-              <div class="music-note">♪</div>
-            </div>
+            <!-- 默认封面图片 -->
+            <img v-else 
+              :src="defaultCoverUrl" 
+              loading="lazy"
+              alt="默认音乐封面" 
+              class="cover-image default-cover" />
           </div>
           
           <!-- 播放按钮 - 在暂停或未播放时显示 -->
@@ -723,18 +728,15 @@ onUnmounted(() => {
   object-fit: cover;
 }
 
-.cover-placeholder {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, var(--vp-c-brand) 0%, var(--vp-c-brand-dark) 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* 为默认封面添加样式 */
+.default-cover {
+  object-fit: cover;
+  filter: brightness(0.95);
+  transition: filter 0.3s ease;
 }
 
-.music-note {
-  font-size: 24px;
-  color: white;
+.default-cover:hover {
+  filter: brightness(1.05);
 }
 
 /* 骨架屏样式 */

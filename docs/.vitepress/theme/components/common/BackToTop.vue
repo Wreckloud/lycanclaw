@@ -8,6 +8,7 @@ const scrollProgress = ref(0)
 const lastScrollTop = ref(0)
 const isScrollingUp = ref(false)
 const isMobile = ref(false)
+const isAtBottom = ref(false)
 
 // 判断是否为移动设备
 const checkMobile = () => {
@@ -19,6 +20,9 @@ const calculateScrollProgress = () => {
   const scrollHeight = document.documentElement.scrollHeight - window.innerHeight
   const progress = window.scrollY / scrollHeight * 100
   scrollProgress.value = Math.min(Math.max(progress, 0), 100)
+  
+  // 判断是否已经滚动到底部(允许5px的误差)
+  isAtBottom.value = (window.scrollY + window.innerHeight) >= document.documentElement.scrollHeight - 5
 }
 
 // 计算SVG圆环的dash值
@@ -30,6 +34,11 @@ const circleDashArray = computed(() => {
 
 // 判断是否显示返回顶部按钮
 const shouldShowBackToTop = computed(() => {
+  // 如果滚动到底部，无论什么设备都隐藏按钮
+  if (isAtBottom.value) {
+    return false
+  }
+  
   if (!isMobile.value) {
     // 桌面端只需判断滚动位置
     return showBackToTop.value
@@ -48,7 +57,7 @@ const handleScroll = () => {
   // 判断是否显示按钮
   showBackToTop.value = currentScrollTop > scrollThreshold
   
-  // 计算滚动进度
+  // 计算滚动进度和是否到达底部
   calculateScrollProgress()
 }
 
