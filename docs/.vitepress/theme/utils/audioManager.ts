@@ -93,6 +93,22 @@ class AudioEventBus {
       } catch (e) {
         console.error('解析播放状态失败', e);
       }
+    } else if (event === 'audio-error') {
+      // 处理音频错误事件
+      try {
+        // 如果是当前播放的音频发生错误
+        if (data === this.currentPlayingId) {
+          // 重置播放状态
+          this.currentPlayingId = '';
+          
+          // 更新歌曲信息
+          if (this.currentSongInfo && this.currentSongInfo.id === data) {
+            this.currentSongInfo.isPlaying = false;
+          }
+        }
+      } catch (e) {
+        console.error('处理音频错误失败', e);
+      }
     } else if (event === 'progress-update') {
       try {
         const [id, time, dur] = data.split(':');

@@ -142,13 +142,23 @@ async function fetchSongDetailAndPlay(song: any) {
       return
     }
     
-    // 优化封面图片URL，添加尺寸参数限制为80x80
+    // 确保音乐URL使用HTTPS
+    let musicUrl = musicData.data[0].url
+    if (musicUrl && musicUrl.startsWith('http:')) {
+      musicUrl = musicUrl.replace('http:', 'https:')
+    }
+    
+    // 简化封面处理，只添加大小参数
     let coverUrl = song.cover
     if (coverUrl && coverUrl.includes('music.126.net')) {
-      // 移除已有的参数
-      coverUrl = coverUrl.split('?')[0]
-      // 添加尺寸限制参数
-      coverUrl += '?param=80y80'
+      // 确保使用HTTPS
+      if (coverUrl.startsWith('http:')) {
+        coverUrl = coverUrl.replace('http:', 'https:')
+      }
+      // 添加尺寸参数
+      if (!coverUrl.includes('param=')) {
+        coverUrl += '?param=80y80'
+      }
     }
     
     // 创建完整的歌曲信息对象
@@ -156,7 +166,7 @@ async function fetchSongDetailAndPlay(song: any) {
       name: song.name,
       artist: song.artist,
       cover: coverUrl,
-      url: musicData.data[0].url
+      url: musicUrl
     }
     
     // 使用audioService播放音乐
@@ -428,6 +438,18 @@ function setupEventListeners() {
       }
     })
   )
+
+  // 监听音频加载错误事件
+  unsubscribers.push(
+    audioManager.on('audio-error', (id) => {
+      if (id === currentSongInfo.value.id) {
+        // 出错时尝试播放下一首
+        setTimeout(() => {
+          playNextSong()
+        }, 1000)
+      }
+    })
+  )
   
   // 监听关闭事件（全局播放器关闭时重置按钮状态）
   unsubscribers.push(
@@ -507,12 +529,8 @@ onUnmounted(() => {
         <!-- 封面区域 -->
         <div class="cover-container" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
           <div class="cover-image-container">
-            <!-- 骨架屏 -->
-            <div v-if="isLoading && !currentSongInfo.cover" class="skeleton-cover">
-              <div class="skeleton-pulse"></div>
-            </div>
             <!-- 封面图片 -->
-            <img v-else-if="currentSongInfo.cover && showTitle" 
+            <img v-if="currentSongInfo.cover && showTitle" 
               :src="currentSongInfo.cover" 
               loading="lazy"
               :alt="currentSongInfo.name" 
@@ -586,7 +604,7 @@ onUnmounted(() => {
         </div>
       </div>
       
-      <!-- 加载指示器 -->
+      <!-- 加载指示器，简化为只在必要时显示 -->
       <div v-if="isLoading" class="loading-indicator">
         <div class="spinner"></div>
       </div>
@@ -737,34 +755,6 @@ onUnmounted(() => {
 
 .default-cover:hover {
   filter: brightness(1.05);
-}
-
-/* 骨架屏样式 */
-.skeleton-cover {
-  width: 100%;
-  height: 100%;
-  background-color: var(--vp-c-bg-mute);
-  position: relative;
-  overflow: hidden;
-}
-
-.skeleton-pulse {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, 
-    var(--vp-c-bg-mute) 25%, 
-    var(--vp-c-bg-soft) 50%, 
-    var(--vp-c-bg-mute) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
-
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
 }
 
 /* 播放控制遮罩 */

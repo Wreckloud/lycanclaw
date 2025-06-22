@@ -49,13 +49,26 @@ export function getProxyUrl(originalUrl: string): string {
 export function addCorsProxy(url: string): string {
   if (!url) return '';
   
+  // 确保所有URL都使用HTTPS协议
+  if (url.startsWith('http:')) {
+    url = url.replace('http:', 'https:');
+  }
+  
   // 使用getProxyUrl函数处理网易云API的URL
   if (url.includes('163api.qijieya.cn')) {
     return getProxyUrl(url);
   }
   
-  // 网易云音乐iframe内容不需要代理，直接返回
-  if (url.includes('music.163.com')) {
+  // 网易云音乐内容确保使用HTTPS，包括音乐和图片资源
+  if (url.includes('music.163.com') || 
+      url.includes('music.126.net') || 
+      url.includes('m7.music.126.net') || 
+      url.includes('m8.music.126.net') || 
+      url.includes('m10.music.126.net')) {
+    // 确保使用HTTPS协议
+    if (url.startsWith('http:')) {
+      url = url.replace('http:', 'https:');
+    }
     return url;
   }
   

@@ -100,6 +100,8 @@ class AudioService {
       // 发送播放失败状态
       if (this.currentAudioId) {
         audioManager.emit('play-state-change', `${this.currentAudioId}:false`);
+        // 触发音频错误事件，让组件可以处理
+        audioManager.emit('audio-error', this.currentAudioId);
       }
     });
     
@@ -175,8 +177,14 @@ class AudioService {
       this.currentAudioId = audioId;
       this.currentSongInfo = songInfo;
       
+      // 确保URL使用HTTPS协议
+      let audioUrl = songInfo.url;
+      if (audioUrl.startsWith('http:')) {
+        audioUrl = audioUrl.replace('http:', 'https:');
+      }
+      
       // 设置音频源 - 使用代理处理CORS问题
-      const url = addCorsProxy(songInfo.url);
+      const url = addCorsProxy(audioUrl);
       this.audioElement.src = url;
       this.audioElement.load();
       this.operationState = AudioOperationState.LOADING;
