@@ -62,6 +62,56 @@ function formatTime(seconds: number): string {
 const formattedCurrentTime = computed(() => formatTime(currentTime.value))
 const formattedDuration = computed(() => formatTime(duration.value))
 
+// 同步当前播放状态
+function syncWithCurrentPlayback() {
+  const currentPlayingId = audioManager.getCurrentPlayingId()
+  const savedSongInfo = audioManager.getCurrentSongInfo()
+  
+  if (currentPlayingId && savedSongInfo) {
+    // 提取网易云ID
+    const match = currentPlayingId.match(/netease-(\d+)/)
+    if (match && match[1]) {
+      const neteaseId = match[1]
+      
+      // 查找我们的歌单中是否有这首歌
+      const songIndex = favoritePlaylist.value.findIndex(song => String(song.id) === neteaseId)
+      
+      if (songIndex !== -1) {
+        // 找到了歌曲，更新状态
+        currentSongIndex.value = songIndex
+        
+        // 两步处理来确保动画正常：先重置状态
+        showTitle.value = false
+        
+        // 短暂延迟后设置新状态，让DOM有时间更新
+        setTimeout(() => {
+          // 1. 设置歌曲信息
+          currentSongInfo.value = {
+            id: currentPlayingId,
+            name: savedSongInfo.name,
+            artist: savedSongInfo.artist,
+            cover: savedSongInfo.cover
+          }
+          
+          // 2. 设置播放状态和进度
+          currentTime.value = savedSongInfo.currentTime
+          duration.value = savedSongInfo.duration
+          progress.value = savedSongInfo.progress
+          
+          // 3. 显示标题和播放状态，触发动画
+          showTitle.value = true
+          
+          // 4. 再次短暂延迟后更新播放状态，以确保UI完全更新
+          setTimeout(() => {
+            isPlaying.value = savedSongInfo.isPlaying
+          }, 50)
+          
+        }, 50)
+      }
+    }
+  }
+}
+
 // 获取网易云音乐排行榜数据
 async function fetchMusicRanking() {
   if (typeof window === 'undefined') return
@@ -89,6 +139,9 @@ async function fetchMusicRanking() {
     // 打乱歌曲顺序以增强随机性
     const shuffledSongs = shuffleArray([...songs])
     favoritePlaylist.value = shuffledSongs
+    
+    // 获取歌单后再次尝试同步播放状态
+    syncWithCurrentPlayback()
   } catch (error) {
     // 移除调试信息，但保留错误处理逻辑
     hasError.value = true
@@ -457,6 +510,11 @@ function setupEventListeners() {
       if (id && isPlaying.value && currentSongInfo.value.id && id !== currentSongInfo.value.id) {
         // 如果切换到其他音频，更新按钮状态但保持标题
         isPlaying.value = false
+        
+        // 如果切换的是另一首网易云音乐，尝试找到并同步
+        if (id.startsWith('netease-')) {
+          syncWithCurrentPlayback()
+        }
       }
     })
   )
@@ -510,6 +568,11 @@ onMounted(() => {
       },
       { threshold: 0.2, immediate: true }
     )
+  }
+  
+  // 尝试立即同步播放状态，如果歌单已加载
+  if (favoritePlaylist.value.length > 0) {
+    syncWithCurrentPlayback()
   }
 })
 
@@ -888,7 +951,7 @@ onUnmounted(() => {
 /* 时间信息样式 */
 .time-info {
   position: absolute;
-  top: 0;
+  top: -5px; /* 原为0，向上移动9px */
   right: 0;
   font-size: 0.75rem;
   color: var(--vp-c-text-2);
