@@ -6,14 +6,13 @@
 import { ref, onMounted, onBeforeUnmount, nextTick, computed, watch } from 'vue'
 import { withBase, useData } from 'vitepress'
 import * as echarts from 'echarts/core'
-import { CalendarComponent, TooltipComponent, VisualMapComponent } from 'echarts/components'
+import { CalendarComponent, VisualMapComponent } from 'echarts/components'
 import { HeatmapChart } from 'echarts/charts'
 import { CanvasRenderer } from 'echarts/renderers'
 
 // 按需注册组件
 echarts.use([
   CalendarComponent,
-  TooltipComponent,
   VisualMapComponent,
   HeatmapChart,
   CanvasRenderer
@@ -177,13 +176,7 @@ function getChartOption() {
   return {
     backgroundColor: isDark.value ? 'rgba(0,0,0,0)' : undefined, // 深色模式下使用透明背景
     tooltip: {
-      position: 'top',
-      formatter: function(params) {
-        const count = params.value[1]
-        if (count !== 0) {
-          return `${count} 字`
-        }
-      }
+      show: false // 禁用悬浮提示
     },
     visualMap: {
       show: false,

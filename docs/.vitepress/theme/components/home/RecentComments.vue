@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { withBase, useData } from 'vitepress'
 import { getRecentComments, formatCommentDate, type WalineComment } from '../../utils/commentApi'
-import { useIntersectionObserver, useScroll, useAsyncState } from '@vueuse/core'
+import { useIntersectionObserver, useAsyncState } from '@vueuse/core'
 
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
@@ -37,6 +37,9 @@ const isAtBottom = ref(false)
 // 从VitePress获取文章信息
 const { theme } = useData()
 
+// 保存观察器停止函数
+let stopObserver: Function | null = null;
+
 // 更新滚动位置和状态
 function updateScrollPosition() {
   if (!containerRef.value) return
@@ -64,6 +67,9 @@ onMounted(() => {
       rootMargin: '0px 0px -5% 0px'
     }
   )
+  
+  // 保存stop函数以便在组件卸载时调用
+  stopObserver = stop
 
   // 加载最新评论
   loadComments()
@@ -72,6 +78,14 @@ onMounted(() => {
   setTimeout(() => {
     updateScrollPosition()
   }, 100)
+})
+
+// 组件卸载时清理资源
+onBeforeUnmount(() => {
+  // 停止观察器，防止内存泄漏
+  if (stopObserver) {
+    stopObserver()
+  }
 })
 
 // 获取最新评论

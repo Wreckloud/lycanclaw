@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, onBeforeUnmount } from 'vue'
 import { withBase } from 'vitepress'
 import { useIntersectionObserver } from '@vueuse/core'
 
@@ -30,6 +30,9 @@ const isLoading = ref(true)
 const hasError = ref(false)
 const maxPosts = 5 // 显示最多6篇最新文章
 
+// 保存观察器停止函数
+let stopObserver: Function | null = null;
+
 // 使用VueUse的useIntersectionObserver来检测元素是否进入视口
 onMounted(() => {
   if (!isBrowser) return
@@ -52,6 +55,17 @@ onMounted(() => {
       rootMargin: '0px 0px -1% 0px' // 增大底部边距，更早触发
     }
   )
+  
+  // 保存stop函数以便在组件卸载时调用
+  stopObserver = stop
+})
+
+// 组件卸载时清理资源
+onBeforeUnmount(() => {
+  // 停止观察器，防止内存泄漏
+  if (stopObserver) {
+    stopObserver()
+  }
 })
 
 // 加载文章数据
@@ -388,9 +402,6 @@ function getPostExcerpt(post: Post): string {
 }
 
 @media (max-width: 480px) {
-  .recent-posts {
-    /* margin: 1rem 0; 移除此行 */
-  }
   
   .section-title {
     font-size: 1.3rem;
