@@ -4,6 +4,10 @@ import { addCorsProxy } from '../../utils/proxyConfig'
 import audioManager from '../../utils/audioManager'
 import audioService from '../../utils/audioService'
 import { useIntersectionObserver } from '@vueuse/core'
+import { useData } from 'vitepress'
+
+// 获取主题模式
+const { isDark } = useData()
 
 // 组件状态
 const containerRef = ref<HTMLElement | null>(null)
@@ -21,6 +25,10 @@ const currentSongInfo = ref({
 const isVisible = ref(false)
 const currentSongIndex = ref(-1)
 const isHovering = ref(false)
+const currentTime = ref(0)
+const duration = ref(0)
+const progress = ref(0)
+const isDragging = ref(false)  // 新增：是否正在拖动进度条
 
 // 计算属性：按钮显示的文本，随机听或当前歌曲标题
 const buttonText = computed(() => {
@@ -39,85 +47,17 @@ const titleStyle = computed(() => {
   }
 })
 
-// 封面旋转角度
-const coverRotation = ref(0)
-// 封面旋转动画ID
-const rotationAnimationId = ref<number | null>(null)
-// 上次暂停时的角度
-const lastPausedRotation = ref(0)
-
-// 开始封面旋转动画
-function startRotation() {
-  if (rotationAnimationId.value) return
+// 格式化时间显示
+function formatTime(seconds: number): string {
+  if (isNaN(seconds) || !isFinite(seconds)) return '0:00'
   
-  const startTime = performance.now()
-  // 从上次暂停的角度开始旋转
-  const startRotation = lastPausedRotation.value
-  coverRotation.value = startRotation
-  
-  // 每秒旋转30度（缓慢旋转）
-  const rotationSpeed = 30 / 1000
-  
-  const animate = (currentTime: number) => {
-    const elapsedTime = currentTime - startTime
-    coverRotation.value = startRotation + (elapsedTime * rotationSpeed)
-    
-    // 保持在0-360度范围内
-    if (coverRotation.value >= 360) {
-      coverRotation.value -= 360
-    }
-    
-    rotationAnimationId.value = requestAnimationFrame(animate)
-  }
-  
-  rotationAnimationId.value = requestAnimationFrame(animate)
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins}:${secs < 10 ? '0' : ''}${secs}`
 }
 
-// 停止封面旋转动画
-function stopRotation() {
-  if (rotationAnimationId.value) {
-    cancelAnimationFrame(rotationAnimationId.value)
-    rotationAnimationId.value = null
-    // 保存当前角度
-    lastPausedRotation.value = coverRotation.value
-  }
-}
-
-// 重置封面旋转角度
-function resetRotation() {
-  // 如果正在旋转，先停止
-  stopRotation()
-  
-  // 动画过渡到0度
-  const startRotation = coverRotation.value
-  const startTime = performance.now()
-  const duration = 800 // 过渡时间，毫秒
-  
-  const animateReset = (currentTime: number) => {
-    const elapsedTime = currentTime - startTime
-    const progress = Math.min(elapsedTime / duration, 1)
-    
-    // 使用缓动函数使动画更自然
-    const easeOutProgress = 1 - Math.pow(1 - progress, 3)
-    coverRotation.value = startRotation * (1 - easeOutProgress)
-    
-    if (progress < 1) {
-      requestAnimationFrame(animateReset)
-    } else {
-      coverRotation.value = 0
-      lastPausedRotation.value = 0 // 重置暂停角度
-    }
-  }
-  
-  requestAnimationFrame(animateReset)
-}
-
-// 计算属性：封面旋转样式
-const coverRotationStyle = computed(() => {
-  return {
-    transform: `rotate(${coverRotation.value}deg)`
-  }
-})
+const formattedCurrentTime = computed(() => formatTime(currentTime.value))
+const formattedDuration = computed(() => formatTime(duration.value))
 
 // 获取网易云音乐排行榜数据
 async function fetchMusicRanking() {
@@ -135,8 +75,6 @@ async function fetchMusicRanking() {
       throw new Error('获取音乐排行榜失败')
     }
     
-    console.log(`成功获取听歌排行榜，共 ${data.weekData.length} 首歌曲`)
-    
     // 处理所有的歌曲数据
     const songs = data.weekData.map((item: any) => ({
       id: String(item.song.id),
@@ -148,10 +86,8 @@ async function fetchMusicRanking() {
     // 打乱歌曲顺序以增强随机性
     const shuffledSongs = shuffleArray([...songs])
     favoritePlaylist.value = shuffledSongs
-    
-    console.log(`排行榜数据处理完成，共 ${favoritePlaylist.value.length} 首歌曲可播放`)
   } catch (error) {
-    console.error('获取音乐排行榜失败:', error)
+    // 移除调试信息，但保留错误处理逻辑
     hasError.value = true
     
     // 如果之前已经有数据，保留现有数据
@@ -185,8 +121,6 @@ async function fetchSongDetailAndPlay(song: any) {
   isLoading.value = true
   
   try {
-    console.log(`正在获取歌曲 "${song.name}" 的URL...`)
-    
     // 获取音乐URL，添加时间戳避免缓存
     const musicResponse = await fetch(addCorsProxy(`https://163api.qijieya.cn/song/url?id=${song.id}&timestamp=${new Date().getTime()}`))
     const musicData = await musicResponse.json()
@@ -201,48 +135,51 @@ async function fetchSongDetailAndPlay(song: any) {
     
     if (!musicData.data[0]?.url) {
       // 如果URL为空，可能是因为版权限制
-      console.warn(`歌曲 "${song.name}" 无法播放，可能是因为版权限制，尝试播放下一首`)
       playNextSong()
       return
     }
     
-    console.log(`成功获取歌曲URL: ${musicData.data[0].url}`)
+    // 优化封面图片URL，添加尺寸参数限制为80x80
+    let coverUrl = song.cover
+    if (coverUrl && coverUrl.includes('music.126.net')) {
+      // 移除已有的参数
+      coverUrl = coverUrl.split('?')[0]
+      // 添加尺寸限制参数
+      coverUrl += '?param=80y80'
+    }
     
     // 创建完整的歌曲信息对象
     const songInfo = {
       name: song.name,
       artist: song.artist,
-      cover: song.cover,
+      cover: coverUrl,
       url: musicData.data[0].url
     }
     
     // 使用audioService播放音乐
     const audioId = `netease-${song.id}`
-    currentSongInfo.value = { ...song, id: audioId }
+    currentSongInfo.value = { ...song, id: audioId, cover: coverUrl }
     
     // 播放音频
     audioService.play(audioId, songInfo)
       .then(() => {
         isPlaying.value = true
         showTitle.value = true
-        startRotation()
         
         // 发送歌曲信息到全局播放器
         audioManager.emit('song-info-update', JSON.stringify({
           id: audioId,
           name: song.name,
           artist: song.artist,
-          cover: song.cover,
+          cover: coverUrl,
           isPlaying: true,
           progress: 0,
           duration: 0,
           currentTime: 0
         }))
-        
-        console.log(`正在播放: ${song.name} - ${song.artist}`)
       })
-      .catch(error => {
-        console.error(`播放失败: ${song.name}`, error)
+      .catch(() => {
+        // 恢复播放失败，移除调试信息
         isPlaying.value = false
         showTitle.value = false
         
@@ -250,7 +187,7 @@ async function fetchSongDetailAndPlay(song: any) {
         setTimeout(() => playNextSong(), 1000)
       })
   } catch (error) {
-    console.error(`获取歌曲详情失败: ${song.name}`, error)
+    // 移除调试信息，保留错误处理逻辑
     isPlaying.value = false
     showTitle.value = false
     
@@ -266,7 +203,6 @@ function playRandomSong() {
   if (isLoading.value) return
   
   if (favoritePlaylist.value.length === 0) {
-    console.warn('歌单为空，无法播放')
     // 尝试重新获取歌单
     fetchMusicRanking()
     return
@@ -276,8 +212,6 @@ function playRandomSong() {
   const randomIndex = Math.floor(Math.random() * favoritePlaylist.value.length)
   currentSongIndex.value = randomIndex
   const randomSong = favoritePlaylist.value[randomIndex]
-  
-  console.log(`随机选择歌曲: ${randomSong.name}，索引: ${randomIndex}，共${favoritePlaylist.value.length}首`)
   
   // 获取详细信息并播放
   fetchSongDetailAndPlay(randomSong)
@@ -307,7 +241,6 @@ function stopPlayAndReset() {
   // 恢复按钮状态
   isPlaying.value = false
   showTitle.value = false
-  stopRotation()
 }
 
 // 处理下一首按钮点击事件
@@ -326,19 +259,126 @@ function handleNextSong(e) {
 
 // 点击按钮处理
 function handleButtonClick() {
-  if (showTitle.value && !isPlaying.value) {
-    // 如果显示标题但不在播放状态（可能是全局播放器暂停了），直接播放新歌曲
+  if (isLoading.value) return
+  
+  if (!showTitle.value) {
+    // 如果没有显示标题（第一次播放），播放随机歌曲
     playRandomSong()
-  } else if (!showTitle.value) {
-    // 如果没有显示标题，播放随机歌曲
-    playRandomSong()
-  } else if (isPlaying.value) {
-    // 如果正在播放，暂停
-    audioService.pause()
-    audioManager.pauseCurrent(currentSongInfo.value.id)
-    isPlaying.value = false
-    stopRotation()
+  } else {
+    // 如果已经有歌曲，只切换播放状态，不切换歌曲
+    if (isPlaying.value) {
+      // 如果正在播放，暂停
+      audioService.pause()
+      audioManager.pauseCurrent(currentSongInfo.value.id)
+      isPlaying.value = false
+    } else {
+      // 如果已暂停，继续播放当前歌曲
+      audioService.play(currentSongInfo.value.id, {
+        name: currentSongInfo.value.name,
+        artist: currentSongInfo.value.artist,
+        cover: currentSongInfo.value.cover,
+        url: ''  // 服务会使用现有的音频对象
+      }, currentTime.value)
+      .then(() => {
+        isPlaying.value = true
+      })
+      .catch(() => {
+        // 恢复播放失败，移除调试信息
+        isPlaying.value = false
+      })
+    }
+    
+    // 发送播放状态更新
+    audioManager.emit('play-state-change', `${currentSongInfo.value.id}:${isPlaying.value}`)
   }
+}
+
+// 进度条拖动相关函数
+function startDrag(e: MouseEvent | TouchEvent) {
+  if (!duration.value || !showTitle.value) return
+  
+  isDragging.value = true
+  
+  // 处理触摸事件或鼠标事件
+  if (e.type === 'touchstart') {
+    updateProgressFromTouch(e as TouchEvent)
+  } else {
+    updateProgressFromEvent(e as MouseEvent)
+  }
+  
+  // 添加全局事件监听
+  if (e.type === 'touchstart') {
+    document.addEventListener('touchmove', updateProgressFromTouch, { passive: false })
+    document.addEventListener('touchend', stopDrag)
+  } else {
+    document.addEventListener('mousemove', updateProgressFromEvent)
+    document.addEventListener('mouseup', stopDrag)
+  }
+}
+
+function updateProgressFromEvent(e: MouseEvent) {
+  if (!isDragging.value) return
+  
+  const progressBar = document.querySelector('.progress-bar') as HTMLElement
+  if (!progressBar) return
+  
+  const rect = progressBar.getBoundingClientRect()
+  let percent = (e.clientX - rect.left) / rect.width
+  
+  // 限制百分比在0-1之间
+  percent = Math.max(0, Math.min(1, percent))
+  
+  progress.value = percent * 100
+  currentTime.value = percent * duration.value
+}
+
+function updateProgressFromTouch(e: TouchEvent) {
+  if (!isDragging.value) return
+  
+  // 阻止触摸事件的默认行为（如滚动）
+  e.preventDefault()
+  
+  const progressBar = document.querySelector('.progress-bar') as HTMLElement
+  if (!progressBar) return
+  
+  const touch = e.touches[0] || e.changedTouches[0]
+  const rect = progressBar.getBoundingClientRect()
+  let percent = (touch.clientX - rect.left) / rect.width
+  
+  // 限制百分比在0-1之间
+  percent = Math.max(0, Math.min(1, percent))
+  
+  progress.value = percent * 100
+  currentTime.value = percent * duration.value
+}
+
+function stopDrag(e?: MouseEvent | TouchEvent) {
+  if (!isDragging.value) return
+  
+  isDragging.value = false
+  
+  // 设置音频播放位置
+  audioService.seek(currentTime.value)
+  
+  // 移除全局事件监听
+  document.removeEventListener('mousemove', updateProgressFromEvent)
+  document.removeEventListener('mouseup', stopDrag)
+  document.removeEventListener('touchmove', updateProgressFromTouch)
+  document.removeEventListener('touchend', stopDrag)
+}
+
+function setProgress(e: MouseEvent) {
+  if (!showTitle.value || isDragging.value) return
+  
+  const progressBar = e.currentTarget as HTMLElement
+  const rect = progressBar.getBoundingClientRect()
+  const percent = (e.clientX - rect.left) / rect.width
+  
+  progress.value = percent * 100
+  currentTime.value = percent * duration.value
+  
+  // 设置音频播放位置
+  audioService.seek(currentTime.value)
 }
 
 // 鼠标进入封面区域
@@ -379,16 +419,9 @@ function setupEventListeners() {
           const newPlayingState = isPlayingStr === 'true'
           // 同步按钮状态
           isPlaying.value = newPlayingState
-
-          // 如果全局播放器停止了播放，更新旋转状态
-          if (newPlayingState) {
-            startRotation()
-          } else {
-            stopRotation()
-          }
         }
       } catch (e) {
-        console.error('解析播放状态信息失败', e)
+        // 移除调试信息
       }
     })
   )
@@ -399,7 +432,6 @@ function setupEventListeners() {
       if (id && isPlaying.value && currentSongInfo.value.id && id !== currentSongInfo.value.id) {
         // 如果切换到其他音频，更新按钮状态但保持标题
         isPlaying.value = false
-        stopRotation()
       }
     })
   )
@@ -409,6 +441,24 @@ function setupEventListeners() {
     audioManager.on('player-closed', () => {
       // 全局播放器关闭时，重置按钮状态
       stopPlayAndReset()
+    })
+  )
+  
+  // 订阅进度更新事件
+  unsubscribers.push(
+    audioManager.on('progress-update', (data) => {
+      try {
+        const [id, time, dur] = data.split(':');
+        if (id === currentSongInfo.value.id) {
+          currentTime.value = parseFloat(time);
+          if (dur && parseFloat(dur) > 0) {
+            duration.value = parseFloat(dur);
+          }
+          progress.value = (currentTime.value / duration.value) * 100 || 0;
+        }
+      } catch (e) {
+        // 移除调试信息
+      }
     })
   )
 }
@@ -442,57 +492,88 @@ onMounted(() => {
 onUnmounted(() => {
   // 清理事件监听
   unsubscribers.forEach(unsub => unsub())
-  // 停止封面旋转
-  stopRotation()
 })
 </script>
 
 <template>
   <div class="home-music-player" ref="containerRef" :class="{ 'animate-in': isVisible }">
-    <h3 class="section-title">随机音乐</h3>
-    <p class="section-description">歌曲随机来自我的网易云听歌排行榜，感谢API提供者！</p>
-    <div class="music-content">
+    <h3 class="section-title" :class="{ 'animate-in': isVisible }">随机音乐</h3>
+    <p class="section-description" :class="{ 'animate-in': isVisible }" style="--anim-delay: 0.1s">歌曲随机来自我的网易云听歌排行榜，感谢API提供者！</p>
+    <div class="music-content" :class="{ 'animate-in': isVisible }" style="--anim-delay: 0.2s">
       <div class="player-container">
         <!-- 封面区域 -->
-        <div class="cover-section" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
-          <div class="cover-container" @click="handleButtonClick">
-            <div class="rotating-cover" :style="coverRotationStyle">
-              <img v-if="currentSongInfo.cover && showTitle" :src="currentSongInfo.cover" :alt="currentSongInfo.name" class="cover-image" />
-              <div v-else class="cover-placeholder">
-                <div class="music-note">♪</div>
+        <div class="cover-container" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
+          <div class="cover-image-container">
+            <!-- 骨架屏 -->
+            <div v-if="isLoading && !currentSongInfo.cover" class="skeleton-cover">
+              <div class="skeleton-pulse"></div>
+            </div>
+            <!-- 封面图片 -->
+            <img v-else-if="currentSongInfo.cover && showTitle" 
+              :src="currentSongInfo.cover" 
+              loading="lazy"
+              :alt="currentSongInfo.name" 
+              class="cover-image" />
+            <!-- 默认占位图 -->
+            <div v-else class="cover-placeholder">
+              <div class="music-note">♪</div>
+            </div>
+          </div>
+          
+          <!-- 播放按钮 - 在暂停或未播放时显示 -->
+          <div v-if="!isPlaying" class="play-overlay" @click="handleButtonClick">
+            <div class="play-button">
+              <span>▶</span>
+            </div>
+          </div>
+          
+          <!-- 暂停按钮 - 在播放时显示（小角落） -->
+          <div v-if="isPlaying" class="pause-button" @click="handleButtonClick">
+            <span>❚❚</span>
+          </div>
+        </div>
+        
+        <!-- 控制区域 -->
+        <div class="controls-container">
+          <!-- 上部分：歌曲信息和时间 -->
+          <div class="player-top">
+            <div class="song-info">
+              <div class="title-container">
+                <h3 v-if="showTitle" class="song-title" :style="titleStyle">{{ currentSongInfo.name }}</h3>
+                <div v-else class="button-text">{{ buttonText }}</div>
+              </div>
+              <div v-if="showTitle" class="artist-container">
+                <span class="song-artist">{{ currentSongInfo.artist }}</span>
               </div>
             </div>
             
-            <!-- 播放按钮 - 在暂停或未播放时显示 -->
-            <div v-if="!isPlaying" class="play-overlay">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="5 3 19 12 5 21 5 3"></polygon>
-              </svg>
+            <!-- 时间信息 -->
+            <div v-if="showTitle" class="time-info">
+              <div class="time-display">
+                <span class="current-time">{{ formattedCurrentTime }}</span>
+                <span class="duration"> / {{ formattedDuration }}</span>
+              </div>
             </div>
-            
-            <!-- 暂停按钮 - 在播放且鼠标悬停时显示 -->
-            <div v-if="isPlaying && isHovering" class="pause-overlay">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="6" y1="4" x2="6" y2="20"></line>
-                <line x1="18" y1="4" x2="18" y2="20"></line>
-              </svg>
+          </div>
+          
+          <!-- 进度条 -->
+          <div v-if="showTitle" 
+               class="progress-container" 
+               @click="setProgress" 
+               @mousedown="startDrag"
+               @touchstart="startDrag"
+               :class="{ 'dragging': isDragging }">
+            <div class="progress-bar">
+              <div class="progress-current" :style="{ width: `${progress}%` }"></div>
             </div>
           </div>
         </div>
         
-        <!-- 信息区域 -->
-        <div class="info-section">
-          <div class="song-info" v-if="showTitle">
-            <div class="song-title" :style="titleStyle">{{ currentSongInfo.name }}</div>
-            <div class="song-artist">{{ currentSongInfo.artist }}</div>
-          </div>
-          <div class="button-text" v-else>
-            {{ buttonText }}
-          </div>
-          
-          <!-- 下一首按钮 -->
-          <div class="next-button" @click.stop="handleNextSong">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <!-- 控制面板 - 新增的垂直控制区域 -->
+        <div class="controls-panel" @click.stop="handleNextSong">
+          <!-- 下一首图标 -->
+          <div class="control-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polygon points="5 4 15 12 5 20 5 4"></polygon>
               <line x1="19" y1="5" x2="19" y2="19"></line>
             </svg>
@@ -504,19 +585,63 @@ onUnmounted(() => {
       <div v-if="isLoading" class="loading-indicator">
         <div class="spinner"></div>
       </div>
+
+      <!-- 添加一个固定高度的容器包裹小提示 -->
+      <div class="tip-container">
+        <!-- 添加小提示 -->
+        <p class="music-tip" :class="{ 'animate-in': isVisible }" style="--anim-delay: 0.3s">只有"下一首"的播放器。<br />错过了?——等它再次路过你耳边吧，狼不回头。</p>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+/* 添加小提示容器样式 */
+.tip-container {
+  min-height: 40px; /* 为提示预留固定高度 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 8px;
+  overflow: hidden; /* 防止内容溢出 */
+}
+
+/* 添加小提示样式 */
+.music-tip {
+  font-size: 0.75rem;
+  color: var(--vp-c-text-3);
+  text-align: center;
+  font-style: italic;
+  opacity: 0;
+  transform: translateY(20px);
+  position: relative;
+  height: auto;
+  z-index: 1;
+  width: 100%;
+  will-change: transform;
+  margin: 0; /* 移除margin-top */
+  transition: none; /* 防止任何未知的过渡效果 */
+}
+
+.animate-in.music-tip {
+  animation: fadeInUp 0.6s ease forwards;
+  animation-delay: var(--anim-delay, 0s);
+  animation-fill-mode: both; /* 确保保持最终状态 */
+  transform: translateY(0); /* 动画结束时的状态 */
+}
+
 .home-music-player {
   margin: 2rem 0;
   opacity: 0;
   transform: translateY(20px);
+  position: relative;
+  overflow: hidden;
 }
 
 .animate-in {
   animation: fadeInUp 0.6s ease forwards;
+  animation-delay: var(--anim-delay, 0s);
+  animation-fill-mode: forwards; /* 确保保持动画最终状态 */
 }
 
 @keyframes fadeInUp {
@@ -531,102 +656,65 @@ onUnmounted(() => {
 }
 
 .section-title {
-  font-size: 1.3rem;
+  font-size: 1.4rem;
   font-weight: 600;
-  margin-bottom: 1rem;
   color: var(--vp-c-text-1);
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--vp-c-divider);
+  margin-bottom: 16px;
+  opacity: 0;
+  transform: translateY(20px);
 }
 
 .section-description {
   font-size: 0.9rem;
   color: var(--vp-c-text-2);
-  margin-top: -0.5rem;
-  margin-bottom: 1rem;
+  margin-top: 8px;
+  margin-bottom: 16px;
+  opacity: 0;
+  transform: translateY(20px);
 }
 
 .music-content {
-  margin-top: 0.5rem;
+  margin-top: 16px;
   position: relative;
+  opacity: 0;
+  transform: translateY(20px);
+  display: flex;
+  flex-direction: column;
+  min-height: 140px; /* 设置最小高度 */
+  contain: layout paint; /* 隔离布局和绘制影响 */
 }
 
 .player-container {
   display: flex;
-  align-items: center;
+  width: 100%;
+  align-items: stretch;
   background-color: var(--vp-c-bg-soft);
-  border-radius: 12px;
-  padding: 10px;
+  border-radius: 6px;
+  max-width: 100%;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
-  max-width: 400px;
-}
-
-.player-container:hover {
-  background-color: var(--vp-c-bg-mute);
+  overflow: hidden;
+  position: relative;
+  height: 80px;
+  will-change: contents; /* 优化性能 */
+  contain: layout; /* 隔离布局变化 */
 }
 
 /* 封面区域 */
-.cover-section {
-  width: 60px;
-  height: 60px;
+.cover-container {
+  width: 80px;
+  height: 80px;
   position: relative;
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.cover-container {
-  width: 48px;
-  height: 48px;
   overflow: hidden;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-  position: relative;
-  cursor: pointer;
-  border-radius: 50%; /* 使封面成为圆形 */
+  user-select: none;
 }
 
-/* 旋转封面容器 */
-.rotating-cover {
+.cover-image-container {
   width: 100%;
   height: 100%;
   position: relative;
-  /* 使用更平滑的过渡效果 */
-  transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  will-change: transform; /* 提示浏览器优化变换 */
-}
-
-/* 播放遮罩层 */
-.play-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-}
-
-/* 暂停遮罩层 */
-.pause-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.cover-section:hover .pause-overlay {
-  opacity: 1;
 }
 
 .cover-image {
@@ -649,40 +737,151 @@ onUnmounted(() => {
   color: white;
 }
 
-/* 信息区域 */
-.info-section {
-  flex-grow: 1;
-  padding: 0 10px;
+/* 骨架屏样式 */
+.skeleton-cover {
+  width: 100%;
+  height: 100%;
+  background-color: var(--vp-c-bg-mute);
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-pulse {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    var(--vp-c-bg-mute) 25%, 
+    var(--vp-c-bg-soft) 50%, 
+    var(--vp-c-bg-mute) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* 播放控制遮罩 */
+.play-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  animation: fadeIn 0.2s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  pointer-events: auto; /* 确保点击事件正常工作 */
+  z-index: 5; /* 提高层级确保可点击 */
+}
+
+.play-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 16px;
+}
+
+.play-button span {
+  margin-left: 3px;
+}
+
+/* 暂停按钮 */
+.pause-button {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 9px;
+  cursor: pointer;
+  animation: fadeIn 0.2s ease;
+  z-index: 2;
+}
+
+/* 控制区样式 */
+.controls-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px 8px; /* 减小底部内边距 */
+  position: relative;
+  min-width: 0; /* 确保内容可以被压缩 */
+  justify-content: space-between; /* 确保内容均匀分布 */
+  background: transparent; /* 使用透明背景 */
+}
+
+.player-top {
+  display: flex;
   justify-content: space-between;
-  min-width: 0; /* 允许内容收缩 */
-  overflow: hidden;
+  align-items: flex-start;
+  height: 40px;
+  position: relative;
+  margin-bottom: 4px;
+  contain: layout; /* 隔离布局变化 */
 }
 
 .song-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
   min-width: 0;
   overflow: hidden;
-  flex: 1;
-  padding-right: 5px; /* 为下一首按钮留出空间 */
+  padding-right: 60px; /* 为时间信息留出固定空间 */
+}
+
+.title-container {
+  display: block;
+  overflow: hidden;
 }
 
 .song-title {
-  font-weight: 500;
-  color: var(--vp-c-text-1);
+  margin: 0;
   font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--vp-c-text-1);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
+  line-height: 1.2; /* 调整行高 */
+}
+
+.artist-container {
+  margin-top: 4px; /* 增加与标题的间距 */
+  width: 100%;
+  overflow: hidden;
 }
 
 .song-artist {
   font-size: 0.75rem;
   color: var(--vp-c-text-2);
+  opacity: 0.8;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-top: 2px;
+  display: block;
+  line-height: 1; /* 紧凑的行高 */
 }
 
 .button-text {
@@ -691,47 +890,156 @@ onUnmounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-weight: 500;
 }
 
-/* "下一首"按钮样式 */
-.next-button {
+/* 时间信息样式 */
+.time-info {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-size: 0.75rem;
+  color: var(--vp-c-text-2);
+  opacity: 0.8;
+  width: 55px;
+  text-align: right;
+}
+
+.time-display {
+  white-space: nowrap;
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.current-time {
+  color: var(--vp-c-brand);
+  display: inline-block;
+  width: 28px;
+  text-align: right;
+}
+
+.duration {
+  color: var(--vp-c-text-2);
+  width: 31px;
+  text-align: left;
+}
+
+/* 进度条样式 */
+.progress-container {
+  width: 100%;
+  height: 16px; /* 减小高度 */
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  color: var(--vp-c-text-2);
+  position: relative;
+  margin-top: 0; /* 移除顶部边距 */
   cursor: pointer;
-  flex-shrink: 0;
-  opacity: 0.8;
-  margin-left: 8px;
-  transition: all 0.2s ease;
-  background-color: var(--vp-c-bg-alt);
-  border-radius: 50%;
+  touch-action: none;
+  padding-top: 2px; /* 增加内边距 */
 }
 
-.next-button:hover {
-  color: var(--vp-c-brand);
-  transform: scale(1.1);
+.progress-container.dragging {
+  cursor: grabbing;
+}
+
+.progress-bar {
+  height: 4px;
+  width: 100%;
+  background-color: var(--vp-c-divider);
+  border-radius: 2px;
+  position: relative;
+  overflow: visible;
+}
+
+.progress-current {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: var(--vp-c-brand);
+  border-radius: 2px;
+  transition: width 0.1s linear;
+}
+
+/* 拖动时禁用过渡效果 */
+.dragging .progress-current {
+  transition: none;
+}
+
+/* 圆形滑块 */
+.progress-current::after {
+  content: '';
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--vp-c-brand);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.progress-container:hover .progress-current::after,
+.dragging .progress-current::after {
+  opacity: 1;
+}
+
+/* 新增：控制面板样式 */
+.controls-panel {
+  background-color: var(--vp-c-bg-alt);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 30px; /* 固定宽度 */
+  height: 100%;
+  flex-shrink: 0; /* 防止被挤压 */
+  border-left: 1px solid var(--vp-c-divider);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.controls-panel:hover {
   background-color: var(--vp-c-bg-mute);
 }
 
-/* 当按钮显示标题且文字过长时应用滚动效果 */
-@keyframes marquee {
-  0%, 15% {
-    transform: translateX(0);
-  }
-  85%, 100% {
-    transform: translateX(calc(-100% + 250px));
-  }
+.controls-panel:active {
+  background-color: var(--vp-c-brand-dimm);
 }
 
-/* 加载指示器 */
-.loading-indicator {
+.control-icon {
+  color: var(--vp-c-text-2);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: 10px;
+  width: 24px;
+  height: 24px;
+  -webkit-tap-highlight-color: transparent; /* 移除移动端点击高亮 */
+}
+
+.controls-panel:hover .control-icon {
+  color: var(--vp-c-text-1);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 修改加载指示器，使其不影响布局 */
+.loading-indicator {
+  position: absolute;
+  top: 40px; /* 位于播放器容器之上 */
+  left: 50%;
+  transform: translateX(-50%);
+  height: 20px;
+  z-index: 10;
+  width: auto;
+  pointer-events: none;
+  margin: 0; /* 移除margin防止影响布局 */
 }
 
 .spinner {
@@ -753,29 +1061,17 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .player-container {
     max-width: 100%;
-    padding: 8px;
+  }
+}
+
+/* 针对更窄屏幕的特别处理 */
+@media (max-width: 350px) {
+  .controls-container {
+    padding: 12px 10px;
   }
   
-  .cover-section {
-    width: 50px;
-    height: 50px;
-  }
-  
-  .cover-container {
-    width: 40px;
-    height: 40px;
-  }
-  
-  .song-title {
-    font-size: 0.85rem;
-  }
-  
-  .song-artist {
-    font-size: 0.7rem;
-  }
-  
-  .button-text {
-    font-size: 0.85rem;
+  .song-info {
+    padding-right: 50px;
   }
 }
 </style> 

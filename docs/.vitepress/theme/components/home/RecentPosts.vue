@@ -28,7 +28,7 @@ const isVisible = ref(false)
 const recentPosts = ref<Post[]>([])
 const isLoading = ref(true)
 const hasError = ref(false)
-const maxPosts = 6 // 显示最多6篇最新文章
+const maxPosts = 5 // 显示最多6篇最新文章
 
 // 使用VueUse的useIntersectionObserver来检测元素是否进入视口
 onMounted(() => {

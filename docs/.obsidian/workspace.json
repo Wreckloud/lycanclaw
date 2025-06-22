@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "thoughts/电子音乐.md",
+                "file": "thoughts/献给狼，也献给你.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "电子音乐"
+              "title": "献给狼，也献给你"
             }
           }
         ]
@@ -40,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "thoughts/电子音乐.md",
+                "file": "thoughts/献给狼，也献给你.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "电子音乐 的大纲"
+              "title": "献给狼，也献给你 的大纲"
             }
           },
           {
@@ -154,12 +154,12 @@
   },
   "active": "f1a5ae53903c2eca",
   "lastOpenFiles": [
+    "thoughts/电子音乐.md",
+    "thoughts/献给狼，也献给你.md",
     "knowledge/前端框架/Router-路由缓存问题.md",
-    "thoughts/未命名.md",
     "knowledge/前端框架/Vue 封装逻辑函数.md",
     "knowledge/前端框架/VUE 3-组合式API.md",
     "knowledge/前端框架/VUE 2-渐进式框架.md",
-    "thoughts/电子音乐.md",
     "public/images/文章资源/电子音乐/file-20250620113207311.jpg",
     "public/images/文章资源/电子音乐",
     "music-player-demo.md",
