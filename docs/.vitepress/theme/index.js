@@ -16,6 +16,7 @@ import GlobalMusicPlayer from './components/common/GlobalMusicPlayer.vue';
 // 导入音乐播放器组件
 import SimpleMusicPlayer from './components/common/SimpleMusicPlayer.vue';
 import HomeMusicPlayer from './components/home/HomeMusicPlayer.vue';
+import BilibiliPlayer from './components/common/BilibiliPlayer.vue';
 
 // 导入自定义样式
 import './styles/index.css';
@@ -129,6 +130,7 @@ export default {
     app.component('SimpleMusicPlayer', SimpleMusicPlayer);
     app.component('GlobalMusicPlayer', GlobalMusicPlayer);
     app.component('HomeMusicPlayer', HomeMusicPlayer);
+    app.component('BilibiliPlayer', BilibiliPlayer);
     
     // 全局注册echarts
     app.config.globalProperties.$echarts = echarts;
