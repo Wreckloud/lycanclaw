@@ -6,6 +6,7 @@
 
 export const recommendedPosts = [
   // 在这里添加您想要推荐的文章
+  '/thoughts/我从人间走过.html',
   '/thoughts/每个人都拥有的言灵.html',
   '/thoughts/光不在彼方.html',
   '/thoughts/獠牙下的野蔷薇.html',
