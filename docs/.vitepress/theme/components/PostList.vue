@@ -128,7 +128,6 @@ onMounted(async () => {
     thoughtsPosts.value = posts.filter(post => 
       post.frontmatter.publish === true && 
       post.relativePath.startsWith('thoughts/') &&
-      !post.relativePath.startsWith('drafts/') &&
       post.relativePath !== 'thoughts/index.md' &&
       post.relativePath !== 'thoughts/tags.md'
     )
