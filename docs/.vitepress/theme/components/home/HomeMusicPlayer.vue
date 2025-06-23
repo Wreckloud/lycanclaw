@@ -32,6 +32,9 @@ const currentTime = ref(0)
 const duration = ref(0)
 const progress = ref(0)
 const isDragging = ref(false)  // 新增：是否正在拖动进度条
+const isButtonDisabled = ref(false) // 添加按钮禁用状态
+const preloadedSongs = ref<any[]>([]) // 预加载歌曲队列
+const isFetchingNext = ref(false) // 是否正在获取下一首歌曲
 
 // 计算属性：按钮显示的文本，随机听或当前歌曲标题
 const buttonText = computed(() => {
@@ -170,28 +173,41 @@ function shuffleArray<T>(array: T[]): T[] {
   return array;
 }
 
-// 获取歌曲详细信息并播放（包括音频URL）
-async function fetchSongDetailAndPlay(song: any) {
-  if (typeof window === 'undefined' || !song.id) return
+// 预加载下一首歌曲
+async function preloadNextSong() {
+  // 如果正在获取歌曲或歌单为空，则返回
+  if (isFetchingNext.value || favoritePlaylist.value.length === 0) return
   
-  isLoading.value = true
+  // 如果预加载队列已有两首歌曲，不再重复加载
+  if (preloadedSongs.value.length >= 2) return
+  
+  isFetchingNext.value = true
   
   try {
-    // 获取音乐URL，添加时间戳避免缓存
-    const musicResponse = await fetch(addCorsProxy(`https://163api.qijieya.cn/song/url?id=${song.id}&timestamp=${new Date().getTime()}`))
+    // 随机选择歌曲，避免选择当前播放的歌曲和已预加载的歌曲
+    let randomIndex, nextSong;
+    const existingIds = new Set([
+      ...preloadedSongs.value.map(s => s.id),
+      currentSongInfo.value.id?.replace('netease-', '')
+    ].filter(Boolean));
+    
+    let attempts = 0;
+    const maxAttempts = Math.min(10, favoritePlaylist.value.length);
+    
+    do {
+      randomIndex = Math.floor(Math.random() * favoritePlaylist.value.length);
+      nextSong = favoritePlaylist.value[randomIndex];
+      attempts++;
+    } while (existingIds.has(nextSong.id) && attempts < maxAttempts);
+    
+    // 获取音乐URL
+    const musicResponse = await fetch(addCorsProxy(`https://163api.qijieya.cn/song/url?id=${nextSong.id}&timestamp=${new Date().getTime()}`))
     const musicData = await musicResponse.json()
     
-    if (musicData.code !== 200) {
-      throw new Error(`获取音乐URL失败: 错误代码 ${musicData.code}`)
-    }
-    
-    if (!musicData.data || musicData.data.length === 0) {
-      throw new Error('获取音乐URL失败: 返回数据为空')
-    }
-    
-    if (!musicData.data[0]?.url) {
-      // 如果URL为空，可能是因为版权限制
-      playNextSong()
+    if (musicData.code !== 200 || !musicData.data || musicData.data.length === 0 || !musicData.data[0]?.url) {
+      // 如果获取失败，尝试另一首歌
+      isFetchingNext.value = false
+      setTimeout(() => preloadNextSong(), 500);
       return
     }
     
@@ -202,7 +218,7 @@ async function fetchSongDetailAndPlay(song: any) {
     }
     
     // 简化封面处理，只添加大小参数
-    let coverUrl = song.cover
+    let coverUrl = nextSong.cover
     if (coverUrl && coverUrl.includes('music.126.net')) {
       // 确保使用HTTPS
       if (coverUrl.startsWith('http:')) {
@@ -212,6 +228,87 @@ async function fetchSongDetailAndPlay(song: any) {
       if (!coverUrl.includes('param=')) {
         coverUrl += '?param=80y80'
       }
+    }
+    
+    // 添加到预加载队列
+    preloadedSongs.value.push({
+      ...nextSong,
+      url: musicUrl,
+      cover: coverUrl
+    })
+    
+    // 如果预加载队列中的歌曲数量仍然少于2首，继续预加载
+    if (preloadedSongs.value.length < 2) {
+      setTimeout(() => preloadNextSong(), 300);
+    }
+  } catch (error) {
+    console.error('预加载歌曲失败:', error)
+  } finally {
+    isFetchingNext.value = false
+  }
+}
+
+// 获取歌曲详细信息并播放（包括音频URL）
+async function fetchSongDetailAndPlay(song: any) {
+  if (typeof window === 'undefined' || !song.id) return
+  
+  isLoading.value = true
+  
+  try {
+    // 检查是否有预加载的URL
+    let musicUrl = ''
+    let coverUrl = song.cover
+    
+    // 如果是从预加载队列中获取的歌曲，直接使用
+    const preloadedSong = preloadedSongs.value.find(s => s.id === song.id)
+    if (preloadedSong) {
+      musicUrl = preloadedSong.url
+      coverUrl = preloadedSong.cover
+      
+      // 使用后从预加载队列中移除
+      preloadedSongs.value = preloadedSongs.value.filter(s => s.id !== song.id)
+      
+      // 立即开始预加载下一首
+      setTimeout(() => preloadNextSong(), 100)
+    } else {
+      // 获取音乐URL，添加时间戳避免缓存
+      const musicResponse = await fetch(addCorsProxy(`https://163api.qijieya.cn/song/url?id=${song.id}&timestamp=${new Date().getTime()}`))
+      const musicData = await musicResponse.json()
+      
+      if (musicData.code !== 200) {
+        throw new Error(`获取音乐URL失败: 错误代码 ${musicData.code}`)
+      }
+      
+      if (!musicData.data || musicData.data.length === 0) {
+        throw new Error('获取音乐URL失败: 返回数据为空')
+      }
+      
+      if (!musicData.data[0]?.url) {
+        // 如果URL为空，可能是因为版权限制
+        playNextSong()
+        return
+      }
+      
+      // 确保音乐URL使用HTTPS
+      musicUrl = musicData.data[0].url
+      if (musicUrl && musicUrl.startsWith('http:')) {
+        musicUrl = musicUrl.replace('http:', 'https:')
+      }
+      
+      // 简化封面处理，只添加大小参数
+      if (coverUrl && coverUrl.includes('music.126.net')) {
+        // 确保使用HTTPS
+        if (coverUrl.startsWith('http:')) {
+          coverUrl = coverUrl.replace('http:', 'https:')
+        }
+        // 添加尺寸参数
+        if (!coverUrl.includes('param=')) {
+          coverUrl += '?param=80y80'
+        }
+      }
+      
+      // 开始预加载下一首
+      setTimeout(() => preloadNextSong(), 100)
     }
     
     // 创建完整的歌曲信息对象
@@ -274,7 +371,15 @@ function playRandomSong() {
     return
   }
   
-  // 真正随机选择一首歌
+  // 优先使用预加载的歌曲
+  if (preloadedSongs.value.length > 0) {
+    const song = preloadedSongs.value[0];
+    currentSongIndex.value = favoritePlaylist.value.findIndex(s => s.id === song.id);
+    fetchSongDetailAndPlay(song);
+    return;
+  }
+  
+  // 没有预加载歌曲时随机选择
   const randomIndex = Math.floor(Math.random() * favoritePlaylist.value.length)
   currentSongIndex.value = randomIndex
   const randomSong = favoritePlaylist.value[randomIndex]
@@ -287,7 +392,15 @@ function playRandomSong() {
 function playNextSong() {
   if (isLoading.value || favoritePlaylist.value.length === 0) return
   
-  // 随机选择下一首，而不是顺序播放
+  // 优先使用预加载的歌曲
+  if (preloadedSongs.value.length > 0) {
+    const song = preloadedSongs.value[0];
+    currentSongIndex.value = favoritePlaylist.value.findIndex(s => s.id === song.id);
+    fetchSongDetailAndPlay(song);
+    return;
+  }
+  
+  // 没有预加载歌曲时随机选择
   const nextIndex = Math.floor(Math.random() * favoritePlaylist.value.length)
   currentSongIndex.value = nextIndex
   const nextSong = favoritePlaylist.value[nextIndex]
@@ -312,6 +425,15 @@ function stopPlayAndReset() {
 // 处理下一首按钮点击事件
 function handleNextSong(e) {
   e.stopPropagation() // 防止事件冒泡到父元素
+  
+  // 如果按钮已禁用，不执行操作
+  if (isButtonDisabled.value || isLoading.value) return
+  
+  // 禁用按钮1秒
+  isButtonDisabled.value = true
+  setTimeout(() => {
+    isButtonDisabled.value = false
+  }, 1000)
   
   // 如果当前正在播放，先停止
   if (isPlaying.value && currentSongInfo.value.id) {
@@ -457,6 +579,15 @@ function handleMouseLeave() {
   isHovering.value = false
 }
 
+// 计算网易云音乐链接
+const neteaseLink = computed(() => {
+  if (currentSongInfo.value.id && currentSongInfo.value.id.startsWith('netease-')) {
+    const id = currentSongInfo.value.id.replace('netease-', '');
+    return `https://music.163.com/#/song?id=${id}`;
+  }
+  return null;
+});
+
 // 订阅全局播放器事件
 const unsubscribers: Array<() => void> = []
 
@@ -552,6 +683,12 @@ onMounted(() => {
   
   // 获取排行榜数据
   fetchMusicRanking()
+    .then(() => {
+      // 歌单加载后预加载一首歌曲
+      if (favoritePlaylist.value.length > 0) {
+        setTimeout(() => preloadNextSong(), 1000)
+      }
+    })
   
   // 设置事件监听
   setupEventListeners()
@@ -625,7 +762,10 @@ onUnmounted(() => {
           <div class="player-top">
             <div class="song-info">
               <div class="title-container">
-                <h3 v-if="showTitle" class="song-title" :style="titleStyle">{{ currentSongInfo.name }}</h3>
+                <h3 v-if="showTitle" class="song-title" :style="titleStyle">
+                  <a v-if="neteaseLink" :href="neteaseLink" target="_blank" class="song-title-link">{{ currentSongInfo.name }}</a>
+                  <span v-else>{{ currentSongInfo.name }}</span>
+                </h3>
                 <div v-else class="button-text">{{ buttonText }}</div>
               </div>
               <div v-if="showTitle" class="artist-container">
@@ -656,7 +796,7 @@ onUnmounted(() => {
         </div>
         
         <!-- 控制面板 - 新增的垂直控制区域 -->
-        <div class="controls-panel" @click.stop="handleNextSong">
+        <div class="controls-panel" @click.stop="handleNextSong" :class="{ 'disabled': isButtonDisabled }">
           <!-- 下一首图标 -->
           <div class="control-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1128,5 +1268,23 @@ onUnmounted(() => {
   .song-info {
     padding-right: 50px;
   }
+}
+
+.song-title-link {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.song-title-link:hover {
+  color: var(--vp-c-brand);
+  text-decoration: underline;
+}
+
+/* 控制面板禁用状态 */
+.controls-panel.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 </style> 
