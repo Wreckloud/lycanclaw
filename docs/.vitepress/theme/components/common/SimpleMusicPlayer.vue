@@ -68,6 +68,14 @@ const { isDark } = useData()
 const formattedCurrentTime = computed(() => formatTime(currentTime.value))
 const formattedDuration = computed(() => formatTime(duration.value))
 
+// 计算网易云音乐链接
+const neteaseLink = computed(() => {
+  if (props.neteaseid) {
+    return `https://music.163.com/#/song?id=${props.neteaseid}`;
+  }
+  return null;
+});
+
 // 音频控制函数
 function togglePlay() {
   if (hasError.value || !isAudioReady.value) return
@@ -649,7 +657,10 @@ watch(() => songInfo.value.url, (newUrl) => {
             <div class="title-container">
               <!-- 歌曲标题骨架屏 -->
               <div v-if="isLoading && !songInfo.name" class="skeleton-title"></div>
-              <h3 v-else class="song-title">{{ songInfo.name }}</h3>
+              <h3 v-else class="song-title">
+                <a v-if="neteaseLink" :href="neteaseLink" target="_blank" class="song-title-link">{{ songInfo.name }}</a>
+                <span v-else>{{ songInfo.name }}</span>
+              </h3>
             </div>
             
             <!-- 艺术家信息（适应性显示） -->
@@ -1200,5 +1211,16 @@ watch(() => songInfo.value.url, (newUrl) => {
 /* 添加回缺少的样式 */
 .current-time {
   color: var(--vp-c-brand);
+}
+
+.song-title-link {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.song-title-link:hover {
+  color: var(--vp-c-brand);
+  text-decoration: underline;
 }
 </style> 
