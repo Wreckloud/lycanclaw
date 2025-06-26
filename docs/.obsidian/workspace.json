@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端基础/Java入门-面向对象.md",
+                "file": "thoughts/献给狼，也献给你.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Java入门-面向对象"
+              "title": "献给狼，也献给你"
             }
           }
         ]
@@ -40,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/后端基础/Java入门-面向对象.md",
+                "file": "thoughts/献给狼，也献给你.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Java入门-面向对象 的大纲"
+              "title": "献给狼，也献给你 的大纲"
             }
           },
           {
@@ -154,13 +154,13 @@
   },
   "active": "af07bcd07ce74107",
   "lastOpenFiles": [
+    "knowledge/后端基础/Java入门-面向对象.md",
     "public/images/文章资源/java入门-面向对象/file-20250626172143135.jpg",
     "public/images/文章资源/java入门-面向对象/file-20250626172132617.jpg",
     "public/images/文章资源/java入门-面向对象/file-20250626172112970.jpg",
     "public/images/文章资源/java入门-面向对象/file-20250626172103820.jpg",
     "public/images/文章资源/java入门-面向对象",
     "knowledge/后端基础/Java入门-基础语法.md",
-    "knowledge/后端基础/Java入门-面向对象.md",
     "public/images/文章资源/java入门-基础语法/file-20250626152408557.jpg",
     "public/images/文章资源/java入门-基础语法/file-20250626152355572.jpg",
     "public/images/文章资源/java入门-基础语法/file-20250626152019764.jpg",
@@ -178,7 +178,6 @@
     "thoughts/电子音乐.md",
     "knowledge/前端面试/ES6 - JavaScript 中的继承.md",
     "thoughts/献给狼，也献给你.md",
-    "public/images/首页/default-cover.png",
     "knowledge/前端框架/Router-路由缓存问题.md",
     "knowledge/前端框架/Vue 封装逻辑函数.md",
     "knowledge/前端框架/VUE 3-组合式API.md",
