@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "thoughts/献给狼，也献给你.md",
+                "file": "knowledge/后端工具库/Maven-项目构建工具.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "献给狼，也献给你"
+              "title": "Maven-项目构建工具"
             }
           }
         ]
@@ -40,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "thoughts/献给狼，也献给你.md",
+                "file": "knowledge/后端工具库/Maven-项目构建工具.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "献给狼，也献给你 的大纲"
+              "title": "Maven-项目构建工具 的大纲"
             }
           },
           {
@@ -154,30 +154,37 @@
   },
   "active": "af07bcd07ce74107",
   "lastOpenFiles": [
-    "knowledge/后端基础/Java入门-面向对象.md",
-    "public/images/文章资源/java入门-面向对象/file-20250626172143135.jpg",
-    "public/images/文章资源/java入门-面向对象/file-20250626172132617.jpg",
-    "public/images/文章资源/java入门-面向对象/file-20250626172112970.jpg",
-    "public/images/文章资源/java入门-面向对象/file-20250626172103820.jpg",
-    "public/images/文章资源/java入门-面向对象",
+    "public/images/文章资源/maven-项目构建工具/file-20250627162621679.jpg",
+    "public/images/文章资源/maven-项目构建工具/file-20250627153552089.jpg",
+    "public/images/文章资源/maven-项目构建工具/file-20250627153544893.jpg",
+    "public/images/文章资源/maven-项目构建工具/file-20250627153538570.jpg",
+    "public/images/文章资源/maven-项目构建工具/file-20250627153533957.jpg",
+    "public/images/文章资源/maven-项目构建工具/file-20250627153525761.jpg",
+    "public/images/文章资源/maven-项目构建工具/file-20250627153522190.jpg",
+    "public/images/文章资源/maven-项目构建工具/file-20250627153508896.jpg",
+    "public/images/文章资源/maven-项目构建工具/file-20250627153503483.jpg",
+    "public/images/文章资源/maven-项目构建工具/file-20250627153458995.jpg",
+    "public/images/文章资源/maven-项目构建工具/file-20250627153452052.jpg",
+    "public/images/文章资源/maven-项目构建工具",
     "knowledge/后端基础/Java入门-基础语法.md",
-    "public/images/文章资源/java入门-基础语法/file-20250626152408557.jpg",
-    "public/images/文章资源/java入门-基础语法/file-20250626152355572.jpg",
-    "public/images/文章资源/java入门-基础语法/file-20250626152019764.jpg",
+    "knowledge/后端工具库/Maven-项目构建工具.md",
+    "knowledge/后端工具库",
+    "knowledge/后端基础/Java进阶-常用API.md",
+    "knowledge/后端基础/Java入门-面向对象.md",
+    "thoughts/环境变量.md",
+    "public/images/文章资源/java进阶-常用api",
+    "thoughts/献给狼，也献给你.md",
+    "public/images/文章资源/java入门-面向对象",
     "public/images/文章资源/java入门-基础语法",
     "knowledge/前端框架/VUE 2-渐进式框架.md",
     "knowledge/后端基础",
     "thoughts/我从人间走过.md",
     "knowledge/前端面试/fetch.md",
-    "public/images/文章资源/我从人间走过/file-20250623142321302.jpg",
-    "public/images/文章资源/我从人间走过/3419caecb2fe525b072acec345af886a.png",
     "public/images/文章资源/我从人间走过",
     "thoughts/数字世界的构建手册.md",
-    "public/images/文章资源/我从人间走过/file-20250623123624602.jpg",
     "public/images/文章资源/未命名",
     "thoughts/电子音乐.md",
     "knowledge/前端面试/ES6 - JavaScript 中的继承.md",
-    "thoughts/献给狼，也献给你.md",
     "knowledge/前端框架/Router-路由缓存问题.md",
     "knowledge/前端框架/Vue 封装逻辑函数.md",
     "knowledge/前端框架/VUE 3-组合式API.md",
@@ -193,12 +200,6 @@
     "knowledge/前端基础/Javascript-进阶语法.md",
     "public/images/文章资源/每个人都拥有的言灵",
     "knowledge/前端框架/VUE3状态管理 - Pinia(替代Vuex).md",
-    "knowledge/前端基础/JavaScript-常用API.md",
-    "_scaffolds/post.md",
-    "knowledge/前端面试",
-    "_scaffolds/page.md",
-    "public/images/文章资源/数字世界的构建手册",
-    "public/images/文章资源/互联网与星辰大海",
     "点子合集.canvas"
   ]
 }
