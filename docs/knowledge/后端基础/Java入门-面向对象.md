@@ -65,6 +65,8 @@ tags:
 
 封装（Encapsulation）是面向对象的第一大特性，简单来说，就是：
 
+> 合理隐藏，合理暴露
+
 - 把相关的数据和操作这些数据的方法打包在一起
 - 对外隐藏实现细节，只公开必要的接口
 
@@ -184,41 +186,61 @@ public class Employee {
 
 ## 构造方法
 
+在 Java 中，**构造方法**是一种特殊的方法，用于在创建对象时执行初始化操作。与普通方法不同，它的名称必须与类名**完全一致**，而且**没有返回值**（连 `void` 也不能写）。
+
 当我们使用`new`关键字创建对象时，其实是在调用**构造方法**：
 
 ```java
 Employee employee = new Employee(); // 调用了构造方法
 ```
 
-如果没有自定义构造方法，Java 会提供一个默认的无参构造方法。
+**无参构造方法**
 
-我们可以自己定义构造方法，在对象创建时就初始化属性：
+如果你**没有定义任何构造方法**，Java 会自动提供一个**默认的无参构造方法**，让你能创建对象而不传入任何参数：
+
+```java
+public class Employee {
+    // Java 会自动生成如下的构造方法：
+    // public Employee() { }
+}
+```
+
+但要注意：
+一旦你手动定义了任意构造方法（哪怕是有参的），这个默认的构造方法就不会再自动生成。
+
+如果你还需要无参构造，就必须自己显式写出来：
+
+```java
+public class Employee {
+    public Employee() {
+        // 显式定义无参构造方法
+    }
+}
+```
+
+**有参构造方法**
+
+构造方法可以定义参数，用于在创建对象时顺便完成属性赋值。这类构造方法被称为有参构造方法：
 
 ```java
 public class Employee {
     private int baseSalary;
     private int bonus;
 
-    // 自定义构造方法
     public Employee(int baseSalary, int bonus) {
-        // 最好调用setter方法，这样可以复用验证逻辑
-        setBaseSalary(baseSalary);
-        setBonus(bonus);
+        this.baseSalary = baseSalary;
+        this.bonus = bonus;
     }
-
-    // Getter和Setter方法
-    // ...
 }
 ```
 
-构造方法的特点：
+通过参数构造对象，可以直接初始化字段：
 
-1. 名称必须与类名完全相同
-2. 没有返回值（连 void 都不写）
-3. 可以有多个（方法重载）
+```java
+Employee emp = new Employee(10000, 2000);
+```
 
-一旦你定义了自己的构造方法，Java 不再提供默认的无参构造方法。如果仍然需要无参构造，必须自己定义。
-
+这样，在需要创建多个对象时，比 `对象.属性` 的初始化方式方便很多。
 # 继承
 
 在现实生活中，孩子会继承父母的特征。在 Java 中，继承是一种让一个类（子类）获得另一个类（父类）的属性和方法的机制。

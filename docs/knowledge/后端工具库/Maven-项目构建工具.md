@@ -348,6 +348,7 @@ Maven 有三套独立的生命周期：
         <exclusion>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-core</artifactId>
+            <!-- 不用添加版本坐标信息 -->
         </exclusion>
     </exclusions>
 </dependency>

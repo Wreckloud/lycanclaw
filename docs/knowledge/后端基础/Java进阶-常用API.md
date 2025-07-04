@@ -73,7 +73,7 @@ Object 的默认 hashCode 实现使用了对象的内存地址：
 
 ```java
 
-public native int hashCode();  // 原生方法，由JVM底层实现
+public native int hashCode();  // 原生方法，由JVM底层实现
 
 ```
 
@@ -93,7 +93,7 @@ public boolean equals(Object o) {
 
 @Override
 public int hashCode() {
-    return Objects.hash(name, age);  // 基于关键属性计算
+    return Objects.hash(name, age);  // 基于关键属性计算
 }
 ```
 
@@ -132,9 +132,111 @@ public String toString() {
 
 和前面提到的 equals 和 hashCode 方法一样，现代 IDE 也提供了自动生成 toString 方法的功能，可以根据类的字段自动生成合适的实现。
 
+# ArrayList 类
+
+集合又很多种，ArrayList 是最常用、最常见的一种**集合**，适合存储一组有序、可变的数据。和数组相比，它的容量可以自动扩展，操作也更灵活。
+
+ArrayList 适合频繁查找和遍历的场景，使用时记得导入 `java.util.ArrayList`。
+
+**创建方式**
+
+```java
+ArrayList<String> list = new ArrayList<>();
+```
+
+如果需要存储不同类型的数据，可以用泛型 `<E>` 指定类型，比如 `ArrayList<Integer>` 存整数。
+
+### `size()` 获取长度
+
+用 `size()` 可以获取集合中元素的个数：
+
+```java
+int count = list.size();
+```
+
+### `get()` 获取元素
+
+用 `get(index)` 可以获取指定位置的元素，下标从 0 开始：
+
+```java
+String value = list.get(0); // 获取第一个元素
+```
+
+### `add()` 添加元素
+
+用 `add()` 方法可以向集合末尾添加一个元素，添加成功返回  true。
+
+```java
+list.add("Java");
+list.add("Python");
+```
+
+也可以在指定位置插入元素，原有元素会依次后移：
+
+```java
+list.add(1, "C++"); // 在下标1的位置插入
+```
+
+### `remove()` 删除元素
+
+有两种方式可以删除元素：
+
+1. 按下标删除：`remove(index)`，会删除指定位置的元素，后面的元素自动前移。
+
+   ```java
+   list.remove(1); // 删除下标为1的元素
+   ```
+
+2. 按内容删除：`remove(Object o)`，会删除集合中首次出现的指定元素。
+
+   ```java
+   list.remove("Java");
+   ```
+
+### `set()` 修改元素
+
+用 `set(index, element)` 可以修改指定位置的元素，被替换掉的原元素。
+
+```java
+list.set(0, "Go"); // 把第一个元素改成 Go
+```
+
+### 集合遍历
+
+在实际开发中，经常需要在遍历集合时根据条件删除某些元素。如果直接使用 for 循环从前往后遍历并删除，会导致索引混乱，容易漏删或抛出异常。为避免此类 bug，可以采用以下两种常用方法：
+
+**方法一：每次删除元素后，手动将索引减一**
+
+当使用 for 循环正序遍历集合时，如果删除了当前元素，后面的元素会整体前移，此时应将索引减一，确保不会跳过下一个元素。例如：
+
+```java
+for (int i = 0; i < list.size(); i++) {
+    if (需要删除的条件) {
+        list.remove(i);
+        i--; // 删除后索引回退
+    }
+}
+```
+
+**方法二：倒序遍历集合进行删除**
+
+更推荐的做法是从集合末尾向前遍历。这样删除元素时不会影响尚未遍历的元素索引，逻辑更简单，也不会漏删。例如：
+
+```java
+for (int i = list.size() - 1; i >= 0; i--) {
+    if (需要删除的条件) {
+        list.remove(i);
+    }
+}
+```
+
+遍历集合删除元素时，推荐倒序遍历，或在正序遍历时删除后索引减一，避免出现遗漏或索引越界等问题。
+
 # String 类
 
 String 是 Java 中使用频率最高的引用类型之一，用于表示文本内容。它有一个重要特点：可以直接使用字符串字面量创建对象，而不必像其他引用类型那样必须使用`new`关键字。
+
+> String 是不可变的，每次修改其实都是生成了一个新对象，原内容不会变。
 
 ```java
 // 直接使用字符串字面量创建
@@ -150,7 +252,7 @@ StringBuilder sb = new StringBuilder();
 
 除了使用字面量，String 类还提供了多种构造方法。下面是几种常见的构造方法：
 
-**1. 根据现有字符串创建新的字符串对象**
+1. 根据现有字符串创建新的字符串对象
 
 ```java
 String(String original)
@@ -158,7 +260,7 @@ String(String original)
 String copy = new String("原始字符串");
 ```
 
-**2. 使用平台默认编码将字节数组转换为字符串**
+2. 使用平台默认编码将字节数组转换为字符串
 
 ```java
 String(byte[] bytes)
@@ -167,7 +269,7 @@ byte[] data = {72, 101, 108, 108, 111}; // ASCII码对应Hello
 String text = new String(data);
 ```
 
-**3. 使用指定编码将字节数组转换为字符串**
+3. 使用指定编码将字节数组转换为字符串
 
 ```java
 String(byte[] bytes, Charset charset)
@@ -176,7 +278,7 @@ byte[] data = {-28, -67, -96, -27, -91, -67}; // UTF-8编码的"中文"
 String text = new String(data, StandardCharsets.UTF_8);
 ```
 
-**4. 将字符数组转换为字符串**
+4. 将字符数组转换为字符串
 
 ```java
 String(char[] value)
