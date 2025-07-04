@@ -2,6 +2,7 @@
 title: Java入门-面向对象
 date: 2024-12-25 13:39:20
 description: 这是一篇新文章!
+order: 2
 publish: true
 tags:
   - Java

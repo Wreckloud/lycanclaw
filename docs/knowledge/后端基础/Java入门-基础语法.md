@@ -2,6 +2,7 @@
 title: Java入门-基础语法
 date: 2024-03-30 19:04:12
 description: 这是一篇新文章!
+order: 1
 publish: true
 tags:
   - Java

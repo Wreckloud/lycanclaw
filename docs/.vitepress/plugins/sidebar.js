@@ -57,10 +57,52 @@ function processSidebarStructure(dirPath, urlPrefix, useTitleFromFrontmatter, so
   // 过滤和排序文件
   let mdFiles = files
     .filter(file => file.endsWith('.md') && file !== 'index.md')
-    .map(file => ({ 
-      name: file, 
-      path: path.join(dirPath, file)
-    }));
+    .map(file => { 
+      const filePath = path.join(dirPath, file);
+      const content = fs.readFileSync(filePath, 'utf-8');
+      const { attributes } = matter(content);
+      return { 
+        name: file, 
+        path: filePath,
+        order: attributes.order || 0 // 提取order属性，如果不存在则为0
+      };
+    });
+  
+  // 处理排序
+  if (sortByName) {
+    // 首先按order排序（不为0的order值在前，order值小的排在前面）
+    mdFiles.sort((a, b) => {
+      // 如果两个文件都有非0的order值，按order值排序
+      if (a.order !== 0 && b.order !== 0) {
+        return a.order - b.order;
+      }
+      // 如果只有a有非0的order值，a排在前面
+      if (a.order !== 0 && b.order === 0) {
+        return -1;
+      }
+      // 如果只有b有非0的order值，b排在前面
+      if (a.order === 0 && b.order !== 0) {
+        return 1;
+      }
+      // 如果都没有order值或order为0，按名称排序
+      return a.name.localeCompare(b.name, 'zh-CN');
+    });
+  }
+  else {
+    // 仍然按order排序，但不进行名称排序
+    mdFiles.sort((a, b) => {
+      if (a.order !== 0 && b.order !== 0) {
+        return a.order - b.order;
+      }
+      if (a.order !== 0 && b.order === 0) {
+        return -1;
+      }
+      if (a.order === 0 && b.order !== 0) {
+        return 1;
+      }
+      return 0;
+    });
+  }
   
   // 处理index.md（如果存在）
   const indexFile = files.find(file => file === 'index.md');
@@ -71,11 +113,6 @@ function processSidebarStructure(dirPath, urlPrefix, useTitleFromFrontmatter, so
       text: title,
       link: `${urlPrefix}`
     });
-  }
-  
-  // 按名称排序
-  if (sortByName) {
-    mdFiles.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
   }
   
   // 处理Markdown文件
