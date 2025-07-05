@@ -242,6 +242,7 @@ Employee emp = new Employee(10000, 2000);
 ```
 
 这样，在需要创建多个对象时，比 `对象.属性` 的初始化方式方便很多。
+
 # 继承
 
 在现实生活中，孩子会继承父母的特征。在 Java 中，继承是一种让一个类（子类）获得另一个类（父类）的属性和方法的机制。
@@ -305,33 +306,92 @@ public class PhysicalProduct extends Product {
 
 > 在 Java 中，所有的类都直接或间接继承自`Object`类。如果没有明确指定父类，则默认继承 Object 类。
 
-## 继承中的构造方法
+## super 关键字
 
 父类的属性（name、price）都是 private 的，子类无法直接访问它们。那怎么才能在创建子类对象时，同时初始化这些父类的属性呢？
 
-使用 super 关键字调用父类的构造方法。
+如果子类和父类有同名的成员，使用`super`关键字可以明确指定访问父类的成员：
+
+- `super.变量名`：访问父类的成员变量
+- `super.方法名()`：调用父类的方法
+
+子类构造器有一个重要特性：**必须先调用父类的构造器，再执行自己的代码**。
+
+这就像盖房子，必须先有地基（父类），才能建房子（子类）。
 
 ```java
-public class PhysicalProduct extends Product {
-    private double weight;
+public class Child extends Parent {
+    private int age;
 
-    // 子类的构造方法
-    public PhysicalProduct(String name, double price, double weight) {
-        // 调用父类的构造方法初始化父类属性
-        super(name, price);
-        // 初始化子类特有属性
-        this.weight = weight;
+    public Child() {
+        // 这里有一行隐式的代码：super()
+        System.out.println("Child构造器执行");
     }
 }
 ```
 
-`super(name, price)` 表示调用父类的构造方法，必须是子类构造方法的第一条语句。
+**默认情况下**，子类所有构造器的第一行代码都有一个隐式的`super()`调用，即使你没写，Java 也会自动帮你添加。它会调用父类的无参数构造器。
+
+如果父类没有无参构造器，就必须手动调用父类的有参构造器：
+
+```java
+public class Parent {
+    private String name;
+
+    // 只有有参构造器
+    public Parent(String name) {
+        this.name = name;
+    }
+}
+
+public class Child extends Parent {
+    private int age;
+
+    public Child(String name, int age) {
+        super(name);  // 必须显式调用父类构造器
+        this.age = age;
+    }
+}
+```
+
+- `this()`：调用同一个类中的其他构造器
+- `super()`：调用父类的构造器
+
+这两个关键字都必须放在构造器的第一行，所以它们不能同时使用于同一个构造器。
+
+```java
+public class Child extends Parent {
+    public Child() {
+        super("默认名字");  // 调用父类构造器
+    }
+
+    public Child(String name, int age) {
+        this();  // 调用本类的无参构造器，间接调用了super
+        // 不能再写super()，因为this()已经在第一行了
+    }
+}
+```
+
+**记住**：如果父类没有无参构造器，子类构造器必须通过`super(...)`明确指定调用父类的哪个构造器。否则编译会报错！
+
+## 权限修饰符
+
+Java 提供了四种权限修饰符，控制类成员的可访问范围：
+
+| 修饰符       | 本类内部 | 同一个包 | 子类 | 其他包的类 |
+| ------------ | -------- | -------- | ---- | ---------- |
+| `private`    | ✓        | ✗        | ✗    | ✗          |
+| 默认（不写） | ✓        | ✓        | ✗    | ✗          |
+| `protected`  | ✓        | ✓        | ✓    | ✗          |
+| `public`     | ✓        | ✓        | ✓    | ✓          |
+
+> 设计类时，遵循"最小权限原则"，只给必要的访问权限。
 
 ## 方法的覆写（Override）
 
 子类可以重新定义父类的方法，这称为方法覆写或重写：
 
-比如，父类的 displayInfo()方法只显示名称和价格，但实体商品还应该显示重量：
+比如，父类的 displayInfo() 方法只显示名称和价格，但实体商品还应该显示重量：
 
 ```java
 @Override
@@ -352,19 +412,6 @@ public final void doNotOverrideMe() {
     // 这个方法不能被子类覆写
 }
 ```
-
-## 权限修饰符
-
-Java 提供了四种权限修饰符，控制类成员的可访问范围：
-
-| 修饰符       | 本类内部 | 同一个包 | 子类 | 其他包的类 |
-| ------------ | -------- | -------- | ---- | ---------- |
-| `private`    | ✓        | ✗        | ✗    | ✗          |
-| 默认（不写） | ✓        | ✓        | ✗    | ✗          |
-| `protected`  | ✓        | ✓        | ✓    | ✗          |
-| `public`     | ✓        | ✓        | ✓    | ✓          |
-
-> 设计类时，遵循"最小权限原则"，只给必要的访问权限。
 
 # 多态
 
@@ -481,53 +528,83 @@ public class DigitalProduct extends Product {
 
 # static 静态
 
-你有没有想过，为什么我们可以直接使用 `Math.PI` 而不需要先创建一个 Math 对象？这就是 static（静态）的魔力！
+你有没有想过，为什么我们可以直接使用 `Math.PI` 而不需要先创建一个 Math 对象？
+Java 里的 `static` 是“静态”的意思，用它修饰的东西，不归某个对象所有，而是归整个类。
 
-### 静态变量
+### static 修饰变量
 
-静态变量就像班级里的"公共财产"，不属于某个同学，而是属于整个班级。在 Java 中，静态变量是用 `static` 关键字修饰的变量，它属于类而非对象。
+在 Java 中，静态变量是用 `static` 关键字修饰的变量，它属于类而非对象。
 
-- 静态变量在类第一次被使用时就加载到内存，并完成初始化
-- 不需要创建对象就能直接用 `类名.变量名` 来访问
+先说变量。Java 的成员变量有两种：
+
+**实例变量（没有 `static`）**
+
+实例变量属于某个对象，每个对象一份。必须先创建对象（new）之后才能访问。
 
 ```java
-public class School {
-    // 静态变量 - 所有学生共享的校训
-    private static String motto = "好好学习，天天向上";
+public class Student {
+    int age; // 实例变量
+}
+```
 
-    // 普通变量 - 每个学生有自己的名字
-    private String studentName;
+**类变量（有 `static`）**
 
-    // 获取校训的方法
-    public static String getMotto() {
-        return motto;
+类变量属于类本身，全体对象共用一份。**不需要 new 对象，就能访问。**
+
+```java
+public class Student {
+    static String schoolName; // 类变量
+}
+```
+
+怎么访问？
+
+```java
+Student.schoolName = "中学"; // 推荐：类名.变量
+new Student().schoolName = "改学校"; // 不推荐，但语法允许 对象.变量
+```
+
+类变量只有一份，共享；实例变量每个对象一份，独立。
+
+### static 修饰方法
+
+方法也分两类：
+
+**实例方法（没 static）**
+
+实例方法依附于对象，调用前必须先 `new`。它既能访问实例变量，也能访问类变量，并支持使用 `this` 引用当前对象。
+
+```java
+public class Demo {
+    public void sayHello() {
+        System.out.println("Hello from object.");
+    }
+
+    public static void main(String[] args) {
+        Demo d = new Demo();
+        d.sayHello(); // 调用实例方法
     }
 }
-
-// 使用静态变量
-String schoolMotto = School.motto; // 直接用类名访问，无需创建对象
 ```
 
-### 静态方法
+**类方法（有 static）**
 
-静态方法就像是公共服务，不管有没有居民（对象），服务本身都存在。
-
-- 可以直接用 `类名.方法名` 调用，不需要创建对象
-- 静态方法中不能直接访问非静态成员，就像公共图书馆不能直接查看你家的私人书架
-- 静态方法中不能使用 `this` 关键字，因为它不属于任何对象
+类方法属于类本身，不依赖具体对象，因此无需 `new` 就能调用。它无法访问实例变量，也不能使用 `this`。
 
 ```java
-private static int studentCount = 0;
+public class Demo {
+    public static void printHelp() {
+        System.out.println("静态方法，用类名调用");
+    }
 
-// 静态方法 - 获取学生总数
-public static int getStudentCount() {
-    // 静态方法不能使用 this 关键字
-    return studentCount;
+    public static void main(String[] args) {
+        Demo.printHelp(); // 推荐：用类名调用
+        new Demo().printHelp(); // 不推荐：也能调用，但违背设计初衷
+    }
 }
-
-// 调用静态方法
-int totalStudents = School.getStudentCount();
 ```
+
+类方法适合做“工具函数”——执行一段逻辑，但不依赖某个对象的状态。
 
 # 工具类
 
@@ -535,146 +612,54 @@ int totalStudents = School.getStudentCount();
 
 工具类是用来封装某一领域的通用方法的类，这些方法通常不需要对象状态，只是纯粹的功能服务，所以一般都设计成静态的。
 
-例如，一个角度转换工具类：
+工具类的标准写法:
 
 ```java
 public class MathUtil {
-    // 静态常量
-    public static final double PI = 3.14159265359;
-    public static final double STRAIGHT_ANGLE = 180.0;
+    private MathUtil() {} // 构造器私有，禁止创建对象
 
-    // 静态方法 - 角度转弧度
-    public static double toRadians(double degrees) {
-        return degrees * PI / STRAIGHT_ANGLE;
-    }
-
-    // 私有构造方法，防止创建实例
-    private MathUtil() {
-        // 不允许创建工具类的实例
-    }
-}
-
-// 使用工具类
-double radians = MathUtil.toRadians(90); // 直接调用，清晰明了
-```
-
-### 静态工厂方法
-
-静态工厂方法是在类中提供一个创建对象的静态方法，来代替直接使用构造方法。这听起来像是多此一举，但实际上有很多好处！
-
-```java
-public class Worker {
-    private String name;
-    private int age;
-
-    // 普通构造方法
-    public Worker(String name, int age) {
-        this.name = name;
-        this.age = age;
-    }
-
-    // 静态工厂方法
-    public static Worker getInstance(String name, int age) {
-        return new Worker(name, age);
+    public static int add(int a, int b) {
+        return a + b;
     }
 }
 ```
 
-为什么要这样做呢？让我们看几个真实案例：
-
-#### 案例 1：提高代码可读性
-
-比如，我们需要一个表示 API 调用结果的类：
+用法：
 
 ```java
-public class Result {
-    private int code;       // 状态码：0成功，1失败
-    private String msg;     // 结果描述
-    private Object data;    // 返回的数据
-
-    public Result(int code, String msg, Object data) {
-        this.code = code;
-        this.msg = msg;
-        this.data = data;
-    }
-
-    // 静态工厂方法 - 成功且有返回数据
-    public static Result ok(Object data) {
-        return new Result(0, "OK", data);
-    }
-
-    // 成功但无返回数据
-    public static Result ok() {
-        return ok(null);
-    }
-
-    // 失败情况
-    public static Result fail(String msg) {
-        return new Result(1, msg, null);
-    }
-
-    // 省略getter和setter
-}
+int sum = MathUtil.add(3, 5);
 ```
 
-使用这些静态工厂方法后，代码变得更加清晰：
+## 单例模式
+
+你有没有想过，为什么电脑里只能打开一个任务管理器？无论你点击多少次，系统都只会显示同一个窗口？
+这就是**单例模式**的应用！单例模式解决的问题很简单：**确保一个类只能产生一个对象**。
+
+设计模式就像是编程世界的"食谱"，针对常见问题提供最佳解决方案。单例模式就是其中一种，它确保某个类在整个应用中只有**一个**实例。
+
+想象一下，如果任务管理器可以打开多个，每个都在监控系统资源，那会多浪费内存啊！
+
+**如何实现单例？**
+
+实现单例模式有三个关键步骤：
+
+1. **把构造器私有化**（防止别人直接 new 对象）
+2. **定义一个类变量**存储这个唯一的对象
+3. **提供一个公共的静态方法**返回这个对象
 
 ```java
-// 不使用静态工厂方法
-return new Result(0, "OK", student);       // 成功，有数据
-return new Result(0, "OK", null);          // 成功，无数据
-return new Result(1, "id不能小于0", null); // 失败
+public class A {
+    // 使用静态变量记录唯一对象
+    private static A a = new A();
 
-// 使用静态工厂方法后
-return Result.ok(student);                 // 一目了然！
-return Result.ok();                        // 简洁明了
-return Result.fail("id不能小于0");         // 表意清晰
-```
-
-这样代码更清晰，更容易理解意图！
-
-#### 案例 2：避免重复创建对象
-
-想象一下表示性别的场景，男/女这种固定的值，真的需要每次都创建新对象吗？
-
-```java
-public class Gender {
-    private int value;     // 性别编码：0代表男，1代表女
-    private String label;  // 性别标签：男，女
-
-    // 1.构造方法私有化，外部不能随意创建
-    private Gender(int value, String label) {
-        this.value = value;
-        this.label = label;
+    // 构造器私有化，外部无法new
+    private A() {
+        System.out.println("A()");
     }
 
-    // 3.预先创建好固定的实例，避免重复创建
-    private static final Gender MALE = new Gender(0, "男");
-    private static final Gender FEMALE = new Gender(1, "女");
-
-    // 2.提供静态工厂方法获取实例
-    public static Gender male() {
-        return MALE;  // 每次都返回同一个对象！
-    }
-
-    public static Gender female() {
-        return FEMALE;
-    }
-
-    // 4.根据编码获取对应的性别对象
-    public static Gender valueOf(int value) {
-        if (value == 0) return MALE;
-        if (value == 1) return FEMALE;
-        throw new IllegalArgumentException("性别参数不合法：" + value);
-    }
-
-    // getter方法（不提供setter以确保不可变）
-    public int getValue() {
-        return value;
-    }
-
-    public String getLabel() {
-        return label;
+    // 提供静态方法返回唯一对象
+    public static A getInstance() {
+        return a;
     }
 }
 ```
@@ -682,63 +667,56 @@ public class Gender {
 使用时：
 
 ```java
-// 传统方式 - 每次都创建新对象
-Gender g1 = new Gender(0, "男"); // 不可行，构造方法已私有化
-Gender g2 = new Gender(0, "男"); // 不可行，且浪费内存
+// 获取唯一实例
+A instance1 = A.getInstance();
+A instance2 = A.getInstance();
 
-// 使用静态工厂方法 - 重用对象
-Gender male1 = Gender.male();
-Gender male2 = Gender.male(); // male1和male2是同一个对象！
-
-// 通过编码获取对象
-Gender gender = Gender.valueOf(userGenderCode);
-System.out.println("用户性别：" + gender.getLabel());
+// instance1和instance2是同一个对象！
 ```
 
-这种方式带来的好处是：
+## 常见实现方式
 
-1. 节省内存 - 不会创建重复对象
-2. 类型安全 - 无法创建除了男/女以外的性别
-3. 对象相等性 - `Gender.male() == Gender.male()` 将返回 true
+单例模式有两种主要实现方式：
 
-#### 案例 3：创建不同子类对象
+### 饿汉式单例
 
-静态工厂方法还可以灵活返回不同的子类对象，而不暴露具体实现类：
+特点：类加载时就创建好对象，**不管你用不用，我都先创建好了等你来拿**。
 
 ```java
-public abstract class Product {
-    private String name;
-    private double price;
+public class EagerSingleton {
+    // 在类加载时就创建实例
+    private static EagerSingleton instance = new EagerSingleton();
 
-    // 省略构造方法和getter/setter
+    private EagerSingleton() {}
 
-    // 创建实体商品的静态工厂方法
-    public static Product createPhysicalProduct(String name, double price, double weight) {
-        return new PhysicalProduct(name, price, weight);
-    }
-
-    // 创建虚拟商品的静态工厂方法
-    public static Product createDigitalProduct(String name, double price, String cdKey) {
-        return new DigitalProduct(name, price, cdKey);
+    public static EagerSingleton getInstance() {
+        return instance;  // 直接返回已创建好的实例
     }
 }
 ```
 
-使用时，客户端代码不需要知道具体的子类是什么：
+### 懒汉式单例
+
+特点：第一次使用时才创建对象，**需要的时候才创建，不需要不创建**。
 
 ```java
-// 创建不同类型的商品，但返回值类型相同
-Product phone = Product.createPhysicalProduct("手机", 1999, 200);
-Product game = Product.createDigitalProduct("游戏", 99, "XXXX-YYYY-ZZZZ");
+public class LazySingleton {
+    // 一开始不创建实例
+    private static LazySingleton instance;
 
-// 即使将来添加新的商品类型，调用方式也不需要变
+    private LazySingleton() {}
+
+    public static LazySingleton getInstance() {
+        // 第一次调用时才创建实例
+        if (instance == null) {
+            instance = new LazySingleton();
+        }
+        return instance;
+    }
+}
 ```
 
-这种方式的优势：
-
-1. 隐藏具体实现，更换子类实现时不影响客户端代码
-2. 提供了更具描述性的方法名，比构造方法更清晰
-3. 允许根据参数灵活决定返回哪种子类
+这些对象创建和管理成本较高，且全局只需要一个实例，使用单例可以节省系统资源。
 
 > IDEA 快捷技巧:  
 > 选中代码后按 `Alt + Enter` 可以快速生成变量  
@@ -746,36 +724,43 @@ Product game = Product.createDigitalProduct("游戏", 99, "XXXX-YYYY-ZZZZ");
 
 ### 代码块
 
-代码块就像是特殊的"迷你方法"，它不需要被调用，会在特定时机自动执行。Java 中有两种主要的代码块：
+代码块就像是特殊的"迷你方法"，它不需要被调用，代码块会在对象或类被创建、加载时，提前执行一些初始化逻辑。
+
+Java 中有两种主要的代码块：
+
+**静态代码块 `static {}`**
+
+- 类加载的时候执行（整个程序生命周期中**只执行一次**）
+- 常用来初始化类变量
 
 ```java
-public class CodeBlock {
-    // 构造方法
-    public CodeBlock() {
-        System.out.println("3. 执行构造方法");
-    }
-
-    // 普通方法
-    public void func() {
-        System.out.println("普通方法被调用");
-    }
-
-    // 构造代码块 - 每次创建对象都会执行
-    {
-        System.out.println("2. 执行构造代码块");
-    }
-
-    // 静态代码块 - 类加载时执行一次
+public class Demo {
     static {
-        System.out.println("1. 执行静态代码块");
+        System.out.println("类加载：初始化数据库连接池");
     }
 }
 ```
 
-区别很简单：
+**实例代码块 `{}`**
 
-- **静态代码块**：类加载时执行，而且只执行一次，用于初始化静态资源
-- **构造代码块**：每次创建对象时都执行，在构造方法之前
+- 每次创建对象时执行，**先于构造器执行**。
+- 用来初始化一些所有构造器共用的逻辑。
+
+```java
+public class Demo {
+    {
+        System.out.println("创建对象前执行：统一初始化流程");
+    }
+
+    public Demo() {
+        System.out.println("构造器执行");
+    }
+}
+```
+
+执行顺序是：
+
+> 静态代码块（只一次） → 实例代码块（每次） → 构造器（每次）
 
 来看一个更完整的执行顺序示例：
 
