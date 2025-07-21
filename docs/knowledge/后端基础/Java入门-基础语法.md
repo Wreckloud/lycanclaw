@@ -48,7 +48,7 @@ tags:
 
 > 🔗 快速链接：
 > [IntelliJ IDEA 下载](https://www.jetbrains.com/idea/download/)  
-> [IntelliJ IDEA 激活](https://3.jetbra.in/)
+> [IntelliJ IDEA 激活](https://3.jetbra.in/) (需要魔法上网)
 
 IDEA 中有很多快捷键可以提高我们的开发效率，常见的有：
 
@@ -98,7 +98,7 @@ Java 的解决方案很聪明：
 
 想体验一下原始的 Java 开发过程吗？打开命令行工具(CMD)，在命令行工具中：
 
-1. 先把.java 文件编译成.class 文件
+1. 先把.java 文件编译成 .class 文件
 
 ```bash
 javac 你的程序.java
@@ -551,6 +551,8 @@ b += 5;  // 等价于 b = (byte)(b + 5)
 这种情况下，Java 编译器会自动插入强制类型转换，使结果符合左边变量的类型。
 
 # 控制语句
+
+如果不使用任何控制语句，程序会按照**顺序结构**执行——也就是说，代码从上往下逐行运行，不进行任何判断或跳转。
 
 ### 条件判断
 

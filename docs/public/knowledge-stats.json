@@ -106,7 +106,7 @@
   },
   {
     "date": "2024-03-30 19:04:12",
-    "wordCount": 7942,
+    "wordCount": 7994,
     "relativePath": "knowledge/后端基础/Java入门-基础语法.md"
   },
   {
@@ -123,6 +123,11 @@
     "date": "2025-02-09 10:27:43",
     "wordCount": 10074,
     "relativePath": "knowledge/后端基础/Java进阶-常用API.md"
+  },
+  {
+    "date": "2025-07-14 09:17:54",
+    "wordCount": 1803,
+    "relativePath": "knowledge/后端基础/JDBC-数据库连接池.md"
   },
   {
     "date": "2025-07-13 15:28:42",
