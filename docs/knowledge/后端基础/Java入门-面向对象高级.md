@@ -2,7 +2,7 @@
 title: Java入门-面向对象高级
 date: 2025-07-08 15:57:13
 description: 这是一篇新文章!
-order: 0
+order: 3
 publish: true
 tags:
 ---
@@ -1642,8 +1642,9 @@ public class ArrayList<E>{
 自定义泛型类自定义泛型接口自定义泛型方法
 
 # 泛型类
-修饰符class 类名<类型变量，类型变量，...>{public class ArrayList<E>{
-注意：类型变量建议用大写的英文字母，常用的有：E、T、K、V等
+
+修饰符 class 类名<类型变量，类型变量，...>{public class ArrayList<E>{
+注意：类型变量建议用大写的英文字母，常用的有：E、T、K、V 等
 
 packagecom.itheima.d8_genericity_class;
 /泛型类
@@ -1656,7 +1657,7 @@ return true;
 public class Test {
 public static void main(String[] args）{
 1/目标：掌握泛型类的定
-//需求：模拟ArrayyZst集合，自定义一个MyArrayList的泛型类。
+//需求：模拟 ArrayyZst 集合，自定义一个 MyArrayList 的泛型类。
 MyArrayList<String>>list = new MyArrayList<>();
 list.add("张无忌");
 List.add("赵敏");
@@ -1679,6 +1680,7 @@ return list.remove(e);
 @0verride
 otpublic String toString(）{
 return list.toString();
+
 ```
 
 # 泛型接口
@@ -1707,3 +1709,4 @@ return list.toString();
 泛型的擦除问题和注意事项
 ·+泛型是工作在编译阶段的，一旦程序编译成class文件，class文件中就不存在泛型了，这就是泛型擦除。
 泛型不能直接支持基本数据类型，只能支持对象类型（引用数据类型）。
+```
