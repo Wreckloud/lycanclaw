@@ -1292,8 +1292,6 @@ public class Computer {
 }
 ```
 
-## 内部类的分类
-
 Java 中的内部类主要有四种类型：
 
 - 成员内部类：定义在类中方法外的内部类
@@ -1378,3 +1376,334 @@ public static void main(String[] args) {
 3. 必须先创建外部类对象，才能创建内部类对象
 
 成员内部类就像是外部类的一个特殊成员，它能够无障碍地访问外部类的所有内容，同时又能像一个独立的类一样定义自己的成员。
+
+## 静态内部类
+
+在类里面用 static 修饰的内部类。它和普通的成员内部类不一样，**属于外部类本身**，不是外部类的某个对象。
+
+有时候，内部类的功能其实和外部类对象没啥关系，只是逻辑上归在一起。用 static 修饰后，这个内部类就不再依赖外部类对象了，节省内存，也更清晰。
+
+```java
+public class Outer {
+    static String schoolName = "清华大学";
+    int height = 180;
+
+    // 静态内部类
+    public static class Inner {
+        public void show() {
+            // 1. 可以直接访问外部类的静态成员
+            System.out.println(schoolName);
+            // 2. 不能直接访问外部类的实例成员
+            // System.out.println(height); // 错误
+        }
+    }
+}
+```
+
+静态内部类的对象创建，不需要外部类对象，直接用“外部类名.内部类名”：
+
+```java
+Outer.Inner in = new Outer.Inner();
+in.show();
+```
+
+如果真的要访问外部类的实例成员，也不是不行，只是要先 new 外部类对象：
+
+```java
+public void show() {
+    Outer o = new Outer();
+    System.out.println(o.height);
+}
+```
+
+## 局部内部类
+
+定义在方法、代码块、构造器等局部范围里的类。作用域只在当前代码块内，出了这个范围就没法用了。
+
+有时候，只是想在某个方法里临时用一下小工具类，没必要让它暴露在整个类里。
+
+```java
+public void doSomething() {
+    // 局部内部类
+    class Helper {
+        public void help() {
+            System.out.println("帮忙中...");
+        }
+    }
+    Helper h = new Helper();
+    h.help();
+}
+```
+
+注意：只能在当前方法里用，出了方法就没法访问了。
+
+实际开发中用得不多，更多是为了代码结构的局部封装。如果经常用，可能要考虑是不是设计有问题。
+
+## 匿名内部类(重点)
+
+匿名内部类其实就是“没有名字的内部类”，本质上是一个临时用一次的小类，通常用来**快速创建某个接口或抽象类的子类对象**，而且只用一次就扔，不需要专门起名字。
+
+举个例子，假设有个接口：
+
+```java
+public interface Swimming {
+    void swim();
+}
+```
+
+平时我们要用它，得先写个实现类：
+
+```java
+public class Student implements Swimming {
+    @Override
+    public void swim() {
+        System.out.println("学生游泳");
+    }
+}
+```
+
+然后 new 出来用：
+
+```java
+Swimming s = new Student();
+s.swim();
+```
+
+但如果只是临时用一下，写个类太麻烦，这时候就可以用匿名内部类：
+
+```java
+Swimming s = new Swimming() {
+    @Override
+    public void swim() {
+        System.out.println("学生贼溜~~~");
+    }
+};
+s.swim(); // 输出：学生贼溜~~~
+```
+
+你会发现，`new Swimming() { ... }` 这段代码，直接在 new 的时候就把类的内容写出来了，**省略了类名，也不用单独写类文件**。
+
+**匿名内部类的本质**
+
+- 它其实就是“临时写了一个子类”，并且**立刻 new 出一个对象**。
+- 你没给它起名字，Java 会自动帮你生成一个“当前类名$编号”的名字（比如 Test2$1）。
+- 只能用一次，不能复用。
+
+**匿名内部类的常见用法**
+
+最常见的场景，就是**把它当作参数传给方法**，比如：
+
+```java
+public static void go(Swimming s) {
+    System.out.println("开始...");
+    s.swim();
+    System.out.println("结束...");
+}
+```
+
+用匿名内部类传参：
+
+```java
+go(new Swimming() {
+    @Override
+    public void swim() {
+        System.out.println("老师贼慢~~~");
+    }
+});
+```
+
+输出：
+
+```
+开始...
+老师贼慢~~~
+结束...
+```
+
+- 匿名内部类**只能用来继承一个类或实现一个接口**，而且只能用一次。
+- 里面可以重写父类/接口的方法，直接写方法体。
+- 常用于回调、事件监听、临时实现某个功能。
+
+# 枚举
+
+枚举（enum）其实就是一种特殊的类，用来表示一组**有限且固定的常量**。比如星期、月份、操作类型等。
+
+以前我们经常用一堆 `public static final int` 常量来表示状态，比如：
+
+```java
+public class Constant {
+    public static final int DOWN = 1;
+    public static final int UP = 2;
+    public static final int HALF_UP = 3;
+    public static final int DELETE_LEFT = 4;
+}
+```
+
+这样写虽然能用，但有两个问题：
+
+- 参数值不受约束，随便传个 5、6 也能进来，容易出错
+- 可读性一般，维护起来麻烦
+
+用枚举就很优雅了，直接把所有可能的取值都列出来：
+
+```java
+public enum RoundingMode {
+    DOWN, UP, HALF_UP, DELETE_LEFT;
+}
+```
+
+每个名称其实就是一个常量对象，类型就是 `RoundingMode`。
+
+比如我们要写一个方法，支持不同的取整方式：
+
+```java
+public static double handleData(double number, RoundingMode mode) {
+    switch (mode) {
+        case DOWN:
+            return Math.floor(number);
+        case UP:
+            return Math.ceil(number);
+        case HALF_UP:
+            return Math.round(number);
+        case DELETE_LEFT:
+            return (int) number;
+        default:
+            throw new IllegalArgumentException("未知取整方式");
+    }
+}
+```
+
+调用的时候，参数只能是枚举里的四种，写错编译器直接报错：
+
+```java
+System.out.println(handleData(3.9991, RoundingMode.DOWN));     // 3.0
+System.out.println(handleData(5.9991, RoundingMode.HALF_UP));  // 6.0
+```
+
+**枚举的本质和特点**
+
+```java
+public enum RoundingMode {
+    DOWN, UP, HALF_UP, DELETE_LEFT;
+}
+```
+
+其实 Java 编译器在背后会帮你生成一堆“看不见的”源代码。大致等价于下面这样（省略了部分细节，但核心结构是这样的）：
+
+```java
+public final class RoundingMode extends java.lang.Enum<RoundingMode> {
+    // 1. 四个 public static final 的对象，分别代表每个枚举值
+    public static final RoundingMode DOWN = new RoundingMode("DOWN", 0);
+    public static final RoundingMode UP = new RoundingMode("UP", 1);
+    public static final RoundingMode HALF_UP = new RoundingMode("HALF_UP", 2);
+    public static final RoundingMode DELETE_LEFT = new RoundingMode("DELETE_LEFT", 3);
+
+    // 2. 用于存放所有枚举值的数组
+    private static final RoundingMode[] VALUES = {DOWN, UP, HALF_UP, DELETE_LEFT};
+
+    // 3. 构造器是私有的，外部不能 new
+    private RoundingMode(String name, int ordinal) {
+        super(name, ordinal);
+    }
+
+    // 4. 返回所有枚举值
+    public static RoundingMode[] values() {
+        return VALUES.clone();
+    }
+
+    // 5. 通过名字查找枚举对象
+    public static RoundingMode valueOf(String name) {
+        for (RoundingMode mode : VALUES) {
+            if (mode.name().equals(name)) {
+                return mode;
+            }
+        }
+        throw new IllegalArgumentException("No enum constant: " + name);
+    }
+}
+```
+
+- `values()` 方法返回所有枚举对象的数组。
+- `valueOf(String)` 可以通过名字查找对应的枚举对象。
+
+每个枚举值（DOWN、UP、HALF_UP、DELETE_LEFT）其实就是 `public static final` 的对象，系统帮你 new 好了。
+
+构造器是私有的，外部 new 不出来。
+
+这个类还自动继承了 `java.lang.Enum`，所以有很多和枚举相关的内置方法，比如 `name()`、`ordinal()` 等。
+
+# 泛型
+
+泛型
+定义类、接口、方法时，同时声明了一个或者多个类型变量（如：<E>），称为泛型类、泛型接口，泛型方法、它们统称为泛型。
+public class ArrayList<E>{
+作用：泛型提供了在编译阶段约束所能操作的数据类型，并自动进行检查的能力！这样可以避免强制类型转换，及其可能出现的异常。
+泛型的本质：把具体的数据类型作为参数传给类型变量。
+自定义泛型类自定义泛型接口自定义泛型方法
+
+# 泛型类
+修饰符class 类名<类型变量，类型变量，...>{public class ArrayList<E>{
+注意：类型变量建议用大写的英文字母，常用的有：E、T、K、V等
+
+packagecom.itheima.d8_genericity_class;
+/泛型类
+public class MyArrayList<E>{
+public boolean add(E e){
+return true;
+public boolean remove(E e){
+return true;
+
+public class Test {
+public static void main(String[] args）{
+1/目标：掌握泛型类的定
+//需求：模拟ArrayyZst集合，自定义一个MyArrayList的泛型类。
+MyArrayList<String>>list = new MyArrayList<>();
+list.add("张无忌");
+List.add("赵敏");
+List.add("周芷若");
+List.add（"小昭");
+List.remove（e:"周芷若"）;
+
+装饰设计模式
+
+package com.itheima.d8_genericity_class;
+import java.util.ArrayList;
+/泛型类
+public class MyArrayList<E>{
+private ArrayListlist=new ArrayList（);
+publicboolean add(E e){
+list.add(e);
+return true;
+public boolean remove(E e){
+return list.remove(e);
+@0verride
+otpublic String toString(）{
+return list.toString();
+```
+
+# 泛型接口
+
+泛型接口
+修饰符interface接口名<类型变量，类型变量，..>{public interface A<E>{
+注意：类型变量建议用大写的英文字母，常用的有：E、T、K、V等
+
+实现类在实现它时可以声明类型, 这样就是针对这个类型了
+
+泛型方法
+修饰符<类型变量，类型变量，.>返回值类型方法名(形参列表){public static <T>void test(T t){
+让方法更通用
+
+通配符
+就是“？”，可以在“使用泛型”的时候代表一切类型；ETKV是在定义泛型的时候使用。
+泛型的上下限：
+泛型上限：？extends Car：？能接收的必须是Car或者其子类。
+泛型下限：？super Car：？能接收的必须是Car或者其父类。
+
+//虽然LX和TSL是Car的子类，但是ArrayList<TSL>和ArrayList<Lx>与ArrayList<Car>没有半毛钱关系。
+//通配符：其实就是？，可以在使用泛型的时候代表一切类型。ETKV是定义时用
+1/泛型的上下限：？extends Car（上限，？必须是Car或者Car的子类）
+//？superCar（下限，？必须是Car或者Car的父类）
+
+泛型的擦除问题和注意事项
+·+泛型是工作在编译阶段的，一旦程序编译成class文件，class文件中就不存在泛型了，这就是泛型擦除。
+泛型不能直接支持基本数据类型，只能支持对象类型（引用数据类型）。
