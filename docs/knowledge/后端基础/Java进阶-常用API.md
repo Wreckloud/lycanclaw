@@ -22,9 +22,49 @@ API(Application Programming Interface)，即应用程序接口，是预先定义
 
 Object 类是 Java 中所有类的父类，每个类都直接或间接地继承自 Object。这意味着任何 Java 对象都能使用 Object 类中定义的方法。
 
+## toString 方法
+
+toString 方法返回对象的字符串表示形式，让我们能够更直观地了解对象包含的数据。当我们直接打印一个对象，或者将对象与字符串进行拼接时，Java 会自动调用该对象的 toString 方法。
+
+```java
+// System.out.println(Person.toString(); // 直接输出对象时，toString可以不写
+System.out.println(Person);
+```
+
+Object 类中 toString 方法的默认实现如下：
+
+```java
+public String toString() {
+    return getClass().getName() + "@" + Integer.toHexString(hashCode());
+}
+```
+
+这个实现会返回：
+
+- 类的完整名称（包含包名）
+- 一个@符号
+- 对象哈希码的十六进制表示
+
+例如：`com.example.Person@15db9742`
+
+这样的输出对调试帮助有限，因为它并没有告诉我们对象的实际内容。因此，在实际开发中，我们通常会**重写 toString 方法**来展示对象的关键属性。
+
+一个好的 toString 实现应该包括类名和关键字段的值，例如：
+
+```java
+@Override
+public String toString() {
+    return "Person{name='" + name + "', age=" + age + "}";
+}
+```
+
+使用这种重写后的 toString 方法，打印对象时就能看到有意义的信息：`Person{name='张三', age=25}`
+
+和前面提到的 equals 和 hashCode 方法一样，现代 IDE 也提供了自动生成 toString 方法的功能，可以根据类的字段自动生成合适的实现。
+
 ## equals 方法
 
-equals 方法用于比较两个对象是否相等。比较对象时，应该使用`equals()`而不是`==`操作符。
+`equals` 方法用于比较两个对象是否相等。比较对象时，应该使用`equals()`而不是`==`操作符。
 
 因为`==`比较的是对象的引用（内存地址），而我们通常需要比较的是对象的内容。
 
@@ -98,40 +138,299 @@ public int hashCode() {
 }
 ```
 
-## toString 方法
+# Objects 工具类
 
-toString 方法返回对象的字符串表示形式，让我们能够更直观地了解对象包含的数据。当我们直接打印一个对象，或者将对象与字符串进行拼接时，Java 会自动调用该对象的 toString 方法。
+JDK 7 新增的工具类，提供了一些静态方法来操作对象，让我们能更安全地处理各种对象操作。
 
-Object 类中 toString 方法的默认实现如下：
+Object 是所有类的祖宗，每个对象都继承自它；而 Objects（注意有个 s）是专门用来安全操作对象的工具类。两者完全不同，但都很重要。
+
+## equals 方法
+
+比较两个对象是否相等，即使第一个对象是 null 也不会报错：
 
 ```java
-public String toString() {
-    return getClass().getName() + "@" + Integer.toHexString(hashCode());
+Student t1 = null;
+Student t2 = new Student("蜘蛛精", 300, 85.5);
+
+// 传统方式，如果 t1 是 null，会抛出空指针异常
+// System.out.println(t1.equals(t2));
+
+// Objects 的 equals 方法，更安全可靠
+System.out.println(Objects.equals(t1, t2)); // false
+```
+
+**底层原理**：Objects.equals 会先判断两个对象是否为同一个引用，然后再安全地调用 equals 方法。
+
+```java
+public static boolean equals(Object a, Object b) {
+    return (a == b) || (a != null && a.equals(b));
 }
 ```
 
-这个实现会返回：
+这样即使第一个参数是 null，也不会抛出空指针异常，而是直接返回 false。**以后比较两个对象是否相等，建议用 Objects.equals 来判断**，更安全。
 
-- 类的完整名称（包含包名）
-- 一个@符号
-- 对象哈希码的十六进制表示
+## 判断 null 的方法
 
-例如：`com.example.Person@15db9742`
-
-这样的输出对调试帮助有限，因为它并没有告诉我们对象的实际内容。因此，在实际开发中，我们通常会重写 toString 方法来展示对象的关键属性。
-
-一个好的 toString 实现应该包括类名和关键字段的值，例如：
+Objects 还提供了两个判断对象是否为 null 的便捷方法：
 
 ```java
-@Override
-public String toString() {
-    return "Person{name='" + name + "', age=" + age + "}";
-}
+System.out.println(Objects.isNull(t1));   // true
+System.out.println(t1 == null);           // true
+
+System.out.println(Objects.nonNull(t1));  // false
+System.out.println(t1 != null);           // false
 ```
 
-使用这种重写后的 toString 方法，打印对象时就能看到有意义的信息：`Person{name='张三', age=25}`
+虽然功能和 `== null` 或 `!= null` 一样，但在某些场景下（如 Stream 操作）使用这些方法可以让代码更简洁、更规范。
 
-和前面提到的 equals 和 hashCode 方法一样，现代 IDE 也提供了自动生成 toString 方法的功能，可以根据类的字段自动生成合适的实现。
+## 其他常用方法
+
+Objects 工具类还有一些其他实用方法：
+
+```java
+// 检查对象是否为 null，如果是则抛出 NullPointerException
+Objects.requireNonNull(obj);
+
+// 检查对象是否为 null，如果是则抛出带自定义消息的异常
+Objects.requireNonNull(obj, "对象不能为空");
+
+// 返回对象的哈希码，如果对象为 null 则返回 0
+Objects.hashCode(obj);
+
+// 比较两个对象的大小，支持 null 值
+Objects.compare(obj1, obj2, comparator);
+```
+
+**工具类**就是一堆静态方法的集合，不用 new 对象，直接用"类名.方法名"调用。而 Objects 工具类专门用来安全操作对象，避免常见错误。
+# 包装类
+
+包装类是 Java 为每种基本数据类型提供的对应引用类型。因为 Java 秉持着 "万物皆对象" 的理念，包装类将基本类型"包装"成对象，使其能够在面向对象的环境中使用。
+
+## 基本类型与包装类对应关系
+
+Java 中的八种基本数据类型都有对应的包装类：
+
+```java
+// 基本类型 -> 包装类
+byte -> Byte
+short -> Short
+int -> Integer
+long -> Long
+float -> Float
+double -> Double
+boolean -> Boolean
+char -> Character
+```
+
+这些包装类都位于`java.lang`包中，可以直接使用而无需导入。
+
+![包装类继承体系](../../public/images/文章资源/java进阶-常用api/file-20250627102813717.jpg)
+
+## 包装类的作用
+
+包装类存在的主要目的是：
+
+1. **支持面向对象编程**：基本类型不是对象，无法调用方法，而包装类是对象，可以调用方法
+2. **作为泛型类型参数**：泛型不支持基本数据类型，只能使用包装类
+3. **支持 null 值**：基本类型不能为 null，而包装类可以
+4. **提供实用工具方法**：如类型转换、数值比较、进制转换等
+
+```java
+// 无法对基本类型使用泛型
+// ArrayList<int> list1 = new ArrayList<>(); // 编译错误
+
+// 使用包装类作为泛型类型参数
+ArrayList<Integer> list2 = new ArrayList<>(); // 正确
+
+// 包装类可以表示null值
+Integer nullValue = null; // 合法
+```
+
+## 内存结构差异
+
+基本类型和包装类在内存存储方面有明显区别：
+
+```java
+int primitive = 10;     // 直接在栈中存储值10
+Integer wrapper = 10;   // 在堆中创建Integer对象，栈中存储引用
+```
+
+基本类型变量直接存储值，而包装类变量存储的是引用，指向堆内存中的对象。
+
+## 自动装箱与拆箱
+
+自 JDK 1.5 起，Java 引入了自动装箱和拆箱机制，简化了基本类型和包装类的相互转换：
+
+```java
+// 自动装箱：基本类型 -> 包装类
+Integer num = 100;  // 编译器自动转换为：Integer num = Integer.valueOf(100);
+
+// 自动拆箱：包装类 -> 基本类型
+int value = num;    // 编译器自动转换为：int value = num.intValue();
+```
+
+自动装箱和拆箱的原理如下图所示：
+
+![自动装箱拆箱原理](../../public/images/文章资源/java进阶-常用api/file-20250627102821477.jpg)
+
+这一机制极大地简化了代码，但也带来了一些需要注意的问题。
+
+### 空指针风险
+
+自动拆箱最大的风险是可能导致`NullPointerException`：
+
+```java
+Integer price = null;
+// 自动拆箱时，如果包装类对象为null，会抛出NullPointerException
+int discount = price + 10; // 运行时错误
+```
+
+在实际开发中，应该养成先检查 null 的习惯：
+
+```java
+Integer price = getPrice(); // 可能返回null
+int realPrice = (price != null) ? price : 0; // 安全的拆箱方式
+```
+
+## 常用方法
+
+包装类提供了丰富的工具方法，常用的有：
+
+### 类型转换方法
+
+```java
+// 字符串转换为基本类型
+int i = Integer.parseInt("123");      // 123
+double d = Double.parseDouble("3.14"); // 3.14
+
+// 字符串转换为包装类
+Integer integer = Integer.valueOf("123");
+Boolean bool = Boolean.valueOf("true");
+
+// 包装类转字符串
+String s1 = integer.toString();  // "123"
+```
+
+### 进制转换方法
+
+```java
+// 十进制转二进制表示
+String binary = Integer.toBinaryString(10);  // "1010"
+
+// 十进制转十六进制表示
+String hex = Integer.toHexString(255);  // "ff"
+
+// 十进制转八进制表示
+String octal = Integer.toOctalString(8);  // "10"
+
+// 其他进制转十进制
+int decimal = Integer.parseInt("1010", 2);  // 10，将二进制"1010"转为十进制
+```
+
+### 数值范围常量
+
+每个数值包装类都提供了表示其范围的常量：
+
+```java
+// 最大值和最小值常量
+int maxInt = Integer.MAX_VALUE;  // 2147483647
+int minInt = Integer.MIN_VALUE;  // -2147483648
+double maxDouble = Double.MAX_VALUE;  // 1.7976931348623157E308
+```
+
+这些常量在需要边界值检查时非常有用。
+
+## 对象缓存机制
+
+Java 中的包装类为了提高性能，实现了一个重要的优化策略——对象缓存机制。这个机制预先创建并缓存了一定范围内的包装类对象，当需要这些值时直接返回缓存的对象，而不是创建新实例。
+
+### 缓存范围
+
+不同包装类的缓存范围不同：
+
+```java
+// Integer缓存范围：-128到127
+Integer.valueOf(-128) == Integer.valueOf(-128);  // true
+Integer.valueOf(127) == Integer.valueOf(127);    // true
+Integer.valueOf(128) == Integer.valueOf(128);    // false
+
+// Character缓存范围：0到127（ASCII范围）
+Character.valueOf((char)0) == Character.valueOf((char)0);    // true
+Character.valueOf((char)127) == Character.valueOf((char)127);  // true
+
+// Boolean全部缓存：只有true和false两个值
+Boolean.valueOf(true) == Boolean.valueOf(true);   // true
+Boolean.valueOf(false) == Boolean.valueOf(false); // true
+
+// Byte全部缓存：-128到127（Byte的完整范围）
+Byte.valueOf((byte)10) == Byte.valueOf((byte)10); // true
+```
+
+### 缓存原理与陷阱
+
+自动装箱实际上是调用包装类的`valueOf()`方法，而该方法会使用缓存：
+
+```java
+// 这两条语句在缓存范围内返回相同对象
+Integer a = 100;  // 自动装箱，实际调用了Integer.valueOf(100)
+Integer b = 100;  // 同上，返回相同的缓存对象
+
+System.out.println(a == b);  // true，因为是同一个对象
+
+// 超出缓存范围，创建新对象
+Integer c = 200;
+Integer d = 200;
+
+System.out.println(c == d);  // false，不同对象
+```
+
+这种机制可能导致一个常见的陷阱：使用`==`来比较包装类对象。
+
+### 正确比较包装类对象
+
+由于缓存机制，在代码中**不应该使用`==`比较包装类对象**：
+
+```java
+// 错误的比较方式
+if (integerObj1 == integerObj2) { /* 不可靠的比较 */ }
+
+// 正确的比较方式
+// 1. 比较值是否相等
+if (integerObj1.equals(integerObj2)) { /* 安全的值比较 */ }
+
+// 2. 比较大小关系
+if (integerObj1.compareTo(integerObj2) > 0) { /* 大小比较 */ }
+```
+
+`equals()`方法比较对象的值是否相同，而`compareTo()`方法比较对象的大小关系，两者都是安全可靠的。
+
+### 性能优化建议
+
+基于对象缓存机制和装箱拆箱特性，在编码时可以遵循以下建议：
+
+```java
+// 1. 在性能敏感场景优先使用基本类型
+long sum = 0L;  // 而不是 Long sum = 0L;
+for (int i = 0; i < 10000; i++) {
+    sum += i;   // 如果使用Long，每次循环都有装箱拆箱开销
+}
+
+// 2. 避免频繁的自动装箱和拆箱
+// 不推荐
+Integer total = 0;
+for (int i = 0; i < 1000; i++) {
+    total = total + i;  // 每次循环都会创建新的Integer对象
+}
+
+// 推荐
+int total = 0;
+for (int i = 0; i < 1000; i++) {
+    total += i;  // 没有对象创建的开销
+}
+Integer result = total;  // 只装箱一次
+```
+
+通过理解包装类的对象缓存机制，我们可以避免常见陷阱，并编写更高效的 Java 代码。
 
 # ArrayList 类
 
@@ -788,236 +1087,6 @@ String efficientResult = sb.toString();
 - 多线程环境：使用 StringBuffer
 
 字符串拼接是 Java 编程中非常常见的操作，掌握这些方法能够帮助我们编写更高效、更优雅的代码。
-
-# 包装类
-
-包装类是 Java 为每种基本数据类型提供的对应引用类型。它们将基本类型"包装"成对象，使其能够在面向对象的环境中使用。
-
-## 基本类型与包装类对应关系
-
-Java 中的八种基本数据类型都有对应的包装类：
-
-```java
-// 基本类型 -> 包装类
-byte -> Byte
-short -> Short
-int -> Integer
-long -> Long
-float -> Float
-double -> Double
-boolean -> Boolean
-char -> Character
-```
-
-这些包装类都位于`java.lang`包中，可以直接使用而无需导入。
-
-![包装类继承体系](../../public/images/文章资源/java进阶-常用api/file-20250627102813717.jpg)
-
-## 包装类的作用
-
-包装类存在的主要目的是：
-
-1. **支持面向对象编程**：基本类型不是对象，无法调用方法，而包装类是对象，可以调用方法
-2. **作为泛型类型参数**：泛型不支持基本数据类型，只能使用包装类
-3. **支持 null 值**：基本类型不能为 null，而包装类可以
-4. **提供实用工具方法**：如类型转换、数值比较、进制转换等
-
-```java
-// 无法对基本类型使用泛型
-// ArrayList<int> list1 = new ArrayList<>(); // 编译错误
-
-// 使用包装类作为泛型类型参数
-ArrayList<Integer> list2 = new ArrayList<>(); // 正确
-
-// 包装类可以表示null值
-Integer nullValue = null; // 合法
-```
-
-## 内存结构差异
-
-基本类型和包装类在内存存储方面有明显区别：
-
-```java
-int primitive = 10;     // 直接在栈中存储值10
-Integer wrapper = 10;   // 在堆中创建Integer对象，栈中存储引用
-```
-
-基本类型变量直接存储值，而包装类变量存储的是引用，指向堆内存中的对象。
-
-## 自动装箱与拆箱
-
-自 JDK 1.5 起，Java 引入了自动装箱和拆箱机制，简化了基本类型和包装类的相互转换：
-
-```java
-// 自动装箱：基本类型 -> 包装类
-Integer num = 100;  // 编译器自动转换为：Integer num = Integer.valueOf(100);
-
-// 自动拆箱：包装类 -> 基本类型
-int value = num;    // 编译器自动转换为：int value = num.intValue();
-```
-
-自动装箱和拆箱的原理如下图所示：
-
-![自动装箱拆箱原理](../../public/images/文章资源/java进阶-常用api/file-20250627102821477.jpg)
-
-这一机制极大地简化了代码，但也带来了一些需要注意的问题。
-
-### 空指针风险
-
-自动拆箱最大的风险是可能导致`NullPointerException`：
-
-```java
-Integer price = null;
-// 自动拆箱时，如果包装类对象为null，会抛出NullPointerException
-int discount = price + 10; // 运行时错误
-```
-
-在实际开发中，应该养成先检查 null 的习惯：
-
-```java
-Integer price = getPrice(); // 可能返回null
-int realPrice = (price != null) ? price : 0; // 安全的拆箱方式
-```
-
-## 常用方法
-
-包装类提供了丰富的工具方法，常用的有：
-
-### 类型转换方法
-
-```java
-// 字符串转换为基本类型
-int i = Integer.parseInt("123");      // 123
-double d = Double.parseDouble("3.14"); // 3.14
-
-// 字符串转换为包装类
-Integer integer = Integer.valueOf("123");
-Boolean bool = Boolean.valueOf("true");
-
-// 包装类转字符串
-String s1 = integer.toString();  // "123"
-```
-
-### 进制转换方法
-
-```java
-// 十进制转二进制表示
-String binary = Integer.toBinaryString(10);  // "1010"
-
-// 十进制转十六进制表示
-String hex = Integer.toHexString(255);  // "ff"
-
-// 十进制转八进制表示
-String octal = Integer.toOctalString(8);  // "10"
-
-// 其他进制转十进制
-int decimal = Integer.parseInt("1010", 2);  // 10，将二进制"1010"转为十进制
-```
-
-### 数值范围常量
-
-每个数值包装类都提供了表示其范围的常量：
-
-```java
-// 最大值和最小值常量
-int maxInt = Integer.MAX_VALUE;  // 2147483647
-int minInt = Integer.MIN_VALUE;  // -2147483648
-double maxDouble = Double.MAX_VALUE;  // 1.7976931348623157E308
-```
-
-这些常量在需要边界值检查时非常有用。
-
-## 对象缓存机制
-
-Java 中的包装类为了提高性能，实现了一个重要的优化策略——对象缓存机制。这个机制预先创建并缓存了一定范围内的包装类对象，当需要这些值时直接返回缓存的对象，而不是创建新实例。
-
-### 缓存范围
-
-不同包装类的缓存范围不同：
-
-```java
-// Integer缓存范围：-128到127
-Integer.valueOf(-128) == Integer.valueOf(-128);  // true
-Integer.valueOf(127) == Integer.valueOf(127);    // true
-Integer.valueOf(128) == Integer.valueOf(128);    // false
-
-// Character缓存范围：0到127（ASCII范围）
-Character.valueOf((char)0) == Character.valueOf((char)0);    // true
-Character.valueOf((char)127) == Character.valueOf((char)127);  // true
-
-// Boolean全部缓存：只有true和false两个值
-Boolean.valueOf(true) == Boolean.valueOf(true);   // true
-Boolean.valueOf(false) == Boolean.valueOf(false); // true
-
-// Byte全部缓存：-128到127（Byte的完整范围）
-Byte.valueOf((byte)10) == Byte.valueOf((byte)10); // true
-```
-
-### 缓存原理与陷阱
-
-自动装箱实际上是调用包装类的`valueOf()`方法，而该方法会使用缓存：
-
-```java
-// 这两条语句在缓存范围内返回相同对象
-Integer a = 100;  // 自动装箱，实际调用了Integer.valueOf(100)
-Integer b = 100;  // 同上，返回相同的缓存对象
-
-System.out.println(a == b);  // true，因为是同一个对象
-
-// 超出缓存范围，创建新对象
-Integer c = 200;
-Integer d = 200;
-
-System.out.println(c == d);  // false，不同对象
-```
-
-这种机制可能导致一个常见的陷阱：使用`==`来比较包装类对象。
-
-### 正确比较包装类对象
-
-由于缓存机制，在代码中**不应该使用`==`比较包装类对象**：
-
-```java
-// 错误的比较方式
-if (integerObj1 == integerObj2) { /* 不可靠的比较 */ }
-
-// 正确的比较方式
-// 1. 比较值是否相等
-if (integerObj1.equals(integerObj2)) { /* 安全的值比较 */ }
-
-// 2. 比较大小关系
-if (integerObj1.compareTo(integerObj2) > 0) { /* 大小比较 */ }
-```
-
-`equals()`方法比较对象的值是否相同，而`compareTo()`方法比较对象的大小关系，两者都是安全可靠的。
-
-### 性能优化建议
-
-基于对象缓存机制和装箱拆箱特性，在编码时可以遵循以下建议：
-
-```java
-// 1. 在性能敏感场景优先使用基本类型
-long sum = 0L;  // 而不是 Long sum = 0L;
-for (int i = 0; i < 10000; i++) {
-    sum += i;   // 如果使用Long，每次循环都有装箱拆箱开销
-}
-
-// 2. 避免频繁的自动装箱和拆箱
-// 不推荐
-Integer total = 0;
-for (int i = 0; i < 1000; i++) {
-    total = total + i;  // 每次循环都会创建新的Integer对象
-}
-
-// 推荐
-int total = 0;
-for (int i = 0; i < 1000; i++) {
-    total += i;  // 没有对象创建的开销
-}
-Integer result = total;  // 只装箱一次
-```
-
-通过理解包装类的对象缓存机制，我们可以避免常见陷阱，并编写更高效的 Java 代码。
 
 # 异常处理
 

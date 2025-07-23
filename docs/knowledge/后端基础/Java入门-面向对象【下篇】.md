@@ -1634,79 +1634,99 @@ public final class RoundingMode extends java.lang.Enum<RoundingMode> {
 
 # 泛型
 
-泛型
-定义类、接口、方法时，同时声明了一个或者多个类型变量（如：<E>），称为泛型类、泛型接口，泛型方法、它们统称为泛型。
-public class ArrayList<E>{
-作用：泛型提供了在编译阶段约束所能操作的数据类型，并自动进行检查的能力！这样可以避免强制类型转换，及其可能出现的异常。
-泛型的本质：把具体的数据类型作为参数传给类型变量。
-自定义泛型类自定义泛型接口自定义泛型方法
+泛型（Generic）就是在定义类、接口、方法时，不直接指定某种具体类型，而是用一个“类型变量”来占位，等到用的时候再指定具体类型。常见的类型变量有 E、T、K、V 等，都是大写字母。
 
-# 泛型类
+泛型的最大作用，就是**让编译器帮我们检查类型安全**，避免强制类型转换带来的麻烦和隐患。比如：
 
-修饰符 class 类名<类型变量，类型变量，...>{public class ArrayList<E>{
-注意：类型变量建议用大写的英文字母，常用的有：E、T、K、V 等
+```java
+ArrayList<String> list = new ArrayList<>();
+list.add("张三");
+// list.add(123); // 编译报错，类型不对
+```
 
-packagecom.itheima.d8_genericity_class;
-/泛型类
-public class MyArrayList<E>{
-public boolean add(E e){
-return true;
-public boolean remove(E e){
-return true;
+有了泛型，类型不对直接编译不过，安全又省心。
 
-public class Test {
-public static void main(String[] args）{
-1/目标：掌握泛型类的定
-//需求：模拟 ArrayyZst 集合，自定义一个 MyArrayList 的泛型类。
-MyArrayList<String>>list = new MyArrayList<>();
+## 泛型类
+
+定义格式：
+
+```java
+public class MyArrayList<E> {
+    public boolean add(E e) { ... }
+    public boolean remove(E e) { ... }
+}
+```
+
+用法：
+
+```java
+MyArrayList<String> list = new MyArrayList<>();
 list.add("张无忌");
-List.add("赵敏");
-List.add("周芷若");
-List.add（"小昭");
-List.remove（e:"周芷若"）;
-
-装饰设计模式
-
-package com.itheima.d8_genericity_class;
-import java.util.ArrayList;
-/泛型类
-public class MyArrayList<E>{
-private ArrayListlist=new ArrayList（);
-publicboolean add(E e){
-list.add(e);
-return true;
-public boolean remove(E e){
-return list.remove(e);
-@0verride
-otpublic String toString(）{
-return list.toString();
-
+list.add("赵敏");
+list.remove("张无忌");
 ```
 
-# 泛型接口
+- `E` 代表“Element”，你也可以用 `T`（Type）、`K`（Key）、`V`（Value）等。
+- 泛型类的本质，就是把类型当作参数传进来，等用的时候再确定。
 
-泛型接口
-修饰符interface接口名<类型变量，类型变量，..>{public interface A<E>{
-注意：类型变量建议用大写的英文字母，常用的有：E、T、K、V等
+## 泛型接口
 
-实现类在实现它时可以声明类型, 这样就是针对这个类型了
+定义格式：
 
-泛型方法
-修饰符<类型变量，类型变量，.>返回值类型方法名(形参列表){public static <T>void test(T t){
-让方法更通用
-
-通配符
-就是“？”，可以在“使用泛型”的时候代表一切类型；ETKV是在定义泛型的时候使用。
-泛型的上下限：
-泛型上限：？extends Car：？能接收的必须是Car或者其子类。
-泛型下限：？super Car：？能接收的必须是Car或者其父类。
-
-//虽然LX和TSL是Car的子类，但是ArrayList<TSL>和ArrayList<Lx>与ArrayList<Car>没有半毛钱关系。
-//通配符：其实就是？，可以在使用泛型的时候代表一切类型。ETKV是定义时用
-1/泛型的上下限：？extends Car（上限，？必须是Car或者Car的子类）
-//？superCar（下限，？必须是Car或者Car的父类）
-
-泛型的擦除问题和注意事项
-·+泛型是工作在编译阶段的，一旦程序编译成class文件，class文件中就不存在泛型了，这就是泛型擦除。
-泛型不能直接支持基本数据类型，只能支持对象类型（引用数据类型）。
+```java
+public interface DataService<T> {
+    void save(T data);
+}
 ```
+
+实现时可以指定类型：
+
+```java
+public class StringService implements DataService<String> {
+    public void save(String data) { ... }
+}
+```
+
+## 泛型方法
+
+有时候，方法本身也可以很通用，这时可以单独给方法加泛型：
+
+```java
+public static <T> void print(T t) {
+    System.out.println(t);
+}
+```
+
+用法：
+
+```java
+print("hello");
+print(123);
+```
+
+## 通配符
+
+有时候我们希望“泛型类型不确定”，这时可以用 `?` 作为通配符：
+
+```java
+public void printList(List<?> list) {
+    for (Object obj : list) {
+        System.out.println(obj);
+    }
+}
+```
+
+**泛型的上下限**
+
+- `? extends Car`：只能接收 Car 或 Car 的子类(常用)
+- `? super Car`：只能接收 Car 或 Car 的父类
+
+例子：
+
+```java
+List<? extends Number> list1; // 只能放 Number 及其子类
+List<? super Integer> list2;  // 只能放 Integer 及其父类
+```
+
+- 泛型只在编译阶段有效，编译后 class 文件里就没有泛型信息了（这叫“泛型擦除”）。
+- 泛型不能直接用基本数据类型（如 int、double），只能用引用类型（如 Integer、Double）。
