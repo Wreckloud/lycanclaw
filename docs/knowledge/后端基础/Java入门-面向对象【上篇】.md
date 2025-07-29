@@ -685,3 +685,205 @@ if (animal instanceof Dog dog) {  // 类型检查并直接赋值
 ```
 
 类型转换是一个强大但潜在危险的工具。通过良好的面向对象设计，我们可以最小化对它的依赖，创建更加健壮的代码。
+
+# static 静态
+
+你有没有想过，为什么我们可以直接使用 `Math.PI` 而不需要先创建一个 Math 对象？
+Java 里的 `static` 是“静态”的意思，用它修饰的东西，不归某个对象所有，而是归整个类。
+
+### static 修饰变量
+
+在 Java 中，静态变量是用 `static` 关键字修饰的变量，它属于类而非对象。
+
+先说变量。Java 的成员变量有两种：
+
+**实例变量（没有 `static`）**
+
+实例变量属于某个对象，每个对象一份。必须先创建对象（new）之后才能访问。
+
+```java
+public class Student {
+    int age; // 实例变量
+}
+```
+
+**类变量（有 `static`）**
+
+类变量属于类本身，全体对象共用一份。**不需要 new 对象，就能访问。**
+
+```java
+public class Student {
+    static String schoolName; // 类变量
+}
+```
+
+怎么访问？
+
+```java
+Student.schoolName = "中学"; // 推荐：类名.变量
+new Student().schoolName = "改学校"; // 不推荐，但语法允许 对象.变量
+```
+
+类变量只有一份，共享；实例变量每个对象一份，独立。
+
+### static 修饰方法
+
+方法也分两类：
+
+**实例方法（没 static）**
+
+实例方法依附于对象，调用前必须先 `new`。它既能访问实例变量，也能访问类变量，并支持使用 `this` 引用当前对象。
+
+```java
+public class Demo {
+    public void sayHello() {
+        System.out.println("Hello from object.");
+    }
+
+    public static void main(String[] args) {
+        Demo d = new Demo();
+        d.sayHello(); // 调用实例方法
+    }
+}
+```
+
+**类方法（有 static）**
+
+类方法属于类本身，不依赖具体对象，因此无需 `new` 就能调用。它无法访问实例变量，也不能使用 `this`。
+
+```java
+public class Demo {
+    public static void printHelp() {
+        System.out.println("静态方法，用类名调用");
+    }
+
+    public static void main(String[] args) {
+        Demo.printHelp(); // 推荐：用类名调用
+        new Demo().printHelp(); // 不推荐：也能调用，但违背设计初衷
+    }
+}
+```
+
+类方法适合做“工具函数”——执行一段逻辑，但不依赖某个对象的状态。
+
+# final 关键字
+
+final 关键字在 Java 中表示"最终的"或"不可改变的"，它可以用来限制类、方法和变量的行为。
+
+## 修饰类
+
+当一个类被 final 修饰时，它成为"最终类"，其核心特点是不能被继承：
+
+```java
+public final class SecurityClass {
+    // 这个类不能被继承
+}
+```
+
+这在设计安全性要求高的类时非常有用，比如 Java 标准库中的 String 和 Math 类都是 final 的，防止被恶意继承和修改。
+
+## 修饰方法
+
+final 修饰的方法称为"最终方法"，它不能被子类重写：
+
+```java
+public class Parent {
+    public final void secureMethod() {
+        // 这个方法不能被子类重写
+    }
+}
+```
+
+这种设计适用于那些算法固定、不希望被子类修改的核心方法，既保证了安全性，也便于编译器优化。
+
+## 修饰变量
+
+final 修饰的变量本质上是一个"常量"，一旦赋值后就不能再修改。这种限制根据变量类型的不同，有几种不同的应用场景：
+
+### 修饰局部变量
+
+局部变量（方法内部定义的变量）使用 final 修饰后，只能被赋值一次：
+
+```java
+public void test() {
+    final int a = 12;  // 直接初始化
+    // a = 15;  // 错误！final变量不能再次赋值
+
+    final int b;  // 声明时可以不初始化
+    b = 20;       // 第一次赋值正常
+    // b = 30;    // 错误！不能再次赋值
+}
+```
+
+### 修饰成员变量
+
+成员变量按照它们的作用域，可以分为静态成员变量和实例成员变量：
+
+**静态（static）成员变量**
+
+这种组合创建了真正的"常量"，必须在声明时或静态代码块中初始化：
+
+```java
+// 声明时初始化
+public static final double PI = 3.14159;
+
+// 或在静态代码块中初始化
+public static final double E;
+static {
+    E = 2.71828;
+}
+```
+
+**实例成员变量**
+
+这种变量必须在以下位置之一完成初始化：
+
+- 声明时直接赋值
+- 实例代码块中赋值
+- 所有构造方法中赋值
+
+```java
+public class Person {
+    private final String id;  // 一旦设置不可更改的身份证号
+
+    public Person(String id) {
+        this.id = id;  // 构造器中初始化
+    }
+
+    public void changeId(String newId) {
+        // this.id = newId;  // 错误！不能修改final变量
+    }
+}
+```
+
+## 常量
+
+使用`static final`组合修饰的变量称为"常量"，通常用大写字母命名，多个单词间用下划线连接：
+
+```java
+public class Constants {
+    public static final String DATABASE_URL = "jdbc:mysql://localhost:3306/mydb";
+    public static final int MAX_CONNECTIONS = 100;
+    public static final double TAX_RATE = 0.17;
+}
+```
+
+使用常量而非硬编码的数值（魔法数字）有三大好处：
+
+- **提高可读性**：`TAX_RATE`比`0.17`更能表达意图
+- **便于维护**：修改一处即可全局生效
+- **不影响性能**：编译器会直接将常量引用替换为其值（称为"宏替换"）
+
+```java
+// 使用魔法数字
+if (orderAmount > 1000) {  // 什么是1000？为什么是这个数？
+    discount = orderAmount * 0.1;  // 0.1又代表什么？
+}
+
+// 使用常量
+if (orderAmount > Constants.ORDER_DISCOUNT_THRESHOLD) {
+    discount = orderAmount * Constants.VIP_DISCOUNT_RATE;
+}
+```
+
+final 关键字是 Java 安全编程的重要工具，合理使用可以创建更安全、更清晰的代码结构。无论是防止继承、方法重写，还是创建不可变数据，final 都能帮助我们定义清晰的边界。

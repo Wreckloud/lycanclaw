@@ -991,7 +991,7 @@ int[] scores;           // 声明
 scores = new int[3];    // 动态初始化
 ```
 
-选择哪种方式，取决于你的实际需求。这样写，既清晰又方便后续维护。
+选择哪种方式，取决于实际需求。这样写，既清晰又方便后续维护。
 
 ### 访问数组元素
 
@@ -1013,9 +1013,11 @@ marks[2] = 80;  // 将第三个成绩从75改为80
 
 ### 数组遍历
 
-遍历数组就是按顺序访问数组中的每个元素。有几种常见方式：
+遍历数组就是依次访问数组中的每个元素，常用于查找、统计、打印等场景。有几种常见方式：
 
 #### 传统 for 循环
+
+适用于需要知道元素位置（索引）的场景：
 
 ```java
 int[] numbers = {10, 20, 30, 40, 50};
@@ -1028,7 +1030,7 @@ for (int i = 0; i < numbers.length; i++) {
 
 #### 增强 for 循环（for-each）
 
-更简洁，但不能获取索引：
+适合只关心元素值、不关心位置的遍历场景：
 
 ```java
 int[] numbers = {10, 20, 30, 40, 50};
@@ -1039,37 +1041,14 @@ for (int num : numbers) {
 }
 ```
 
-### 二维数组
-
-二维数组就像一个表格，有行和列：
-
-```java
-// 创建3行2列的二维数组
-int[][] matrix = {
-    {1, 2},
-    {3, 4},
-    {5, 6}
-};
-
-// 访问元素 [行][列]
-System.out.println(matrix[0][0]);  // 输出1（第1行第1列）
-System.out.println(matrix[2][1]);  // 输出6（第3行第2列）
-
-// 遍历二维数组
-for (int i = 0; i < matrix.length; i++) {
-    for (int j = 0; j < matrix[i].length; j++) {
-        System.out.print(matrix[i][j] + " ");
-    }
-    System.out.println();  // 换行
-}
-```
+增强 for 循环底层其实就是数组遍历的简化写法，语法更简洁，但无法访问索引。
 
 ### 可变参数
 
-Java 提供了一种特殊语法，让方法能接收不确定数量的参数：
+如果希望方法能接收不确定数量的参数，Java 提供了 **可变参数语法**：
 
 ```java
-// 计算任意数量整数的和
+// 传入任意数量的整数，求和
 int sum(int... numbers) {
     int total = 0;
     for (int num : numbers) {
@@ -1077,8 +1056,11 @@ int sum(int... numbers) {
     }
     return total;
 }
+```
 
-// 调用方法
+调用时可以传入任意多个参数，甚至不传：
+
+```java
 int result1 = sum(10, 20);           // 传入2个参数
 int result2 = sum(5, 10, 15, 20, 25); // 传入5个参数
 int result3 = sum();                  // 不传参数也行
@@ -1097,25 +1079,81 @@ void printInfo(String name, int... scores) { }
 void wrongMethod(int... numbers, String text) { } // 编译错误
 ```
 
-数组的长度是固定的，创建后不能改变大小。如果需要动态调整大小的集合，可以使用 Java 集合框架中的 ArrayList、LinkedList 等类。
+数组一旦创建，长度不可改变。  
+如果需要支持动态增删元素，应考虑使用 `ArrayList`、`LinkedList` 等集合类，后面的部分会提到。
 
-```Java
-// 声明方法
-int sum(int a, int b){
-	return a + b;
+### 二维数组
+
+在需要处理“表格结构”或“坐标矩阵”这类数据时，**一维数组就不够用了**，这时就该出场的是 —— **二维数组**。
+可以把二维数组理解成“数组中的数组”，也可以想象为一个有“行”和“列”的表格结构。
+
+#### 创建二维数组
+
+最常见的创建方式，是**直接赋值初始化**：
+
+```java
+int[][] matrix = {
+    {1, 2},
+    {3, 4},
+    {5, 6}
+};
+```
+
+这段代码创建了一个 `3行2列` 的矩阵：
+
+```
+[
+ [1, 2],
+ [3, 4],
+ [5, 6]
+]
+```
+
+当然，也可以先指定结构，再逐项赋值：
+
+```java
+int[][] table = new int[2][3];  // 2行3列，每个元素默认是0
+table[0][1] = 42;  // 0行1列，赋值42
+```
+
+#### 访问二维数组
+
+需要两个索引：一个表示“第几行”，一个表示“第几列”。
+
+```java
+System.out.println(matrix[0][0]);  // 输出 1（第1行第1列）
+System.out.println(matrix[2][1]);  // 输出 6（第3行第2列）
+```
+
+遍历时需要两层循环：
+
+```java
+for (int i = 0; i < matrix.length; i++) {               // 遍历每一行
+    for (int j = 0; j < matrix[i].length; j++) {        // 遍历当前行的每一列
+        System.out.print(matrix[i][j] + " ");
+    }
+    System.out.println();  // 每行结束后换行
 }
+```
 
-void cleanMemory(){
-	System.out.println(sum);
-}
+输出结果是一个整齐的二维数据表：
 
-public static voud main(String[] args){
-	// 调用有返回值的方法
-	int sum = sum(10, 20);
+```
+1 2
+3 4
+5 6
+```
 
-	// 调用无返回值方法
-	clearMemory();
-}
+- `matrix.length` 表示“总共有几行”
+- `matrix[i].length` 表示“第 i 行有多少列”（支持“非规则二维数组”）
+- 二维数组不是必须要等长每行，比如：
+
+```java
+int[][] irregular = {
+    {1, 2},
+    {3, 4, 5},      // 第2行比第1行多一列
+    {6}
+};
 ```
 
 # API 入门
@@ -1124,7 +1162,7 @@ API（Application Programming Interface，应用程序编程接口）可以理�
 
 比如前面用到的 `Scanner` 和 `Random`，它们就是 Java 提供的 API。只要查文档、会用方法，就能轻松实现输入、生成随机数等功能。
 
-### 包
+### Package 包
 
 包就像是文件夹，用来分门别类地管理各种程序代码。合理建包有利于项目的管理和维护。
 
