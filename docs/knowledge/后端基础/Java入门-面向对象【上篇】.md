@@ -202,6 +202,89 @@ public class Employee {
 
 `this`关键字表示"当前对象"，用来区分成员变量和同名的局部变量。
 
+### 字段与属性
+
+在 Java 面向对象编程中，**字段（Field）**和**属性（Property）**是两个容易混淆的概念，但它们有明确的区别：
+
+- **字段**：类中直接声明的变量
+- **属性**：有 getter/setter 的字段
+
+不是所有字段都是属性，但所有属性都是字段。
+
+**字段（Field）**
+
+字段就是类中直接声明的变量，也叫成员变量：
+
+```java
+public class Student {
+    private String name;    // 这是字段
+    private int age;        // 这也是字段
+    public String school;   // 这还是字段
+}
+```
+
+**属性（Property）**
+
+属性是**字段 + getter/setter 方法**的组合。只有**同时具备** getter 和 setter 的字段，才能称为属性：
+
+```java
+public class Student {
+    private String name;  // 字段
+
+    // getter 和 setter 方法
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+}
+```
+
+这样，`name` 就既是字段，也是属性。
+
+### JavaBean
+
+JavaBean 是 Java 中一种特殊的类规范，主要用于封装数据。**由字段（属性，包含 getter+setter）组成的类就是 JavaBean**。
+
+JavaBean 的标准规范包括：
+
+1. **私有字段**：所有字段都用 `private` 修饰
+2. **公共访问器**：提供 `public` 的 getter 和 setter 方法
+3. **无参构造器**：必须有一个无参数的构造方法
+
+```java
+public class Student implements Serializable {
+    // 1. 私有字段
+    private String name;
+    private int age;
+
+    // 2. 无参构造器
+    public Student() {}
+
+    // 3. 公共访问器
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    public void setAge(int age) {
+        this.age = age;
+    }
+}
+```
+
+JavaBean 通过私有字段  +  公共访问器的设计，既保护数据安全，又让框架能通过反射动态访问属性。
+这种标准化格式让它成为数据传输和框架配置的通用解决方案，几乎所有主流框架都基于 JavaBean  规范工作。
+
 ## 构造方法
 
 在 Java 中，**构造方法**是一种特殊的方法，用于在创建对象时执行初始化操作。与普通方法不同，它的名称必须与类名**完全一致**，而且**没有返回值**（连 `void` 也不能写）。
@@ -259,6 +342,19 @@ Employee emp = new Employee(10000, 2000);
 ```
 
 这样，在需要创建多个对象时，比 `对象.属性` 的初始化方式方便很多。
+
+## 权限修饰符
+
+Java 提供了四种权限修饰符，控制类成员的可访问范围：
+
+| 修饰符       | 本类内部 | 同一个包 | 子类 | 其他包的类 |
+| ------------ | -------- | -------- | ---- | ---------- |
+| private      | ✓        | ✗        | ✗    | ✗          |
+| 默认（不写） | ✓        | ✓        | ✗    | ✗          |
+| protected    | ✓        | ✓        | ✓    | ✗          |
+| public       | ✓        | ✓        | ✓    | ✓          |
+
+设计类时，应遵循"最小权限原则"，只给必要的访问权限。对于需要被子类访问但不想对外公开的成员，protected 是最佳选择。
 
 # 继承
 
@@ -451,18 +547,206 @@ public final void doNotOverrideMe() {
 }
 ```
 
-## 权限修饰符
+# static 静态
 
-Java 提供了四种权限修饰符，控制类成员的可访问范围：
+你有没有想过，为什么我们可以直接使用 `Math.PI` 而不需要先创建一个 Math 对象？
+Java 里的 `static` 是“静态”的意思，用它修饰的东西，不归某个对象所有，而是归整个类。
 
-| 修饰符       | 本类内部 | 同一个包 | 子类 | 其他包的类 |
-| ------------ | -------- | -------- | ---- | ---------- |
-| `private`    | ✓        | ✗        | ✗    | ✗          |
-| 默认（不写） | ✓        | ✓        | ✗    | ✗          |
-| `protected`  | ✓        | ✓        | ✓    | ✗          |
-| `public`     | ✓        | ✓        | ✓    | ✓          |
+### static 修饰变量
 
-设计类时，应遵循"最小权限原则"，只给必要的访问权限。对于需要被子类访问但不想对外公开的成员，protected 是最佳选择。
+在 Java 中，静态变量是用 `static` 关键字修饰的变量，它属于类而非对象。
+先说变量。Java 的成员变量有两种：
+
+**实例变量（没有 `static`）**
+
+实例变量属于某个对象，每个对象一份。必须先创建对象（new）之后才能访问。
+
+```java
+public class Student {
+    int age; // 实例变量
+}
+```
+
+**类变量（有 `static`）**
+
+类变量属于类本身，全体对象共用一份。**不需要 new 对象，就能访问。**
+
+```java
+public class Student {
+    static String schoolName; // 类变量
+}
+```
+
+怎么访问？
+
+```java
+Student.schoolName = "中学"; // 推荐：类名.变量
+new Student().schoolName = "改学校"; // 不推荐，但语法允许 对象.变量
+```
+
+类变量只有一份，共享；实例变量每个对象一份，独立。
+
+### static 修饰方法
+
+方法也分两类：
+
+**实例方法（没 static）**
+
+实例方法依附于对象，调用前必须先 `new`。它既能访问实例变量，也能访问类变量，并支持使用 `this` 引用当前对象。
+
+```java
+public class Demo {
+    public void sayHello() {
+        System.out.println("Hello from object.");
+    }
+
+    public static void main(String[] args) {
+        Demo d = new Demo();
+        d.sayHello(); // 调用实例方法
+    }
+}
+```
+
+**类方法（有 static）**
+
+类方法属于类本身，不依赖具体对象，因此无需 `new` 就能调用。它无法访问实例变量，也不能使用 `this`。
+
+```java
+public class Demo {
+    public static void printHelp() {
+        System.out.println("静态方法，用类名调用");
+    }
+
+    public static void main(String[] args) {
+        Demo.printHelp(); // 推荐：用类名调用
+        new Demo().printHelp(); // 不推荐：也能调用，但违背设计初衷
+    }
+}
+```
+
+类方法适合做“工具函数”——执行一段逻辑，但不依赖某个对象的状态。
+
+# final 关键字
+
+final 关键字在 Java 中表示"最终的"或"不可改变的"，它可以用来限制类、方法和变量的行为。
+
+## 修饰类
+
+当一个类被 final 修饰时，它成为"最终类"，其核心特点是不能被继承：
+
+```java
+public final class SecurityClass {
+    // 这个类不能被继承
+}
+```
+
+这在设计安全性要求高的类时非常有用，比如 Java 标准库中的 String 和 Math 类都是 final 的，防止被恶意继承和修改。
+
+## 修饰方法
+
+final 修饰的方法称为"最终方法"，它不能被子类重写：
+
+```java
+public class Parent {
+    public final void secureMethod() {
+        // 这个方法不能被子类重写
+    }
+}
+```
+
+这种设计适用于那些算法固定、不希望被子类修改的核心方法，既保证了安全性，也便于编译器优化。
+
+## 修饰变量
+
+final 修饰的变量本质上是一个"常量"，一旦赋值后就不能再修改。这种限制根据变量类型的不同，有几种不同的应用场景：
+
+### 修饰局部变量
+
+局部变量（方法内部定义的变量）使用 final 修饰后，只能被赋值一次：
+
+```java
+public void test() {
+    final int a = 12;  // 直接初始化
+    // a = 15;  // 错误！final变量不能再次赋值
+
+    final int b;  // 声明时可以不初始化
+    b = 20;       // 第一次赋值正常
+    // b = 30;    // 错误！不能再次赋值
+}
+```
+
+### 修饰成员变量
+
+成员变量按照它们的作用域，可以分为静态成员变量和实例成员变量：
+
+**静态（static）成员变量**
+
+这种组合创建了真正的"常量"，必须在声明时或静态代码块中初始化：
+
+```java
+// 声明时初始化
+public static final double PI = 3.14159;
+
+// 或在静态代码块中初始化
+public static final double E;
+static {
+    E = 2.71828;
+}
+```
+
+**实例成员变量**
+
+这种变量必须在以下位置之一完成初始化：
+
+- 声明时直接赋值
+- 实例代码块中赋值
+- 所有构造方法中赋值
+
+```java
+public class Person {
+    private final String id;  // 一旦设置不可更改的身份证号
+
+    public Person(String id) {
+        this.id = id;  // 构造器中初始化
+    }
+
+    public void changeId(String newId) {
+        // this.id = newId;  // 错误！不能修改final变量
+    }
+}
+```
+
+## 常量
+
+使用`static final`组合修饰的变量称为"常量"，通常用大写字母命名，多个单词间用下划线连接：
+
+```java
+public class Constants {
+    public static final String DATABASE_URL = "jdbc:mysql://localhost:3306/mydb";
+    public static final int MAX_CONNECTIONS = 100;
+    public static final double TAX_RATE = 0.17;
+}
+```
+
+使用常量而非硬编码的数值（魔法数字）有三大好处：
+
+- **提高可读性**：`TAX_RATE`比`0.17`更能表达意图
+- **便于维护**：修改一处即可全局生效
+- **不影响性能**：编译器会直接将常量引用替换为其值（称为"宏替换"）
+
+```java
+// 使用魔法数字
+if (orderAmount > 1000) {  // 什么是1000？为什么是这个数？
+    discount = orderAmount * 0.1;  // 0.1又代表什么？
+}
+
+// 使用常量
+if (orderAmount > Constants.ORDER_DISCOUNT_THRESHOLD) {
+    discount = orderAmount * Constants.VIP_DISCOUNT_RATE;
+}
+```
+
+final 关键字是 Java 安全编程的重要工具，合理使用可以创建更安全、更清晰的代码结构。无论是防止继承、方法重写，还是创建不可变数据，final 都能帮助我们定义清晰的边界。
 
 # 多态
 
@@ -471,7 +755,6 @@ Java 提供了四种权限修饰符，控制类成员的可访问范围：
 > 同一种操作作用于不同的对象，可以产生不同的行为
 
 多态就像一个万能遥控器，可以控制不同的电视品牌 - 按"音量+"按钮，不同电视都会增大音量，但对于具体的电视品牌，实现方式可能各不相同。
-
 多态让我们可以用统一的方式处理不同类型的对象，大大提高代码的灵活性和可扩展性。
 
 多态表现为两种形式：
@@ -685,205 +968,3 @@ if (animal instanceof Dog dog) {  // 类型检查并直接赋值
 ```
 
 类型转换是一个强大但潜在危险的工具。通过良好的面向对象设计，我们可以最小化对它的依赖，创建更加健壮的代码。
-
-# static 静态
-
-你有没有想过，为什么我们可以直接使用 `Math.PI` 而不需要先创建一个 Math 对象？
-Java 里的 `static` 是“静态”的意思，用它修饰的东西，不归某个对象所有，而是归整个类。
-
-### static 修饰变量
-
-在 Java 中，静态变量是用 `static` 关键字修饰的变量，它属于类而非对象。
-
-先说变量。Java 的成员变量有两种：
-
-**实例变量（没有 `static`）**
-
-实例变量属于某个对象，每个对象一份。必须先创建对象（new）之后才能访问。
-
-```java
-public class Student {
-    int age; // 实例变量
-}
-```
-
-**类变量（有 `static`）**
-
-类变量属于类本身，全体对象共用一份。**不需要 new 对象，就能访问。**
-
-```java
-public class Student {
-    static String schoolName; // 类变量
-}
-```
-
-怎么访问？
-
-```java
-Student.schoolName = "中学"; // 推荐：类名.变量
-new Student().schoolName = "改学校"; // 不推荐，但语法允许 对象.变量
-```
-
-类变量只有一份，共享；实例变量每个对象一份，独立。
-
-### static 修饰方法
-
-方法也分两类：
-
-**实例方法（没 static）**
-
-实例方法依附于对象，调用前必须先 `new`。它既能访问实例变量，也能访问类变量，并支持使用 `this` 引用当前对象。
-
-```java
-public class Demo {
-    public void sayHello() {
-        System.out.println("Hello from object.");
-    }
-
-    public static void main(String[] args) {
-        Demo d = new Demo();
-        d.sayHello(); // 调用实例方法
-    }
-}
-```
-
-**类方法（有 static）**
-
-类方法属于类本身，不依赖具体对象，因此无需 `new` 就能调用。它无法访问实例变量，也不能使用 `this`。
-
-```java
-public class Demo {
-    public static void printHelp() {
-        System.out.println("静态方法，用类名调用");
-    }
-
-    public static void main(String[] args) {
-        Demo.printHelp(); // 推荐：用类名调用
-        new Demo().printHelp(); // 不推荐：也能调用，但违背设计初衷
-    }
-}
-```
-
-类方法适合做“工具函数”——执行一段逻辑，但不依赖某个对象的状态。
-
-# final 关键字
-
-final 关键字在 Java 中表示"最终的"或"不可改变的"，它可以用来限制类、方法和变量的行为。
-
-## 修饰类
-
-当一个类被 final 修饰时，它成为"最终类"，其核心特点是不能被继承：
-
-```java
-public final class SecurityClass {
-    // 这个类不能被继承
-}
-```
-
-这在设计安全性要求高的类时非常有用，比如 Java 标准库中的 String 和 Math 类都是 final 的，防止被恶意继承和修改。
-
-## 修饰方法
-
-final 修饰的方法称为"最终方法"，它不能被子类重写：
-
-```java
-public class Parent {
-    public final void secureMethod() {
-        // 这个方法不能被子类重写
-    }
-}
-```
-
-这种设计适用于那些算法固定、不希望被子类修改的核心方法，既保证了安全性，也便于编译器优化。
-
-## 修饰变量
-
-final 修饰的变量本质上是一个"常量"，一旦赋值后就不能再修改。这种限制根据变量类型的不同，有几种不同的应用场景：
-
-### 修饰局部变量
-
-局部变量（方法内部定义的变量）使用 final 修饰后，只能被赋值一次：
-
-```java
-public void test() {
-    final int a = 12;  // 直接初始化
-    // a = 15;  // 错误！final变量不能再次赋值
-
-    final int b;  // 声明时可以不初始化
-    b = 20;       // 第一次赋值正常
-    // b = 30;    // 错误！不能再次赋值
-}
-```
-
-### 修饰成员变量
-
-成员变量按照它们的作用域，可以分为静态成员变量和实例成员变量：
-
-**静态（static）成员变量**
-
-这种组合创建了真正的"常量"，必须在声明时或静态代码块中初始化：
-
-```java
-// 声明时初始化
-public static final double PI = 3.14159;
-
-// 或在静态代码块中初始化
-public static final double E;
-static {
-    E = 2.71828;
-}
-```
-
-**实例成员变量**
-
-这种变量必须在以下位置之一完成初始化：
-
-- 声明时直接赋值
-- 实例代码块中赋值
-- 所有构造方法中赋值
-
-```java
-public class Person {
-    private final String id;  // 一旦设置不可更改的身份证号
-
-    public Person(String id) {
-        this.id = id;  // 构造器中初始化
-    }
-
-    public void changeId(String newId) {
-        // this.id = newId;  // 错误！不能修改final变量
-    }
-}
-```
-
-## 常量
-
-使用`static final`组合修饰的变量称为"常量"，通常用大写字母命名，多个单词间用下划线连接：
-
-```java
-public class Constants {
-    public static final String DATABASE_URL = "jdbc:mysql://localhost:3306/mydb";
-    public static final int MAX_CONNECTIONS = 100;
-    public static final double TAX_RATE = 0.17;
-}
-```
-
-使用常量而非硬编码的数值（魔法数字）有三大好处：
-
-- **提高可读性**：`TAX_RATE`比`0.17`更能表达意图
-- **便于维护**：修改一处即可全局生效
-- **不影响性能**：编译器会直接将常量引用替换为其值（称为"宏替换"）
-
-```java
-// 使用魔法数字
-if (orderAmount > 1000) {  // 什么是1000？为什么是这个数？
-    discount = orderAmount * 0.1;  // 0.1又代表什么？
-}
-
-// 使用常量
-if (orderAmount > Constants.ORDER_DISCOUNT_THRESHOLD) {
-    discount = orderAmount * Constants.VIP_DISCOUNT_RATE;
-}
-```
-
-final 关键字是 Java 安全编程的重要工具，合理使用可以创建更安全、更清晰的代码结构。无论是防止继承、方法重写，还是创建不可变数据，final 都能帮助我们定义清晰的边界。
