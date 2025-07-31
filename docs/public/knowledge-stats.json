@@ -116,7 +116,7 @@
   },
   {
     "date": "2024-12-25 13:39:20",
-    "wordCount": 6329,
+    "wordCount": 6474,
     "relativePath": "knowledge/后端基础/Java入门-面向对象【上篇】.md"
   },
   {
@@ -138,6 +138,11 @@
     "date": "2025-07-14 09:17:54",
     "wordCount": 1803,
     "relativePath": "knowledge/后端基础/JDBC-数据库连接池.md"
+  },
+  {
+    "date": "2025-07-31 18:30:51",
+    "wordCount": 644,
+    "relativePath": "knowledge/后端基础/正则表达式.md"
   },
   {
     "date": "2025-07-13 15:28:42",
