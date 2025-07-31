@@ -1,5 +1,5 @@
 ---
-title: 正则表达式
+title: Java中的正则表达式
 date: 2025-07-31 18:30:51
 description: 这是一篇新文章!
 order: 0
@@ -10,44 +10,63 @@ tags:
 
 正则表达式是由一些特定字符组成的模式，代表着一套识别字符串的规则。它就像一种特殊的"筛子"，能够快速筛选出符合特定格式的文本。
 
-正则表达式主要有两个核心作用：
+Java 中提供了完整的正则支持，应用范围包括表单验证、爬虫数据提取、敏感信息脱敏等。
 
-1. **校验数据格式**：快速判断输入是否合法（如邮箱、电话号码等）
-2. **文本内容提取**：在大量文本中精确找出满足条件的内容（数据爬取常用）
+## 常用方法
 
-如果不使用正则表达式，我们通常需要编写大量的条件判断语句，代码会变得冗长且难以维护。
+### `String.matches()` 判断字符串格式是否匹配
+
+这是最简单直接的使用方式，适合判断一个字符串是否**完全符合某种格式**。
 
 ```java
-public static boolean checkQQ(String qq) {
-    // 需求：要求QQ号必须是5位以上，全是数字，不能以0开头
-    if (qq == null || qq.startsWith("0") || qq.length() <= 5) {
-        return false;
-    }
+String text = "13812345678";
+boolean isPhone = text.matches("1[3-9]\\d{9}");
+```
 
-    // 检验是否都是数字
-    for (int i = 0; i < qq.length(); i++) {
-        char c = qq.charAt(i);
-        if (c < '0' || c > '9') {
-            return false;
-        }
-    }
-    return true;
+> `matches()` 方法**要求整个字符串完全匹配**正则表达式，部分匹配是不算成功的。这一点和 `Matcher.find()` 不一样。
+
+### `Pattern` + `Matcher` 处理复杂匹配、提取、遍历
+
+如果你需要在一段文本中**提取多个匹配项**，或者需要对匹配进行**更细致的控制**，`Pattern` 和 `Matcher` 是更灵活的选择。
+
+```java
+Pattern pattern = Pattern.compile("1[3-9]\\d{9}");
+Matcher matcher = pattern.matcher("电话1：13812345678，电话2：15698765432");
+
+while (matcher.find()) {
+    System.out.println("找到手机号：" + matcher.group());
 }
 ```
 
-使用正则表达式，一行代码就能完成之前需要多行复杂逻辑才能实现的功能。
+- `Pattern.compile(...)`：将正则表达式编译成模式对象，提高效率
+- `matcher.find()`：每次查找下一个匹配位置
+- `matcher.group()`：返回当前匹配到的内容
+
+> 用 `Pattern`/`Matcher` 可以做很多高级操作，比如提取分组、获取匹配位置、控制查找起点等，是实战中最常用的方式。
+
+| 方法                              | 作用                                 |
+| --------------------------------- | ------------------------------------ |
+| `find()`                          | 查找下一个匹配项（不全匹配也能命中） |
+| `group()` / `group(n)`            | 返回当前匹配的内容 / 指定分组内容    |
+| `start()` / `end()`               | 返回当前匹配子串的起始/结束位置      |
+| `matches()`                       | 检查整个字符串是否完全匹配           |
+| `replaceAll()` / `replaceFirst()` | 替换所有 / 第一个匹配项              |
+
+### `replaceAll()` / `replaceFirst()` 正则替换
+
+`String` 类自带的这些方法，可以结合正则表达式对文本进行替换操作。
 
 ```java
-public static boolean checkQQ2(String qq) {
-    // [1-9]表示首位为1-9，\\d{5,}表示至少5个数字
-    return qq != null && qq.matches("[1-9]\\d{5,}");
-}
+String result = "我的电话是：13812345678，请联系我"
+    .replaceAll("1[3-9]\\d{9}", "已隐藏");
+// 输出：我的电话是：已隐藏，请联系我
 ```
 
-Java 中的 String 类提供了`matches()`方法，可以直接判断字符串是否匹配指定的正则表达式模式：
+你也可以使用分组引用来进行更复杂的替换：
 
 ```java
-public boolean matches(String regex)  // 匹配返回true，不匹配返回false
+String masked = "13812345678".replaceAll("(\\d{3})\\d{4}(\\d{4})", "$1****$2");
+// 输出：138****5678
 ```
 
 ## 书写规则
