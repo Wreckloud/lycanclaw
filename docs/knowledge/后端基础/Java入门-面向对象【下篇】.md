@@ -121,7 +121,7 @@ public class Airplane extends Vehicle {
 }
 ```
 
-## 抽象类的关键特性
+## 抽象类的特性
 
 抽象类有几个重要特点：
 
