@@ -19,13 +19,9 @@ Java 的异常体系以`Throwable`为根，分为两大类：`Error`和`Exceptio
 ![](../../public/images/文章资源/java进阶-常用-api【下篇】/file-20250801144029924.jpg)
 
 **Error**：表示严重的系统级错误，通常无法在程序中处理，因此作为开发人员不用管它
-
 **Exception**：表示程序级异常，可以在程序中捕获和处理，是重点关注的对象
 
 - **运行时异常**（RuntimeException）：编译器不强制处理，常见于编程逻辑错误
-- 编译时异常（CheckedException）：编译器要求必须处理或声明抛出，也称为受检异常
-
-常见的异常类型：
 
 ```java
 // 常见运行时异常
@@ -33,7 +29,11 @@ NullPointerException        // 空指针异常
 ArrayIndexOutOfBoundsException  // 数组索引越界异常
 ClassCastException          // 类型转换异常
 ArithmeticException         // 算术异常（如除以零）
+```
 
+- 编译时异常（CheckedException）：编译器要求必须处理或声明抛出，也称为受检异常
+
+```java
 // 常见受检异常
 IOException                 // 输入输出异常
 SQLException                // 数据库操作异常
@@ -298,7 +298,7 @@ SQLException // 数据库操作异常
 
 编译期异常, 也就是**受检异常**(checked Exception) 是需要在开发时显式处理的, 不然程序编译不会通过.
 
-![](../../public/images/文章资源/java进阶-常用-api【上篇】/file-20250627102843347.jpg)
+![](../../public/images/文章资源/java进阶-常用-api/file-20250627102843347.jpg)
 
 处理方案之一就是 `try-carch` 捕获异常.
 
