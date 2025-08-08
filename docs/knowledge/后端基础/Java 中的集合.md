@@ -47,7 +47,7 @@ Collection 是一个接口，用于定义“集合”的基本行为。它本身
 
 下面按功能分类，逐一演示每个常用方法的使用方式。
 
-### `add(E e)` 增
+#### `add(E e)` 增
 
 `add` 方法用于向集合中添加一个元素。大多数集合类型都支持添加重复元素（如 List），而像 Set 则会自动去重。
 
@@ -59,7 +59,7 @@ wolves.add("灰影"); // 可以重复添加
 System.out.println(wolves); // [灰影, 血牙, 灰影]
 ```
 
-### `remove(Object o)` 删
+#### `remove(Object o)` 删
 
 `remove` 方法用于删除集合中**首次出现**的指定元素。
 
@@ -70,7 +70,7 @@ System.out.println(wolves); // [血牙, 灰影]
 
 注意，`remove` 不是删除所有相同元素，只删第一个。要删除全部，可以搭配循环或 `removeIf`。
 
-### `contains(Object o)` 是否包含
+#### `contains(Object o)` 是否包含
 
 `contains` 用于判断集合中是否存在某个元素，相当于“查”操作。
 
@@ -79,7 +79,7 @@ System.out.println(wolves.contains("血牙")); // true
 System.out.println(wolves.contains("银狼")); // false
 ```
 
-### `size()` 获取集合大小
+#### `size()` 获取集合大小
 
 返回当前集合中元素的数量。
 
@@ -87,7 +87,7 @@ System.out.println(wolves.contains("银狼")); // false
 System.out.println(wolves.size()); // 2
 ```
 
-### `isEmpty()` 集合是否为空
+#### `isEmpty()` 集合是否为空
 
 用于判断集合当前是否为空，常用于逻辑判断、避免空操作。
 
@@ -97,7 +97,7 @@ wolves.clear();
 System.out.println(wolves.isEmpty()); // true
 ```
 
-### `clear()` 清空集合
+#### `clear()` 清空集合
 
 `clear()` 方法会直接清除集合中所有元素，不是逐个删，是一口气清干净。
 
@@ -110,7 +110,7 @@ wolves.clear();
 System.out.println(wolves); // []
 ```
 
-### `toArray()` 集合转数组
+#### `toArray()` 集合转数组
 
 有时候我们要把集合传递给只接受数组的方法，那就得使用 `toArray()`。它有两个常用版本：
 
@@ -138,7 +138,7 @@ System.out.println(Arrays.toString(arr2)); // [云牙, 雪踪]
 
 这种方式更安全，避免强转风险，也是现代写法推荐使用的形式。
 
-### `addAll(Collection<? extends E> c)` 合并
+#### `addAll(Collection<? extends E> c)` 合并
 
 有时候我们需要把两个集合的数据合并，就用 `addAll()`。
 
@@ -204,8 +204,8 @@ while (it.hasNext()) {
 }
 ```
 
-**`hasNext()`**：判断是否还有元素  
-**`next()`**：获取当前元素，并把迭代器指针移向下一个
+- **`hasNext()`**：判断是否还有元素
+- **`next()`**：获取当前元素，并把迭代器指针移向下一个
 
 看看 `ArrayList` 内部 `Itr` 迭代器的简化源码：
 
@@ -243,6 +243,16 @@ public E next() {
 
 ### 增强 for 循环
 
+增强 `for` 是 Java 对迭代器（`Iterator`）的简化封装，语法更简洁，避免手动处理游标和判断逻辑。它适合**只读遍历**（不修改、不删除集合元素）场景。
+
+**语法格式：**
+
+```java
+for (元素类型 变量名 : 集合对象) {
+    // 使用变量名操作每个元素
+}
+```
+
 增强 `for` 是对迭代器的封装，语法更简单，不需要手动获取迭代器对象。
 
 ```java
@@ -251,7 +261,7 @@ for (String wolf : wolves) {
 }
 ```
 
-本质上，Java 会在背后自动使用迭代器实现这个逻辑。你不写，它帮你写了：
+这段代码背后实际上调用的是迭代器，只不过被语法糖封装掉了。
 
 ```java
 for (Iterator<String> it = list.iterator(); it.hasNext();) {
@@ -287,9 +297,7 @@ wolves.forEach(wolf -> System.out.println(wolf));
 wolves.forEach(System.out::println);
 ```
 
-我们并不是自己去遍历集合，而是把“打印逻辑”封装成函数交给系统，**由集合内部帮我们去遍历并回调处理逻辑**。
-
-对应底层源码：
+我们并不是自己去遍历集合，而是把“打印逻辑”封装成函数交给系统，**由集合内部帮我们去遍历并回调处理逻辑**：
 
 ```java
 default void forEach(Consumer<? super T> action) {
@@ -439,7 +447,7 @@ for (int i = list.size() - 1; i >= 0; i--) {
 
 这种方式可以避免元素索引错位的问题。但写起来略显繁琐，而且容易出错。一般不推荐使用，除非你知道自己在做什么。
 
-## List 集合
+# List 集合
 
 List 是 Collection 的子接口，它除了继承单列集合的基本功能（增删查改），还**具备“索引”这一特性**，可以像数组一样通过位置访问或修改元素。
 
@@ -447,7 +455,7 @@ List 是 Collection 的子接口，它除了继承单列集合的基本功能（
 
 ## 特有方法
 
-### `add(int index, E element)` 在指定位置插入元素
+#### `add(int index, E element)` 插入元素
 
 List 允许你**在集合中间插入元素**，自动后移原位置及其后的所有元素。
 
@@ -470,9 +478,9 @@ System.out.println(wolves);
 // [影牙, 夜哨, 雪爪, 赤瞳, 苍风]
 ```
 
-位置计算是从 0 开始的，“1” 就是“周芷若”之前。
+位置计算是从 0 开始的，“1” 就是“夜哨”之前。
 
-### `remove(int index)` 删除指定索引位置的元素
+#### `remove(int index)` 删除元素
 
 这种删除方式比 `remove(Object o)` 更直接——**你告诉它第几位，它就动手砍第几位**。
 
@@ -484,7 +492,7 @@ System.out.println(wolves);
 
 > 如果索引越界，会直接抛出 `IndexOutOfBoundsException`，所以动态操作前最好用 `size()` 判断一下集合长度。
 
-### `set(int index, E element)` 替换某个位置的元素
+#### `set(int index, E element)` 替换元素
 
 如果想要“修改”集合中的某个数据，而不是删除再添加，可以使用 `set()`：
 
@@ -496,7 +504,7 @@ System.out.println(wolves);
 
 这个方法还会返回被替换掉的那个元素，如果你要留个备份，也方便处理。
 
-### `get(int index)` 获取指定位置的元素
+#### `get(int index)` 获取元素
 
 要读取集合中的某一只狼，用 `get()`：
 
