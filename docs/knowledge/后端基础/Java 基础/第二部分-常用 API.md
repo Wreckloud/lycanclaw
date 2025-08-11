@@ -1,5 +1,5 @@
 ---
-title: Java进阶-常用 API
+title: 第二部分-常用 API
 date: 2025-02-09 10:27:43
 description: 这是一篇新文章!
 order: 3
@@ -14,7 +14,7 @@ API(Application Programming Interface)，即应用程序接口，是预先定义
 
 在 Java 中，核心类库就是 Java 官方为开发者提供的一套标准 API。掌握这些 API，就像拥有了一整箱精密工具，能够更高效地构建应用程序。
 
-![](../../public/images/文章资源/java进阶-常用-api/file-20250627102707270.jpg)
+![](../../../public/images/文章资源/第二部分-常用-api/file-20250627102707270.jpg)
 
 [Java® 平台、标准版和 Java 开发工具包 版本 17 API 规范](https://doc.qzxdp.cn/jdk/17/zh/api/index.html)
 
@@ -120,7 +120,7 @@ public native int hashCode();  // 原生方法，由JVM底层实现
 
 当重写 equals 方法时，必须同时重写 hashCode 方法，确保满足上述规则。现代 IDE 提供了自动生成这两个方法的功能：
 
-![](../../public/images/文章资源/java进阶-常用-api/file-20250627102732340.jpg)
+![](../../../public/images/文章资源/第二部分-常用-api/file-20250627102732340.jpg)
 
 生成的代码通常如下：
 
@@ -226,7 +226,7 @@ Java 中的八种基本数据类型都有对应的包装类：
 
 其中大多数包装类只是把基本类型首字母大写，只有`int→Integer`和`char→Character`需要特别记忆。这些包装类都位于`java.lang`包中，可以直接使用而无需导入。
 
-![包装类继承体系](../../public/images/文章资源/java进阶-常用-api/file-20250627102813717.jpg)
+![包装类继承体系](../../../public/images/文章资源/第二部分-常用-api/file-20250627102813717.jpg)
 
 ## 创建包装类对象
 
@@ -315,7 +315,7 @@ int value = num;    // 编译器自动转换为：int value = num.intValue();
 
 自动装箱和拆箱的原理如下图所示：
 
-![自动装箱拆箱原理](../../public/images/文章资源/java进阶-常用-api/file-20250627102821477.jpg)
+![自动装箱拆箱原理](../../../public/images/文章资源/第二部分-常用-api/file-20250627102821477.jpg)
 
 这一机制虽然极大地简化了代码，但也带来了一些需要注意的问题。
 
@@ -499,7 +499,7 @@ public class Student implements Comparable<Student> {
 **方式二：使用  Comparator 比较器**
 
 如果不想让类本身固定排序规则，或者排序规则经常变，可以用 `Comparator` 比较器。  
-这种方式是把“比较规则”写在排序的时候，灵活切换。
+这种方式是把"比较规则"写在排序的时候，灵活切换。
 
 ```java
 Arrays.sort(students, new Comparator<Student>() {
@@ -539,7 +539,7 @@ Lambda 的标准格式长这样：
 (参数列表) -> { 方法体 }
 ```
 
-它本质上就是把“接口里唯一的抽象方法”用一行语法快速实现了。比如：
+它本质上就是把"接口里唯一的抽象方法"用一行语法快速实现了。比如：
 
 ```java
 // 传统写法：匿名内部类
@@ -552,7 +552,7 @@ Animal a1 = new Animal() {
 a1.run();
 ```
 
-如果 Animal 是一个只有一个抽象方法的接口（也叫“函数式接口”），就能用 Lambda 简化：
+如果 Animal 是一个只有一个抽象方法的接口（也叫"函数式接口"），就能用 Lambda 简化：
 
 ```java
 Animal a2 = () -> System.out.println("跑的贼快~~~~");
@@ -658,7 +658,7 @@ Arrays.setAll(scores, index -> {
 Arrays.setAll(scores, index -> scores[index] + 10);
 ```
 
-这就是 Lambda 的全部精髓：让“只用一次的小功能”写起来又快又清楚，代码更聚焦于业务本身。
+这就是 Lambda 的全部精髓：让"只用一次的小功能"写起来又快又清楚，代码更聚焦于业务本身。
 
 抱歉，我没有很好地遵循您的规则。让我重新整理这部分内容，保持专业风格但带点口语化表达，突出"是什么、为什么、怎么用"，并保持与前面内容一致的风格。
 
@@ -817,7 +817,7 @@ String language = new String(chars);
 
 Java 中的字符串字面量会被存储在一个特殊的内存区域，称为"字符串常量池"。这种设计有助于节省内存，因为相同内容的字符串可以共享同一个实例。
 
-![](../../public/images/文章资源/java进阶-常用-api/file-20250627102749604.jpg)
+![](../../../public/images/文章资源/第二部分-常用-api/file-20250627102749604.jpg)
 
 **字面量创建与 new 创建的区别**：
 
@@ -1342,7 +1342,7 @@ new StringJoiner(",")
 new StringJoiner(",", "[", "]")
 ```
 
-没有花里胡哨的操作，`StringJoiner` 的方法设计非常精炼，都是围绕“拼接”本身：
+没有花里胡哨的操作，`StringJoiner` 的方法设计非常精炼，都是围绕"拼接"本身：
 
 | 方法名            | 说明                     |
 | ----------------- | ------------------------ |

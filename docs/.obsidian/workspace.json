@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端基础/Java进阶-常用 API.md",
+                "file": "knowledge/后端基础/Java 基础/第二部分-常用 API.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Java进阶-常用 API"
+              "title": "第二部分-常用 API"
             }
           },
           {
@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端基础/Stream 流.md",
+                "file": "knowledge/后端基础/Java 基础/第三部分-Stream 流.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Stream 流"
+              "title": "第三部分-Stream 流"
             }
           },
           {
@@ -41,12 +41,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端基础/Java 中的集合.md",
+                "file": "knowledge/后端基础/Java 基础/第三部分-集合.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Java 中的集合"
+              "title": "第三部分-集合"
             }
           }
         ],
@@ -69,13 +69,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/后端基础/Stream 流.md",
+                "file": "knowledge/后端基础/Java 基础/第三部分-Stream 流.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Stream 流 的大纲"
+              "title": "第三部分-Stream 流 的大纲"
             }
           },
           {
@@ -181,38 +181,37 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "609913dcbebc90fd",
+  "active": "f5017b8b6797eb17",
   "lastOpenFiles": [
-    "knowledge/后端基础/Java 基础",
-    "knowledge/后端基础/Java 中的集合.md",
-    "knowledge/后端基础/Java 中的现代日期时间API.md",
-    "knowledge/后端基础/Java 基础/File 与 IO 流.md",
-    "knowledge/后端基础/Stream 流.md",
+    "public/images/文章资源/第三部分-stream-流",
+    "knowledge/后端基础/Java 基础/第三部分-File 与 IO 流.md",
+    "knowledge/后端基础/Java 基础/第三部分-集合.md",
+    "public/images/文章资源/第三部分-集合",
+    "knowledge/后端基础/Java 基础/第三部分-Stream 流.md",
+    "public/images/文章资源/第四部分-stream-流",
+    "knowledge/后端基础/Java 基础/第二部分-正则表达式.md",
+    "knowledge/后端基础/Java 基础/第二部分-异常处理.md",
+    "knowledge/后端基础/Java 基础/第二部分-现代日期时间 API.md",
+    "knowledge/后端基础/Java 基础/第二部分-常用 API.md",
+    "knowledge/后端基础/Java 基础/第一部分-面向对象.md",
+    "knowledge/后端基础/Java 基础/第一部分-基础语法.md",
+    "public/images/文章资源/第二部分-异常处理",
+    "public/images/文章资源/第二部分-集合",
+    "public/images/文章资源/第二部分-常用-api",
+    "public/images/文章资源/第一部分-面向对象",
+    "public/images/文章资源/第一部分-基础语法",
+    "public/images/文章资源/面向对象",
+    "public/images/文章资源/常用-api",
     "knowledge/后端基础/Java基础/File 与 IO 流.md",
-    "knowledge/后端基础/Java基础",
-    "knowledge/Java 基础",
-    "knowledge/后端基础/Java进阶-常用 API.md",
-    "knowledge/后端基础/Java 中的异常处理.md",
-    "public/images/文章资源/stream-流/file-20250811095454745.jpg",
-    "public/images/文章资源/stream-流",
-    "knowledge/后端基础/Java 入门-基础语法.md",
-    "public/images/文章资源/java-中的集合/file-20250807094433942.jpg",
-    "public/images/文章资源/java-中的集合",
-    "knowledge/后端基础/Java 中的正则表达式.md",
-    "public/images/文章资源/java-中的异常处理",
-    "public/images/文章资源/java-入门-基础语法",
+    "public/images/文章资源/第三部分-stream-流/file-20250811095454745.jpg",
+    "public/images/文章资源/第三部分-集合/file-20250807094433942.jpg",
     "public/images/文章资源/java中的异常处理/file-20250805161319044.jpg",
-    "public/images/文章资源/java-中的异常处理/file-20250805152536919.jpg",
-    "public/images/文章资源/java中的异常处理",
-    "knowledge/后端基础/Java入门-面向对象.md",
+    "public/images/文章资源/第二部分-异常处理/file-20250805152536919.jpg",
     "public/images/文章资源/java入门-面向对象/file-20250626172103820.jpg",
     "knowledge/后端基础/Java入门-面向对象【下篇】.md",
-    "public/images/文章资源/java入门-面向对象",
-    "public/images/文章资源/java进阶-常用-api",
     "knowledge/后端基础/Java进阶-常用 API【下篇】.md",
     "knowledge/前端面试/常见算法.md",
     "public/images/文章资源/java进阶-常用-api【下篇】/file-20250801144029924.jpg",
-    "public/images/文章资源/java进阶-常用-api【下篇】",
     "knowledge/前端基础/JavaScript-常用API.md",
     "knowledge/前端基础/Javascript-进阶语法.md",
     "knowledge/前端基础/网页行为逻辑-JavaScript.md",

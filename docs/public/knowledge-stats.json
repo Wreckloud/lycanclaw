@@ -110,54 +110,54 @@
     "relativePath": "knowledge/前端面试/深入 this.md"
   },
   {
-    "date": "2025-08-04 11:23:06",
-    "wordCount": 2452,
-    "relativePath": "knowledge/后端基础/Java 中的异常处理.md"
-  },
-  {
-    "date": "2025-07-31 18:30:51",
-    "wordCount": 1128,
-    "relativePath": "knowledge/后端基础/Java 中的正则表达式.md"
-  },
-  {
-    "date": "2025-08-04 11:17:40",
-    "wordCount": 3302,
-    "relativePath": "knowledge/后端基础/Java 中的现代日期时间API.md"
-  },
-  {
-    "date": "2025-08-07 09:40:47",
-    "wordCount": 9630,
-    "relativePath": "knowledge/后端基础/Java 中的集合.md"
-  },
-  {
     "date": "2024-03-30 19:04:12",
-    "wordCount": 9488,
-    "relativePath": "knowledge/后端基础/Java 入门-基础语法.md"
+    "wordCount": 9491,
+    "relativePath": "knowledge/后端基础/Java 基础/第一部分-基础语法.md"
+  },
+  {
+    "date": "2024-12-25 13:39:20",
+    "wordCount": 15140,
+    "relativePath": "knowledge/后端基础/Java 基础/第一部分-面向对象.md"
   },
   {
     "date": "2025-08-11 18:38:54",
     "wordCount": 3153,
-    "relativePath": "knowledge/后端基础/Java 基础/File 与 IO 流.md"
+    "relativePath": "knowledge/后端基础/Java 基础/第三部分-File 与 IO 流.md"
   },
   {
-    "date": "2024-12-25 13:39:20",
-    "wordCount": 15139,
-    "relativePath": "knowledge/后端基础/Java入门-面向对象.md"
+    "date": "2025-08-11 18:39:04",
+    "wordCount": 2141,
+    "relativePath": "knowledge/后端基础/Java 基础/第三部分-Stream 流.md"
+  },
+  {
+    "date": "2025-08-07 09:40:47",
+    "wordCount": 9631,
+    "relativePath": "knowledge/后端基础/Java 基础/第三部分-集合.md"
   },
   {
     "date": "2025-02-09 10:27:43",
-    "wordCount": 11772,
-    "relativePath": "knowledge/后端基础/Java进阶-常用 API.md"
+    "wordCount": 11777,
+    "relativePath": "knowledge/后端基础/Java 基础/第二部分-常用 API.md"
+  },
+  {
+    "date": "2025-08-04 11:23:06",
+    "wordCount": 2453,
+    "relativePath": "knowledge/后端基础/Java 基础/第二部分-异常处理.md"
+  },
+  {
+    "date": "2025-07-31 18:30:51",
+    "wordCount": 1128,
+    "relativePath": "knowledge/后端基础/Java 基础/第二部分-正则表达式.md"
+  },
+  {
+    "date": "2025-08-04 11:17:40",
+    "wordCount": 3302,
+    "relativePath": "knowledge/后端基础/Java 基础/第二部分-现代日期时间 API.md"
   },
   {
     "date": "2025-07-14 09:17:54",
     "wordCount": 1803,
     "relativePath": "knowledge/后端基础/JDBC-数据库连接池.md"
-  },
-  {
-    "date": "2025-08-11 18:39:04",
-    "wordCount": 2137,
-    "relativePath": "knowledge/后端基础/Stream 流.md"
   },
   {
     "date": "2025-07-13 15:28:42",
