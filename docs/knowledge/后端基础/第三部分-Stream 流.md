@@ -67,7 +67,7 @@ System.out.println(grayWolves);
 
 Stream 像一条数据流水线：
 
-![](../../../public/images/文章资源/第三部分-stream-流/file-20250811095454745.jpg)
+![](../../public/images/文章资源/第三部分-stream-流/file-20250811095454745.jpg)
 
 - **起点**：数据源（集合、数组等）进入流
 - **中间环节**：过滤、映射、排序等加工步骤（延迟执行）

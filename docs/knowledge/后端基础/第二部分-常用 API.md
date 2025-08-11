@@ -14,7 +14,7 @@ API(Application Programming Interface)，即应用程序接口，是预先定义
 
 在 Java 中，核心类库就是 Java 官方为开发者提供的一套标准 API。掌握这些 API，就像拥有了一整箱精密工具，能够更高效地构建应用程序。
 
-![](../../../public/images/文章资源/第二部分-常用-api/file-20250627102707270.jpg)
+![](../../public/images/文章资源/第二部分-常用-api/file-20250627102707270.jpg)
 
 [Java® 平台、标准版和 Java 开发工具包 版本 17 API 规范](https://doc.qzxdp.cn/jdk/17/zh/api/index.html)
 
@@ -120,7 +120,7 @@ public native int hashCode();  // 原生方法，由JVM底层实现
 
 当重写 equals 方法时，必须同时重写 hashCode 方法，确保满足上述规则。现代 IDE 提供了自动生成这两个方法的功能：
 
-![](../../../public/images/文章资源/第二部分-常用-api/file-20250627102732340.jpg)
+![](../../public/images/文章资源/第二部分-常用-api/file-20250627102732340.jpg)
 
 生成的代码通常如下：
 
@@ -226,7 +226,7 @@ Java 中的八种基本数据类型都有对应的包装类：
 
 其中大多数包装类只是把基本类型首字母大写，只有`int→Integer`和`char→Character`需要特别记忆。这些包装类都位于`java.lang`包中，可以直接使用而无需导入。
 
-![包装类继承体系](../../../public/images/文章资源/第二部分-常用-api/file-20250627102813717.jpg)
+![包装类继承体系](../../public/images/文章资源/第二部分-常用-api/file-20250627102813717.jpg)
 
 ## 创建包装类对象
 
@@ -315,7 +315,7 @@ int value = num;    // 编译器自动转换为：int value = num.intValue();
 
 自动装箱和拆箱的原理如下图所示：
 
-![自动装箱拆箱原理](../../../public/images/文章资源/第二部分-常用-api/file-20250627102821477.jpg)
+![自动装箱拆箱原理](../../public/images/文章资源/第二部分-常用-api/file-20250627102821477.jpg)
 
 这一机制虽然极大地简化了代码，但也带来了一些需要注意的问题。
 
@@ -817,7 +817,7 @@ String language = new String(chars);
 
 Java 中的字符串字面量会被存储在一个特殊的内存区域，称为"字符串常量池"。这种设计有助于节省内存，因为相同内容的字符串可以共享同一个实例。
 
-![](../../../public/images/文章资源/第二部分-常用-api/file-20250627102749604.jpg)
+![](../../public/images/文章资源/第二部分-常用-api/file-20250627102749604.jpg)
 
 **字面量创建与 new 创建的区别**：
 
