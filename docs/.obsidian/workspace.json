@@ -183,9 +183,10 @@
   },
   "active": "609913dcbebc90fd",
   "lastOpenFiles": [
+    "knowledge/后端基础/Java 基础",
     "knowledge/后端基础/Java 中的集合.md",
     "knowledge/后端基础/Java 中的现代日期时间API.md",
-    "knowledge/后端基础/File 与 IO 流.md",
+    "knowledge/后端基础/Java 基础/File 与 IO 流.md",
     "knowledge/后端基础/Stream 流.md",
     "knowledge/后端基础/Java基础/File 与 IO 流.md",
     "knowledge/后端基础/Java基础",
@@ -226,7 +227,6 @@
     "knowledge/实习实训/Java后端与AI智能体开发全景梳理.md",
     "about.md",
     "knowledge/后端基础/JDBC-数据库连接池.md",
-    "thoughts/我从来都不是一个难相处的人.md",
     "public/images/文章资源/junit-单元测试插件/file-20250627164823953.jpg",
     "public/images/文章资源/junit-单元测试插件/file-20250627164757975.jpg",
     "点子合集.canvas"

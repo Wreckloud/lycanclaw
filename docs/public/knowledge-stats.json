@@ -110,11 +110,6 @@
     "relativePath": "knowledge/前端面试/深入 this.md"
   },
   {
-    "date": "2025-08-11 18:38:54",
-    "wordCount": 3153,
-    "relativePath": "knowledge/后端基础/File 与 IO 流.md"
-  },
-  {
     "date": "2025-08-04 11:23:06",
     "wordCount": 2452,
     "relativePath": "knowledge/后端基础/Java 中的异常处理.md"
@@ -138,6 +133,11 @@
     "date": "2024-03-30 19:04:12",
     "wordCount": 9488,
     "relativePath": "knowledge/后端基础/Java 入门-基础语法.md"
+  },
+  {
+    "date": "2025-08-11 18:38:54",
+    "wordCount": 3153,
+    "relativePath": "knowledge/后端基础/Java 基础/File 与 IO 流.md"
   },
   {
     "date": "2024-12-25 13:39:20",
