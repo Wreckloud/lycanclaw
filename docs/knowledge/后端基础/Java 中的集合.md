@@ -41,6 +41,8 @@ Collection 是一个接口，用于定义“集合”的基本行为。它本身
 - `LinkedHashSet`：在 `HashSet` 基础上，保留了插入顺序。
 - `TreeSet`：元素按自然顺序或指定规则**自动排序**，同样不可重复。
 
+实际开发中，常用的集合主要还是 `ArrayList` 和 `HashSet`，其他集合根据具体需求使用。
+
 ## 常用方法
 
 在 Java 的集合体系中，`Collection` 是所有单列集合（如 List、Set）的顶级接口，它定义了一批最基础的“增删查改”操作，掌握这些方法，就等于掌握了集合的基本使用套路。
@@ -581,13 +583,15 @@ wolves.forEach(wolf -> System.out.println(wolf));
 
 语法极简，但不适合复杂流程控制，比如需要 `break`、`continue` 的时候就无能为力了。
 
-## `ArrayList` 和 `LinkedList` 的区别
+# List 实现类的区别
 
-虽然它俩用法几乎一模一样（都是 `List` 的实现类），但**底层结构不同、适用场景也完全不同**，就像猎狼与牧狼走的不是一条路。
+虽然`ArrayList` 和 `LinkedList`用法几乎一模一样（都是 `List` 的实现类），但底层结构不同、适用场景也完全不同。
+
+开发中，如果没有明确性能瓶颈，优先考虑 `ArrayList`，因为它使用更广泛，维护简单。除非你确定需要处理大量插入删除操作或有特定结构要求，才建议用 `LinkedList`。
 
 我们分开来看——
 
-## `ArrayList`：基于“数组”的实现
+# 动态数组 - `ArrayList`
 
 `ArrayList` 的底层，是一块**连续存储的动态数组**。这一点决定了它的几个核心特性：
 
@@ -623,7 +627,7 @@ System.out.println(wolves);
 
 你插进去一个“白霜”，后面的狼都要依次向后挪个位置，谁都嫌烦。
 
-### 容量不足时，会自动扩容（但代价不低）
+- **容量不足时，会自动扩容（但代价不低）**
 
 默认创建的 `ArrayList`，初始容量是 0：
 
@@ -647,11 +651,7 @@ private transient Object[] elementData;
 
 所以频繁插入、删除，尤其是数据量大的时候，**`ArrayList` 的性能会急剧下滑**。
 
-### 🐺 总结一句话：
-
-> `ArrayList` 是“狼群排队宿舍”：排得整整齐齐，按号就位，找谁都快，但动一个就容易“炸窝”。
-
-## `LinkedList`：基于双向链表的实现
+# 双向链表 - `LinkedList`
 
 `LinkedList` 的底层是一种**双向链表结构**。和 `ArrayList` 相比，它不依赖连续内存空间，节点之间通过指针连接，独立存在。
 
@@ -701,41 +701,72 @@ System.out.println(wolves);
 
 这对需要频繁首尾操作的场景极其有利，**时间复杂度为 O(1)**。
 
-### ✅ 特有方法一览（常用于首尾操作）
+## 特有方法（首尾操作）
 
-| 方法名          | 说明                   |
-| --------------- | ---------------------- |
-| `addFirst(E e)` | 在头部插入元素         |
-| `addLast(E e)`  | 在尾部插入元素         |
-| `getFirst()`    | 获取第一个元素         |
-| `getLast()`     | 获取最后一个元素       |
-| `removeFirst()` | 删除并返回第一个元素   |
-| `removeLast()`  | 删除并返回最后一个元素 |
+`LinkedList` 相比于普通的 `List`，多了一些专门用来处理“首尾位置”的方法。这类方法不需要你去计算下标，更适合当链表被用作队列或栈来使用。
 
-示例：
+### `addFirst/Last()` 插入
+
+这两个方法分别把元素加到链表的最前面或最后面。相比用 `add(0, e)` 或 `add(size, e)`，这种方式更清晰，也更符合链表的用法习惯。
 
 ```java
 LinkedList<String> wolves = new LinkedList<>();
-wolves.addFirst("白狼");
-wolves.addLast("灰狼");
+wolves.add("雪爪");
+wolves.addLast("影牙");
+wolves.addFirst("夜哨");
 
-System.out.println(wolves.getFirst()); // 白狼
-System.out.println(wolves.getLast());  // 灰狼
-
-wolves.removeFirst(); // 移除白狼
-wolves.removeLast();  // 移除灰狼
+System.out.println(wolves);
+// [夜哨, 雪爪, 影牙]
 ```
 
-## `LinkedList` 的典型应用场景：模拟数据结构
+- `addFirst` 把元素插在最前头
+- `addLast` 等同于普通的 `add()`，插在最后
+
+适合用在双端队列、任务调度、栈结构等场景。
+
+### `getFirst/Last()` 查
+
+如果你只是想**读取**第一个或最后一个元素，而不做修改，用这两个方法最方便。
+
+```java
+System.out.println(wolves.getFirst()); // 夜哨
+System.out.println(wolves.getLast());  // 影牙
+```
+
+比用 `get(0)` 和 `get(size - 1)` 更直观。
+
+> 注意：如果链表是空的，这两个方法会抛出 `NoSuchElementException`。建议先用 `isEmpty()` 检查一下。
+
+### `removeFirst/Last()` 删除
+
+这两个方法会移除并返回链表的第一个或最后一个元素。
+
+```java
+wolves.removeFirst(); // 移除“夜哨”
+wolves.removeLast();  // 移除“影牙”
+
+System.out.println(wolves);
+// [雪爪]
+```
+
+删除的同时还能拿到被移除的元素，如果你还想处理它（比如打印、记录日志等），也方便。
+
+总的来说：
+
+- 这类方法语义更明确，写起来比操作下标更清楚；
+- 在用 `LinkedList` 构建“先进先出”或“后进先出”的结构时，会非常常用；
+- 也能让代码更少出错，逻辑更自然。
+
+## `LinkedList` 模拟数据结构
 
 `LinkedList` 的结构天然适合模拟两类最常见的数据结构：
 
 - 队列（Queue）：先进先出 FIFO
 - 栈（Stack）：后进先出 FILO
 
-### 队列（Queue）：首出尾进
+### 队列
 
-适合排队处理场景，例如：消息队列、任务调度、打印任务等。
+队列（Queue）适合排队处理场景，例如：消息队列、任务调度、打印任务等。
 
 用 `LinkedList` 来实现非常直接——
 
@@ -757,9 +788,9 @@ System.out.println(queue.removeFirst()); // 刃牙
 
 此结构**只处理两端，不关心中间**，性能稳定，O(1) 操作。
 
-### 栈（Stack）：后进先出
+### 栈
 
-适合撤销操作、符号匹配、递归调用记录等逻辑。
+栈（Stack）适合撤销操作、符号匹配、递归调用记录等逻辑。
 
 Java 虽然有 `Stack` 类，但其实它早已过时，**推荐使用 `LinkedList` 模拟**，更轻便。
 
@@ -790,267 +821,546 @@ public E pop() {
 }
 ```
 
-开发中，**如果没有明确性能瓶颈，优先考虑 `ArrayList`**，因为它使用更广泛，维护简单。除非你确定需要处理**大量插入删除操作**或有**特定结构要求**，才建议用 `LinkedList`。
+开发中，如果没有明确性能瓶颈，优先考虑 `ArrayList`，因为它使用更广泛，维护简单。除非你确定需要处理**大量插入删除操作**或有**特定结构要求**，才建议用 `LinkedList`。
 
-### 手写 LinkList
+## 手写 `LinkedList`（单链表）
 
-√！定义节点类：用于创建节点对象，封装节点数据和下个节点对象的地址值
-public static class Node<E>{
-E item;
-Node<E>next；//下个节点的地址。
-public Node(E item,Node<E> next){
-this.item = item;
-this.next = next;
+如果说 `ArrayList` 是一块连续的地基，那 `LinkedList` 更像是一条一节节拼接起来的链。我们先实现一个**单向链表**，也就是每个节点只知道下一个节点。
 
-官方没有变量私有, 我们也不私有
+1. **定义节点类 `Node`**
 
-然后定义:
-private int size =θ;
-MyLinkedList.Node<E>first；//头指针。
+链表的核心是节点，首先需要定义一个**内部静态类** `Node`，用来封装数据和指向下一个节点的引用。
 
-定义方法
+```java
+public static class Node<E> {
+    E item;          // 当前节点存储的数据
+    Node<E> next;    // 指向下一个节点的引用
 
-public boolean add(E e){
-//维护单链表
-//第一个节点，或者是后面的节点。
-1/创建一个节点对象，封装这个数据
-Node<E> newNode = new Node<>(e,next:null);
-//判断这个节点是否是第一个节点。
-if（first == null){
-first = newNode;
-}else
-//把这个节点加入到当前最后一个节点下一个位置。
-//如何找到最后一个节点对象
-Node<E> temp = first; <- 特别重要!!!!!! 不要动头指针, 而是给一个临时变量, 任何情况都不要动(我这里关于为什么不要动没有说明白)
-while（temp.next != null){
-temp = temp.next;
-temp.next =newNode;
-return true;
-public int size(）{
-size++
-return size;
-有点难了, 应该再来点文字描述. 这是拓展内容
+    public Node(E item, Node<E> next) {
+        this.item = item;
+        this.next = next;
+    }
+}
+```
+
+- `item` 表示当前节点存的数据；`next` 是连接下一个节点的指针。
+- 每次新增节点时，都会通过构造函数传入数据和下一个节点的引用。
+
+2. **定义链表结构**
+
+在链表类中，我们维护两个关键变量：
+
+```java
+private int size = 0;
+private Node<E> first; // 头指针，指向链表第一个节点
+```
+
+- `size` 用来记录当前链表元素个数；
+- `first` 是链表的起点，初始为 `null`。
+
+3. **实现方法**
+
+我们希望像 `List` 一样支持 `add()` 方法，这里我们只考虑尾部添加元素的情况（即 append）。
+
+```java
+public boolean add(E e) {
+    Node<E> newNode = new Node<>(e, null); // 创建新节点
+
+    if (first == null) {
+        // 链表为空，直接把新节点设为头
+        first = newNode;
+    } else {
+        // 链表不为空，遍历到最后一个节点
+        Node<E> temp = first;
+        while (temp.next != null) {
+            temp = temp.next;
+        }
+        temp.next = newNode; // 将新节点挂在最后一个节点之后
+    }
+
+    size++; // 维护 size
+    return true;
+}
+```
+
+- 一定**不要直接操作 `first` 指针**，否则可能丢失链表起点。
+- 所以我们用 `temp` 临时变量去遍历，确保头指针不被破坏。
+
+实现 `size()` 方法，记录链表当前元素数量：
+
+```java
+public int size() {
+    return size;
+}
+```
+
+这个方法不需要遍历链表，而是直接返回维护的计数变量 `size`，性能更优。
+
+为了方便查看链表结构，我们重写 `toString()` 方法，用 `StringJoiner` 来拼接输出结果：
+
+```java
+@Override
+public String toString() {
+    StringJoiner sb = new StringJoiner(",", "[", "]");
+    Node<E> temp = first;
+
+    while (temp != null) {
+        sb.add(String.valueOf(temp.item));
+        temp = temp.next;
+    }
+
+    return sb.toString();
+}
+```
+
+输出示例：
+
+```java
+[狼牙, 雪爪, 赤瞳]
+```
+
+- 链表通过节点一节节连接，新增时需遍历到尾部；
+- 不要直接修改 `first` 指针，用临时变量遍历；
+- 手写结构时，养成拆解步骤、维护状态的习惯，比如 `size++`。
+
+## Set
+
+`Set` 是 Java 中另一种常用的集合类型。它的最大特点是：**不重复**。
+
+除此之外，`Set` 还有两个很重要的特性：
+
+- **无序**：添加和取出的顺序不一定一致；
+- **无索引**：不能通过下标访问元素，只能遍历。
+
+常见实现类如下：
+
+| 类型            | 是否唯一 | 是否有序 | 是否可索引 | 特点说明             |
+| --------------- | -------- | -------- | ---------- | -------------------- |
+| `HashSet`       | ✔ 不重复 | ✖ 无序   | ✖ 无索引   | 最常用，基于哈希表   |
+| `LinkedHashSet` | ✔ 不重复 | ✔ 有序   | ✖ 无索引   | 插入顺序可控         |
+| `TreeSet`       | ✔ 不重复 | ✔ 排序   | ✖ 无索引   | 自动排序，基于红黑树 |
+
+`Set` 系列基本继承自 `Collection` 接口，所以它常用的方法都来自 `Collection`，自己没怎么新增额外功能。
+
+## HashSet
+
+`HashSet` 是 `Set` 接口最常用的实现类，它完美继承了 Set 的三大特性：
+
+- 不重复
+- 无序
+- 无索引
+
+这就是一个原汁原味的 `Set` ——不讲秩序，不讲位置，只讲唯一性。
+
+```java
+Set<String> wolves = new HashSet<>();
+wolves.add("影牙");
+wolves.add("影牙");
+wolves.add("雪爪");
+wolves.add("夜哨");
+wolves.add("夜哨");
+wolves.add("赤瞳");
+wolves.add("小昭");
+
+System.out.println(wolves);
+// 输出顺序可能是：[赤瞳, 夜哨, 小昭, 影牙, 雪爪]
+```
+
+可以看到：
+
+- 重复元素自动去重
+- 元素的输出顺序和添加顺序不一致
+
+**元素不重复 ——靠的是哈希值 + equals 判断**
+
+在加入元素前，`HashSet` 会先调用元素的 `hashCode()` 方法获取哈希值，再根据哈希值决定存储位置。
+
+如果该位置已有元素，会进一步调用 `equals()` 判断是否“内容相等”，只有不相等才会真正插入。
+
+所以：
+
+- **哈希值一致但 equals 不相等**：允许插入（哈希碰撞）
+- **哈希值一致且 equals 相等**：不插入，判定为重复
+
+**元素无序 ——因为哈希算法决定了存储位置**
+
+`HashSet` 不是按添加顺序存储元素的，而是通过哈希值计算出元素存放的数组下标位置。这个过程本身就带有“打乱顺序”的效果。
+
+**没有索引 ——底层结构不是连续数组，而是哈希表**
+
+因为不是线性结构，所以也就不存在“第几个元素”这个概念，不能用 `get(i)` 访问。
+
+### 哈希值（HashCode）
+
+要理解 `HashSet` 怎么做到这些事的，就得先聊聊它的底层：**哈希表**。
+
+哈希值是一个 `int` 类型的整数，用来快速判断两个对象是否“可能相等”。Java 中，**每个对象都默认有一个哈希值**，它来自 `Object` 类的 `hashCode()` 方法：
+
+```java
+public int hashCode()
+```
+
+哈希值的特点如下：
+
+- 同一个对象，多次调用 `hashCode()` 值相同；
+- 不同对象，哈希值大概率不同，但也可能相同（叫哈希碰撞）。
+
+因为 `int` 只有 32 位，最多也就 42 亿多个可能值，肯定有不同对象“撞号”的情况，这叫哈希碰撞。因此，`HashSet` 判重时要先比哈希值，再用 `equals()` 进一步确认。
+
+### 底层实现
+
+**JDK 8 之前的数组加链表**
+
+> HashSet 的底层其实是一个 **HashMap**，只不过只用了键（key），值固定为一个常量对象。
+
+构造时，会初始化一个默认长度为 **16** 的数组，称为哈希桶，这个“桶”就是用来装元素的空间。
+
+默认负载因子是 **0.75**，它的含义是：**当填满了数组容量的 75% 时就进行扩容（即数组翻倍）**。比如默认初始容量是 16，当放入了第 13 个元素时就会触发扩容。
+
+添加元素时的流程如下：
+
+1. 调用元素的 `hashCode()`，计算哈希值
+2. 用位运算 `hash & (length - 1)` 来确定数据存放的位置（效果等同于“哈希值对数组长度取模”，但效率更高）
+
+   > （你理解没错，底层确实是使用位运算替代求模，原理就是快速将哈希值压缩到数组范围内）
+
+3. 如果该位置为 `null`，直接插入
+4. 如果已有元素，则比较 `equals()` 是否相等
+
+   - 相等：不插入（视为重复）
+   - 不相等：挂在该位置形成“链表”
+
+**JDK 8 之后引入红黑树的优化**
+
+如果某个桶的链表长度太长，会影响性能。于是 Java 当链表长度超过 **8** 且数组容量 >= **64**，会把链表转成 **红黑树** 来提升查询性能。
+
+红黑树的结构主要是：小的往左、大的往右，能显著减少查找时间。
+
+优点：
+
+- 增删查快，平均时间复杂度接近 O(1)；
+- 插入判断效率高，适合去重、快速查找。
+
+缺点：
+
+- 无序，结果顺序不可预测；
+- 不适合需要精确控制顺序或索引的场景。
+
+总之 `HashSet` 是一个**去重神器**，底层基于哈希表，用来快速判断元素是否存在，非常适合处理集合关系、去重判断等场景。
+但如果想要顺序一致、元素排序，`LinkedHashSet`或者`TreeSet`会更合适。
+
+### 去重机制
+
+在计算机里，人类早就有“快速查找”的灵感来源——**字典**。  
+如果按页码或拼音顺序存储，查找效率会比一页页翻快得多。`HashSet` 就是基于类似的思想，用哈希表来快速存储和查找元素。
+
+但在开发中，我们不仅仅会存储简单数据类型，还会处理**对象**。  
+那么问题来了：**`HashSet` 能不能去重对象？**
+
+我们创建一个 `Wolf` 类，表示一只狼，包括名字、性别和爱好：
+
+```java
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
+
+public class HashSetWolfTest {
+    public static void main(String[] args) {
+        Set<Wolf> pack = new HashSet<>(); // 无序、不重复、无索引
+
+        Wolf w1 = new Wolf("银牙", '公', "守护领地");
+        Wolf w2 = new Wolf("黑风", '公', "追逐猎物");
+        Wolf w3 = new Wolf("月影", '母', "在月光下嚎叫");
+        Wolf w4 = new Wolf("月影", '母', "在月光下嚎叫"); // 内容相同
+
+        pack.add(w1);
+        pack.add(w2);
+        pack.add(w3);
+        pack.add(w4);
+
+        System.out.println(pack);
+    }
+}
+
+class Wolf {
+    String name;
+    char sex;
+    String hobby;
+
+    public Wolf(String name, char sex, String hobby) {
+        this.name = name;
+        this.sex = sex;
+        this.hobby = hobby;
+    }
+}
+```
+
+运行结果：**集合中依然会出现两只相同的“月影”**。  
+原因很简单：**`HashSet` 判断是否重复，首先比哈希值，再比 equals**。  
+而我们没有重写 `hashCode()` 和 `equals()`，所以即使属性完全相同，两个对象的哈希值也不同，被当成了不同元素。
+
+**重写 `hashCode()` 和 `equals()`**
+
+要让内容相同的对象被认为是同一个，就需要**同时重写 `equals()` 和 `hashCode()`**。
+
+```java
+@Override
+public boolean equals(Object o) {
+    if (this == o) return true; // 同一对象
+    if (o == null || getClass() != o.getClass()) return false; // 类型不同
+    Wolf wolf = (Wolf) o;
+    return sex == wolf.sex &&
+           Objects.equals(name, wolf.name) &&
+           Objects.equals(hobby, wolf.hobby);
+}
 
 @Override
-public String toString(）{
-StringJoiner sb = new StringJoiner( delimiter:",",prefix: "[" ，suffix: "]");
-Node<E> temp = first;
-while (temp != null){
-sb.add(temp.item+
-temptemp.nex
-return sb.toString();
+public int hashCode() {
+    return Objects.hash(name, sex, hobby);
+}
+```
 
-# Set 集合
+- **只重写 `equals()`**：哈希值不同，直接进了不同桶，不会触发 `equals()` 比较。
+- **只重写 `hashCode()`**：哈希值相同会进同一桶，但 `equals()` 认为不相等，依然会插入。
+- **两个都重写**：哈希值相同进入同一桶，然后 `equals()` 确认内容相同，直接拒绝插入，从而实现去重。
 
-Set 系列集合特点：无序：添加数据的顺序和获取出的数据顺序不一致;不重复；无索引;
+## LinkedHashSet
 
-HashSet：无序、不重复、无索引引。
-LinkedHashSet：有序、、不重复、无索引。
-TreeSet:排序、不重复、无索引。
+`LinkedHashSet` 是 `HashSet` 的“有序版本”：
 
-注意：
-Set 要用到的常用方法，基本上就是 collection 提供的！！
-自己几乎没有额外新增一些常用功能！
+- **有序**：按插入顺序迭代元素
+- **不重复**
+- **无索引**
 
-### HashSet
+源码片段：
 
-(同样帮我把人名改为一致的狼)
-//目标：了解 Set 家族的特点：无序，无索引。
-Set<String> set= newshs//多态，一行经典代码。
-set.add（"张无忌"）；
-set.add（"张无忌"）；
-set.add（"朱九真"）；
-set.add（"周芷若"）
-set.add（"周芷若"）
-set.add（"赵敏")；
-set.add（"小昭");
-System.out.println(set)；//[小昭，周芷若，赵敏，张无忌，朱九真]
-1、为什么添加的元素无亭、不重复、无索引？
-Z、增删改查数据有什么特点，适合什么场景？
+```java
+// 双链表头（最早插入的）
+transient LinkedHashMap.Entry<K,V> head;
 
-在正式了解 HashSet 集合的底层原理前，我们需要先搞清楚一个前置知识：哈希值！
+// 双链表尾（最近插入的）
+transient LinkedHashMap.Entry<K,V> tail;
 
-哈希值
+static class Entry<K,V> extends HashMap.Node<K,V> {
+    Entry<K,V> before, after; // 前驱、后继
+    Entry(int hash, K key, V value, Node<K,V> next) {
+        super(hash, key, value, next);
+    }
+}
+```
 
-就是一个 int 类型的随机数值，Java 中每个对象都有一个哈希值。
-Java 中的所有对象，都可以调用 obejct 类提供的 hashcode 方法，返回该对象自己的哈希值。
-publicinthashCode（）：返回对象的哈希码值。
-对象哈希值的特点
-）同一个对象多次调用 hashCode()方法返回的哈希值是相同的。
-）不同的对象它们的哈希值一般不相但也有可能会相同(哈希碰撞)。
-因为 int 顶多也就 42 亿个
+可见，`Entry` 继承了 `HashMap.Node`，并增加了 `before` 和 `after`，用于维护插入顺序的双向链表指针。
 
-HashSet 集合的底层原理
-基于哈希表实现。
-哈希表是一种增删改查数据，性能都较好的数据结构。
-哈希表
-JDK8 之前，哈希表=数组+链表
-JDK8 开始，哈希表数组+链表红黑树
+`LinkedHashSet` 的底层还是用的 **哈希表**，所以它具备 `HashSet` 的大部分特性（比如插入、查找效率高、不重复、无索引等）。
 
-JDK8 之前 HashSet 集合的底层原理，基于哈希表：数组+链表
-Set<String> set = new HashSet<>();① 当我们创建对象, 并第一次加数巨的时候, 创建一个默认长度 16 的数组，默认加载因子为 0.75，数组名 table
-set.add("数据 1");
+**那为什么能“有顺序”呢？**
 
-1. 使用元素的哈希值对数组的长度做与运算计算出应存入的位置, 其效果就跟 16 求余运算一样的. 求得的数在 0~15,
-2. 然后判断数组的那个位置是不是 null, 是 null 就直接存
-3. 如果不为 null, 那就调用 equals 方法比较, 相等则不存, 不相等就存入数组 4. 8 之前, 新元素是存入数组的, 占据老元素的位置, 然后把老元素挂在新元素下面 5. 8 之后, 新元素直接挂在老元素下面
+关键点在于：**它在哈希表的基础上，又加了一条链 —— 双向链表，用来记录每个元素插入的先后顺序。**
 
-另外, 还有一个什么因子 16\*0.75Ⅱ：12, 当链表过长, 链表的缺点就会体现出来, 然后数组就会扩容到 2 倍
-JDK8 后做了优化, JDK8 开始，当链表长度超过 8，且数组长度>=64 时，自动将链表转成红黑树, 他们希望数据能尽可能的铺开.
-红黑树就是数据小的左边走,数据大的右边走
-(代码块示例一个红黑树展示)
-这就比较符合将数据平铺的思想, 查询性能进一步提高.
+也就是说，每个元素除了放在哈希桶（数组）中，还额外维护了一个前驱和后继指针，形成一条“逻辑顺序链”。
 
-那么为什么为什么添加的元素无序?因为哈希值本身是随机的, 哈希算法更算法本身就是随机的
-不重复, 是因为算到同一个位置会判断是不是同一个元素(是这样吗?)
-无索引？也是因为随机, 而且数组就一个坑位, 一个位置还有链表穿着的多个值呢
+- 哈希表：保证增删查效率（接近 O(1)）
+- 双向链表：维护插入顺序
 
-哈希表是一种增册高删改查数据性能都较好的结构。
-因为他直接拿函数一算位置, 判断一下, 就直接存过去了
-取数据也是拿哈希值算位置
-同样的增删改查都是较好.
+## 树结构
 
-他也有很多问题, 他无序不重复无索引的.
+`TreeSet` 底层是红黑树，而红黑树就是一种特殊的二叉树。所以咱们必须先把树和二叉树搞个大概清楚——不需要全懂，但得知道基本长啥样、为啥要它。
 
-Set<String>Set=newLinkedHashSet<>（)；//有序，但依然不重复，无索引。
-set.add（"张无忌"）;R
-set.add（"张无忌"）；
-set.add("朱九真")；
-set.add("周芷若");
-set.add("周芷若");
-set.add("赵敏");
-set.add("小昭");
+### 树与二叉树
 
-下面了解一些数据结构 树
+树是一种非线性的数据结构，特点是：**一对多、层级分明、没有环**。
 
-二叉树 每个节点只有(是只有还最多有?)两个子节点
-每个节点包含:
-父节点地址值
-值
-左子节点 右子节点
+而我们最常接触的是二叉树 —— 也就是：**每个节点最多只有两个子节点**，这两个子节点分别叫“左子节点”和“右子节点”。
 
-规则：
-小的存左边
-大的存右边
-一样的不存(为什么 java 一样的就不存?)
+每个节点通常包含以下几个信息：
 
-二叉树中，任意节点的度<=2 度：每一个节点的子节点数量
-树高：树的总层数
-根节点：：最顶层的节点
-左子节点
-右子节点
-左子树
-右子树
+- 父节点的地址（实际编程中不常直接用）
+- 当前节点的值
+- 左子节点的引用
+- 右子节点的引用
 
-(这些概念对于我们编程都不是重点, 也算不上提高, 稍微过个眼熟就好, 正式笔记不要在这停留很久)
-二叉查找性能好, 因为他用的折半查找.
-二叉查找树存在的问题：
-如果我的数据本身就排好了 7 10 11 12 13 那么按照刚刚的规则
-(一条斜着的链表)
-这就又变回链表了
-当数据已经是排好序的，导致查询的性能与单链表一样，查询速度变慢！
-我们当然是希望这个二叉树是越矮越好, 于是就有人提出了: 平衡二叉树!
+以下是一些概念扫一眼就行:
 
-平衡二叉树
-在满足查找二叉树的大小规则下，让树尽可能矮小，以此提高查数据的性能，
-什么左旋右旋, 总之就是让任意左右两边的二叉树高度差不超过 1
-(11 作为头节点的平衡二叉树)
+- **度**：一个节点拥有的子节点数量，二叉树中每个节点度都 ≤ 2
+- **树的高度**：从根节点到底部最长路径的层数
+- **根节点**：树的最顶层节点
+- **子节点 / 子树**：某个节点下的分支，往左是“左子树”，往右是“右子树”
 
-而红黑树, 就是自平衡的二叉树!
-红节点是啥
-黑节点是啥
-他要求根节点必须是黑节点, 两个红节点不能相连, 每个路径下的黑节点是一样的
-当然算法还是很复杂的, 我们了解一下即可
+这些名词主要是用于描述结构，并不直接影响编程实现。
 
-# 深入理解 HashSet 集合去重
+### 二叉查找树
 
-其实人类早就知道怎么查找快
-比如说字典!
+我们关心的不是“树”本身，而是它能干嘛。二叉查找树（Binary Search Tree / BST）的核心目的就是：**让查找变快**。
 
-我们以后肯定还是操作对象多一些, 那么 set 集合能不能去重对象呢?
-//目标：理解 HashSet 集合去重复。
-(同样帮我把案例替换成狼的)
-Set<Student>sets=newHashSet<>（)；//无序，不重复，无索引
-Student s1 =newStudent（name:"张继科"，sex:‘男'，hobby:"借钱"）；
-Student s2=new Student( name:"林丹"，sex:‘男'，hobby:"打球"）；
-Student s3=new Student（name:"景甜"，sex:‘女'，hobby:"从前的张继科"）；
-Student s4=new Student(name:"景甜"，sex:'女'，hobby:"从前的张继科”）；
-sets.add(s1);
-sets.add(s2);
-sets.add(s3);
-sets.add(s4);
-System.out.println(sets);
+它的核心规则：
 
-然后发现不能去重, 因为 3 4 的哈希值不一样, 甚至连在数组的位置肯定都不一样.
-那我们肯定是期望内容相同的应该判定为一致.
+- 小的往左放
+- 大的往右放
+- 一样的不放（Java 的 TreeSet 就是这样）
 
-我们就可以重写 equals 和 hashcode
+所以一旦插入了一个数据，它的相对位置就确定了，后续查找可以利用这个规则快速定位。
 
-//只要两个对象内容一样结果就是 true
-@0verride
-publicbooleanequals(objecto){
-if （this ==o）return true;
-if （o == null ll getClass(） != o.getClass()) return
-Student student = （Student） o;
-return sex == student.sex && objects.equals(name，stu
-//只要两个对象的内容一样，返回的哈希值就是一样的
-@0verride
-public int hashCode(）{
-return Objects.hash(name， sex, hobby);
+> 需要注意 `TreeSet` 和 `TreeMap` 本身就是有序 + 去重的集合。
 
-这样就能去重了!
-再重写个 equals, 才能完全保证安全(详细说一下为什么)
+插入时会通过比较器（`Comparable` 或 `Comparator`）判断两个元素是否“相等”。如果结果是相等的，就不再插入。查找树的结构本身也要求每个节点唯一，不然会破坏规则。
 
-LinkedHashSet
-LinkedHashSet:：有序、不重复、无索引。
-依然是基于哈希表(数组、链表、红黑树)实现的
-但是，它的每个元素都额外的多了一个双链表的机制记录它前后元素的位置。
-The head (eldest)of the doubly linked list.
-T
-transient LinkedHashMap.Entry<K，V> head;
-The tail (youngest) of the doubly linked list.
-transient LinkedHashMap.Entry<K，V> tail;
-源码里面就这么写的双节点
+**查找快的关键:**
 
-static class Entry<k,V>extends HashMapNode<K，V>
-Entry<K， V> before,，after;
-Entry(int hash, K key， V value, Node<K，V> next){ super(hash， key， value， next);}
-entry 继承了哈希 map 的节点, 还拓展了前后, 为了实现双链表, 底层还是 HashMapNode
+它可以用“折半”的方式查数据（像二分查找一样）！
+比如你找某个值，每次都能排除一半区域，查找效率就是 O(log n)，很快。
 
-# TreeSet
+- **查找树的最大问题：容易“歪”**
 
-特点：不重复、无索引、可排序（默认升序排序，按照元素的大小，由小到大排序）
-底层是基于红黑树实现的排序。
-对于数值类型：Integer，Double，默认按照数值本身的大小进行升序排序。
-对于字符串类型：默认按照首字符的编号升序排序。
-对于自定义类型如 Student 对象，TreeSet 默认是无法直接排序的。
-自定义排序规则
-TreeSet 集合存储自定义类型的对象时，必须指定排序规则，支持如下两种方式来指定比较规则。
-方式一
-让自定义的类（如学生类）实现 comparable 接口，重写里面的 compareTo 方法来指定比较规则。
-方式二
-通过调用 TreeSet 集合有参数构造器，可以设置 comparator 对象（比较器对象，用于指定比较规则。
-public TreeSet(Comparator<? super E> comparator)
-//目标：TreeSet 排序对象。
-//方式二：TreeSet 集合自带比较器对象 Comparator
-Set<Girl>set = new TreeSet<>(new Comparator<Girl>(){
-@0verride
-public int compare(GirlGirlo2）{
-return Double.compare(o2.getHeight()，o1.getHeight());
-})；//排序，不重复，无索引
-set.add（newGirL（name:"赵敏"sex:女 age:21,height:169.5));
-set.add（newGirL（name:"刘亦菲"sex:女"age:34,height:167.5));
-set.add（newGirL（name:"李若彤"，sex:'女'age:26,height: 168.5));
-Set.add（newGirL（name:"章若楠"，sex:'女'.age:19，height:171.5));
-set.add（newGirL（name:"杨幂"，sex:'女 age:34，height:172.5));
+比如你依次插入这组有序数据：
+
+```text
+7 → 10 → 11 → 12 → 13
+```
+
+按照“小的左，大的右”的规则，插出来的树是这样的：
+
+```
+7
+ \
+  10
+    \
+     11
+       \
+        12
+          \
+           13
+```
+
+这不就变成一条**斜着的链表**了吗？
+
+这样一来，查找效率就退化成 O(n)，跟用 ArrayList 查没区别，甚至还更慢。
+
+### 平衡二叉树
+
+为了解决“单边树”的问题，**平衡二叉树（Balanced BST）**被提了出来。
+
+它的思路是：
+
+> 在不破坏“小的左，大的右”这个查找规则的前提下，让整棵树尽可能矮一点，左右尽量对称。
+
+操作方式就是“旋转”：左旋 / 右旋。结构上动一动，整体就平衡了。
+
+思路也简单粗暴：
+
+核心操作是：**左旋 / 右旋** —— 通过旋转，把结构“扶正”。
+
+比如下面这棵树是平衡的（中心节点是 11）：
+
+```
+    11
+   /  \
+  7   13
+ /      \
+5        15
+```
+
+你可以看到，不论是左边子树还是右边子树，**高度差不超过 1**，这就是“平衡”的定义。
+
+### 红黑树
+
+红黑树（Red-Black Tree）是一种带平衡机制的二叉查找树。当插入或删除节点导致结构不平衡时，它会通过自己旋转结构 + 改颜色的方式调整回“接近平衡”。
+
+红黑树引入了一个“颜色”标记（红 / 黑），并遵循几条强约束规则：
+
+1. 根节点必须是黑色
+2. 所有叶子节点（null）都看作是黑色
+3. 红节点不能连着红节点
+4. 从任一节点到其所有叶子节点的路径，黑节点数量相同
+
+这些规则组合起来，可以控制红黑树的结构在插入/删除时不会严重偏斜，也不会太高。
+
+```
+        11B
+       /   \
+     7R     13R
+    / \     /
+  5B 9B   12B
+```
+
+`B` 表示黑色节点，`R` 表示红色节点。
+这是一个红黑树满足约束规则的例子。它的存在意义就是：不管插入顺序多混乱，它都会自动保持树结构的平衡性，不用我们手动旋转。
+
+`TreeSet` 就是基于红黑树实现的集合结构。
+
+它的特点也就来自于红黑树：
+
+- 会自动排序（因为是查找树）
+- 查找快（因为是平衡的）
+- 不允许重复元素（插入相等的就不放）
+
+树的具体实现不用刻意记，但得知道为什么 `TreeSet` 插入快、还能排好序——靠的就是它底下这棵会自己长正的红黑树。
+
+## TreeSet
+
+`TreeSet` 是一个**无重复、无索引、可排序**的集合，默认按照元素的自然顺序（升序）排列。  
+它底层基于红黑树实现，插入和查找性能都比较稳定，时间复杂度约为 O(log n)。
+
+- **无重复**：和其他 Set 一样，不允许重复元素。
+- **无索引**：不像 List 可以通过下标访问元素。
+- **可排序**：元素按升序排列（默认）。
+
+`TreeSet` 的排序规则因元素类型不同而异：
+
+- **数值类型**（如 `Integer`、`Double`）默认按照数值大小升序排序。
+- **字符串类型** 默认按 Unicode 编码顺序排序，即首字符的编码顺序。
+- **自定义类型** 需要自己定义排序规则，否则无法直接存储。
+
+`TreeSet` 存储自定义对象时，必须指定排序规则，常用的两种方式：
+
+- **方式一：实现 `Comparable` 接口**
+
+让自定义类实现 `Comparable`，重写 `compareTo()` 方法，指定自身排序规则。
+
+```java
+public class Girl implements Comparable<Girl> {
+    private String name;
+    private int age;
+    private double height;
+
+    // 构造器、省略 getter/setter
+
+    @Override
+    public int compareTo(Girl other) {
+        return Double.compare(this.height, other.height); // 按身高升序
+    }
+}
+```
+
+然后用无参构造器创建 `TreeSet`：
+
+```java
+Set<Girl> set = new TreeSet<>();
+```
+
+- **方式二：传入 `Comparator` 比较器**
+
+通过带参构造器，传入一个比较器对象，指定自定义排序逻辑：
+
+```java
+Set<Girl> set = new TreeSet<>(new Comparator<Girl>() {
+    @Override
+    public int compare(Girl o1, Girl o2) {
+        // 按身高降序排序
+        return Double.compare(o2.getHeight(), o1.getHeight());
+    }
+});
+```
+
+添加元素：
+
+```java
+set.add(new Girl("赵敏", 21, 169.5));
+set.add(new Girl("刘亦菲", 34, 167.5));
+set.add(new Girl("李若彤", 26, 168.5));
+set.add(new Girl("章若楠", 19, 171.5));
+set.add(new Girl("杨幂", 34, 172.5));
+
 System.out.println(set);
+```
 
-、如果希望记住元素的添加顺序，需要存储重复的元素，又要频繁的根据索引查询数据
-用 ArrayList 集合（有序、可重复、有索引），底层基于数组的。（常用）
-2、如果希望记住元素的添加顺序，且增删首尾数据的情况较多？
-用 LinkedList 集合（有序、可重复、有索引 l），底层基于双链表实现的。 3.如果不在意元素顺序，也没有重复元素需要存储，只希望增删改查都快？
-用 HashSet 集合（无序，不重复，无索引 l），底层基于哈希表实现的。（常用） 4.如果希望记住元素的添加顺序，也没有重复元素需要存储，且希望增删改查都快？
-用 LinkedHashSet 集合（有序，不重复，无索引 l），底层基于哈希表和双链表。 5.如果要对元素进行排序，也没有重复元素需要存储？且希望增删改查都快？
-用 TreeSet 集合，基于红黑树实现。
-
-但一般在开发中, 几乎都只用 ArrayList 和 HashSet
+结果会按照指定的比较器规则排序，且无重复。
