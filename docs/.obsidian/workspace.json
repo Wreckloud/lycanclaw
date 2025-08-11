@@ -27,6 +27,20 @@
             "state": {
               "type": "markdown",
               "state": {
+                "file": "knowledge/后端基础/Stream 流.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Stream 流"
+            }
+          },
+          {
+            "id": "c9c3a29eb2ecc73f",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
                 "file": "knowledge/后端基础/Java 中的集合.md",
                 "mode": "source",
                 "source": false
@@ -55,13 +69,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/后端基础/Java 中的集合.md",
+                "file": "knowledge/后端基础/Stream 流.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Java 中的集合 的大纲"
+              "title": "Stream 流 的大纲"
             }
           },
           {
@@ -167,18 +181,24 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "f5017b8b6797eb17",
+  "active": "609913dcbebc90fd",
   "lastOpenFiles": [
+    "knowledge/后端基础/Java基础/File 与 IO 流.md",
+    "knowledge/后端基础/Java基础",
+    "knowledge/Java 基础",
+    "knowledge/后端基础/Stream 流.md",
+    "knowledge/后端基础/Java 中的集合.md",
+    "knowledge/后端基础/Java进阶-常用 API.md",
+    "knowledge/后端基础/Java 中的现代日期时间API.md",
+    "knowledge/后端基础/Java 中的异常处理.md",
+    "public/images/文章资源/stream-流/file-20250811095454745.jpg",
+    "public/images/文章资源/stream-流",
+    "knowledge/后端基础/Java 入门-基础语法.md",
     "public/images/文章资源/java-中的集合/file-20250807094433942.jpg",
     "public/images/文章资源/java-中的集合",
     "knowledge/后端基础/Java 中的正则表达式.md",
-    "knowledge/后端基础/Java 中的异常处理.md",
     "public/images/文章资源/java-中的异常处理",
-    "knowledge/后端基础/Java 入门-基础语法.md",
     "public/images/文章资源/java-入门-基础语法",
-    "knowledge/后端基础/Java 中的现代日期时间API.md",
-    "knowledge/后端基础/Java 中的集合.md",
-    "knowledge/后端基础/Java进阶-常用 API.md",
     "public/images/文章资源/java中的异常处理/file-20250805161319044.jpg",
     "public/images/文章资源/java-中的异常处理/file-20250805152536919.jpg",
     "public/images/文章资源/java中的异常处理",
@@ -196,10 +216,7 @@
     "knowledge/前端基础/网页行为逻辑-JavaScript.md",
     "public/images/文章资源/常见算法/file-20250730181354130.jpg",
     "public/images/文章资源/常见算法/file-20250730181258470.jpg",
-    "public/images/文章资源/常见算法",
     "knowledge/前端面试/深入 this.md",
-    "public/images/文章资源/java进阶-常用-api【上篇】",
-    "public/images/文章资源/java进阶-常用api【上篇】",
     "thoughts/电子音乐.md",
     "thoughts/数字世界的构建手册.md",
     "thoughts/互联网与星辰大海.md",
@@ -209,12 +226,8 @@
     "about.md",
     "knowledge/后端基础/JDBC-数据库连接池.md",
     "thoughts/我从来都不是一个难相处的人.md",
-    "knowledge/后端工具库/Docker-虚拟化技术.md",
-    "knowledge/后端工具库/JUnit-单元测试插件.md",
     "public/images/文章资源/junit-单元测试插件/file-20250627164823953.jpg",
     "public/images/文章资源/junit-单元测试插件/file-20250627164757975.jpg",
-    "public/images/文章资源/maven-项目构建工具/file-20250627162621679.jpg",
-    "public/images/文章资源/maven-项目构建工具/file-20250627153552089.jpg",
     "点子合集.canvas"
   ]
 }

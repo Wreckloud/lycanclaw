@@ -17,7 +17,7 @@ tags:
 - **Collection**：单列集合，每个元素只有一个值。
 - **Map**：双列集合，每个元素由一对键值对组成。
 
-# Collection 单列集合
+# Collection
 
 Collection 是一个接口，用于定义“集合”的基本行为。它本身不能直接使用，但它下面派生出了两个核心子接口：
 
@@ -47,9 +47,9 @@ Collection 是一个接口，用于定义“集合”的基本行为。它本身
 
 下面按功能分类，逐一演示每个常用方法的使用方式。
 
-#### `add(E e)` 增
+#### `add` 增
 
-`add` 方法用于向集合中添加一个元素。大多数集合类型都支持添加重复元素（如 List），而像 Set 则会自动去重。
+`add(E e)` 方法用于向集合中添加一个元素。大多数集合类型都支持添加重复元素（如 List），而像 Set 则会自动去重。
 
 ```java
 Collection<String> wolves = new ArrayList<>();
@@ -59,9 +59,9 @@ wolves.add("灰影"); // 可以重复添加
 System.out.println(wolves); // [灰影, 血牙, 灰影]
 ```
 
-#### `remove(Object o)` 删
+#### `remove` 删
 
-`remove` 方法用于删除集合中**首次出现**的指定元素。
+`remove(Object o)` 方法用于删除集合中**首次出现**的指定元素。
 
 ```java
 wolves.remove("灰影"); // 只会删除第一个灰影
@@ -70,16 +70,16 @@ System.out.println(wolves); // [血牙, 灰影]
 
 注意，`remove` 不是删除所有相同元素，只删第一个。要删除全部，可以搭配循环或 `removeIf`。
 
-#### `contains(Object o)` 是否包含
+#### `contains` 是否包含
 
-`contains` 用于判断集合中是否存在某个元素，相当于“查”操作。
+`contains(Object o)` 用于判断集合中是否存在某个元素，相当于“查”操作。
 
 ```java
 System.out.println(wolves.contains("血牙")); // true
 System.out.println(wolves.contains("银狼")); // false
 ```
 
-#### `size()` 获取集合大小
+#### `size()` 获取大小
 
 返回当前集合中元素的数量。
 
@@ -87,7 +87,7 @@ System.out.println(wolves.contains("银狼")); // false
 System.out.println(wolves.size()); // 2
 ```
 
-#### `isEmpty()` 集合是否为空
+#### `isEmpty()` 是否为空
 
 用于判断集合当前是否为空，常用于逻辑判断、避免空操作。
 
@@ -138,9 +138,9 @@ System.out.println(Arrays.toString(arr2)); // [云牙, 雪踪]
 
 这种方式更安全，避免强转风险，也是现代写法推荐使用的形式。
 
-#### `addAll(Collection<? extends E> c)` 合并
+#### `addAll()` 合并
 
-有时候我们需要把两个集合的数据合并，就用 `addAll()`。
+有时候我们需要把两个集合的数据合并，就用 `addAll(Collection<? extends E> c)`。
 
 ```java
 Collection<String> packA = new ArrayList<>();
@@ -164,7 +164,7 @@ System.out.println(packA); // [夜哨, 影爪, 雾牙, 白爪]
 
 而在 Collection 体系中，由于大部分集合没有索引（除了 List），所以不能只依赖传统的 `for` 循环。下面我们从通用的 `Iterator` 开始，逐步过一遍所有推荐的遍历方式。
 
-### 迭代器（Iterator）遍历
+### Iterator 迭代器
 
 `Iterator` 是集合体系中专门用于遍历元素的对象。每一个 Collection 类型的集合都可以通过 `iterator()` 方法获取一个迭代器。
 
@@ -315,7 +315,7 @@ default void forEach(Consumer<? super T> action) {
 
 这个“并发”指的并不是多线程，而是一边遍历集合，一边修改集合结构/增删元素。
 
-### 异常触发机制
+**异常触发机制**
 
 来看 `ArrayList` 的源码片段。在调用迭代器的 `next()` 方法时，内部会执行 `checkForComodification()` 检查集合是否被修改：
 
@@ -367,7 +367,7 @@ public void clear() {
 
 因此，只要你在遍历过程中直接调用这些修改方法，**modCount 和 expectedModCount 不一致**，异常就会抛出。
 
-### `remove()` 迭代器的删除方法
+### 迭代器的删除方法
 
 要避免异常，就必须使用迭代器的 `remove()` 方法，而不是集合本身的删除方法。
 
@@ -447,7 +447,7 @@ for (int i = list.size() - 1; i >= 0; i--) {
 
 这种方式可以避免元素索引错位的问题。但写起来略显繁琐，而且容易出错。一般不推荐使用，除非你知道自己在做什么。
 
-# List 集合
+# List
 
 List 是 Collection 的子接口，它除了继承单列集合的基本功能（增删查改），还**具备“索引”这一特性**，可以像数组一样通过位置访问或修改元素。
 
@@ -455,9 +455,11 @@ List 是 Collection 的子接口，它除了继承单列集合的基本功能（
 
 ## 特有方法
 
-#### `add(int index, E element)` 插入元素
+List 的特有方法大多都支持索引操作
 
-List 允许你**在集合中间插入元素**，自动后移原位置及其后的所有元素。
+#### add 增
+
+`add(int index, E element)` 允许在集合中间插入元素，自动后移原位置及其后的所有元素。
 
 ```java
 List<String> wolves = new ArrayList<>();
@@ -789,3 +791,266 @@ public E pop() {
 ```
 
 开发中，**如果没有明确性能瓶颈，优先考虑 `ArrayList`**，因为它使用更广泛，维护简单。除非你确定需要处理**大量插入删除操作**或有**特定结构要求**，才建议用 `LinkedList`。
+
+### 手写 LinkList
+
+√！定义节点类：用于创建节点对象，封装节点数据和下个节点对象的地址值
+public static class Node<E>{
+E item;
+Node<E>next；//下个节点的地址。
+public Node(E item,Node<E> next){
+this.item = item;
+this.next = next;
+
+官方没有变量私有, 我们也不私有
+
+然后定义:
+private int size =θ;
+MyLinkedList.Node<E>first；//头指针。
+
+定义方法
+
+public boolean add(E e){
+//维护单链表
+//第一个节点，或者是后面的节点。
+1/创建一个节点对象，封装这个数据
+Node<E> newNode = new Node<>(e,next:null);
+//判断这个节点是否是第一个节点。
+if（first == null){
+first = newNode;
+}else
+//把这个节点加入到当前最后一个节点下一个位置。
+//如何找到最后一个节点对象
+Node<E> temp = first; <- 特别重要!!!!!! 不要动头指针, 而是给一个临时变量, 任何情况都不要动(我这里关于为什么不要动没有说明白)
+while（temp.next != null){
+temp = temp.next;
+temp.next =newNode;
+return true;
+public int size(）{
+size++
+return size;
+有点难了, 应该再来点文字描述. 这是拓展内容
+
+@Override
+public String toString(）{
+StringJoiner sb = new StringJoiner( delimiter:",",prefix: "[" ，suffix: "]");
+Node<E> temp = first;
+while (temp != null){
+sb.add(temp.item+
+temptemp.nex
+return sb.toString();
+
+# Set 集合
+
+Set 系列集合特点：无序：添加数据的顺序和获取出的数据顺序不一致;不重复；无索引;
+
+HashSet：无序、不重复、无索引引。
+LinkedHashSet：有序、、不重复、无索引。
+TreeSet:排序、不重复、无索引。
+
+注意：
+Set 要用到的常用方法，基本上就是 collection 提供的！！
+自己几乎没有额外新增一些常用功能！
+
+### HashSet
+
+(同样帮我把人名改为一致的狼)
+//目标：了解 Set 家族的特点：无序，无索引。
+Set<String> set= newshs//多态，一行经典代码。
+set.add（"张无忌"）；
+set.add（"张无忌"）；
+set.add（"朱九真"）；
+set.add（"周芷若"）
+set.add（"周芷若"）
+set.add（"赵敏")；
+set.add（"小昭");
+System.out.println(set)；//[小昭，周芷若，赵敏，张无忌，朱九真]
+1、为什么添加的元素无亭、不重复、无索引？
+Z、增删改查数据有什么特点，适合什么场景？
+
+在正式了解 HashSet 集合的底层原理前，我们需要先搞清楚一个前置知识：哈希值！
+
+哈希值
+
+就是一个 int 类型的随机数值，Java 中每个对象都有一个哈希值。
+Java 中的所有对象，都可以调用 obejct 类提供的 hashcode 方法，返回该对象自己的哈希值。
+publicinthashCode（）：返回对象的哈希码值。
+对象哈希值的特点
+）同一个对象多次调用 hashCode()方法返回的哈希值是相同的。
+）不同的对象它们的哈希值一般不相但也有可能会相同(哈希碰撞)。
+因为 int 顶多也就 42 亿个
+
+HashSet 集合的底层原理
+基于哈希表实现。
+哈希表是一种增删改查数据，性能都较好的数据结构。
+哈希表
+JDK8 之前，哈希表=数组+链表
+JDK8 开始，哈希表数组+链表红黑树
+
+JDK8 之前 HashSet 集合的底层原理，基于哈希表：数组+链表
+Set<String> set = new HashSet<>();① 当我们创建对象, 并第一次加数巨的时候, 创建一个默认长度 16 的数组，默认加载因子为 0.75，数组名 table
+set.add("数据 1");
+
+1. 使用元素的哈希值对数组的长度做与运算计算出应存入的位置, 其效果就跟 16 求余运算一样的. 求得的数在 0~15,
+2. 然后判断数组的那个位置是不是 null, 是 null 就直接存
+3. 如果不为 null, 那就调用 equals 方法比较, 相等则不存, 不相等就存入数组 4. 8 之前, 新元素是存入数组的, 占据老元素的位置, 然后把老元素挂在新元素下面 5. 8 之后, 新元素直接挂在老元素下面
+
+另外, 还有一个什么因子 16\*0.75Ⅱ：12, 当链表过长, 链表的缺点就会体现出来, 然后数组就会扩容到 2 倍
+JDK8 后做了优化, JDK8 开始，当链表长度超过 8，且数组长度>=64 时，自动将链表转成红黑树, 他们希望数据能尽可能的铺开.
+红黑树就是数据小的左边走,数据大的右边走
+(代码块示例一个红黑树展示)
+这就比较符合将数据平铺的思想, 查询性能进一步提高.
+
+那么为什么为什么添加的元素无序?因为哈希值本身是随机的, 哈希算法更算法本身就是随机的
+不重复, 是因为算到同一个位置会判断是不是同一个元素(是这样吗?)
+无索引？也是因为随机, 而且数组就一个坑位, 一个位置还有链表穿着的多个值呢
+
+哈希表是一种增册高删改查数据性能都较好的结构。
+因为他直接拿函数一算位置, 判断一下, 就直接存过去了
+取数据也是拿哈希值算位置
+同样的增删改查都是较好.
+
+他也有很多问题, 他无序不重复无索引的.
+
+Set<String>Set=newLinkedHashSet<>（)；//有序，但依然不重复，无索引。
+set.add（"张无忌"）;R
+set.add（"张无忌"）；
+set.add("朱九真")；
+set.add("周芷若");
+set.add("周芷若");
+set.add("赵敏");
+set.add("小昭");
+
+下面了解一些数据结构 树
+
+二叉树 每个节点只有(是只有还最多有?)两个子节点
+每个节点包含:
+父节点地址值
+值
+左子节点 右子节点
+
+规则：
+小的存左边
+大的存右边
+一样的不存(为什么 java 一样的就不存?)
+
+二叉树中，任意节点的度<=2 度：每一个节点的子节点数量
+树高：树的总层数
+根节点：：最顶层的节点
+左子节点
+右子节点
+左子树
+右子树
+
+(这些概念对于我们编程都不是重点, 也算不上提高, 稍微过个眼熟就好, 正式笔记不要在这停留很久)
+二叉查找性能好, 因为他用的折半查找.
+二叉查找树存在的问题：
+如果我的数据本身就排好了 7 10 11 12 13 那么按照刚刚的规则
+(一条斜着的链表)
+这就又变回链表了
+当数据已经是排好序的，导致查询的性能与单链表一样，查询速度变慢！
+我们当然是希望这个二叉树是越矮越好, 于是就有人提出了: 平衡二叉树!
+
+平衡二叉树
+在满足查找二叉树的大小规则下，让树尽可能矮小，以此提高查数据的性能，
+什么左旋右旋, 总之就是让任意左右两边的二叉树高度差不超过 1
+(11 作为头节点的平衡二叉树)
+
+而红黑树, 就是自平衡的二叉树!
+红节点是啥
+黑节点是啥
+他要求根节点必须是黑节点, 两个红节点不能相连, 每个路径下的黑节点是一样的
+当然算法还是很复杂的, 我们了解一下即可
+
+# 深入理解 HashSet 集合去重
+
+其实人类早就知道怎么查找快
+比如说字典!
+
+我们以后肯定还是操作对象多一些, 那么 set 集合能不能去重对象呢?
+//目标：理解 HashSet 集合去重复。
+(同样帮我把案例替换成狼的)
+Set<Student>sets=newHashSet<>（)；//无序，不重复，无索引
+Student s1 =newStudent（name:"张继科"，sex:‘男'，hobby:"借钱"）；
+Student s2=new Student( name:"林丹"，sex:‘男'，hobby:"打球"）；
+Student s3=new Student（name:"景甜"，sex:‘女'，hobby:"从前的张继科"）；
+Student s4=new Student(name:"景甜"，sex:'女'，hobby:"从前的张继科”）；
+sets.add(s1);
+sets.add(s2);
+sets.add(s3);
+sets.add(s4);
+System.out.println(sets);
+
+然后发现不能去重, 因为 3 4 的哈希值不一样, 甚至连在数组的位置肯定都不一样.
+那我们肯定是期望内容相同的应该判定为一致.
+
+我们就可以重写 equals 和 hashcode
+
+//只要两个对象内容一样结果就是 true
+@0verride
+publicbooleanequals(objecto){
+if （this ==o）return true;
+if （o == null ll getClass(） != o.getClass()) return
+Student student = （Student） o;
+return sex == student.sex && objects.equals(name，stu
+//只要两个对象的内容一样，返回的哈希值就是一样的
+@0verride
+public int hashCode(）{
+return Objects.hash(name， sex, hobby);
+
+这样就能去重了!
+再重写个 equals, 才能完全保证安全(详细说一下为什么)
+
+LinkedHashSet
+LinkedHashSet:：有序、不重复、无索引。
+依然是基于哈希表(数组、链表、红黑树)实现的
+但是，它的每个元素都额外的多了一个双链表的机制记录它前后元素的位置。
+The head (eldest)of the doubly linked list.
+T
+transient LinkedHashMap.Entry<K，V> head;
+The tail (youngest) of the doubly linked list.
+transient LinkedHashMap.Entry<K，V> tail;
+源码里面就这么写的双节点
+
+static class Entry<k,V>extends HashMapNode<K，V>
+Entry<K， V> before,，after;
+Entry(int hash, K key， V value, Node<K，V> next){ super(hash， key， value， next);}
+entry 继承了哈希 map 的节点, 还拓展了前后, 为了实现双链表, 底层还是 HashMapNode
+
+# TreeSet
+
+特点：不重复、无索引、可排序（默认升序排序，按照元素的大小，由小到大排序）
+底层是基于红黑树实现的排序。
+对于数值类型：Integer，Double，默认按照数值本身的大小进行升序排序。
+对于字符串类型：默认按照首字符的编号升序排序。
+对于自定义类型如 Student 对象，TreeSet 默认是无法直接排序的。
+自定义排序规则
+TreeSet 集合存储自定义类型的对象时，必须指定排序规则，支持如下两种方式来指定比较规则。
+方式一
+让自定义的类（如学生类）实现 comparable 接口，重写里面的 compareTo 方法来指定比较规则。
+方式二
+通过调用 TreeSet 集合有参数构造器，可以设置 comparator 对象（比较器对象，用于指定比较规则。
+public TreeSet(Comparator<? super E> comparator)
+//目标：TreeSet 排序对象。
+//方式二：TreeSet 集合自带比较器对象 Comparator
+Set<Girl>set = new TreeSet<>(new Comparator<Girl>(){
+@0verride
+public int compare(GirlGirlo2）{
+return Double.compare(o2.getHeight()，o1.getHeight());
+})；//排序，不重复，无索引
+set.add（newGirL（name:"赵敏"sex:女 age:21,height:169.5));
+set.add（newGirL（name:"刘亦菲"sex:女"age:34,height:167.5));
+set.add（newGirL（name:"李若彤"，sex:'女'age:26,height: 168.5));
+Set.add（newGirL（name:"章若楠"，sex:'女'.age:19，height:171.5));
+set.add（newGirL（name:"杨幂"，sex:'女 age:34，height:172.5));
+System.out.println(set);
+
+、如果希望记住元素的添加顺序，需要存储重复的元素，又要频繁的根据索引查询数据
+用 ArrayList 集合（有序、可重复、有索引），底层基于数组的。（常用）
+2、如果希望记住元素的添加顺序，且增删首尾数据的情况较多？
+用 LinkedList 集合（有序、可重复、有索引 l），底层基于双链表实现的。 3.如果不在意元素顺序，也没有重复元素需要存储，只希望增删改查都快？
+用 HashSet 集合（无序，不重复，无索引 l），底层基于哈希表实现的。（常用） 4.如果希望记住元素的添加顺序，也没有重复元素需要存储，且希望增删改查都快？
+用 LinkedHashSet 集合（有序，不重复，无索引 l），底层基于哈希表和双链表。 5.如果要对元素进行排序，也没有重复元素需要存储？且希望增删改查都快？
+用 TreeSet 集合，基于红黑树实现。
+
+但一般在开发中, 几乎都只用 ArrayList 和 HashSet
