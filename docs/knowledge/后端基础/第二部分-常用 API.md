@@ -513,6 +513,80 @@ Arrays.sort(students, new Comparator<Student>() {
 
 同样的，返回的值需要整型，如果是两个小数比较，推荐用 `Double.compare(o1.getHeight(), o2.getHeight())`。
 
+### `binarySearch` 二分查找
+
+```java
+int binarySearch(int[] a, int key)
+<T> int binarySearch(T[] a, T key)
+```
+
+在 **已排序数组** 中查找元素，返回其索引。找不到时返回负数 `-(插入点) - 1`。
+
+```java
+int[] nums = {1, 3, 5, 7, 9};
+int idx = Arrays.binarySearch(nums, 5);  // 2
+int notFound = Arrays.binarySearch(nums, 4); // -3（插入点是 2）
+```
+
+注意：数组必须已排序，否则结果不可靠。
+
+### `copyOf` / `copyOfRange` 拷贝
+
+```java
+int[] copyOf(int[] original, int newLength)
+int[] copyOfRange(int[] original, int from, int to)
+```
+
+- `copyOf`：整体拷贝，指定新长度
+- `copyOfRange`：拷贝区间 `[from, to)`
+
+```java
+int[] nums = {1, 2, 3, 4, 5};
+int[] a = Arrays.copyOf(nums, 3);       // [1, 2, 3]
+int[] b = Arrays.copyOf(nums, 7);       // [1, 2, 3, 4, 5, 0, 0]
+int[] c = Arrays.copyOfRange(nums, 1, 4); // [2, 3, 4]
+```
+
+### `fill` 填充
+
+```java
+void fill(int[] a, int val)
+```
+
+将数组全部填充为指定值。
+
+```java
+int[] den = new int[5];
+Arrays.fill(den, -1);
+System.out.println(Arrays.toString(den)); // [-1, -1, -1, -1, -1]
+```
+
+内部实现其实就是一个循环：
+
+```java
+for (int i = 0, len = a.length; i < len; i++)
+    a[i] = val;
+```
+
+> 注意：`len = a.length` 先保存下来，避免每次循环都重新计算。
+
+### `equals` 比较
+
+```java
+boolean equals(int[] a, int[] b)
+```
+
+逐个元素比较两个数组是否完全相同。
+
+```java
+int[] a = {1, 2, 3};
+int[] b = {1, 2, 3};
+int[] c = {3, 2, 1};
+
+System.out.println(Arrays.equals(a, b)); // true
+System.out.println(Arrays.equals(a, c)); // false
+```
+
 # Lambda 表达式
 
 在  Java 8 之前，实现接口需要写匿名内部类的写法正如我们前面介绍的那样：

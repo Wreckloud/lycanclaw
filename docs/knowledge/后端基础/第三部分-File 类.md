@@ -1,5 +1,5 @@
 ---
-title: 第三部分-File 与 IO 流
+title: 第三部分-File 类
 date: 2025-08-11 18:38:54
 description: 这是一篇新文章!
 order: 9
@@ -334,75 +334,3 @@ public static void searchFile(File dir, String fileName) {
 ```
 
 这就是典型的深度优先遍历文件夹。
-好的，下面继续整理“IO 流”部分，保持风格中和、流畅，关键点用简明列表突出，案例统一用“狼”相关，正文专业自然，轻松但不失条理。
-
----
-
-# IO 流
-
-`File` 类只能操作文件本身，比如创建、删除、重命名等，但如果要真正读写文件内容，就得靠 IO 流（Input/Output Stream）。
-在正式讲 IO 流之前，先搞清楚字节流和字符集的底层原理，这样才能理解数据在计算机里的存储和传输方式。
-
-## 字节与字符编码
-
-计算机本质上只认二进制。最早，英文字符（包括大小写字母、数字、标点等）用 ASCII 编码，每个字符用 1 个字节（8 位）存储，能表示 128 个字符。这对英语世界来说绰绰有余。
-
-但中文字符远比这多得多。为了解决中文存储问题，出现了 GBK 编码。GBK 能表示两万多个汉字，每个中文字符用 2 个字节存储，而且兼容 ASCII。GBK 规定：
-
-- 如果字节的首位是 1，就是汉字（两个字节）；
-- 首位是 0，就是英文或数字（一个字节）。
-
-后来，Unicode 字符集横空出世，目标是囊括全世界所有文字和符号。它用 4 个字节表示一个字符，虽然通用但有点**浪费空间**。
-
-真正实用的是 UTF-8。它是 Unicode 的一种编码方式，采用**可变长度**：
-
-- 英文、数字等只占 1 个字节，
-- 中文字符占 3 个字节。
-
-这样既兼容 ASCII，又能高效存储多语言内容。现在写代码，也推荐统一用 UTF-8 编码，避免乱码和兼容性问题。
-
-## 字符集操作
-
-在 Java 里，字符和字节的相互转换，就是所谓的“编码”和“解码”。掌握这些方法，能让你在处理文本和二进制数据时游刃有余。
-
-### `getBytes()` 编码
-
-`getBytes()` 方法可以把字符串按照指定字符集编码成字节数组。常见用法有两种：
-
-- `byte[] getBytes()`：使用平台默认字符集（通常是 UTF-8）
-- `byte[] getBytes(String charsetName)`：使用指定字符集（如 "GBK"）
-
-```java
-String wolfName = "灰牙狼";
-
-// 默认编码（UTF-8）
-byte[] bytes = wolfName.getBytes();
-
-// 指定编码（GBK）
-byte[] bytesGBK = wolfName.getBytes("GBK");
-```
-
-这样就能把字符串转成字节数组，便于后续存储或网络传输。
-
-### `new String(byte[] bytes)` 解码
-
-`String` 构造方法可以把字节数组还原成字符串。常见用法：
-
-- `new String(byte[] bytes)`：用平台默认字符集解码
-- `new String(byte[] bytes, String charsetName)`：用指定字符集解码
-
-```java
-// 假设 bytes 和 bytesGBK 是上面编码得到的字节数组
-
-// 默认解码（UTF-8）
-String decodedUTF8 = new String(bytes);
-System.out.println(decodedUTF8);
-
-// 指定解码（GBK）
-String decodedGBK = new String(bytesGBK, "GBK");
-System.out.println(decodedGBK);
-```
-
-只要编码和解码时用的字符集一致，内容就不会乱码。
-
-掌握这些基础方法，后续无论是文件读写还是网络通信，字符和字节的转换都能轻松搞定。
