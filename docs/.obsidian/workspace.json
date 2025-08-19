@@ -8,31 +8,17 @@
         "type": "tabs",
         "children": [
           {
-            "id": "f5017b8b6797eb17",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "thoughts/叼住时间的尾巴.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "叼住时间的尾巴"
-            }
-          },
-          {
             "id": "d11777060acf2fe7",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端基础/第三部分-集合.md",
+                "file": "knowledge/后端基础/第四部分-多线程.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "第三部分-集合"
+              "title": "第四部分-多线程"
             }
           }
         ]
@@ -54,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "thoughts/叼住时间的尾巴.md",
+                "file": "knowledge/后端基础/第四部分-多线程.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "叼住时间的尾巴 的大纲"
+              "title": "第四部分-多线程 的大纲"
             }
           },
           {
@@ -94,7 +80,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 258.5
+    "width": 231.5
   },
   "right": {
     "id": "318f4ed2312b0f42",
@@ -159,6 +145,7 @@
   },
   "left-ribbon": {
     "hiddenItems": {
+      "bases:创建新数据库": false,
       "switcher:打开快速切换": false,
       "graph:查看关系图谱": false,
       "canvas:新建白板": false,
@@ -166,20 +153,23 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "f5017b8b6797eb17",
+  "active": "d11777060acf2fe7",
   "lastOpenFiles": [
+    "knowledge/后端基础/第三部分-集合.md",
+    "knowledge/后端基础/第三部分-IO 流.md",
+    "knowledge/后端基础/第三部分-File 类.md",
+    "knowledge/后端基础/第四部分-多线程.md",
+    "thoughts/叼住时间的尾巴.md",
+    "public/images/文章资源/叼住时间的尾巴/file-20250819125638991.jpg",
+    "public/images/文章资源/叼住时间的尾巴",
+    "knowledge/后端基础/第四部分-反射与注解.md",
     "thoughts/光不在彼方.md",
     "thoughts/献给狼，也献给你.md",
     "thoughts/远古卷轴.md",
     "thoughts/我从人间走过.md",
-    "knowledge/后端基础/第三部分-集合.md",
     "knowledge/后端基础/第二部分-常用 API.md",
     "knowledge/前端基础/Javascript-进阶语法.md",
     "knowledge/后端基础/第三部分-Stream 流.md",
-    "knowledge/后端基础/第三部分-File 类.md",
-    "knowledge/后端基础/第三部分-IO 流.md",
-    "knowledge/后端基础/第四部分-反射与注解.md",
-    "thoughts/叼住时间的尾巴.md",
     "knowledge/后端基础/第一部分-基础语法.md",
     "knowledge/后端基础/第一部分-面向对象.md",
     "knowledge/后端基础/JDBC-数据库连接池.md",
@@ -202,18 +192,14 @@
     "public/images/文章资源/第四部分-stream-流",
     "public/images/文章资源/第二部分-异常处理",
     "public/images/文章资源/第二部分-集合",
-    "public/images/文章资源/第二部分-常用-api",
     "knowledge/后端基础/Java基础/File 与 IO 流.md",
     "public/images/文章资源/第三部分-stream-流/file-20250811095454745.jpg",
     "public/images/文章资源/第三部分-集合/file-20250807094433942.jpg",
     "public/images/文章资源/java中的异常处理/file-20250805161319044.jpg",
-    "public/images/文章资源/第二部分-异常处理/file-20250805152536919.jpg",
     "knowledge/后端基础/Java入门-面向对象【下篇】.md",
     "knowledge/后端基础/Java进阶-常用 API【下篇】.md",
     "knowledge/前端面试/常见算法.md",
     "knowledge/前端基础/JavaScript-常用API.md",
-    "knowledge/前端基础/网页行为逻辑-JavaScript.md",
-    "knowledge/前端面试/深入 this.md",
     "点子合集.canvas"
   ]
 }

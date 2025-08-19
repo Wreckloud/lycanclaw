@@ -28,6 +28,7 @@ tags:
 这样既兼容 ASCII，又能高效存储多语言内容。现在写代码，也推荐统一用 UTF-8 编码，避免乱码和兼容性问题。
 
 在 Java 里，字符和字节的相互转换，就是所谓的“编码”和“解码”。
+
 ### `getBytes()` 编码
 
 `getBytes()` 方法可以把字符串按照指定字符集编码成字节数组。常见用法有两种：
@@ -786,7 +787,7 @@ public String readLine() // 按行读取，读尽返回 null
 面向文本的读取，按行处理更自然；缓冲使读取批量化，`readLine()` 直接给到语义化的“行”，便于逐行消费与解析。
 
 ```java
-// 狼示例：按行读取 UTF-8 文本
+// 按行读取 UTF-8 文本
 try (BufferedReader br = new BufferedReader(new InputStreamReader(
          new FileInputStream("den/wolf.txt"), StandardCharsets.UTF_8))) {
     String line;
