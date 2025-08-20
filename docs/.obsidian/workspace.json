@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端基础/第四部分-多线程.md",
+                "file": "thoughts/叼住时间的尾巴.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "第四部分-多线程"
+              "title": "叼住时间的尾巴"
             }
           }
         ]
@@ -40,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/后端基础/第四部分-多线程.md",
+                "file": "thoughts/叼住时间的尾巴.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "第四部分-多线程 的大纲"
+              "title": "叼住时间的尾巴 的大纲"
             }
           },
           {
@@ -155,10 +155,10 @@
   },
   "active": "d11777060acf2fe7",
   "lastOpenFiles": [
+    "knowledge/后端基础/第四部分-多线程.md",
     "knowledge/后端基础/第三部分-集合.md",
     "knowledge/后端基础/第三部分-IO 流.md",
     "knowledge/后端基础/第三部分-File 类.md",
-    "knowledge/后端基础/第四部分-多线程.md",
     "thoughts/叼住时间的尾巴.md",
     "public/images/文章资源/叼住时间的尾巴/file-20250819125638991.jpg",
     "public/images/文章资源/叼住时间的尾巴",
