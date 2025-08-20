@@ -11,6 +11,8 @@ import MusicRanking from './.vitepress/theme/components/about/MusicRanking.vue'
 
 # 这里是维克罗德。
 
+~~啥都不会又没人要的灰狼。~~
+
 <Greeting />
 
 维克罗德是 Wreckloud 的音译。
@@ -43,6 +45,8 @@ Wreck 意为残骸，Cloud 是云，如此便有了——雲之残骸。
 
 另外,
 我还悄悄在这片原野边埋下了留言石柱，供路过的你停下片刻。你可以谈谈你看到的、想到的、也可以只留下一点只言片语。
+
+（乱发的留言可会被我清理掉的！）
 
 <style>
 /* 只保留图片展示容器样式，其他样式移入组件中 */
