@@ -13,30 +13,15 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端基础/第四部分-多线程.md",
+                "file": "knowledge/后端 Java 基础/第三部分-IO 流.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "第四部分-多线程"
-            }
-          },
-          {
-            "id": "1831df1e5712cf98",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "knowledge/后端基础/第四部分-IO 其他流.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "第四部分-IO 其他流"
+              "title": "第三部分-IO 流"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -55,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/后端基础/第四部分-IO 其他流.md",
+                "file": "knowledge/后端 Java 基础/第三部分-IO 流.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "第四部分-IO 其他流 的大纲"
+              "title": "第三部分-IO 流 的大纲"
             }
           },
           {
@@ -168,54 +153,54 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "1831df1e5712cf98",
+  "active": "d11777060acf2fe7",
   "lastOpenFiles": [
-    "public/images/文章资源/第四部分-io-其他流/file-20250820195501405.jpg",
-    "public/images/文章资源/第四部分-io-其他流/file-20250820193716146.jpg",
+    "public/images/文章资源/第三部分-io-流/file-20250821202552772.jpg",
+    "public/images/文章资源/第三部分-io-流",
+    "knowledge/后端 Java 基础/第三部分-IO 其他流.md",
+    "knowledge/后端 Java 基础/第三部分-IO 流.md",
+    "knowledge/后端 Java 基础/第三部分-File 类.md",
+    "public/images/文章资源/第三部分-io-其他流",
+    "knowledge/后端 Java 基础/JDBC-数据库连接池.md",
+    "knowledge/后端 Java 基础/第四部分-多线程.md",
+    "knowledge/后端 MySQL 数据库",
+    "knowledge/Java 基础/第四部分-IO 其他流.md",
+    "knowledge/后端 Java 基础/第四部分-反射与注解.md",
+    "knowledge/后端 Java 基础/第二部分-现代日期时间 API.md",
+    "knowledge/后端 Java 基础/第二部分-正则表达式.md",
+    "knowledge/后端 Java 基础/第二部分-异常处理.md",
+    "knowledge/后端 Java 基础/第二部分-常用 API.md",
+    "knowledge/后端 Java 基础/第三部分-集合.md",
+    "knowledge/后端 Java 基础/第三部分-Stream 流.md",
+    "knowledge/后端 Java 基础/第一部分-面向对象.md",
+    "knowledge/后端 Java 基础/第一部分-基础语法.md",
+    "knowledge/后端 Java 基础",
+    "gallery/artwork/digital-art/71b1d6d0-0c3f-4138-a072-737256e8ddcd - 副本.jpg",
+    "gallery/README.md",
+    "gallery/artwork/digital-art/example1.jpg",
+    "gallery/artwork/watercolor",
+    "gallery/artwork/sketches",
+    "gallery/artwork/digital-art",
+    "gallery/[folder].md",
+    "gallery/artwork/README.md",
+    "gallery/artwork",
+    "gallery/index.md",
+    "gallery",
+    "knowledge/未命名.md",
+    "public/images/文章资源/第三部分-io-其他流/file-20250820195501405.jpg",
+    "public/images/文章资源/第三部分-io-其他流/file-20250820193716146.jpg",
     "public/images/文章资源/第四部分-io-其他流",
-    "knowledge/后端基础/第三部分-IO 流.md",
-    "knowledge/后端基础/第四部分-IO 其他流.md",
-    "knowledge/后端基础/第四部分-多线程.md",
-    "knowledge/后端基础/第二部分-常用 API.md",
+    "knowledge/Java 基础/第三部分-IO 流.md",
+    "knowledge/Java 基础/第四部分-多线程.md",
+    "knowledge/Java 基础/第二部分-常用 API.md",
     "public/images/文章资源/第四部分-多线程/file-20250820141504323.jpg",
-    "knowledge/后端基础/第三部分-集合.md",
+    "knowledge/Java 基础/第三部分-集合.md",
     "about.md",
     "public/images/文章资源/第四部分-多线程/file-20250820104206819.jpg",
-    "public/images/文章资源/第四部分-多线程",
-    "thoughts/叼住时间的尾巴.md",
-    "knowledge/后端基础/第三部分-File 类.md",
     "public/images/文章资源/叼住时间的尾巴/file-20250819125638991.jpg",
-    "public/images/文章资源/叼住时间的尾巴",
-    "knowledge/后端基础/第四部分-反射与注解.md",
-    "thoughts/光不在彼方.md",
-    "thoughts/献给狼，也献给你.md",
-    "thoughts/远古卷轴.md",
-    "thoughts/我从人间走过.md",
-    "knowledge/前端基础/Javascript-进阶语法.md",
-    "knowledge/后端基础/第三部分-Stream 流.md",
-    "knowledge/后端基础/第一部分-基础语法.md",
-    "knowledge/后端基础/第一部分-面向对象.md",
-    "knowledge/后端基础/JDBC-数据库连接池.md",
-    "knowledge/后端基础/第二部分-异常处理.md",
-    "knowledge/后端基础/第二部分-现代日期时间 API.md",
-    "public/images/文章资源/第三部分-stream-流",
     "public/images/文章资源/第三部分-file-类/file-20250812151049262.jpg",
     "public/images/文章资源/第三部分-file-类/file-20250813103743850.jpg",
-    "public/images/文章资源/第三部分-file-类",
-    "public/images/文章资源/第三部分-集合操作优化-stream-流",
-    "public/images/文章资源/第三部分-集合操作的stream-流",
-    "knowledge/后端工具库/JUnit-单元测试插件.md",
-    "knowledge/后端基础/第二部分-正则表达式.md",
     "public/images/文章资源/第三部分-file-与-io-流/file-20250813103623599.jpg",
-    "public/images/文章资源/第三部分-file-与-io-流/file-20250812150937355.jpg",
-    "public/images/文章资源/第三部分-file-与-io-流",
-    "public/images/文章资源/第三部分-集合/file-20250812102400757.jpg",
-    "public/images/文章资源/第三部分-集合/file-20250812092039624.jpg",
-    "public/images/文章资源/第三部分-集合",
-    "public/images/文章资源/第四部分-stream-流",
-    "knowledge/后端基础/Java基础/File 与 IO 流.md",
-    "knowledge/后端基础/Java入门-面向对象【下篇】.md",
-    "knowledge/后端基础/Java进阶-常用 API【下篇】.md",
     "点子合集.canvas"
   ]
 }

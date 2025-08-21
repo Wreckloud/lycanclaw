@@ -7,68 +7,6 @@ publish: true
 tags:
 ---
 
-# 字节与字符编码
-
-计算机本质上只认二进制。
-
-最早，英文字符（包括大小写字母、数字、标点等）用 ASCII 编码，每个字符用 1 个字节（8 位）存储，能表示 128 个字符。这对英语世界来说绰绰有余。
-
-但中文字符远比这多得多。为了解决中文存储问题，出现了 GBK 编码。GBK 能表示两万多个汉字，每个中文字符用 2 个字节存储，而且兼容 ASCII。GBK 规定：
-
-- 如果字节的首位是 1，就是汉字（向后读两个字节）；
-- 首位是 0，就是英文或数字（向后读一个字节）。
-
-后来，Unicode 字符集横空出世，目标是囊括全世界所有文字和符号。它用 4 个字节表示一个字符，虽然通用但有点**浪费空间**。
-
-真正实用的是 UTF-8。它是 Unicode 的一种编码方式，采用**可变长度**：
-
-- 英文、数字等只占 1 个字节，
-- 中文字符占 3 个字节。
-
-这样既兼容 ASCII，又能高效存储多语言内容。现在写代码，也推荐统一用 UTF-8 编码，避免乱码和兼容性问题。
-
-在 Java 里，字符和字节的相互转换，就是所谓的“编码”和“解码”。
-
-### `getBytes()` 编码
-
-`getBytes()` 方法可以把字符串按照指定字符集编码成字节数组。常见用法有两种：
-
-- `byte[] getBytes()`：使用平台默认字符集（通常是 UTF-8）
-- `byte[] getBytes(String charsetName)`：使用指定字符集（如 "GBK"）
-
-```java
-String wolfName = "灰牙狼";
-
-// 默认编码（UTF-8）
-byte[] bytes = wolfName.getBytes();
-
-// 指定编码（GBK）
-byte[] bytesGBK = wolfName.getBytes("GBK");
-```
-
-这样就能把字符串转成字节数组，便于后续存储或网络传输。
-
-### `new String(byte[] bytes)` 解码
-
-`String` 构造方法可以把字节数组还原成字符串。常见用法：
-
-- `new String(byte[] bytes)`：用平台默认字符集解码
-- `new String(byte[] bytes, String charsetName)`：用指定字符集解码
-
-```java
-// 假设 bytes 和 bytesGBK 是上面编码得到的字节数组
-
-// 默认解码（UTF-8）
-String decodedUTF8 = new String(bytes);
-System.out.println(decodedUTF8);
-
-// 指定解码（GBK）
-String decodedGBK = new String(bytesGBK, "GBK");
-System.out.println(decodedGBK);
-```
-
-只要编码和解码时用的字符集一致，内容就不会乱码。
-
 # IO 原始流
 
 File 只负责的是“有没有、在哪、叫什么、多大”等元信息；真正把数据读进来、写出去，还得交给 IO 流。
@@ -112,7 +50,7 @@ public FileInputStream(String pathname) // 更推荐!
 
 两种构造方式都能创建字节输入流管道与源文件接通。第二种传入字符串路径更简洁，其内部会自动包装成 File 对象。
 
-以下是 FileInputStream 的几个核心方法:
+以下是 FileInputStream 的几个核心方法，方法的参数风格在其他流都是通用的：
 
 #### `read()` 单个字节读取
 
@@ -134,7 +72,7 @@ int b3 = is.read();  // 没有更多数据
 System.out.println(b3); // -1
 ```
 
-**循环改进：**
+因为方法有返回值，我们可以利用返回值对其使用循环改进：
 
 ```java
 int b;
@@ -143,7 +81,7 @@ while ((b = is.read()) != -1) {
 }
 ```
 
-这种方式虽然简单，但存在明显问题：每次只操作一个字节，磁盘到内存通信本就慢，且无法避免读取汉字时的乱码问题（会截断汉字的字节）。
+这种方式虽然简单，但存在明显问题：每次只操作一个字节，磁盘到内存跨区域的通信本就慢，且无法避免读取汉字时的乱码问题（会截断汉字的字节）。
 
 #### `read(byte[] buffer)` 批量读取
 
@@ -185,9 +123,11 @@ while ((len = is.read(buffer)) != -1) {
 
 ```java
 File f = new File("src/wolf.txt");
+
 long size = f.length();
 byte[] buffer = new byte[(int) size];
 int len = is.read(buffer);
+
 System.out.println("读取的字节：" + len);
 System.out.print(new String(buffer));
 ```
@@ -201,11 +141,11 @@ System.out.print(new String(buffer));
 
 如果文件过大，创建的字节数组也会过大，可能引起内存溢出。读写文本内容更适合用字符流，字节流适合做数据的转移，如文件复制等。
 
-好的！让我重新整理，专注于 OutputStream 本身，构造器拆分成几个代码块仔细说明：
-
 ## FileOutputStream
 
 FileOutputStream 是文件字节输出流，作用是以内存为基准，把内存中的数据以字节形式写出到文件中去。
+
+- 覆盖模式构造器：
 
 FileOutputStream 的构造器如下：
 
@@ -225,7 +165,9 @@ OutputStream os1 = new FileOutputStream(file);
 OutputStream os2 = new FileOutputStream("src/output.txt");
 ```
 
-当然，在实际开发中我们肯定不期望直接清空，更希望接着之前的内容继续写。
+- 追加模式构造器：
+
+当然，在实际开发中我们不一定期望直接清空，更希望接着之前的内容继续写。
 可以使用这个构造器：
 
 ```java
@@ -245,8 +187,6 @@ OutputStream os4 = new FileOutputStream("src/output.txt", true);
 
 除非明确需要覆盖，否则建议使用追加模式，避免意外丢失数据。
 
-以下是 FileInputStream 的几个核心方法:
-
 #### `write()` 写入数据
 
 ```java
@@ -255,7 +195,7 @@ public void write(byte[] buffer)            // 写一个字节数组
 public void write(byte[] buffer, int pos, int len)  // 写字节数组的一部分
 ```
 
-**基本写入操作：**
+基本写入操作：
 
 ```java
 OutputStream os = new FileOutputStream("src/output.txt");
@@ -272,7 +212,7 @@ os.write(bytes);
 os.write("\r\n".getBytes());
 ```
 
-**注意：** 写入中文字符时，`getBytes()` 默认使用平台编码，可能产生乱码。建议指定编码：`"中文".getBytes("UTF-8")`。
+> 写入中文字符时，`getBytes()` 默认使用平台编码，可能产生乱码。建议指定编码：`"中文".getBytes("UTF-8")`。
 
 字节流非常适合做文件复制操作，因为任何文件的底层都是字节，字节流做复制是一字不漏的转移。
 
@@ -296,7 +236,39 @@ System.out.println("复制完成！");
 
 使用字节数组作为缓冲区，循环读写直到文件结束，这是文件复制的标准做法。
 
-你说得对！让我重新优化，让文字更连贯，代码块更精简：
+## 流控制方法
+
+字符输出流有两个重要的流控制方法，它们决定了数据何时真正写入文件。
+
+#### `flush()` 刷新流
+
+```java
+void flush() throws IOException
+```
+
+将内存中缓存的数据立即写入文件。调用此方法后，数据会立即生效，不需要等待流关闭。
+
+```java
+fw.write("灰牙狼的传说");
+fw.flush();  // 立即将缓存数据写入文件
+System.out.println("数据已刷新到文件");
+```
+
+#### `close()` 关闭流
+
+```java
+void close() throws IOException
+```
+
+关闭流并释放相关资源。关闭操作会自动调用 `flush()`，确保所有缓存数据都被写入文件。
+
+```java
+fw.write("灰牙狼的传说");
+fw.close();  // 关闭流，自动包含刷新操作
+```
+
+不过 `close()` 方法会自动调用 `flush()`，所以通常只需要调用 `close()` 即可。
+但如果在关闭前需要确保数据立即写入，可以手动调用 `flush()`。
 
 ## 资源释放新方式
 
@@ -379,22 +351,22 @@ try (
 
 这样，IO 流就自动具备了自动关闭的能力，大大简化了资源管理。
 
-**关键点：** `()` 中只能放置资源，否则报错。
+> 关键点： `()` 中只能放置资源，否则报错。
 
 在  Java  中，资源指的是最终实现了  AutoCloseable  接口的类，这些类到合适的时机会告诉 JVM "我是资源，用完会自动关闭"。
+
+查看源码发现 IO 流都实现了 Closeable：
 
 ```java
 public abstract class InputStream implements Closeable {}
 public abstract class OutputStream implements Closeable, Flushable {}
 ```
 
-查看源码确实发现 IO 流都实现了 Closeable：
+而 Closeable 又实现了 AutoCloseable 接口。
 
 ```java
 public interface Closeable extends AutoCloseable {}
 ```
-
-而 Closeable 又实现了 AutoCloseable 接口。
 
 ## FileReader
 
@@ -444,7 +416,7 @@ while ((c = fr.read()) != -1) {
 ### `read(char[] buffer)` 批量读取
 
 ```java
-public int read(char[] buffer)
+public int read(char[] buffer) // 注意字符流用字符数组，而不是byte
 ```
 
 用字符数组批量读取数据，返回实际读取的字符个数，没有数据可读时返回 -1。
@@ -452,20 +424,16 @@ public int read(char[] buffer)
 ```java
 char[] buffer = new char[3];
 int len;
+
 while ((len = fr.read(buffer)) != -1) {
     String rs = new String(buffer, 0, len);  // 只转换实际读取的部分
     System.out.print(rs);
 }
 ```
 
-`read(char[] buffer)`可以避免乱码，性能也较好。这是目前学过的读取文本内容最好的方案，既解决了乱码问题，又提升了性能。
+`read(char[] buffer)`可以避免乱码，性能也较好。这是**目前**读取文本内容最好的方案，既解决了乱码问题，又提升了性能。
 
 如果只是读写文本内容，优先考虑字符流；如果需要复制文件或处理二进制数据，使用字节流。
-
-我来帮你整理这部分笔记，让它更符合前面部分的风格和表达方式。让我先看看前面部分的笔记风格，然后重新整理这部分内容。
-
-Read file: docs/knowledge/后端基础/第三部分-File 与 IO 流.md
-基于前面部分的风格，我来重新整理这部分笔记：
 
 ## FileWriter
 
@@ -488,13 +456,11 @@ public FileWriter(String filepath, boolean append)
 - `true` 表示追加
 - `false` 表示覆盖
 
-除非明确需要覆盖，否则建议使用追加模式，避免意外丢失数据。
-
 ```java
 Writer fw2 = new FileWriter("src/output.txt", true);
 ```
 
-FileWriter 提供了多种写入方式，满足不同的写入需求。
+FileWriter 提供了多种写入方式，也跟前面介绍过的流参数风格一致。
 
 #### `write()` 写入单个字符
 
@@ -516,7 +482,7 @@ fw.write('狼');
 fw.write('爪');
 
 // 换行（跨平台支持）
-fw.write('\n');
+fw.write('\r\n');
 ```
 
 #### `write(String str)` 写入字符串
@@ -584,156 +550,102 @@ fw.write(chars, 3, 2);   // 只写入中间两个字符
 fw.write(chars, 5, 2);   // 只写入最后两个字符
 ```
 
-## 流控制方法
+# IO 缓冲流/包装流
 
-字符输出流有两个重要的流控制方法，它们决定了数据何时真正写入文件。
+缓冲输入输出流（Buffered Streams）是在原始 I/O 管道外再包一层约 8 KB 的内存缓冲区。把读写变成“先攒一批、再统一交付”，从而减少磁盘交互次数、提升性能。默认缓冲区大小通常为 8KB（8192）。
 
-#### `flush()` 刷新流
+- 原始流直连磁盘，频繁读写；
+- 缓冲流先读/写到内存桶里，桶满或刷新时再一次性与磁盘交互。
 
-```java
-void flush() throws IOException
-```
+![](../../public/images/文章资源/第三部分-file-类/file-20250813103743850.jpg)
 
-将内存中缓存的数据立即写入文件。调用此方法后，数据会立即生效，不需要等待流关闭。
+语义不变，性能更强。
 
-```java
-fw.write("灰牙狼的传说");
-fw.flush();  // 立即将缓存数据写入文件
-System.out.println("数据已刷新到文件");
-```
+### `BufferedInput/OutputStream`
 
-#### `close()` 关闭流
-
-```java
-void close() throws IOException
-```
-
-关闭流并释放相关资源。关闭操作会自动调用 `flush()`，确保所有缓存数据都被写入文件。
-
-```java
-fw.write("灰牙狼的传说");
-fw.close();  // 关闭流，自动包含刷新操作
-```
-
-不过 `close()` 方法会自动调用 `flush()`，所以通常只需要调用 `close()` 即可。
-但如果在关闭前需要确保数据立即写入，可以手动调用 `flush()`。
-
-# IO 缓冲流
-
-**作用**：在原始流（文件流、字节流、字符流）外再套一层“缓冲桶”，把读写变成“先攒一批、再统一交付”，从而减少磁盘交互次数、提升性能。默认缓冲区大小通常为 **8KB（8192）**。
-
-> 思路：原始流直连磁盘，频繁读写；缓冲流先读/写到内存桶里，桶满或刷新时再一次性与磁盘交互。语义不变，只是更快。
-
-## 字节缓冲流
-
-**类**：`BufferedInputStream`、`BufferedOutputStream`  
-**适用**：任意二进制数据（图片、音频、PDF 等）
+与其包装的原始字节流一样，字节缓冲输入输出流（BufferedInput/OutputStream）适合于任意二进制数据（图片、音频、PDF 等）的读写。
 
 ```java
 InputStream  in  = new BufferedInputStream(new FileInputStream("wolves.bin"));
 OutputStream out = new BufferedOutputStream(new FileOutputStream("wolves-copy.bin"));
 ```
 
-把“低级字节流”包装成“缓冲字节流”，读取/写出都会先走 8KB 的内存桶。
+在创建高级的缓冲字节输出流时，需要传入一个低级字节输出流作为包装；使用结束后只需关闭最外层，高级流会自动负责关闭内部的低级流。
+
+在底层流之上，读取/写出都会先走 8KB 的内存桶。增加缓冲后，单次 I/O 变少、写入更集中，配合字节数组读取通常能获得更可观的性能收益。
 
 例如复制二进制文件：
 
 ```java
-try (BufferedInputStream in  = new BufferedInputStream(new FileInputStream("wolves.bin"));
-     BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream("wolves-copy.bin"))) {
+try (
+	BufferedInputStream in  = new BufferedInputStream(new FileInputStream("wolves.bin"));
+	BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream("wolves-copy.bin"))) {
 
     byte[] buf = new byte[8 * 1024]; // 自定义缓冲数组，配合内部缓冲更稳
     int len;
     while ((len = in.read(buf)) != -1) {
         out.write(buf, 0, len);
     }
-    // out.flush(); // 视情况可手动；try-with-resources 关闭时也会刷出
+    // out.flush(); // 视情况可手动；try-with-resources 关闭时也会自动out.flush()
 }
 ```
 
-**要点**
+读写**数组**比逐字节更高效，因此我们在内部自定义了缓冲数组；内部缓冲 + 外部数组，双保险。
+关闭 `out` 会隐式执行 `flush()`；如果要长时间运行、希望尽快落盘时可手动 `flush()`。
 
-- 读写**数组**比逐字节更高效；内部缓冲 + 外部数组，双保险。
-- 关闭 `out` 会隐式 `flush`；长时间运行、希望尽快落盘时可手动 `flush()`。
+### `BufferedReader/Writer`
 
----
+同样与其原始流对应的，字符缓冲输入输出流（BufferedReader/Writer）是面向文本的读取，其同样自带 8K（注意是 K，而不是 KB）的字符缓冲池来优化性能。
 
-## 二、字符缓冲流
+```java
+public BufferedReader(Reader in)
+public BufferedWriter(Writer out)
+```
 
-**类**：`BufferedReader`、`BufferedWriter`  
-**适用**：文本数据（按字符/行处理），常用于日志、配置、CSV 等。
+用法同样是使用多态，把原始流 `FileReader`/`FileWriter` 包进来：
 
-### `BufferedReader`：按行读取（新增能力）
+```java
+Reader  reader  = new BufferedReader(new FileReader("wolves.txt"));
+Writer  writer  = new BufferedWriter(new FileWriter("wolves-out.txt"));
+```
+
+**`readLine()` 按行读取**
+其拥有特别的按行处理`readLine()` ，直接给到语义化的“行”，便于逐行消费与解析。
+
+- **`readLine()`**：一次读完整行，返回 `null` 表示读到文件末尾。返回的字符串不包含行尾分隔符。
+- **`newLine()`**：写入系统相关的换行符，避免手写 `"\r\n"` 带来的跨平台问题。
+
+例如，逐行读取文本：
 
 ```java
 try (BufferedReader br = new BufferedReader(new FileReader("wolves.txt"))) {
     String line;
-    while ((line = br.readLine()) != null) {   // 每次读取一整行（不含行尾分隔符）
+    while ((line = br.readLine()) != null) {   // 每次读取一行
         System.out.println(line);
     }
 }
 ```
 
-**说明**
-
-- `readLine()` 是字符缓冲输入流的“独有方法”，**需要用具体类型引用**（不要写成 `Reader br`，否则拿不到该方法）。
-- 行尾分隔符被丢弃；如需保留，需自行追加。
-
-### `BufferedWriter`：跨平台换行（新增能力）
+写出带换行的文本：
 
 ```java
 try (BufferedWriter bw = new BufferedWriter(new FileWriter("wolves-out.txt"))) {
     bw.write("影牙 狼群编号 W-01");
-    bw.newLine();       // 使用系统行分隔符，优于手写 "\r\n"
+    bw.newLine();   // 自动使用系统换行符
     bw.write("夜哨 巡猎路线 北岭-寒原");
-    // bw.flush();      // 需要立即落盘时可手动
+    // bw.flush();   // 可手动落盘，关闭时也会自动 flush
 }
 ```
 
-**说明**
-
-- `newLine()` 使用系统默认行分隔符，避免手写 `\r\n` 带来的跨平台问题。
-- 同理，使用 `BufferedWriter` 的具体类型，才能调用 `newLine()`。
-
----
-
-## 三、几点实用建议
-
-- **何时选字节流 / 字符流**  
-   二进制文件用字节流；纯文本用字符流。文本涉及编码，`FileReader/FileWriter` 使用平台默认编码，**需要指定编码时**考虑 `InputStreamReader/OutputStreamWriter` 搭配 `BufferedReader/BufferedWriter`：
-  ```java
-  try (BufferedReader br = new BufferedReader(
-           new InputStreamReader(new FileInputStream("wolves.txt"), "UTF-8"))) {
-      // ...
-  }
-  ```
-- **引用类型怎么写**  
-   需要 `readLine()` / `newLine()` 等**独有方法**时，用具体类型（`BufferedReader/BufferedWriter`）；否则可用父类型（`Reader/Writer`）保持灵活。
-- **不要混搭两种读法**  
-   同一个 `BufferedReader` 上，**选一种方式**：要么 `read(char[])` 批量读，要么 `readLine()` 行读。混用容易处理不好边界。
-- **缓冲区大小**  
-   默认 8KB 已足够；大文件或高吞吐场景可适当调大外部数组（例如 16KB/32KB），观察实际效果。
-
----
-
-## 四、简短对照
-
-- **字节缓冲**：`BufferedInputStream` / `BufferedOutputStream` → 面向二进制，性能提升，语义不变。
-- **字符缓冲**：`BufferedReader` / `BufferedWriter` → 性能提升 + **新增**：`readLine()`、`newLine()`。
-
----
-
-## 五、小示例：文本“行读—写出”
-
-读取 `wolves.txt`，过滤空行后写入 `wolves-clean.txt`：
+过滤空行再写入新文件：
 
 ```java
-try (BufferedReader br  = new BufferedReader(new FileReader("wolves.txt"));
-     BufferedWriter bw  = new BufferedWriter(new FileWriter("wolves-clean.txt"))) {
+try (BufferedReader br = new BufferedReader(new FileReader("wolves.txt"));
+     BufferedWriter bw = new BufferedWriter(new FileWriter("wolves-clean.txt"))) {
 
     String line;
     while ((line = br.readLine()) != null) {
-        if (line.isBlank()) continue;
+        if (line.isBlank()) continue;    // 跳过空行
         bw.write(line.trim());
         bw.newLine();
     }
@@ -742,28 +654,8 @@ try (BufferedReader br  = new BufferedReader(new FileReader("wolves.txt"));
 
 这就是缓冲流最常见的用法组合：**读写更快**，并在字符流场景下获得**按行处理/跨平台换行**的便利。
 
-# 缓冲输入输出流
-
-缓冲输入输出流（Buffered Streams）是在原始 I/O 管道外再包一层约 8 KB 的内存缓冲区。
-先批量聚合数据再读写，从而显著减少磁盘与系统调用的次数，整体吞吐更稳定。
-
-直接对磁盘逐字节操作成本高、抖动大；
-引入缓冲后，数据先进入“桶”，满桶再倒出或装入，访问节奏更友好，CPU 与存储的配合也更顺滑。
-
-![](../../public/images/文章资源/第三部分-file-类/file-20250813103743850.jpg)
-
-### `BufferedInput/OutputStream`
-
 ```java
-public BufferedInputStream(InputStream in)
-public BufferedOutputStream(OutputStream out)
-```
-
-适用于二进制数据（如视频、图片、压缩包）的高频读写场景；
-在底层流之上增加缓冲后，单次 I/O 变少、写入更集中，配合字节数组读取通常能获得更可观的性能收益。
-
-```java
-// 狼示例：缓冲 + 字节数组拷贝二进制
+// 缓冲 + 字节数组拷贝二进制
 try (BufferedInputStream  in  = new BufferedInputStream(new FileInputStream("den/wolf.bin"));
      BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream("den/wolf.bin.copy"))) {
     byte[] buf = new byte[8 * 1024];
@@ -777,117 +669,21 @@ try (BufferedInputStream  in  = new BufferedInputStream(new FileInputStream("den
 
 当处理文本而非原始字节时，更合适的选择是字符流；在缓冲之外，还需要合理处理编码与按行读取。
 
-### `BufferedReader`字符缓冲输入
+# 原始流与缓冲流性能分析
 
-```java
-public BufferedReader(Reader in)
-public String readLine() // 按行读取，读尽返回 null
-```
+通过保持复制逻辑不变，只切换两件事：
 
-面向文本的读取，按行处理更自然；缓冲使读取批量化，`readLine()` 直接给到语义化的“行”，便于逐行消费与解析。
+- 流的类型（是否带缓冲）
+- 读取粒度（单字节 vs 字节数组）
 
-```java
-// 按行读取 UTF-8 文本
-try (BufferedReader br = new BufferedReader(new InputStreamReader(
-         new FileInputStream("den/wolf.txt"), StandardCharsets.UTF_8))) {
-    String line;
-    while ((line = br.readLine()) != null) {
-        System.out.println(line);
-    }
-}
-```
+得到四种组合：
 
-文本写出同理受益于缓冲，同时需要一个可移植的换行方式，以避免不同平台的换行差异导致的显示异常。
+1. 低级字节流 + 单字节读取
+2. 低级字节流 + 字节数组读取
+3. 缓冲字节流 + 单字节读取
+4. 缓冲字节流 + 字节数组读取
 
-### `BufferedWriter`字符缓冲输出
-
-```java
-public BufferedWriter(Writer out)
-public void newLine() // 跨平台换行
-```
-
-当输出大量文本时，通过缓冲把零碎写入合并为更少的磁盘操作；`newLine()` 根据平台生成合适的换行序列，避免硬编码 `\r\n` 或 `\n` 带来的兼容问题。
-
-```java
-// 狼示例：写出文本并使用跨平台换行
-try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(
-         new FileOutputStream("den/howl.txt"), StandardCharsets.UTF_8))) {
-    bw.write("狼火在夜里。");
-    bw.newLine();
-}
-```
-
-二进制复制选用 `BufferedInputStream/BufferedOutputStream` 并搭配固定大小的字节数组；
-文本读写选用 `BufferedReader/BufferedWriter`，中间通过 `InputStreamReader/OutputStreamWriter` 明确指定 `Charset`，以确保跨环境的一致性与可预期性。
-
-```java
-// 读取一行文本，处理后写出为新文件
-try (BufferedReader br = new BufferedReader(new InputStreamReader(
-         new FileInputStream("den/wolf.in.txt"), StandardCharsets.UTF_8));
-     BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(
-         new FileOutputStream("den/wolf.out.txt"), StandardCharsets.UTF_8))) {
-
-    String s = br.readLine();               // 最小读取单元：一行
-    if (s != null) {
-        bw.write(s.toUpperCase());          // 演示：简单处理后写出
-        bw.newLine();
-    }
-}
-```
-
-注意：
-
-- 仅包一层缓冲即可；在同一管道上重复套接 `Buffered*` 并不会带来实际收益，反而增加心智负担。
-- 文本读写务必显式指定编码；默认编码随环境变化而变化，造成的乱码问题往往难以及时定位。
-- 单字节循环读写速度极慢；更合理的做法是使用 `byte[]` 作为缓存，或在字符流中按行处理。
-- `close()` 会触发缓冲区刷新；除非有明确的阶段性落盘需求，否则无需频繁手动 `flush()`。
-
-在二进制与文本两类场景中，采用“缓冲层 + 合理批量”的通用策略，既能降低磁盘压力，也能平滑 I/O 抖动，最终体现为更稳定、更可控的工程表现。
-
-# 性能分析（重点）：原始流 vs 缓冲流
-
-一句话目的：在相同拷贝逻辑下，仅更换“是否缓冲、是否按数组批量”的策略，评估磁盘大文件复制的性能差异与稳定性。
-
-过渡：I/O 的瓶颈常在系统调用次数与页缓存命中率。单字节循环使调用频繁且不稳定；引入缓冲与批量读取后，调用更集中，吞吐与抖动都更可控。
-
-## 测试对象与步骤
-
-- 对象：一个较大的二进制文件（视频）。
-- 步骤：以完全相同的复制逻辑为基线，只替换“流类型 + 读取粒度”，形成四种组合：
-  1. 低级字节流 + 单字节读取
-  2. 低级字节流 + 字节数组读取
-  3. 缓冲字节流 + 单字节读取
-  4. 缓冲字节流 + 字节数组读取
-
-过渡：先给到最小可复用的复制函数，随后分别演示四种流构造方式。
-
-## 基线复制函数
-
-```java
-// 狼工具：单字节搬运（极慢，用作对照）
-static void copyByteByByte(InputStream in, OutputStream out) throws IOException {
-    for (int b; (b = in.read()) != -1; ) out.write(b);
-}
-
-// 狼工具：数组搬运（常用方案）
-static void copyByBuffer(InputStream in, OutputStream out, int size) throws IOException {
-    byte[] buf = new byte[size];
-    for (int n; (n = in.read(buf)) != -1; ) out.write(buf, 0, n);
-}
-
-// 狼工具：计时包装
-static long time(RunnableWithIOException r) {
-    long t0 = System.nanoTime();
-    try { r.run(); } catch (IOException e) { throw new UncheckedIOException(e); }
-    return (System.nanoTime() - t0) / 1_000_000; // ms
-}
-
-@FunctionalInterface interface RunnableWithIOException { void run() throws IOException; }
-```
-
-## 四种组合
-
-### 1) 低级 + 单字节
+- 低级 + 单字节
 
 ```java
 long t1 = time(() -> {
@@ -901,7 +697,7 @@ System.out.println("低级+单字节: " + t1 + " ms");
 
 低级 + 单字节：**极慢**（量级几十秒，随文件大小线性恶化）
 
-### 2) 低级 + 字节数组
+- 低级 + 字节数组
 
 ```java
 long t2 = time(() -> {
@@ -915,7 +711,7 @@ System.out.println("低级+数组: " + t2 + " ms");
 
 低级 + 数组（8 KB）：**可用**（数秒量级，视磁盘/缓存波动）
 
-### 3) 缓冲 + 单字节
+- 缓冲 + 单字节
 
 ```java
 long t3 = time(() -> {
@@ -929,7 +725,7 @@ System.out.println("缓冲+单字节: " + t3 + " ms");
 
 缓冲 + 单字节：**仍慢**（比低级单字节好一些，但仍不划算）
 
-### 4) 缓冲 + 字节数组（推荐）
+- 缓冲 + 字节数组（推荐）
 
 ```java
 long t4 = time(() -> {
@@ -943,12 +739,194 @@ System.out.println("缓冲+数组: " + t4 + " ms");
 
 缓冲 + 数组（8 KB）：**最快且稳定**（通常亚秒到 1–2 秒区间）
 
-## 经验与结论
+通过这种方式，可以得到以下结论：
 
-- 规律：**批量胜过单字节**，**缓冲 + 批量最佳**。
-- 数组大小：8–32 KB 为常用甜点区；继续增大存在**收益递减**，过大可能导致线程占用内存增多且对总时间提升有限。
-- 低级流并非天然更慢：**低级 + 合理数组**能逼近“缓冲 + 数组”的成绩；但缓冲流在多数场景更稳、更省心。
-- 只包一层缓冲：在同一管道上重复套 `Buffered*` 无实益。
-- `flush` 语义：`close()` 会隐式 `flush`；没有阶段性落盘需求时无需频繁显式 `flush()`。
-- 波动来源：操作系统页缓存、SSD 写放大、杀毒扫描与并发 I/O 都会影响结果，单次数据仅作趋势参考。
-- 备选捷径：若仅为文件对文件复制，`Files.copy(Path, Path, REPLACE_EXISTING)` 更简洁；跨平台稳定性较好。
+> 批量 > 单字节；
+> 缓冲 + 批量 的方式通常最快且最稳
+
+低级流并非天然更慢，`低级 + 合理数组` 能逼近 `缓冲 + 数组` 的成绩；但缓冲流在多数场景更稳、更省心。
+
+```java
+// 最推荐的构造器
+try (InputStream in = new BufferedInputStream(new FileInputStream("wolf.mp4"));
+     OutputStream out = new BufferedOutputStream(new FileOutputStream("wolf.copy.4"))) {
+    copyByBuffer(in, out, 8 * 1024);
+}
+```
+
+通过再增大数组大小进行测试，可得：
+
+- 8–32 KB 为常用甜点区；继续增大存在**收益递减**
+
+过大可能导致线程占用内存增多且对总时间提升有限。
+
+在同一管道上重复套 `Buffered*` 无实益。
+`close()` 会隐式 `flush`；没有阶段性落盘需求时无需频繁显式 `flush()`。
+
+备选捷径：若仅为文件对文件复制，`Files.copy(Path, Path, REPLACE_EXISTING)` 更简洁；跨平台稳定性较好。
+
+# IO 其他流
+
+## 转换流
+
+不同编码读取出现乱码的问题
+如果代码编码和被读取的文本文件的编码是一致的，使用字符流读取文本文件时不会出现乱码！
+如果代码编码和被读取的文本文件的编码是不一致的，使用字符流读取文本文件时就会出现乱码
+![](../../public/images/文章资源/第三部分-io-流/file-20250821202552772.jpg)
+
+InputStreamReader（字符输入转换流）
+
+public static void main(String[] args）{
+//目标：不同编码下，字符流读取文本内容的问题。
+try（
+//代码编码：UTF-8 文件编码：UTF-8α 我 m==>0[00o]0 不乱码
+//代码编码：UTF-8 文件编码：GBKα 我 m ==>0[oo］0 乱码
+//1、创建一个文件字符输入流与源文件接通。
+Readerfr=new FileReader(fileName:"E:\\resource\\abc.txt");
+//把原始的字符输入流包装成高级的缓冲字符输入流
+BufferedReader br = new BufferedReader(fr);
+StringLine；//记住每次读取的一行数据。
+while （(line = br.readLine()) != null){
+System.out.println(line);
+}catch （Exception e){
+e.printStackTrace();
+
+乱码
+
+● 解决不同编码时，字符流读取文本内容乱码的问题。
+解决思路：先获取文件的原始字节流，再将其按真实的字符集编码转成字符输入流，这样字符输入流中的字符就不乱码了。
+构造器说明
+public InputStreamReader(InputStream is)把原始的字节输入流，按照代码默认编码转成字符输入流与直接用 FileReader 的效果样) 几乎不用这个！！
+public InputStreamReader(InputStream is ，String charset)把原始的字节输入流，按照指定字符集编码转成字符输入流(重点)
+
+//目标：字符输入转换流。
+try（
+//1、得到 GBK 文件的原始字节输入流
+InputStream is = new FileInputStream( name:"E:\\resource\labc.txt");
+//2、通过字符输入转换流把原始字节流按照指定编码转换成字符输入流
+Reader isr = new InputStreamReader(is,charsetName: "GBK");
+//3、把字符输入流包装成高级的缓冲字符输入流。
+BufferedReader br = new BufferedReader(isr);
+)
+//4、按照行读取
+String line;
+while （(line = br.readLine(）)!= null){
+System.out.println(line);
+catch (Fxcention e){
+
+![](../../public/images/文章资源/第三部分-io-其他流/file-20250820193716146.jpg)
+PrintStream/PrintWriter （打印流）
+作用：打印流可以实现更方便、更高效的打印数据出去，能实现打印啥出去就是啥出去
+
+PrintStream 提供的打印数据的方案
+构造器说明
+public PrintStream(OutputStream/File/String)打印流直接通向字节输出流/文件/文件路径
+public PrintStream(String fileName, Charset charset)可以指定写出去的字符编码
+public PrintStream(OutputStream out, boolean autoFlush)可以指定实现自动刷新
+public PrintStream(OutputStream out, boolean autoFlush, String encoding)可以指定实现自动刷新，并可指定字符的编码
+
+方法说明
+public void println(Xxx xx)打印任意类型的数据出去
+public void write(int/byte[]/byte[]—部分)可以支持写字节数据出去
+
+特殊流就不用多态写了
+public class PrintStreamDemo1{
+public static void main(String[]args){
+try（
+//目标：打印流：方便，高效的写数据出去。
+PrintStream ps = new PrintStream( fileName:"day1o-io-code/src/ps.txt");
+){
+ps.println(666);
+ps.println(97);
+ps.println(97.9);
+ps.println('a');
+ps.println(true);
+ps.println("深圳黑马 Java!");
+}catch（Exception e）{
+e.printStackTrace();
+8
+
+能够做到打印啥就是啥
+输出文件:
+666
+97
+97.9
+a
+true
+深圳黑马 Java!(后面帮我全部换掉成狼的)
+
+他还会自带换行.
+
+点进去看源码:
+private PrintStream(boolean autoFlush, OutputStream out) {
+super(out);
+this.autoFlush = autoFlush;
+this.charset = out instanceof PrintStream ps ? ps.charset() : Charset.defaultcharset()
+this.char0ut = new OutputStreamWriter( out:this，charset);
+this.textout = new BufferedWriter(charout);
+//usemonitors whenPrintStreamis sub-classed
+if （getClass(） == PrintStream.class）{
+lock = InternalLock.newLockorNull();
+}else{
+lock = null;
+看关键信息, 他是基于基于 buffer,性能肯定不差的.
+
+PrintWriter 提供的打印数据的方案
+构造器说明
+public Printwriter(OutputStream/writer/File/String)打印流直接通向字节输出流/文件/文件路径
+public Printwriter(String fileName, Charset charset)可以指定写出去的字符编码
+N
+public Printwriter(OutputStream out/Writer, boolean autoFlush)可以指定实现自动刷新
+public Printwriter(OutputStream out, boolean autoFlush, String encoding)可以指定实现自动刷新，并可指定字符的编码
+方法说明
+public void println(Xxx xx)打印任意类型的数据出去
+public void write(int/String/char[]/..)可以支持写字符数据出去
+
+用法是一样的.
+不过他的写入是覆盖,如果一定要追加,还得包低级管道,打开追加模式
+public static void main(String[] args）{
+try（
+//目标：打印流：方便，高效的写数据出去。
+PrintStream ps = new PrintStream("day10-io-code/src/ps.txt");
+// PrintWriter ps = new PrintWriter("day10-io-code/src/ps.txt");
+PrintWriter ps = new PrintWriter(new FileWriter(fileName:"day10-io-code/src/ps.txt", append: trueD);
+ps.println(666);I
+ps.println(97);
+ps.println(97.9);
+ps.println('a');
+ps.println(true);
+ps.println("深圳黑马 Java!");
+} catch（Exception e）{
+e.printStackTrace();
+
+打印数据的功能上是一模一样的：者都是使用方便，性能高效 (核心优势)
+如果非要找区别:
+PrintStream 继承自字节输出流 OutputStream 因此支持写字节数据的方法。
+PrintWriter 继承自字符输出流 Writer，因此支持写字符数据出去。
+但是我们一半不用他的写功能, 所以实际上他们就是没有区别.
+
+打印流的一种应用：车输出语句的重定向
+public static void main(String[] args） throws Exception {
+//目标：输出语句的重定向。
+System.out.println("红豆生南国");
+System.out.println（"春来发几枝");
+PrintStream ps = new PrintStream(new File0utputStream( name:"day10-io-code/src/ps2.txt",append: true));
+System.setout（ps）；/把系统类的打印流改成我的打印流！！
+T
+System.out.printLn（"愿君多采");
+System.out.printLn（"此物最相思")；
+
+我们用的 sout, 其实是系统里得到的 out 对象,他是一个 System public staticfinaPrintStream out 是一个 PrintStream 打印流对象, out 调用往控制台打印的 printLn 方法.我们知道改自己的路径就行了
+
+![](../../public/images/文章资源/第三部分-io-其他流/file-20250820195501405.jpg)
+
+DataOutputStream（数据输出流）
+允许把数据和其类型一并写出去。
+构造器说明
+public DataoutputStream(OutputStream out)创建新数据输出流包装基础的字节输出流
+方法说明
+public final void writeByte(int v) throws IOException 将 byte 类型的数据写入基础的字节输出流
+public final void writeInt(int v) throws IOException 将 int 类型的数据写入基础的字节输出流
+public final void writeDouble(Double v) throws IOException 将 double 类型的数据写入基础的字节输出流
+public final void writeUTE(String str) throws IOException 将字符串数据以 UTF-8 编码成字节写入基础的字节输出流
+public void write(int/byte[]/byte[]—部分)支持写字节数据出去

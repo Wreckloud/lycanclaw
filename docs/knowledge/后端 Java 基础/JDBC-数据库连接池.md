@@ -10,11 +10,7 @@ tags:
 
 # JDBC 入门
 
-在 Java 后端开发中，数据库操作是绕不开的基本功。JDBC 就是 Java 官方给我们准备的“万能钥匙”，让我们可以用统一的方式和各种数据库打交道。
-
-**JDBC 到底是什么？**
-
-JDBC，全称 Java DataBase Connectivity，说白了就是一套 Java 访问数据库的标准接口。它的好处是：不管你用的是 MySQL、Oracle 还是 SQL Server，写法都差不多，省去了很多兼容性烦恼。
+JDBC，全称 Java DataBase Connectivity，就是一套 Java 访问数据库的标准接口。它的好处是：不管你用的是 MySQL、Oracle 还是 SQL Server，写法都差不多，省去了很多兼容性烦恼。
 
 JDBC 本身只是一组接口和类（主要在 `java.sql` 和 `javax.sql` 这两个包里），具体怎么和数据库通信，还得靠“数据库驱动”来实现。
 
@@ -70,7 +66,7 @@ Connection conn = DriverManager.getConnection(
 Statement st = conn.createStatement();
 
 // 4. 执行 SQL 查询
-String sql = "select id,username,password,email,salt from user where id=1";
+String sql = "select * from user where id=1";
 ResultSet rs = st.executeQuery(sql);
 
 // 5. 处理查询结果
@@ -78,8 +74,6 @@ if (rs.next()) {
     System.out.println(rs.getObject("id"));
     System.out.println(rs.getObject("username"));
     System.out.println(rs.getObject("password"));
-    System.out.println(rs.getObject("email"));
-    System.out.println(rs.getObject("salt"));
 }
 
 // 6. 释放资源
@@ -94,7 +88,7 @@ conn.close();
 
 注册驱动有两种写法：
 
-- 传统写法（不推荐）：
+- 传统写法（过时，不推荐）：
 
   ```java
   DriverManager.registerDriver(new com.mysql.jdbc.Driver());
@@ -102,11 +96,25 @@ conn.close();
 
   这种方式容易导致驱动被注册两次，还强依赖具体驱动类，不够灵活。
 
-- 推荐写法：
-  ```java
-  Class.forName("com.mysql.jdbc.Driver");
-  ```
-  这种方式用类加载机制自动注册驱动，简单又解耦。
+- 一般写法：
+
+```java
+// MySQL 5.x 老版本常见写法
+Class.forName("com.mysql.jdbc.Driver");
+
+// MySQL 8.x 之后的正确类名
+Class.forName("com.mysql.cj.jdbc.Driver");
+```
+
+这种方式用类加载机制自动注册驱动，简单又解耦。写了能确保驱动一定被加载，不会翻车。
+
+- 真正的现代写法：
+
+```Java
+// 什么都不用写
+```
+
+是不写，其实 8.x 驱动自己会在背后完成注册，尤其是用 Maven/Gradle 管理依赖的项目里。
 
 ## 连接数据库
 
@@ -115,7 +123,7 @@ conn.close();
 ```java
 Connection conn = DriverManager.getConnection(
     "jdbc:mysql://localhost:3306/db_demo?useSSL=false&serverTimezone=UTC",
-    "root", "root"
+    "root", "password"
 );
 ```
 
