@@ -115,6 +115,11 @@
     "relativePath": "knowledge/后端 Java 基础/JDBC-数据库连接池.md"
   },
   {
+    "date": "2025-08-22 15:41:01",
+    "wordCount": 2840,
+    "relativePath": "knowledge/后端 Java 基础/特殊文件.md"
+  },
+  {
     "date": "2024-03-30 19:04:12",
     "wordCount": 9491,
     "relativePath": "knowledge/后端 Java 基础/第一部分-基础语法.md"
@@ -131,7 +136,7 @@
   },
   {
     "date": "2025-08-15 11:31:49",
-    "wordCount": 6572,
+    "wordCount": 8194,
     "relativePath": "knowledge/后端 Java 基础/第三部分-IO 流.md"
   },
   {
@@ -146,7 +151,7 @@
   },
   {
     "date": "2025-02-09 10:27:43",
-    "wordCount": 12090,
+    "wordCount": 12086,
     "relativePath": "knowledge/后端 Java 基础/第二部分-常用 API.md"
   },
   {

@@ -744,7 +744,7 @@ System.out.println("缓冲+数组: " + t4 + " ms");
 > 批量 > 单字节；
 > 缓冲 + 批量 的方式通常最快且最稳
 
-低级流并非天然更慢，`低级 + 合理数组` 能逼近 `缓冲 + 数组` 的成绩；但缓冲流在多数场景更稳、更省心。
+低级流并非天然更慢，`低级 + 合理数组` 能逼近 `缓冲 + 数组` 的成绩；不过缓冲流在多数场景更稳、更省心。
 
 ```java
 // 最推荐的构造器
@@ -769,164 +769,524 @@ try (InputStream in = new BufferedInputStream(new FileInputStream("wolf.mp4"));
 
 ## 转换流
 
-不同编码读取出现乱码的问题
-如果代码编码和被读取的文本文件的编码是一致的，使用字符流读取文本文件时不会出现乱码！
-如果代码编码和被读取的文本文件的编码是不一致的，使用字符流读取文本文件时就会出现乱码
+在处理文本文件时，最常见的问题就是**乱码**。  
+如果代码本身的编码方式和文本文件的编码一致，那么直接用字符流去读取内容不会出问题；但一旦不一致，就会看到一堆“鬼符号”。
+
+举个例子：
+
+- 代码是 UTF-8，文件也是 UTF-8 → 正常读取。
+- 代码是 UTF-8，文件却是 GBK → 读取出来全是乱码。
+
+这种时候就得靠 **转换流** 来解围。
+
 ![](../../public/images/文章资源/第三部分-io-流/file-20250821202552772.jpg)
 
-InputStreamReader（字符输入转换流）
+转换流就是在 **字节流** 和 **字符流** 之间做桥梁。
 
-public static void main(String[] args）{
-//目标：不同编码下，字符流读取文本内容的问题。
-try（
-//代码编码：UTF-8 文件编码：UTF-8α 我 m==>0[00o]0 不乱码
-//代码编码：UTF-8 文件编码：GBKα 我 m ==>0[oo］0 乱码
-//1、创建一个文件字符输入流与源文件接通。
-Readerfr=new FileReader(fileName:"E:\\resource\\abc.txt");
-//把原始的字符输入流包装成高级的缓冲字符输入流
-BufferedReader br = new BufferedReader(fr);
-StringLine；//记住每次读取的一行数据。
-while （(line = br.readLine()) != null){
-System.out.println(line);
-}catch （Exception e){
-e.printStackTrace();
+- **输入转换流**：`InputStreamReader`  
+   把字节输入流 → 转成字符输入流（解决读文件时的乱码）。
+- **输出转换流**：`OutputStreamWriter`  
+   把字符输出流 → 转成字节输出流（写文件时可以指定编码）。
 
-乱码
+### InputStreamReader
 
-● 解决不同编码时，字符流读取文本内容乱码的问题。
-解决思路：先获取文件的原始字节流，再将其按真实的字符集编码转成字符输入流，这样字符输入流中的字符就不乱码了。
-构造器说明
-public InputStreamReader(InputStream is)把原始的字节输入流，按照代码默认编码转成字符输入流与直接用 FileReader 的效果样) 几乎不用这个！！
-public InputStreamReader(InputStream is ，String charset)把原始的字节输入流，按照指定字符集编码转成字符输入流(重点)
+`InputStreamReader` 的核心作用是：**按照指定的字符集，把字节解码成字符**。
 
-//目标：字符输入转换流。
-try（
-//1、得到 GBK 文件的原始字节输入流
-InputStream is = new FileInputStream( name:"E:\\resource\labc.txt");
-//2、通过字符输入转换流把原始字节流按照指定编码转换成字符输入流
-Reader isr = new InputStreamReader(is,charsetName: "GBK");
-//3、把字符输入流包装成高级的缓冲字符输入流。
-BufferedReader br = new BufferedReader(isr);
-)
-//4、按照行读取
-String line;
-while （(line = br.readLine(）)!= null){
-System.out.println(line);
-catch (Fxcention e){
+常见构造器：
+
+- `new InputStreamReader(InputStream is)`  
+   使用系统默认编码，几乎等价于 `FileReader`，但因为不可控，实际用得少。
+- `new InputStreamReader(InputStream is, String charset)`  
+   明确指定编码，这是重点。
+
+例如读取 GBK 文件：
+
+```java
+public static void main(String[] args) {
+    try {
+        // 1. 得到一个 GBK 文件的字节输入流
+        InputStream is = new FileInputStream("E:\\resource\\abc.txt");
+
+        // 2. 用指定的编码（GBK）把字节流转成字符流
+        Reader isr = new InputStreamReader(is, "GBK");
+
+        // 3. 再包一层缓冲流，提升效率
+        BufferedReader br = new BufferedReader(isr);
+
+        // 4. 按行读取
+        String line;
+        while ((line = br.readLine()) != null) {
+            System.out.println(line);
+        }
+
+        br.close();
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+}
+```
+
+### OutputStreamWriter
+
+`OutputStreamWriter` 的核心作用是：**按照指定的字符集，把字符编码成字节写出去**。  
+这样我们就能控制输出文件的编码格式，而不是依赖默认设置。
+
+常见构造器：
+
+- `new OutputStreamWriter(OutputStream os)` → 使用默认编码写出。
+- `new OutputStreamWriter(OutputStream os, String charset)` → 指定编码写出。
+
+例如写入 GBK 文件：
+
+```java
+public static void main(String[] args) {
+    try {
+        // 1. 得到字节输出流，通向目标文件
+        OutputStream os = new FileOutputStream("E:\\resource\\wolf.txt");
+
+        // 2. 用 OutputStreamWriter 包装，并指定 GBK 编码
+        Writer osw = new OutputStreamWriter(os, "GBK");
+
+        // 3. 写入数据
+        osw.write("一只孤狼在黑夜里嚎叫——\n");
+        osw.write("荒原的风声也成了伴奏。");
+
+        // 4. 关闭流（会自动把缓冲区的数据写入文件）
+        osw.close();
+
+        System.out.println("写出完成！");
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+}
+```
+
+## 打印流
+
+打印流的核心作用就是让数据输出更方便、更高效，做到“打印啥出去就是啥”
+分为两种：
+
+- PrintStream - 字节打印流
+- PrintWriter - 字符打印流
+
+常规输出流可能还需要手动转型、处理细节，而打印流直接提供了一整套好用的方法，尤其是 `println`，用起来和 `System.out.println` 一样顺手。
 
 ![](../../public/images/文章资源/第三部分-io-其他流/file-20250820193716146.jpg)
-PrintStream/PrintWriter （打印流）
-作用：打印流可以实现更方便、更高效的打印数据出去，能实现打印啥出去就是啥出去
 
-PrintStream 提供的打印数据的方案
-构造器说明
-public PrintStream(OutputStream/File/String)打印流直接通向字节输出流/文件/文件路径
-public PrintStream(String fileName, Charset charset)可以指定写出去的字符编码
-public PrintStream(OutputStream out, boolean autoFlush)可以指定实现自动刷新
-public PrintStream(OutputStream out, boolean autoFlush, String encoding)可以指定实现自动刷新，并可指定字符的编码
+### PrintStream
 
-方法说明
-public void println(Xxx xx)打印任意类型的数据出去
-public void write(int/byte[]/byte[]—部分)可以支持写字节数据出去
+`PrintStream` 是最常见的打印流实现，构造器如下。
 
-特殊流就不用多态写了
-public class PrintStreamDemo1{
-public static void main(String[]args){
-try（
-//目标：打印流：方便，高效的写数据出去。
-PrintStream ps = new PrintStream( fileName:"day1o-io-code/src/ps.txt");
-){
-ps.println(666);
-ps.println(97);
-ps.println(97.9);
-ps.println('a');
-ps.println(true);
-ps.println("深圳黑马 Java!");
-}catch（Exception e）{
-e.printStackTrace();
-8
+- `new PrintStream(OutputStream/File/String)` → 打印流直接通向字节输出流、文件或文件路径。
+- `new PrintStream(String fileName, Charset charset)` → 可以指定写出的字符编码。
+- `new PrintStream(OutputStream out, boolean autoFlush)` → 可以设置是否自动刷新。
+- `new PrintStream(OutputStream out, boolean autoFlush, String encoding)` → 既能控制自动刷新，也能指定编码。
 
-能够做到打印啥就是啥
-输出文件:
+常见的方法包括：
+
+- `println(Xxx xx)` → 打印任意类型的数据，自动换行。
+- `write(int / byte[] / byte[]-部分)` → 支持字节级别的数据写出。
+
+```java
+public class PrintStreamDemo {
+    public static void main(String[] args) {
+        try {
+            // 目标：方便、高效地写数据出去
+            PrintStream ps = new PrintStream("day10-io-code/src/ps.txt");
+
+            ps.println(666);
+            ps.println(97);
+            ps.println(97.9);
+            ps.println('狼');
+            ps.println(true);
+            ps.println("荒野里的孤狼——嚎叫！");
+
+            ps.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+输出文件内容：
+
+```
 666
 97
 97.9
-a
+狼
 true
-深圳黑马 Java!(后面帮我全部换掉成狼的)
+荒野里的孤狼——嚎叫！
+```
 
-他还会自带换行.
+可以看到，打印啥就是啥，完全不用考虑数据类型转化的问题，而且它自带换行，写起来很顺手。并且底层基于缓冲，性能不差。
 
-点进去看源码:
-private PrintStream(boolean autoFlush, OutputStream out) {
-super(out);
-this.autoFlush = autoFlush;
-this.charset = out instanceof PrintStream ps ? ps.charset() : Charset.defaultcharset()
-this.char0ut = new OutputStreamWriter( out:this，charset);
-this.textout = new BufferedWriter(charout);
-//usemonitors whenPrintStreamis sub-classed
-if （getClass(） == PrintStream.class）{
-lock = InternalLock.newLockorNull();
-}else{
-lock = null;
-看关键信息, 他是基于基于 buffer,性能肯定不差的.
+### PrintWriter
 
-PrintWriter 提供的打印数据的方案
-构造器说明
-public Printwriter(OutputStream/writer/File/String)打印流直接通向字节输出流/文件/文件路径
-public Printwriter(String fileName, Charset charset)可以指定写出去的字符编码
-N
-public Printwriter(OutputStream out/Writer, boolean autoFlush)可以指定实现自动刷新
-public Printwriter(OutputStream out, boolean autoFlush, String encoding)可以指定实现自动刷新，并可指定字符的编码
-方法说明
-public void println(Xxx xx)打印任意类型的数据出去
-public void write(int/String/char[]/..)可以支持写字符数据出去
+`PrintWriter` 的作用和 `PrintStream` 类似，不过它继承自 **字符流 Writer**，因此更偏向于处理字符数据。
 
-用法是一样的.
-不过他的写入是覆盖,如果一定要追加,还得包低级管道,打开追加模式
-public static void main(String[] args）{
-try（
-//目标：打印流：方便，高效的写数据出去。
-PrintStream ps = new PrintStream("day10-io-code/src/ps.txt");
-// PrintWriter ps = new PrintWriter("day10-io-code/src/ps.txt");
-PrintWriter ps = new PrintWriter(new FileWriter(fileName:"day10-io-code/src/ps.txt", append: trueD);
-ps.println(666);I
-ps.println(97);
-ps.println(97.9);
-ps.println('a');
-ps.println(true);
-ps.println("深圳黑马 Java!");
-} catch（Exception e）{
-e.printStackTrace();
+常用的构造器如下：
 
-打印数据的功能上是一模一样的：者都是使用方便，性能高效 (核心优势)
-如果非要找区别:
-PrintStream 继承自字节输出流 OutputStream 因此支持写字节数据的方法。
-PrintWriter 继承自字符输出流 Writer，因此支持写字符数据出去。
-但是我们一半不用他的写功能, 所以实际上他们就是没有区别.
+- `new PrintWriter(OutputStream/Writer/File/String)` → 直接通向字节/字符输出流、文件或路径。
+- `new PrintWriter(String fileName, Charset charset)` → 可以指定写出的编码。
+- `new PrintWriter(OutputStream out/Writer, boolean autoFlush)` → 控制是否自动刷新。
+- `new PrintWriter(OutputStream out, boolean autoFlush, String encoding)` → 刷新 + 编码一起指定。
 
-打印流的一种应用：车输出语句的重定向
-public static void main(String[] args） throws Exception {
-//目标：输出语句的重定向。
-System.out.println("红豆生南国");
-System.out.println（"春来发几枝");
-PrintStream ps = new PrintStream(new File0utputStream( name:"day10-io-code/src/ps2.txt",append: true));
-System.setout（ps）；/把系统类的打印流改成我的打印流！！
-T
-System.out.printLn（"愿君多采");
-System.out.printLn（"此物最相思")；
+常见方法：
 
-我们用的 sout, 其实是系统里得到的 out 对象,他是一个 System public staticfinaPrintStream out 是一个 PrintStream 打印流对象, out 调用往控制台打印的 printLn 方法.我们知道改自己的路径就行了
+- `println(Xxx xx)` → 打印任意类型的数据。
+- `write(int/String/char[]/...)` → 支持写字符数据出去。
+
+用法上几乎没区别，但它的写入默认是覆盖模式。如果想要追加，就得像这样用 `FileWriter` 打开追加模式：
+
+```java
+public static void main(String[] args) {
+    try {
+        // 打印流写出，采用追加模式
+        PrintWriter pw = new PrintWriter(
+            new FileWriter("day10-io-code/src/ps.txt", true)
+        );
+
+        pw.println(666);
+        pw.println(97);
+        pw.println(97.9);
+        pw.println('狼');
+        pw.println(true);
+        pw.println("一群野狼在山谷里呼号——回音不断");
+
+        pw.close();
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+}
+```
+
+功能上两者几乎没有差别，区别只在于继承体系：
+
+- `PrintStream` 来自字节流，所以也能写字节；
+- `PrintWriter` 来自字符流，更专注写字符。
+
+不过在日常使用里，我们几乎只用它们的 `println`，因此看起来并没有什么不同。
+
+### 输出重定向
+
+我们平常用的 `System.out.println` 其实就是一个 `PrintStream` 对象（系统里定义为 `public static final PrintStream out`）。  
+默认它指向控制台，但我们可以把它重定向到文件。
+
+```java
+public static void main(String[] args) throws Exception {
+    System.out.println("红豆生南国");
+    System.out.println("春来发几枝");
+
+    // 1. 自己创建一个打印流，通向文件
+    PrintStream ps = new PrintStream(
+        new FileOutputStream("day10-io-code/src/ps2.txt", true)
+    );
+
+    // 2. 把系统的 out 改成自己的打印流
+    System.setOut(ps);
+
+    // 3. 再使用 sout，其实已经写入文件了
+    System.out.println("愿君多采撷");
+    System.out.println("此物最相思");
+}
+```
+
+这样一来，原本应该出现在控制台的文字，就会被写入 `ps2.txt` 文件。
+
+收到 🐺，我来帮你把 **特殊数据流** 这一节梳理成你喜欢的风格：  
+——流畅说明 → 构造器和方法列清楚 → 狼味案例 → 输出结果 → 自然强调“收发必须一致”。
+
+# 特殊数据流
+
+在普通的字节流/字符流里，我们写出去的只是“数据本身”，并不会附带数据类型。
 
 ![](../../public/images/文章资源/第三部分-io-其他流/file-20250820195501405.jpg)
 
-DataOutputStream（数据输出流）
-允许把数据和其类型一并写出去。
-构造器说明
-public DataoutputStream(OutputStream out)创建新数据输出流包装基础的字节输出流
-方法说明
-public final void writeByte(int v) throws IOException 将 byte 类型的数据写入基础的字节输出流
-public final void writeInt(int v) throws IOException 将 int 类型的数据写入基础的字节输出流
-public final void writeDouble(Double v) throws IOException 将 double 类型的数据写入基础的字节输出流
-public final void writeUTE(String str) throws IOException 将字符串数据以 UTF-8 编码成字节写入基础的字节输出流
-public void write(int/byte[]/byte[]—部分)支持写字节数据出去
+如果另一端要读取这些数据，就得自己去猜是什么类型。**特殊数据流**解决的就是这个问题：
+
+> 它能把数据和类型一并写出去，再一并读回来。
+
+## DataOutputStream
+
+`DataOutputStream` （数据输出流）允许我们把 **数据及其类型信息** 一起写出，方便后续读取时不至于错位。
+
+**构造器：**
+
+- `new DataOutputStream(OutputStream out)` → 创建数据输出流，包装一个字节输出流。
+
+**常见方法：**
+
+- `writeByte(int v)` → 写出 `byte` 数据。
+- `writeBoolean(boolean v)` → 写出布尔值。
+- `writeInt(int v)` → 写出整数。
+- `writeChar(int v)` → 写出单个字符。
+- `writeUTF(String str)` → 写出字符串（UTF-8 编码）。
+- `write(int / byte[] / byte[]-部分)` → 写字节数组。
+
+```java
+public static void main(String[] args) {
+    try {
+        DataOutputStream dos = new DataOutputStream(
+            new FileOutputStream("day10-io-code/src/wolf-info.dat")
+        );
+
+        dos.writeByte(97);                   // 一段狼嚎的编号
+        dos.writeBoolean(true);              // 狼是否出没
+        dos.writeInt(1000);                  // 狼群数量
+        dos.writeChar('狼');                 // 狼字标记
+        dos.writeUTF("北境雪原的孤狼——代号666"); // 狼的密语
+
+        dos.close();
+        System.out.println("情报写出完成！");
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+}
+```
+
+写出来的文件不是直接能看懂的文本，而是一种特殊的二进制格式。
+
+## DataInputStream
+
+与之配套，`DataInputStream` （数据输入流）用来读取 `DataOutputStream` 写出的内容。
+
+**构造器：**
+
+- `new DataInputStream(InputStream is)` → 创建数据输入流，包装一个字节输入流。
+
+**常见方法：**
+
+- `readByte()` → 读取一个字节。
+- `readBoolean()` → 读取布尔值。
+- `readInt()` → 读取整数。
+- `readChar()` → 读取字符。
+- `readUTF()` → 读取字符串（UTF-8 解码）。
+- `read(byte[])` → 读取字节数组。
+
+```java
+public class DataInputStreamDemo {
+    public static void main(String[] args) {
+        try {
+            DataInputStream dis = new DataInputStream(
+                new FileInputStream("day10-io-code/src/wolf-info.dat")
+            );
+
+            byte b = dis.readByte();
+            boolean flag = dis.readBoolean();
+            int num = dis.readInt();
+            char c = dis.readChar();
+            String msg = dis.readUTF();
+
+            dis.close();
+
+            System.out.println("编号：" + b);
+            System.out.println("是否出没：" + flag);
+            System.out.println("狼群数量：" + num);
+            System.out.println("标记：" + c);
+            System.out.println("密语：" + msg);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+收发必须一致，必须 写什么 → 读什么，否则会出现数据错位，导致读取错误。  
+比如先写了 `writeInt()` 再 `writeUTF()`，读取时也必须先 `readInt()` 再 `readUTF()`。
+
+# 序列化流
+
+**对象序列化**：把 Java 对象写入文件中保存起来。  
+**对象反序列化**：从文件中把对象再读出来，恢复到内存。
+
+![](../../public/images/文章资源/第三部分-io-流/file-20250822190951916.jpg)
+
+要把对象写到文件里，需要用到 `ObjectOutputStream`。
+
+## 对象序列化
+
+**构造器：**
+
+- `new ObjectOutputStream(OutputStream out)` → 创建对象字节输出流，包装基础的字节输出流。
+
+**方法：**
+
+- `writeObject(Object obj)` → 把对象写出去。
+
+不过要注意：
+
+> 参与序列化的类，必须实现 `Serializable` 接口。
+
+如果去查看接口的源码就会发现，这个接口里什么都没有。因为它只是一个“标记”，告诉 JVM：这个类的对象可以被特殊处理，转成二进制格式保存。
+
+```java
+import java.io.*;
+
+// 狼类，必须实现 Serializable 接口
+class Wolf implements Serializable {
+    private String name;
+    private int age;
+    private String secret;   // 密码
+    private double weight;
+
+    public Wolf(String name, int age, String secret, double weight) {
+        this.name = name;
+        this.age = age;
+        this.secret = secret;
+        this.weight = weight;
+    }
+
+    @Override
+    public String toString() {
+        return "Wolf{name='" + name + "', age=" + age +
+               ", secret='" + secret + "', weight=" + weight + "}";
+    }
+}
+
+public class WolfSerializeDemo {
+    public static void main(String[] args) {
+        try {
+            Wolf loneWolf = new Wolf("荒原孤狼", 5, "howl666", 65.5);
+
+            // 创建对象输出流，连接到文件
+            ObjectOutputStream oos = new ObjectOutputStream(
+                new FileOutputStream("day10-io-code/src/wolf.obj")
+            );
+
+            // 写对象
+            oos.writeObject(loneWolf);
+
+            oos.close();
+            System.out.println("狼对象序列化完成！");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+运行后，`wolf.obj` 文件中保存的就是这个狼对象的序列化结果。
+
+## 对象反序列化
+
+要把文件里的对象读回来，用 `ObjectInputStream`。
+
+**构造器：**
+
+- `new ObjectInputStream(InputStream in)` → 创建对象字节输入流，包装基础的字节输入流。
+
+**方法：**
+
+- `readObject()` → 读取对象（返回 `Object`，需要强制类型转换）。
+
+```java
+public class WolfDeserializeDemo {
+    public static void main(String[] args) {
+        try {
+            ObjectInputStream ois = new ObjectInputStream(
+                new FileInputStream("day10-io-code/src/wolf.obj")
+            );
+
+            // 读对象回来
+            Wolf wolf = (Wolf) ois.readObject();
+            System.out.println("读到的对象：" + wolf);
+
+            ois.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+- 如果类中的某些成员变量不想参与序列化，可以用 **`transient`** 修饰。
+- 一次序列化多个对象时，可以把对象放进 `ArrayList` 里再序列化，因为集合类本身也实现了 `Serializable` 接口。
+
+也就是说，**序列化流**就像“给狼做存档”，把一整只狼（包括它的名字、年龄、体重）封装进文件里，以后再用反序列化就能“读档”，把这只狼重新召唤回内存。
+
+# IO 框架
+
+所谓“框架”，就是为了解决某类问题而事先编写好的一套类与接口，可以看作是一个**半成品**。  
+大多数框架由第三方开发，开发者只需要在它的基础上调用 API，就能快速完成需求。这样不仅能提高效率，也能保证架构的稳定性。
+
+框架通常会以 **`.jar` 文件** 的形式发布，把需要的类和接口打包好供我们使用。
+
+Java 自带的 IO 已经能完成很多功能，但代码往往比较繁琐。  
+**IO 框架（例如 commons-io）** 的作用，就是对这些操作做了进一步封装，让我们用更少的代码实现同样的效果。
+
+### 导入 Commons-IO
+
+1. 在项目中新建一个 `lib` 文件夹。
+2. 把 `commons-io-2.x.jar` 文件复制到 `lib` 下。
+3. 右键 `jar` 文件 → _Add as Library_ → 点击 OK。
+4. 在类中导包使用。
+
+## 使用 Commons-IO
+
+下面用 `FileUtils` 类举例：
+
+```java
+import org.apache.commons.io.FileUtils;
+import java.io.File;
+
+public class CommonsIODemo {
+    public static void main(String[] args) throws Exception {
+        // 复制文件
+        FileUtils.copyFile(
+            new File("day10-io-code/src/dlei04.txt"),
+            new File("day10-io-code/src/dlei04-new.txt")
+        );
+
+        // 复制文件夹
+        FileUtils.copyDirectory(
+            new File("E:\\resource"),
+            new File("D:\\resource")
+        );
+
+        // 删除文件夹
+        FileUtils.deleteDirectory(new File("D:\\resource"));
+    }
+}
+```
+
+这里的三行代码，就完成了文件复制、文件夹复制、文件夹删除。对比原生 IO，写法明显更简洁。
+
+### 常见方法速查
+
+**FileUtils 类**：
+
+- `copyFile(File src, File dest)` → 复制文件。
+- `copyDirectory(File src, File dest)` → 复制文件夹。
+- `deleteDirectory(File directory)` → 删除文件夹。
+- `readFileToString(File file, String encoding)` → 读文件内容。
+- `writeStringToFile(File file, String data, String charset, boolean append)` → 写文件内容。
+
+**IOUtils 类**：
+
+- `copy(InputStream in, OutputStream out)` → 复制字节流。
+- `copy(Reader reader, Writer writer)` → 复制字符流。
+- `write(String data, OutputStream out, String charsetName)` → 写出字符串。
+
+## JDK7+ 的改进
+
+后来 JDK 自己也提供了更简洁的 API，比如 `Files.copy()`：
+
+```java
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+public class JdkFilesDemo {
+    public static void main(String[] args) throws Exception {
+        Files.copy(
+            Path.of("day10-io-code/src/dlei04.txt"),
+            Path.of("day10-io-code/src/dlei04-dlei.txt")
+        );
+    }
+}
+```
+
+只需一行代码，就能完成文件复制，效果和 `FileUtils` 类似。
+
+这样，**commons-io 框架** 就像是一套外援武器库，快速解决常见 IO 操作；而 **JDK7+ 的 Files 工具类** 则是 Java 自己后期内置的简化方案。
