@@ -110,18 +110,8 @@
     "relativePath": "knowledge/前端面试/深入 this.md"
   },
   {
-    "date": "2025-07-14 09:17:54",
-    "wordCount": 1813,
-    "relativePath": "knowledge/后端 Java 基础/JDBC-数据库连接池.md"
-  },
-  {
-    "date": "2025-08-22 15:41:01",
-    "wordCount": 2840,
-    "relativePath": "knowledge/后端 Java 基础/特殊文件.md"
-  },
-  {
     "date": "2024-03-30 19:04:12",
-    "wordCount": 9491,
+    "wordCount": 9716,
     "relativePath": "knowledge/后端 Java 基础/第一部分-基础语法.md"
   },
   {
@@ -180,6 +170,21 @@
     "relativePath": "knowledge/后端 Java 基础/第四部分-多线程.md"
   },
   {
+    "date": "2025-08-22 15:41:01",
+    "wordCount": 2849,
+    "relativePath": "knowledge/后端 Java 基础/配置与特殊文件.md"
+  },
+  {
+    "date": "2025-07-14 09:17:54",
+    "wordCount": 1813,
+    "relativePath": "knowledge/后端 Web 基础/JDBC-数据库连接池.md"
+  },
+  {
+    "date": "2024-11-21 19:44:28",
+    "wordCount": 1212,
+    "relativePath": "knowledge/后端 Web 基础/互联网与星辰大海.md"
+  },
+  {
     "date": "2025-07-13 15:28:42",
     "wordCount": 1547,
     "relativePath": "knowledge/后端工具库/Docker-虚拟化技术.md"
@@ -191,8 +196,13 @@
   },
   {
     "date": "2024-09-24 11:06:33",
-    "wordCount": 3034,
+    "wordCount": 3035,
     "relativePath": "knowledge/后端工具库/Maven-项目构建工具.md"
+  },
+  {
+    "date": "2025-08-28 16:57:51",
+    "wordCount": 5273,
+    "relativePath": "knowledge/后端数据库/MySQL 数据库基础.md"
   },
   {
     "date": "2025-07-13 14:39:36",

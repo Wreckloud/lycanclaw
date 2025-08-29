@@ -139,7 +139,7 @@ Maven 官方的中央仓库在国外，访问速度较慢，可以配置国内�
 
 2. 在"系统变量"区域，点击"新建"，创建名为 `Maven_Home` 的变量，值为 Maven 的安装目录
 
-   ![Maven_Home变量](../../public/images/文章资源/maven-项目构建工具/file-20250627153408863.jpg)
+   ![Maven\_Home变量](../../public/images/文章资源/maven-项目构建工具/file-20250627153408863.jpg)
 
 3. 找到 `Path` 变量，点击"编辑"，添加新条目 `%Maven_Home%\bin`
 
