@@ -13,12 +13,26 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端 Web 基础/Tomcat-web 容器.md",
+                "file": "knowledge/后端 Web 基础/未命名.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Tomcat-web 容器"
+              "title": "未命名"
+            }
+          },
+          {
+            "id": "6c0796326a3b36b6",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "knowledge/后端 Web 基础/未命名.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "未命名"
             }
           }
         ]
@@ -40,13 +54,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/后端 Web 基础/Tomcat-web 容器.md",
+                "file": "knowledge/后端 Web 基础/未命名.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Tomcat-web 容器 的大纲"
+              "title": "未命名 的大纲"
             }
           },
           {
@@ -155,10 +169,13 @@
   },
   "active": "d11777060acf2fe7",
   "lastOpenFiles": [
+    "knowledge/后端 Web 基础/Tomcat-web 容器.md",
+    "public/images/文章资源/tomcat-web-容器/file-20250830125426982.jpg",
+    "public/images/文章资源/tomcat-web-容器",
+    "knowledge/后端 Web 基础/未命名.md",
+    "knowledge/后端 Web 基础/JDBC-数据库连接池.md",
     "knowledge/后端数据库/MySQL 数据库基础.md",
     "未命名.md",
-    "knowledge/后端 Web 基础/Tomcat-web 容器.md",
-    "knowledge/后端 Web 基础/未命名.md",
     "knowledge/实习实训/易软门诊.md",
     "knowledge/前端面试/常见算法.md",
     "knowledge/后端数据库/MySQL 安装.md",
@@ -182,8 +199,6 @@
     "knowledge/后端工具库/Docker-虚拟化技术.md",
     "knowledge/后端工具库/JUnit-单元测试插件.md",
     "knowledge/后端工具库/Maven-项目构建工具.md",
-    "knowledge/后端 Web 基础/JDBC-数据库连接池.md",
-    "public/images/文章资源/mysql-数据库基础/file-20250828162513536.jpg",
     "knowledge/后端 Java 基础/配置与特殊文件.md",
     "knowledge/后端 Web 基础/互联网与星辰大海.md",
     "thoughts/光不在彼方.md",
@@ -198,9 +213,7 @@
     "knowledge/后端 Web 基础",
     "knowledge/后端 Java 基础/第三部分-File 类.md",
     "knowledge/后端 Java 基础/第三部分-集合.md",
-    "knowledge/后端 Java 基础/第二部分-正则表达式.md",
     "public/images/文章资源/配置与特殊文件",
-    "public/images/文章资源/特殊文件",
     "点子合集.canvas"
   ]
 }
