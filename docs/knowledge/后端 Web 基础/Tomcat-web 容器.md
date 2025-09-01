@@ -52,146 +52,186 @@ Tomcat 的使用非常简单，它是一个“解压即用”的软件，不需�
 - [Tomcat 8](https://tomcat.apache.org/download-80.cgi)（老版本，适配较旧的 Servlet/JSP 规范）
 - [Tomcat Archive](https://archive.apache.org/dist/tomcat/)（历史归档，包含所有已发布的旧版本）
 
-### 启动与关闭
+好 🐺，我帮你把 **启动与关闭** 和 **部署项目** 合并整理成一个部分，表达更连贯、读起来不卡：
 
-- **Windows**：通过 `.bat` 脚本启动或关闭。
-  - 启动：双击 `bin/startup.bat`
-  - 正常关闭：执行 `bin/shutdown.bat` 或在运行窗口中按 `Ctrl + C`
-  - 强制关闭：直接关闭命令行窗口（不推荐，可能导致未释放端口）
-- **Linux / macOS**：使用对应的 `.sh` 脚本。
-  - 启动：`bin/startup.sh`
-  - 关闭：`bin/shutdown.sh`
+## 启动、关闭与部署
 
-### 部署项目
+Tomcat 是“解压即用”的软件，启动和关闭都依赖于 `bin` 目录下的脚本文件。
 
-Tomcat 默认会监控 `webapps/` 目录：
+**Windows 平台**：使用 `.bat` 脚本。
 
-- 将打包好的 `war` 文件放入 `webapps/` 中，Tomcat 会在启动时自动解压并部署。
-- 也可以直接放置一个项目目录，效果相同。
+- 启动：双击 `bin/startup.bat`
+- 正常关闭：执行 `bin/shutdown.bat`，或在运行窗口中按下 `Ctrl + C`
+- 强制关闭：直接关闭命令行窗口（可能导致端口未释放）
 
----
+**Linux / macOS 平台**：使用 `.sh` 脚本。
 
-这样就把“下载、安装、启动、关闭、部署”完整串起来了：逻辑自然、文字连贯，同时保留了 Windows / Linux 的区别。
+- 启动：`bin/startup.sh`
+- 关闭：`bin/shutdown.sh`
 
-🐺 要不要我在这部分再补一个“目录结构速览”（bin/conf/webapps/logs/lib 各做什么）？那样整篇会更有连贯性。
+项目部署后，Tomcat 默认会监控 `webapps/` 目录，：
 
-在 [Tomcat 官网下载](https://tomcat.apache.org/download-90.cgi) 提供了所有版本的下载和文档，是获取最新信息的最佳入口。
+- **部署 war 包**：将打包好的 `xxx.war` 文件放入 `webapps/` 中，Tomcat 启动时会自动解压并加载。
+- **部署目录**：也可以直接将项目目录放入 `webapps/`，效果与 war 包相同。
 
-基本使用
-下载：官网下载，地址 https://tomcat.apache.org/download-90.cgi
-安装：绿色版，直接解压即可
-卸载：直接删除目录即可
-启动：双击 bin/startup.bat
-关闭：
-A 直接 × 掉运行窗口：强制关闭
-Abin/shutdown.bat：正常关闭
-Ctrl+C：正常关闭
-部署项目：将项目放置在 webapps 目录下，即部署完成
+无论采用哪种方式，只要 Tomcat 成功启动，对应的项目就能通过浏览器访问。
 
-windows 是 。bat Linux 是 sh
+## 配置 Tomcat
 
-### 配置 Tomcat
+- 乱码问题
 
-刚刚启动时，控制台显示一堆乱码， 我们打开 conf， 找到 logginng。pr 配置文件。 控制台日志编码配置：
-49java.util.logging.ConsoleHandler.level = FINE
-50java.util.logging.ConsoleHandler.formatter = org.apache.juli.oneLineFormatter
-51java.util.logging.ConsoleHandler.encodingUTYGBK
+第一次启动 Tomcat 时，控制台输出一般都会出现中文乱码，通常是日志编码设置不对。
+在 `conf/logging.properties` 中，将以下配置行的编码设置为 UTF‑8：
 
-把原先的编码格式转换成 UTF-8.
+```properties
+java.util.logging.ConsoleHandler.encoding = UTF-8
+```
 
-当启动一个 tomcat 之后， 又启动新的 comtat， 就会报错
-Caused by:java.net.BindException:AAddress alreadyin use:bind
-lethod
+这样控制台输出（尤其是中文）就会正常显示，不再乱码。
 
-很多情况 我们可能不像现在一样， 知道是谁在占用端口，我们可以修改新程序的端口占用，同样是在 conf 文件夹下， 找到 server
+- 端口占用
 
-<Connectorport="8080"protocOl="HTTP/1.1"
-connectionTimeout="2o0oo"
-redirectPort="8443"/>
-
-把这里 8080 改成其他的， 然后保存， 就行。
-
-不过， 我们也可以想办法找到这个程序， 将他终止掉：
-
-打开 cmd， 输入被占用的 8080：
-
-netstat-anofindstr8080
-
-TCP0.0.0.0:80800.0.0.0:0LISTENING36880
-TCP10.254.2.9:54720183.47.100.43:8080ESTABLISHED7688
-TCP10.254.2.9:54781183.47.117.195:8080CLOSE_WAIT7688
-TCP[::]:8080[::]:0LISTENING36880
-
-这么一大堆， 我们只需要看第一个， 看到这个 36880， 他就是 PID 进程 id， 然后在任务管理器种找打他就可以结束了。
-
-# Servlet
-
-Tomcat 我们也称为 Servlet
-
-什么是 Servlet?
-ServLet 是运行在 Web 服务器中的小型 java 程序，是 Java 提供的一门动态 web 资源开发技术。通常通过 HTTP 协议接收和响应来自于客
-户端的请求。
-：Servlet 是 JavaEE 规范之一，其实就是一个接口（定义 Servlet 需实现 Servlet 接口或 继承 HttpServlet），并由 web 服务器运
-行 Servlet.
-
-需求：使用 Servlet 开发一个 Web 应用，浏览器发起请求/hello 之后，给浏览器返回一个字符串"HelloXxx"。
-
-步骤
-
-准备：创建 maven 项目（设置打包方式为 war），
+若启动 Tomcat 后出现如下错误：
 
 ```
+java.net.BindException: Address already in use
+```
+
+那是因为默认监听的端口（通常是 8080）已被其他程序占用，或者之前的 Tomcat 实例未正常关闭。解决方式有两种：
+
+1. **终止占用端口的进程**  
+   Windows 上使用命令查看占用情况，并记下 PID：
+
+   ```bash
+   netstat -ano | find "8080"
+   ```
+
+   然后打开任务管理器找到该 PID 并结束它。
+
+2. **修改监听端口**  
+   打开 `conf/server.xml`，找到 Connector 配置，例如：
+
+   ```xml
+   <Connector port="8080" protocol="HTTP/1.1"
+              connectionTimeout="20000"
+              redirectPort="8443" />
+   ```
+
+   将 `port="8080"` 改为如 `9090` 的其他端口，保存文件后重启 Tomcat 即可。
+
+## Servlet 入门
+
+**Servlet** 是运行在 Web 服务器中的小型 Java 程序，是 Java 提供的一种 **动态 Web 资源开发技术**。  
+它的工作方式：通过 HTTP 协议接收客户端请求 → 在服务器端处理 → 再返回响应。
+
+在规范层面上，Servlet 属于 **Jakarta EE（原 Java EE）** 的一部分。本质上它只是一个接口：
+
+- 开发者可以 **实现 `Servlet` 接口**，或更常见的是 **继承 `HttpServlet` 类**。
+- Servlet 的运行需要依赖 Web 容器（如 Tomcat），容器负责管理 Servlet 的生命周期和调用。
+
+总之，Servlet 不能单独运行，必须交给 Tomcat 这样的容器来调度。
+
+### 实现一个 Servlet
+
+**需求**：编写一个 Servlet，当浏览器访问 `/hello` 时，返回 `"Hello, xxx"`。
+
+#### 1. 创建 Maven 项目
+
+在 `pom.xml` 中设置打包方式为 `war`：
+
+```xml
 <packaging>war</packaging>
 ```
 
-导入 Servlet 坐标（provided）
+#### 2. 引入依赖
 
-```
+在依赖中添加 Servlet API（provided 范围，不会打进包里，运行时由容器提供）：
+
+```xml
 <dependency>
-<groupId>javax.servlet</groupId>
-<artifactId>javax.servlet-api</artifactId>
-<version>4.0.1</version>
-<scope>provided</scope>主程序、测试程序可用，不参与打包
+    <groupId>javax.servlet</groupId>
+    <artifactId>javax.servlet-api</artifactId>
+    <version>4.0.1</version>
+    <scope>provided</scope>
 </dependency>
 ```
 
-开发：
-定义一个类，实现 Servlet 接口（继承 HttpServlet），并实现所有方法。
-在 Servlet 类上使用 awebServlet 注解，配置该 Servlet 的访问路径。
+#### 3. 编写 Servlet 类
 
-```
+定义一个类继承 `HttpServlet`，重写 `doGet` 方法，并通过注解映射访问路径：
+
+```java
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+@WebServlet("/hello")
 public class HelloServlet extends HttpServlet {
-@Override
-protected void doGet(HttpServletRequest req，HttpServletRequest resp）{
-String name =req·getParameter("name")；//接收请求参数
-String respMsg = "<h1>Hello,"+name +"~</h1>"；
-resp.getWriter(）.write(respMsg)；//响应结果
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        String name = req.getParameter("name"); // 获取请求参数
+        String respMsg = "<h1>Hello, " + name + " ~</h1>";
+        resp.setContentType("text/html;charset=UTF-8");
+        resp.getWriter().write(respMsg); // 写出响应
+    }
+}
 ```
 
-- HttpServletRequest 请求对象是什么
-- HttpServletRequest 相应对象是什么
+在 Servlet 中最常接触的两个对象：
 
-在 IDEA 配置 tomcat
+- **`HttpServletRequest`**：请求对象，封装了客户端发来的请求数据（如参数、请求头、URL 等）。
+- **`HttpServletResponse`**：响应对象，封装了服务器返回给客户端的数据（如状态码、响应头、响应体）。
 
-在 IDEA 启动按钮的左边， EditConfigurations.. 点开， 点击 + 添加。
+容器在调用 `doGet` 或 `doPost` 方法时，会自动把这两个对象传递给你。
 
-选择 Tomcat Server 选择 Loacl 进入配置面板。
+### 在 IDEA 中配置 Tomcat
 
-然后配置确认 server 版本， 确认端口号。
+1. 打开 **Edit Configurations** → 点击 **+** → 选择 **Tomcat Server → Local**。
+2. 配置 Tomcat 目录、版本和端口号。
+3. 切换到 **Deployment** 选项卡，点击 **+** 添加要部署的模块（如 `servlet-demo:war`）。
+4. **Application context** 默认为 `/demo`，可以修改，这会影响访问路径：
 
-此时还没完， 注意到界面下面有一个警告 Warning:Noartifactsmarkedfordeployment
-说现在没部署任何的应用， 我们点击 Deployment 选项卡， 点击 +
-选择第一个 servlet-demo：war
+   - `/demo/hello` → 访问上面编写的 `HelloServlet`。
 
-下面的 Application context:/demo
-可以改也可以默认， 影响的是访问路径例如
+## Servlet 执行流程
 
-# Servlet 执行流程
+当我们完成代码编写、配置并启动 Tomcat 后，就可以在浏览器中访问 Servlet。  
+例如：
 
-我们写好代码配置好然后启动
+```
+http://localhost:8080/servlet-demo/hello?name=Wreckloud
+```
 
-http:（协议）//localhost（IP 号）:8080（端口号）/servlet-demo/（服务和项目地址）hello?name=Heima（资源地址）
+这个 URL 可以拆解为：
 
-通过 url 上的 表示， 找到对应的类上对应的标识。如果这是一个 get 请求， 他就会取找对应的 doget 方法（post delet 等等）
+- `http` → 使用的协议
+- `localhost` → 服务器地址（本机）
+- `8080` → Tomcat 默认端口
+- `/servlet-demo` → Web 应用的上下文路径（Application Context）
+- `/hello` → Servlet 的访问路径（由 `@WebServlet("/hello")` 指定）
+- `?name=Wreckloud` → 请求参数
 
-找到 get 方法后就执行他，并响应结果
+### 容器的处理过程
+
+1. **Tomcat 接收请求**  
+   浏览器发送请求后，Tomcat 作为 Servlet 容器会先接收并解析请求。
+2. **定位 Servlet**  
+   容器根据 URL 中的访问路径（如 `/hello`），找到对应的 Servlet 类。
+3. **调用方法**
+
+   - 如果请求方式是 **GET**，容器会调用该类的 `doGet()` 方法。
+   - 如果请求方式是 **POST**，则调用 `doPost()` 方法。
+   - 其他如 DELETE、PUT 等，对应调用 `doDelete()`、`doPut()`。
+
+4. **执行逻辑并生成响应**  
+   Servlet 方法内部会处理请求数据，并通过 `HttpServletResponse` 对象将结果写回。
+5. **Tomcat 返回响应**  
+   容器将响应数据封装成标准的 HTTP 响应报文，返回给浏览器。
+
+一句话概括：
+
+```
+浏览器请求 → Tomcat 接收并解析 → 找到目标 Servlet → 调用相应方法(doGet/doPost...) → 返回响应
+```
