@@ -111,8 +111,8 @@
   },
   {
     "date": "2025-08-22 15:41:01",
-    "wordCount": 2849,
-    "relativePath": "knowledge/后端 Java 基础/Properties与XML-特殊文件.md"
+    "wordCount": 2861,
+    "relativePath": "knowledge/后端 Java 基础/扩展部分-配置与特殊文件.md"
   },
   {
     "date": "2024-03-30 19:04:12",
@@ -175,6 +175,11 @@
     "relativePath": "knowledge/后端 Java 基础/第四部分-多线程.md"
   },
   {
+    "date": "2025-09-01 11:25:55",
+    "wordCount": 4077,
+    "relativePath": "knowledge/后端 Java 基础/第四部分-网络编程.md"
+  },
+  {
     "date": "2025-07-14 09:17:54",
     "wordCount": 1813,
     "relativePath": "knowledge/后端 Web 基础/JDBC-数据库连接池.md"
@@ -201,7 +206,7 @@
   },
   {
     "date": "2025-09-01 09:24:20",
-    "wordCount": 1090,
+    "wordCount": 1084,
     "relativePath": "knowledge/后端工具库/Logback-日志技术.md"
   },
   {
