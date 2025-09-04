@@ -11,9 +11,9 @@ tags:
 
 学习数据库，先要把几个核心概念捋清楚。数据库的世界看似庞杂，但实际上可以归纳为三个关键点：
 
-- **数据库（DataBase, DB）**  
+- **DB 数据库（DataBase）**  
    数据库本身：数据存储和管理的仓库，本质上只是数据的集合。
-- **数据库管理系统（DataBase Management System, DBMS）**  
+- **DBMS 数据库管理系统（DataBase Management System）**  
    管理数据库的软件：负责操纵和管理数据库的大型软件，是人与数据库之间的中介。
 - **SQL（Structured Query Language）**  
    统一的操作语言：操作关系型数据库的编程语言。它定义了一套统一的标准，所以不同厂商的数据库，虽然产品各异，但都离不开 SQL。
