@@ -259,3 +259,466 @@ java -jar springboot-web-quickstart01-0.0.1-SNAPSHOT.jar
 ![](../../public/images/文章资源/springbootweb入门/file-20250904143703503.jpg)
 
 这样，你的项目就会在目标机器上启动。但是，要确保对方的机器上安装了 **JDK 环境**，否则他们无法运行 `jar` 文件。
+
+# Web 开发形式
+
+在软件开发的演进过程中，前后端的关系经历了明显的变化。
+
+**前后端不分离（混合开发）**
+
+在早期的项目中，常见做法是前端和后端代码写在一起，比如 JSP、PHP 时代，页面展示和业务逻辑混合在同一套工程里。  
+这种模式的问题很多：
+
+- 前后端分工模糊，代码耦合严重；
+- 沟通成本高，前端改动往往牵一发动全身；
+- 维护和扩展都不方便。
+
+所以，这类“前后端混合”的方式一般只存在于十几二十年前的老项目里，现代项目几乎很少使用。
+
+**前后端分离**
+
+现代主流的模式是 前后端分离。前端和后端成为两套独立的工程：
+
+- **前端工程师** 负责编写页面交互和用户体验相关的代码，部署到前端服务器；
+- **后端工程师** 负责编写接口和业务逻辑，部署到后端服务器；
+- 前端通过 HTTP 请求访问后端接口，后端返回 JSON 等数据格式给前端。
+
+这样做的好处是职责清晰，前后端可以并行开发，联调时只需要对照接口交互。
+
+# 接口设计与接口文档
+
+在前后端分离的开发模式下，接口文档是前后端协作的“契约”。它明确规定了前端如何发请求，后端如何返回数据，避免了两边各自为政。
+
+接口文档一般包含四个核心要素：
+
+- **请求路径**：接口地址
+- **请求方式**：GET、POST、PUT、DELETE 等
+- **请求参数**：请求时需要传递的字段
+- **响应数据**：后端返回的内容（通常为 JSON）
+
+接口文档通常由需求文档和原型推导而来，是前后端协作的重要桥梁。
+
+### RESTful 风格
+
+REST（**RE**presentational **S**tate **T**ransfer，表述性状态转换）是一种软件架构风格。在接口设计中，它通过 `资源 + 请求方法` 来表达操作，使得接口更加统一、简洁。
+
+**传统风格（以动词命名接口）**
+
+在早期的接口里，常见做法是直接把操作写进路径，例如：
+
+| 请求方式 | URL                     | 含义             |
+| -------- | ----------------------- | ---------------- |
+| GET      | `/user/getById?id=1`    | 查询 id=1 的用户 |
+| POST     | `/user/saveUser`        | 新增用户         |
+| POST     | `/user/updateUser`      | 修改用户         |
+| GET      | `/user/deleteUser?id=1` | 删除 id=1 的用户 |
+
+这种方式直观，但存在问题：见名知意没错，却容易导致 100 个人写出 100 种风格，缺乏统一规范，维护成本高。
+
+**RESTful 风格（以资源为核心）**
+
+REST 风格的接口把 **资源（名词）** 放在路径里，通过 **HTTP 方法** 来区分操作：
+
+| 请求方式 | URL        | 含义             |
+| -------- | ---------- | ---------------- |
+| GET      | `/users/1` | 查询 id=1 的用户 |
+| DELETE   | `/users/1` | 删除 id=1 的用户 |
+| POST     | `/users`   | 新增用户         |
+| PUT      | `/users`   | 修改用户         |
+
+虽然只看 `/users` 可能不知道是干什么的，但配合 **请求方式**，就能明确区分操作，接口风格更简洁统一。
+
+REST 是一种 **风格**，不是强制规定，可以在必要时灵活调整。功能模块一般使用 **复数形式**（如 `users`, `books`），表示对一类资源的操作，而非单个资源。
+
+## **后端实现基础**
+
+在 Spring Boot 里，后端接口的开发通常围绕 **注解驱动** 和 **统一响应结果** 两个核心点展开。
+
+- **`@ResponseBody`**：可以标注在类或方法上，表示方法返回值会直接写入 HTTP 响应体。如果返回的是对象或集合，会自动转换为 JSON 格式。
+- **`@RestController`**：是 `@Controller + @ResponseBody` 的组合注解。更常用，因为它能让整个类的所有方法默认都返回 JSON。
+
+举例：
+
+```java
+@Controller
+public class DeptController {
+    @ResponseBody
+    @GetMapping("/depts")
+    public List<String> list() {
+        return Arrays.asList("人事部", "技术部", "市场部");
+    }
+}
+```
+
+这段代码返回的就是 JSON 数组。如果换成 `@RestController`，就不需要在每个方法上单独写 `@ResponseBody` 了：
+
+```java
+@RestController
+public class DeptController {
+    @GetMapping("/depts")
+    public List<String> list() {
+        return Arrays.asList("人事部", "技术部", "市场部");
+    }
+}
+```
+
+**为什么要统一响应结果？**
+
+如果每个接口都直接返回数据，前端拿到的结构可能各不相同，解析起来就很麻烦。  
+比如有的接口返回布尔值，有的返回集合，有的返回实体对象。这样前端需要写很多额外的判断逻辑。
+
+因此，我们通常会定义一个 **统一的返回结果类**，让所有接口的响应都有相同的外壳，包含：
+
+1. 执行结果（成功或失败的状态码）
+2. 错误提示信息（如果有的话）
+3. 实际返回的数据
+
+这样无论是增删改查，前端都能用统一的方式来解析。一个常见的统一响应结果类写法如下：
+
+```java
+@Data
+public class Result {
+    private Integer code;   // 1 成功，0 失败
+    private String msg;     // 错误信息
+    private Object data;    // 返回数据
+
+    // 静态方法：快速生成成功或失败的响应
+    public static Result success(Object data) {
+        Result r = new Result();
+        r.setCode(1);
+        r.setMsg("success");
+        r.setData(data);
+        return r;
+    }
+
+    public static Result error(String msg) {
+        Result r = new Result();
+        r.setCode(0);
+        r.setMsg(msg);
+        return r;
+    }
+}
+```
+
+使用时就很方便：
+
+```java
+@RestController
+public class DeptController {
+    @GetMapping("/depts")
+    public Result list() {
+        List<String> list = Arrays.asList("人事部", "技术部", "市场部");
+        return Result.success(list);
+    }
+}
+```
+
+这样返回结果始终是统一的 JSON 结构：
+
+```json
+{
+  "code": 1,
+  "msg": "success",
+  "data": ["人事部", "技术部", "市场部"]
+}
+```
+
+**请求映射注解**
+
+在 Spring MVC 里，最基本的注解是 `@RequestMapping`，可以指定路径和请求方式：
+
+```java
+@RequestMapping(value = "/users", method = RequestMethod.GET)
+public List<User> listUsers() { ... }
+```
+
+为了简化，Spring 提供了更直观的衍生注解：
+
+| 注解             | 对应请求方式 |
+| ---------------- | ------------ |
+| `@GetMapping`    | GET 请求     |
+| `@PostMapping`   | POST 请求    |
+| `@PutMapping`    | PUT 请求     |
+| `@DeleteMapping` | DELETE 请求  |
+
+示例：
+
+```java
+@RestController
+@RequestMapping("/users") // 类级别映射
+public class UserController {
+
+    @GetMapping("/{id}")
+    public Result getById(@PathVariable Integer id) {
+        return Result.success("查询到用户：" + id);
+    }
+
+    @PostMapping
+    public Result save(@RequestBody User user) {
+        return Result.success("新增用户成功");
+    }
+}
+```
+
+这些注解底层还是 `@RequestMapping`，只是写法更简洁。
+
+## **前后端联调与 Nginx 反向代理**
+
+在前端调用后端接口时，请求的地址可能是 `http://localhost:90/api/depts`。实际上，它会先到 Nginx，由 Nginx 转发到后端的 Tomcat。
+
+这种转发方式叫 **反向代理**。
+
+**反向代理的好处**：
+
+- 安全：隐藏后端真实地址
+- 灵活：可以做路径转发和重写
+- 负载均衡：把请求分发到多个后端
+
+**Nginx 配置示例**：
+
+```nginx
+location /api/ {
+    rewrite ^/api/(.*)$ /$1 break;       # 路径重写
+    proxy_pass http://localhost:8080;    # 转发到后端
+}
+```
+
+当访问 `/api/depts` 时，Nginx 会去掉前缀 `/api/`，然后把请求转发到后端的 `/depts` 接口。
+
+Nginx 还可以配置 `upstream` 模块实现负载均衡，把请求分发给多个后端实例。
+格
+
+# 三层架构
+
+在开发一个 Web 项目时，最常见的需求就是增删改查。无论是管理用户、部门还是订单，本质上都逃不开三个部分：
+
+1. **数据访问** —— 从数据库中增删改查数据。
+2. **逻辑处理** —— 把业务规则写进去，比如“删除部门之前要先判断是否有员工”。
+3. **请求响应** —— 前端发请求，后端给响应。
+
+如果把这三块逻辑混在一起写，当然也能跑，但后期维护就会非常麻烦。为了遵守**单一职责原则**，我们一般把它们拆开：
+
+- **Controller（控制层）**：负责接收前端请求，并返回数据。
+- **Service（业务逻辑层）**：负责具体的业务逻辑。
+- **DAO（数据访问层）**：全称 Data Access Object，负责和数据库打交道。
+
+> 这里就有一个问题：如果以后 DAO 层的实现方式要更换，该怎么办？
+
+在实际开发中，DAO 层的实现方式可能有多种，比如：
+
+- 有的项目直接用 JDBC；
+- 有的用 MyBatis；
+- 甚至你可能想换一种持久化框架。
+
+如果 Controller 和 Service 直接依赖某个固定实现类，那么一旦要更换实现方式，就会牵一发动全身。为了增强扩展性，我们引入**接口**。接口的思想就是：
+
+- 定义好规则（接口）。
+- 具体实现谁来干（实现类）。
+
+上层只依赖接口，不关心具体实现。这样，哪怕将来 DAO 层的实现从 JDBC 改成 MyBatis，Controller 和 Service 层的代码也几乎不用改。
+
+我们以部门查询为例，来演示三层架构的分工。
+
+```java
+public interface DeptDao {
+    List<String> queryDeptList();
+}
+```
+
+DAO 接口，定义了数据访问的规范。
+
+```java
+public class DeptDaoImpl implements DeptDao {
+    @Override
+    public List<String> queryDeptList() {
+        return List.of("研发部", "市场部", "财务部");
+    }
+}
+```
+
+DAO 实现类，负责和数据库交互，这里简单模拟查询数据。
+
+```java
+public interface DeptService {
+    List<String> queryDeptList();
+}
+```
+
+Service 接口，定义业务逻辑的规范。
+
+```java
+public class DeptServiceImpl implements DeptService {
+    private DeptDao deptDao = new DeptDaoImpl();
+    @Override
+    public List<String> queryDeptList() {
+        return deptDao.queryDeptList();
+    }
+}
+```
+
+Service 实现类，调用 DAO，完成业务逻辑处理。
+
+```java
+@RestController
+public class DeptController {
+    private DeptService deptService = new DeptServiceImpl();
+
+    @RequestMapping("/depts")
+    public List<String> list() {
+        return deptService.queryDeptList();
+    }
+}
+```
+
+Controller 控制层，接收请求并返回结果。
+
+通过上面的案例，我们可以清晰地看到三层的职责：
+
+- **DAO** 专注数据访问；
+- **Service** 负责业务逻辑；
+- **Controller** 面向请求和响应。
+
+接口把这三层隔开，使它们各自独立。如果未来更换 DAO 的实现方式（比如从 JDBC 改为 MyBatis），只需要替换实现类，上层调用无需改动。这就是三层架构带来的好处——**解耦与扩展性**。
+
+# 分层解耦
+
+前面我们虽然通过接口把三层分开了，但还有一个问题：**Controller 里还是手动** `**new` **实现类**。如果以后 ServiceImpl 换成 ServiceImpl2，每次都要在 Controller 里改代码，这就是**强耦合**。
+
+- **耦合**：层与层之间的依赖程度。
+- **内聚**：模块内部功能的紧密度。
+
+良好的设计原则是 **高内聚，低耦合**。
+
+那该怎么做？我们可以准备一个“容器”，把对象都放进去。Controller 需要的时候，不再自己创建，而是直接从容器里取。这就是 **Spring 的 IoC 思想**。
+
+- **IoC（Inversion of Control，控制反转）**：对象的创建控制权交给容器，而不是程序自己。
+- **DI（Dependency Injection，依赖注入）**：容器在运行时把需要的对象注入进来。
+- **Bean**：由 IoC 容器创建和管理的对象。
+
+接下来，我们就通过实际代码看看 Spring 是如何帮我们解耦的。
+
+有了 IoC 容器，我们不需要自己 new 对象。还可以随时替换实现类，而不需要修改调用方代码。这使得项目更加解耦，更容易维护和扩展。
+
+## IoC 与依赖注入的实战
+
+Spring 提供了两类核心注解：
+
+- `@Component`：把类交给 IoC 容器管理，声明为 Bean。
+- `@Autowired`：在需要的地方注入容器中已有的 Bean。
+
+1. 将类交给容器管理
+
+```java
+@Component
+public class DeptDaoImpl implements DeptDao {
+    @Override
+    public List<String> queryDeptList() {
+        return List.of("研发部", "市场部", "财务部");
+    }
+}
+```
+
+这里 `@Component` 的作用是告诉 Spring：请管理这个类的对象。
+
+除了 `@Component`，Spring 还提供了三种常用衍生注解，用来标注分层架构中的不同角色：
+
+- `@Controller`：控制层类
+- `@Service`：业务逻辑层类
+- `@Repository`：数据访问层类（与 MyBatis 集成后使用较少）
+
+它们的效果本质同`@Component`一样，都是把类注册到容器，只是语义上更清晰。
+
+2. 在 Service 中注入 Dao
+
+```java
+@Service
+public class DeptServiceImpl implements DeptService {
+    @Autowired
+    private DeptDao deptDao;
+
+    @Override
+    public List<String> queryDeptList() {
+        return deptDao.queryDeptList();
+    }
+}
+```
+
+这里 `@Autowired` 会自动找到容器里的 `DeptDaoImpl` 并注入。
+
+3. 在 Controller 中注入 Service
+
+```java
+@RestController
+public class DeptController {
+    @Autowired
+    private DeptService deptService;
+
+    @RequestMapping("/depts")
+    public List<String> list() {
+        return deptService.queryDeptList();
+    }
+}
+```
+
+Controller 不再关心具体实现类，完全依赖接口。对象的创建与依赖关系交由 IoC 容器负责。
+
+### Bean 的命名与扫描
+
+- 默认情况下，Bean 的名字是类名首字母小写。
+- 可以通过注解的 `value` 属性指定 Bean 的名字。
+- 要让这些注解生效，需要开启组件扫描。Spring Boot 默认在 `@SpringBootApplication` 启动类所在包及其子包进行扫描。如果要扩展范围，可以使用 `@ComponentScan` 手动指定。
+
+## 依赖注入的冲突解决
+
+当容器中存在多个同类型的 Bean 时，`@Autowired` 默认会报错。Spring 提供了三种常见方案：
+
+#### 方案一：@Primary
+
+在实现类上添加 `@Primary`，表示这是首选的 Bean。
+
+```java
+@Primary
+@Service
+public class DeptServiceImpl implements DeptService {
+    // ...
+}
+```
+
+这样当有多个实现时，Spring 会优先选择带有 `@Primary` 的类。
+
+#### 方案二：@Qualifier
+
+使用 `@Qualifier` 明确指定 Bean 的名字。
+
+```java
+@RestController
+public class DeptController {
+    @Autowired
+    @Qualifier("deptServiceImpl")
+    private DeptService deptService;
+}
+```
+
+这里的 `deptServiceImpl` 就是 Bean 的名字（默认是类名首字母小写，当然也可以通过注解的 `value` 属性自定义）。
+
+#### 方案三：@Resource
+
+使用 JSR-250 提供的 `@Resource` 注解，根据名字进行注入。
+
+```java
+@RestController
+public class DeptController {
+    @Resource(name = "deptServiceImpl")
+    private DeptService deptService;
+}
+```
+
+它相当于 `@Autowired` + `@Qualifier` 的组合。
+
+通过 IoC 容器与依赖注入：
+
+- 对象的创建和依赖关系都交给 Spring 管理。
+- Controller、Service、DAO 之间实现了解耦。
+- 遇到多实现类的情况，可以通过 `@Primary`、`@Qualifier`、`@Resource` 来灵活解决。
+
+这就是 Spring 提供的 IoC 与 DI 的强大之处，也是三层架构能够真正高内聚、低耦合的关键所在。

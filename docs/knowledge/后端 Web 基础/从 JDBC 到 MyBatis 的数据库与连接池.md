@@ -1,5 +1,5 @@
 ---
-title: JDBC-数据库连接池
+title: 从 JDBC 到 MyBatis 的数据库与连接池
 date: 2025-07-14 09:17:54
 description: 这是一篇新文章!
 order: 0
@@ -17,7 +17,7 @@ JDBC（**Java DataBase Connectivity**）是由 Sun 公司制定的一套 **统�
 
 所以，开发者写的 JDBC 程序只是调用接口，真正与数据库打交道、执行 SQL 的工作，其实是由 **驱动包中的实现类**来完成的。
 
-![](../../public/images/文章资源/jdbc-数据库连接池/file-20250902143953528.jpg)
+![](../../public/images/文章资源/从-jdbc-到-mybatis-的数据库与连接池/file-20250902143953528.jpg)
 
 换句话说：
 
@@ -407,21 +407,211 @@ delete from emp where id=?;
 
 只需要编译一次，之后循环传入不同参数即可。这种方式在批量执行时效率更高。
 
+# MyBatis 入门
+
+如果说 JDBC 是最底层的数据库操作方式，那么 MyBatis 就是在它之上封装的一款优秀的 **持久层框架**。  
+它的目标就是——**简化 JDBC 的开发**。
+
+MyBatis 最初是 Apache 的一个开源项目 **iBatis**，2010 年迁移到 Google Code 并更名为 MyBatis，2013 年又迁到 GitHub 上继续维护。
+
+> 官网地址：[MyBatis 官方文档](https://mybatis.net.cn/getting-started.html)
+
+用 JDBC 写 SQL 虽然灵活，但免不了一些重复工作：
+
+- 手动拼接 SQL、传参
+- 手动解析 `ResultSet`、封装对象
+- 配置和管理比较繁琐
+
+MyBatis 的出现就是为了解决这些麻烦，让我们能把精力更多放在 **SQL 语句本身**。它本质上是一个 **持久层框架**，对 JDBC 进行封装，提供了 **基于接口编程** 的方式来操作数据库。
+
+MyBatis 提供两种常见的开发方式：
+
+1. 基于注解
+2. 基于 XML 映射
+
+下面我们就分别梳理这两种方式的具体步骤。
+
+## 准备工作
+
+1. **创建 Spring Boot 工程**
+
+在 `pom.xml` 中引入相关依赖：
+
+```xml
+<dependency>
+  <groupId>org.mybatis.spring.boot</groupId>
+  <artifactId>mybatis-spring-boot-starter</artifactId>
+  <version>3.0.3</version>
+</dependency>
+
+<dependency>
+  <groupId>com.mysql</groupId>
+  <artifactId>mysql-connector-j</artifactId>
+  <scope>runtime</scope>
+</dependency>
+
+<dependency>
+  <groupId>org.projectlombok</groupId>
+  <artifactId>lombok</artifactId>
+</dependency>
+```
+
+2. **准备数据库表与实体类**
+
+数据库建表：
+
+```sql
+create table user (
+    id int primary key auto_increment,
+    username varchar(50),
+    password varchar(50),
+    name varchar(50),
+    age int
+);
+```
+
+实体类 `User`：
+
+```java
+@Data
+public class User {
+    private Integer id;
+    private String username;
+    private String password;
+    private String name;
+    private Integer age;
+}
+```
+
+3. **配置 MyBatis 与数据库信息**
+
+   在 `application.properties`：
+
+```properties
+spring.datasource.url=jdbc:mysql://localhost:3306/tlias
+spring.datasource.username=root
+spring.datasource.password=root@1234
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+   # MyBatis 配置：打印 SQL
+mybatis.configuration.log-impl=org.apache.ibatis.logging.stdout.StdoutImpl
+```
+
+## 基于注解的方式
+
+注解上手快，适合简单 SQL，直接写在接口方法上。
+
+1. **定义 Mapper 接口**
+
+```java
+    @Mapper // 启动时自动生成代理对象
+    public interface UserMapper {
+        @Select("select * from user")
+        List<User> list();
+
+        @Select("select * from user where id = #{id}")
+        User findById(Integer id);
+    }
+```
+
+- `@Mapper`：交给 Spring 管理
+- `@Select`：定义 SQL
+- `#{id}`：占位符，MyBatis 自动帮我们传参
+
+2. **编写测试类**
+
+```java
+    @SpringBootTest
+    public class UserMapperTest {
+        @Autowired
+        private UserMapper userMapper;
+
+        @Test
+        public void testList() {
+            List<User> users = userMapper.list();
+            users.forEach(System.out::println);
+        }
+    }
+```
+
+这样，一个基于注解的 MyBatis 查询功能就完成了。
+
+## 基于 XML 的方式
+
+当 SQL 比较复杂（多表关联、动态 SQL）时，推荐使用 XML 方式，便于维护和书写。
+
+1. **定义 Mapper 接口**
+
+   ```java
+   @Mapper
+   public interface UserMapper {
+       List<User> findAll();
+   }
+   ```
+
+2. **编写 XML 映射文件**
+
+   - 在 `resources/mapper` 目录下新建 `UserMapper.xml`
+   - 文件名与接口同名，namespace 与接口全限定名一致
+
+   ```xml
+   <mapper namespace="com.itheima.mapper.UserMapper">
+       <select id="findAll" resultType="com.itheima.pojo.User">
+           select id, username, password, name, age from user
+       </select>
+   </mapper>
+   ```
+
+3. **配置映射文件路径**
+
+   在 `application.properties` 添加：
+
+```properties
+   mybatis.mapper-locations=classpath:mapper/*.xml
+```
+
+这样 MyBatis 就能扫描到 `mapper` 文件夹下的 XML 文件。
+
+4. **测试代码**
+
+   ```java
+   @SpringBootTest
+   public class UserMapperTest {
+       @Autowired
+       private UserMapper userMapper;
+
+       @Test
+       public void testFindAll() {
+           List<User> list = userMapper.findAll();
+           list.forEach(System.out::println);
+       }
+   }
+   ```
+
 # 数据库连接池
 
-在实际开发中，频繁创建和销毁数据库连接不仅慢，还容易拖垮数据库。数据库连接池就是为了解决这个问题——它会提前帮你创建好一批连接，放在“池子”里，谁需要谁来拿，用完再还回去。这样一来，既省时高效，又能避免资源浪费。
+在实际开发中，如果每次执行 SQL 都要重新创建和销毁数据库连接，会非常消耗性能，还可能导致数据库被压垮。**数据库连接池**就是为了解决这个问题——它会提前准备好一定数量的连接放在“池子”里，需要时取出，用完再放回去。
 
-**核心优点：**
+这样做的好处：
 
-- 连接复用，响应更快
-- 统一管理最大连接数，防止数据库被高并发压垮
-- 自动检测和回收无效连接，减少连接泄漏风险
+- **连接复用**：避免频繁创建销毁，响应更快。
+- **统一管理**：通过限制最大连接数，防止高并发下数据库过载。
+- **自动回收**：检测并回收无效连接，降低泄漏风险。
 
-现在主流的连接池有 DBCP、C3P0、Druid、HikariCP 等，实际开发中用得最多的还是 Druid 和 HikariCP，配置简单，性能也很不错。
+现在主流的连接池有：
 
-## 使用连接池
+- **HikariCP**（Spring Boot 默认）
+- **Druid**（阿里开源，功能强大，监控能力好）
+- 其他：DBCP、C3P0 等（现代项目中较少用）
 
-**1. 引入依赖**
+## Spring Boot 中的连接池
+
+在 Spring Boot 项目里，无论你是用 **JDBC** 还是 **MyBatis**，其实都已经默认集成了连接池。常见情况：
+
+- 默认使用 **HikariCP**，性能优秀，线程优化良好。
+- 如果想换成 **Druid** 等其他连接池，可以通过添加依赖并修改配置来实现。
+
+1. 引入 Druid 依赖（可选）
 
 ```xml
 <dependency>
@@ -431,30 +621,33 @@ delete from emp where id=?;
 </dependency>
 ```
 
-**2. 配置参数**
+2.  配置连接池参数
 
 ```properties
 spring.datasource.url=jdbc:mysql://localhost:3306/test
 spring.datasource.username=root
 spring.datasource.password=123456
 spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+# 使用 Druid 作为连接池
 spring.datasource.type=com.alibaba.druid.pool.DruidDataSource
+
+# 初始连接数、最大连接数、最小空闲连接数
 spring.datasource.druid.initial-size=5
 spring.datasource.druid.max-active=20
 spring.datasource.druid.min-idle=5
 ```
 
-这些参数控制初始连接数、最大连接数、最小空闲连接数等，按需调整。
-
-**3. 直接用就好**
-
-配置好后，Spring Boot 会自动帮你管理连接池。你只需要像平时一样用 JDBC 或 MyBatis 操作数据库，底层的连接池机制都帮你搞定了。
+配置完成后，Spring Boot 会自动帮你管理连接池，无需手动操作。
 
 ## 原理演示
 
-理解原理后，其实手写一个最简单的连接池也不难。思路就是：用一个集合提前存好一批连接，需要时取出来，用完再放回去。
+理解原理后，你会发现连接池的思路其实很简单：
 
-下面是一个极简版的手写连接池示例：
+- 用一个集合保存多个连接
+- 取连接 → 用连接 → 还连接
+
+示例（简化版）：
 
 ```java
 public class SimpleConnectionPool {
@@ -483,21 +676,12 @@ public class SimpleConnectionPool {
 }
 ```
 
-**用法示例：**
+> 真实生产环境下的连接池会考虑线程安全、连接失效检测等问题，所以一般直接用成熟产品（HikariCP / Druid），而不会自己手写。
 
-```java
-SimpleConnectionPool pool = new SimpleConnectionPool(5);
-Connection conn = pool.getConnection();
-// ... 用完后
-pool.returnConnection(conn);
-```
+常见问题
 
-当然，实际生产环境下的连接池要考虑线程安全、连接失效检测、最大最小连接数等问题，建议直接用成熟的第三方连接池。
+- **连接泄漏**：忘记关闭连接会导致连接池耗尽。主流框架会帮忙管理，但自己写 JDBC 时要记得 `close()`。
+- **最大连接数配置不合理**：过小会“抢不到连接”，过大会把数据库压垮，需要根据业务和服务器性能调整。
+- **监控与调试**：Druid 自带监控页面，可以实时查看连接池状态，非常方便排查问题。
 
-## 常见问题和避坑建议
-
-- **连接泄漏**：忘记关闭连接会导致连接池耗尽。主流框架会自动帮你释放资源，但自己写原生 JDBC 时一定要记得手动关闭。
-- **最大连接数设置不合理**：太小会导致高并发时“抢不到连接”，太大又可能把数据库压垮。建议根据实际业务量和数据库性能合理设置。
-- **连接池监控**：Druid 自带监控页面，可以实时查看连接池状态，排查问题很方便。
-
-数据库连接池是后端开发的“标配”，让数据库访问变得又快又稳。入门阶段建议直接用主流框架自带的连接池，后续有需要再根据项目实际情况做优化和调整。
+在现代 MyBatis / Spring Boot 项目中，连接池是默认启用且优化过的。我们只需要了解其作用和基本配置即可，除非有特殊需求，否则无需过度关注底层细节。
