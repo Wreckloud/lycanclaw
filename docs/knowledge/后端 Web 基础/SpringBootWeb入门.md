@@ -2,7 +2,7 @@
 title: SpringBootWeb入门
 date: 2024-12-01 16:27:02
 description: 这是一篇新文章!
-order: 0
+order: 3
 publish: true
 tags:
 ---
@@ -362,7 +362,7 @@ public class DeptController {
 }
 ```
 
-**为什么要统一响应结果？**
+### 统一响应结果
 
 如果每个接口都直接返回数据，前端拿到的结构可能各不相同，解析起来就很麻烦。  
 比如有的接口返回布尔值，有的返回集合，有的返回实体对象。这样前端需要写很多额外的判断逻辑。
@@ -423,7 +423,7 @@ public class DeptController {
 }
 ```
 
-**请求映射注解**
+### 请求映射注解
 
 在 Spring MVC 里，最基本的注解是 `@RequestMapping`，可以指定路径和请求方式：
 
@@ -500,7 +500,7 @@ Nginx 还可以配置 `upstream` 模块实现负载均衡，把请求分发给�
 
 - **Controller（控制层）**：负责接收前端请求，并返回数据。
 - **Service（业务逻辑层）**：负责具体的业务逻辑。
-- **DAO（数据访问层）**：全称 Data Access Object，负责和数据库打交道。
+- **DAO/ Mapper（数据访问层）**：全称 Data Access Object，专门操作数据库，MyBatis 的官方叫法是 Mapper。
 
 > 这里就有一个问题：如果以后 DAO 层的实现方式要更换，该怎么办？
 
@@ -519,13 +519,15 @@ Nginx 还可以配置 `upstream` 模块实现负载均衡，把请求分发给�
 
 我们以部门查询为例，来演示三层架构的分工。
 
+### DAO/Mapper 层
+
 ```java
 public interface DeptDao {
     List<String> queryDeptList();
 }
 ```
 
-DAO 接口，定义了数据访问的规范。
+DAO/Mapper 接口，定义了数据访问的规范。
 
 ```java
 public class DeptDaoImpl implements DeptDao {
@@ -538,17 +540,20 @@ public class DeptDaoImpl implements DeptDao {
 
 DAO 实现类，负责和数据库交互，这里简单模拟查询数据。
 
+### Service 层
+
 ```java
 public interface DeptService {
     List<String> queryDeptList();
 }
 ```
 
-Service 接口，定义业务逻辑的规范。
+业务逻辑接口，定义部门查询的规范。
 
 ```java
 public class DeptServiceImpl implements DeptService {
     private DeptDao deptDao = new DeptDaoImpl();
+
     @Override
     public List<String> queryDeptList() {
         return deptDao.queryDeptList();
@@ -556,7 +561,9 @@ public class DeptServiceImpl implements DeptService {
 }
 ```
 
-Service 实现类，调用 DAO，完成业务逻辑处理。
+业务逻辑实现类，调用 DAO，完成业务逻辑处理。
+
+### Controller 层
 
 ```java
 @RestController
@@ -570,7 +577,7 @@ public class DeptController {
 }
 ```
 
-Controller 控制层，接收请求并返回结果。
+控制层，接收请求并返回结果。
 
 通过上面的案例，我们可以清晰地看到三层的职责：
 

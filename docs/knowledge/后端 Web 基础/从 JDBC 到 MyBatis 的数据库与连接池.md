@@ -2,7 +2,7 @@
 title: 从 JDBC 到 MyBatis 的数据库与连接池
 date: 2025-07-14 09:17:54
 description: 这是一篇新文章!
-order: 0
+order: 4
 publish: true
 tags:
   - 数据库
@@ -431,162 +431,432 @@ MyBatis 提供两种常见的开发方式：
 
 下面我们就分别梳理这两种方式的具体步骤。
 
+好的，主子。我把这一节按你的口味梳顺了：文字先把路讲清楚，代码紧跟着能跑得起来；案例统一成“中世纪魔法任务管理”，目标是——**查询全部任务（含创建/修改时间）**。
+
 ## 准备工作
 
-1. **创建 Spring Boot 工程**
+目标很简单：先把工程骨架立住、库表和实体对上号、配置好 MyBatis 打印 SQL 和“下划线 → 驼峰”映射。之后再上手写 Mapper / Service / Controller。
 
-在 `pom.xml` 中引入相关依赖：
+**1) 新建工程与依赖（`pom.xml`）**
 
 ```xml
+<!-- Web 基础：写 Controller 要用 -->
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+
+<!-- MyBatis Spring Boot 起步 -->
 <dependency>
   <groupId>org.mybatis.spring.boot</groupId>
   <artifactId>mybatis-spring-boot-starter</artifactId>
   <version>3.0.3</version>
 </dependency>
 
+<!-- MySQL 驱动 -->
 <dependency>
   <groupId>com.mysql</groupId>
   <artifactId>mysql-connector-j</artifactId>
   <scope>runtime</scope>
 </dependency>
 
+<!-- Lombok：省去 getter/setter/toString -->
 <dependency>
   <groupId>org.projectlombok</groupId>
   <artifactId>lombok</artifactId>
 </dependency>
+
+<!-- 可选：测试 -->
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-test</artifactId>
+  <scope>test</scope>
+</dependency>
 ```
 
-2. **准备数据库表与实体类**
+也可以通过脚手架创建项目时勾选：
 
-数据库建表：
+**2) 数据库表与测试数据**
+
+我们用 `mission` 表来装“任务”，包含创建/修改时间字段：
 
 ```sql
-create table user (
-    id int primary key auto_increment,
-    username varchar(50),
-    password varchar(50),
-    name varchar(50),
-    age int
-);
+create table mission (
+  id           int primary key auto_increment,
+  title        varchar(100) not null comment '任务标题',
+  detail       varchar(255)     null comment '任务说明',
+  state        tinyint not null default 0 comment '0未开始 1进行中 2已完成',
+  create_time  datetime not null default current_timestamp comment '创建时间',
+  update_time  datetime not null default current_timestamp on update current_timestamp comment '修改时间'
+) comment='王国告示板·任务';
+
+-- 测试数据（中世纪魔法风）
+insert into mission (title, detail, state) values
+('清剿哥布林洞窟', '雪松林北侧洞窟捣乱，悬赏清剿', 1),
+('护送银月学者',   '护送学者穿越迷雾峡湾，防范盗匪与兽影', 0),
+('修复古塔符阵',   '古塔心室符阵残缺，需重绘三环纹刻', 2);
 ```
 
-实体类 `User`：
+**3) 实体类对齐（`Mission`）**
+
+在 Java 代码里，我们通常遵循 **驼峰命名**，比如 `createTime`。对应的数据库字段则是下划线风格 `create_time`。类似地，`updateTime` ↔ `update_time`。
 
 ```java
+package com.wreckloud.wolfpack.domain.entity;
+
+import lombok.Data;
+import java.time.LocalDateTime;
+
 @Data
-public class User {
+public class Mission {
     private Integer id;
-    private String username;
-    private String password;
-    private String name;
-    private Integer age;
+    private String title;
+    private String detail;
+    private Integer state;
+    private LocalDateTime createTime;
+    private LocalDateTime updateTime;
+```
+
+这里有两个类型上的注意点：
+
+1. **`id` 推荐用 `Integer` 而不是 `int`**
+
+   - `int` 是基本类型，默认值是 `0`，但数据库里的主键自增通常不会从 0 开始，这样容易造成误解。
+   - `Integer` 是包装类，可以为 `null`，就能很好地区分“还没生成”与“已经有值”。这对主键这种敏感字段尤其重要。
+
+2. **时间字段用 `LocalDateTime` 而不是 `Date`**
+
+   - `LocalDateTime` 是 Java 8 引入的新时间 API，操作方法丰富，能直接做加减、比较。打印结果一目了然，比如：`2025-09-09T12:34:56`。
+   - 老的 `Date` 实际上只是一个时间戳，输出格式不直观，通常还要额外转换，使用起来麻烦。
+
+**4) 应用与 MyBatis 配置（`application.properties`）**
+
+把连接、日志、驼峰映射一次性配好。URL 里顺手把常见告警参数写上（时区/编码/公钥）：
+
+```properties
+# --- 数据源 ---
+spring.datasource.url=jdbc:mysql://localhost:3306/wolf_pack?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&characterEncoding=utf8
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.datasource.username=你的账号
+spring.datasource.password=你的密码
+
+# --- MyBatis ---
+# 控制台打印执行的 SQL（开发期很有用）
+mybatis.configuration.log-impl=org.apache.ibatis.logging.stdout.StdOutImpl
+# 下划线字段自动映射到驼峰属性：create_time -> createTime
+mybatis.configuration.map-underscore-to-camel-case=true
+
+# 如果后面要用 XML 映射，再放开这一行
+# mybatis.mapper-locations=classpath*:mapper/**/*.xml
+```
+
+## 思路分析
+
+围绕“查询全部任务”，三层遵守单一职责，各干各的：
+
+- **Mapper（数据访问）**：只关心 SQL 和映射。这里需要的 SQL 是 `select * from mission`。
+- **Service（业务逻辑）**：如果有规则（比如“只返回进行中的任务”或“按更新时间倒序”），写在这里；本节先直出。
+- **Controller（请求响应）**：接请求 `/missions`，调 Service，返回 JSON。
+  嗯，我懂了。你想要的其实是那种**更通俗、更能对上脑子的解释**，而不是一句话带过去。那我来把这三层拆开讲，让你一眼能分清各自的活是啥：
+
+1. **Mapper 层（数据访问层）**
+
+直接操作数据库。你可以把它想象成“翻译官”，专门把 Java 的方法调用翻译成 SQL 去数据库执行。在我们这个需求里，Mapper 要写的就是一句 SQL：
+
+```sql
+select * from mission;
+```
+
+然后它会帮我们把查出来的结果一条条封装成 `Mission` 对象。
+
+2. **Service 层（业务逻辑层）**
+
+负责规则和逻辑。它站在业务的角度来决定要不要对 Mapper 的结果做“加工”。比如：
+
+- 只返回 **进行中的任务**（state = 1）。
+- 查询结果要按 **更新时间倒序** 排一下。
+
+在最简单的情况下，没有额外规则，那 Service 就直接把 Mapper 的结果“原样送出”。
+
+3. **Controller 层（请求响应层）**
+
+处理前端请求、返回响应数据。当浏览器或前端调用 `/missions` 接口时，Controller 收到请求：
+
+1. 去调用 Service 里的方法拿到任务列表；
+2. 再把结果转成 JSON，返回给前端。
+
+所以 Controller 就像一个“门面”，它自己不写 SQL、不写业务逻辑，只负责把请求转进去、把结果送出来。
+
+# 基于注解的方式
+
+我们要暴露一个只读接口：查询王国告示板上的全部任务。目标接口的要素规定如下：
+
+1. **接口地址（URL）**：`GET /missions`
+2. **请求参数**：无
+3. **响应体**：`200 OK`，返回 `List<Mission>` 的 JSON 数组
+
+- 字段：`id, title, detail, state, createTime, updateTime`
+- 时间格式：ISO-8601（例如 `2025-09-09T12:34:56`）
+
+读取数据库 `mission` 表全部记录，按数据库默认顺序返回（需要排序时交由 Service 扩展）
+
+> 统一使用包名 `com.wreckloud.wolfpack`，文件路径均按 Maven 标准目录编写，代码中工具类的 `import` 已省略。
+
+### 1) Mapper 数据访问层
+
+Mapper 只干数据库这件事，方法名直指 SQL 意图。
+
+```java
+package com.wreckloud.wolfpack.mapper;
+
+import com.wreckloud.wolfpack.domain.entity.Mission;
+
+@Mapper // 启动时由 MyBatis 生成代理实现，交给 Spring 管理
+public interface MissionMapper {
+
+    // 这里专注 SQL 与结果映射：查出所有任务
+    @Select("select * from mission")
+    List<Mission> findAll();
 }
 ```
 
-3. **配置 MyBatis 与数据库信息**
+### 2) Service 业务逻辑层
 
-   在 `application.properties`：
+业务规则写在这里。比如你要“只看 state=1 的任务”，就在这里加筛选/改 Mapper。
 
-```properties
-spring.datasource.url=jdbc:mysql://localhost:3306/tlias
-spring.datasource.username=root
-spring.datasource.password=root@1234
-spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
-
-   # MyBatis 配置：打印 SQL
-mybatis.configuration.log-impl=org.apache.ibatis.logging.stdout.StdoutImpl
-```
-
-## 基于注解的方式
-
-注解上手快，适合简单 SQL，直接写在接口方法上。
-
-1. **定义 Mapper 接口**
+接口类：
 
 ```java
-    @Mapper // 启动时自动生成代理对象
-    public interface UserMapper {
-        @Select("select * from user")
-        List<User> list();
+package com.wreckloud.wolfpack.service;
 
-        @Select("select * from user where id = #{id}")
-        User findById(Integer id);
-    }
+import com.wreckloud.wolfpack.domain.entity.Mission;
+
+public interface MissionService {
+    /**
+     * 查询全部任务
+     * 后续若有规则（如仅返回进行中、按更新时间倒序等），在实现类里扩展
+     */
+    List<Mission> findAll();
+}
 ```
 
-- `@Mapper`：交给 Spring 管理
-- `@Select`：定义 SQL
-- `#{id}`：占位符，MyBatis 自动帮我们传参
-
-2. **编写测试类**
+实现类：
 
 ```java
-    @SpringBootTest
-    public class UserMapperTest {
-        @Autowired
-        private UserMapper userMapper;
+package com.wreckloud.wolfpack.service.impl;
 
-        @Test
-        public void testList() {
-            List<User> users = userMapper.list();
-            users.forEach(System.out::println);
-        }
+import com.wreckloud.wolfpack.domain.entity.Mission;
+import com.wreckloud.wolfpack.mapper.MissionMapper;
+import com.wreckloud.wolfpack.service.MissionService;
+
+@Service
+public class MissionServiceImpl implements MissionService {
+
+    @Resource
+    private MissionMapper missionMapper;
+
+    @Override
+    public List<Mission> findAll() {
+        // 目前无额外业务规则，原样返回
+        return missionMapper.findAll();
     }
+}
 ```
 
-这样，一个基于注解的 MyBatis 查询功能就完成了。
+### 3) Controller 请求响应层
 
-## 基于 XML 的方式
+Controller 不写 SQL、不写规则，只负责“进出口”。
 
-当 SQL 比较复杂（多表关联、动态 SQL）时，推荐使用 XML 方式，便于维护和书写。
+```java
+package com.wreckloud.wolfpack.controller;
 
-1. **定义 Mapper 接口**
+import com.wreckloud.wolfpack.domain.entity.Mission;
+import com.wreckloud.wolfpack.service.MissionService;
 
-   ```java
-   @Mapper
-   public interface UserMapper {
-       List<User> findAll();
-   }
-   ```
+@RestController // 等价于 @Controller + @ResponseBody
+public class MissionController {
 
-2. **编写 XML 映射文件**
+    @Resource
+    private MissionService missionService;
 
-   - 在 `resources/mapper` 目录下新建 `UserMapper.xml`
-   - 文件名与接口同名，namespace 与接口全限定名一致
+    /**
+     * GET /missions
+     * 接受前端请求 → 调 Service → 返回 JSON
+     */
+    @GetMapping("/missions")
+    public List<Mission> list() {
+        // 如果你项目有统一的 Result 包装，这里替换成 Result.success(...)
+        return missionService.findAll();
+    }
+}
+```
 
-   ```xml
-   <mapper namespace="com.itheima.mapper.UserMapper">
-       <select id="findAll" resultType="com.itheima.pojo.User">
-           select id, username, password, name, age from user
-       </select>
-   </mapper>
-   ```
+### 字段与属性不一致的问题
 
-3. **配置映射文件路径**
+到这里，一个基于注解的查询功能就能跑了。  
+不过这里有个常见坑：
 
-   在 `application.properties` 添加：
+如果 **数据库字段名** 与 **实体类属性名** 完全一致，MyBatis 会自动封装结果。但现实里，Java 习惯小驼峰（`createTime`），数据库习惯下划线（`create_time`）。
+这时 MyBatis 就无法自动对应，查询结果会出现字段没映射上的情况。
+
+那该怎么解决呢？有三种思路：
+
+1. 手动结果映射
+
+在 Mapper 方法上通过 `@Results` 指定映射关系：
+
+```java
+@Results({
+    @Result(column = "create_time", property = "createTime"),
+    @Result(column = "update_time", property = "updateTime")
+})
+@Select("select * from mission")
+List<Mission> findAll();
+```
+
+优点：精确可控。缺点：写起来比较繁琐，每个字段都要声明。
+
+2. 在 SQL 里起别名
+
+直接在 SQL 语句里把列名改成实体类属性名：
+
+```java
+@Select("select id, title, detail, state, create_time createTime, update_time updateTime from mission")
+List<Mission> findAll();
+```
+
+这样查询结果返回的字段名就是 `createTime`、`updateTime`，能直接映射到实体类。
+
+3. 开启驼峰命名映射（推荐）
+
+MyBatis 提供了官方配置，只要字段名和属性名符合驼峰规则，就能自动映射：
+
+**`application.properties`**
 
 ```properties
-   mybatis.mapper-locations=classpath:mapper/*.xml
+mybatis.configuration.map-underscore-to-camel-case=true
 ```
 
-这样 MyBatis 就能扫描到 `mapper` 文件夹下的 XML 文件。
+配置开启后，`create_time → createTime`，`update_time → updateTime` 都会自动识别，不需要额外注解或别名。
 
-4. **测试代码**
+### 批量扫描 Mapper 方式
 
-   ```java
-   @SpringBootTest
-   public class UserMapperTest {
-       @Autowired
-       private UserMapper userMapper;
+- `@Mapper`：逐个接口点名，告诉 Spring “这个是 Mapper，要生成代理”。
+- `@MapperScan`：批量指定目录，把该目录下的接口一网打尽，都交给 MyBatis 管理。
 
-       @Test
-       public void testFindAll() {
-           List<User> list = userMapper.findAll();
-           list.forEach(System.out::println);
-       }
-   }
-   ```
+如果你不想在每个 Mapper 上都写 `@Mapper`，可以在启动类加 `@MapperScan`：
+
+```java
+@SpringBootApplication
+@MapperScan("com.wreckloud.wolfpack.mapper")
+public class WolfpackApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(WolfpackApplication.class, args);
+    }
+}
+```
+
+在 MyBatis 里，Mapper 接口本身没有实现类。Spring Boot 启动时，MyBatis 会扫描这些接口，为它们动态生成代理对象并交给 Spring 容器管理，所以我们才能在 Service 中直接注入并调用。
+
+如果每个接口都写 `@Mapper`，既重复又容易漏掉。为此 MyBatis 提供了 **`@MapperScan`**，只需指定一个包路径（如 `com.wreckloud.wolfpack.mapper`），框架就会批量识别并注册其中的所有接口，效果等同于逐个加 `@Mapper`，但更简洁省心。
+
+# 基于 XML 的方式
+
+当 SQL 比较复杂（例如多表关联、动态拼接条件）时，使用 XML 映射会更直观，也便于维护。相比注解方式，XML 能把 SQL 与 Java 代码彻底分离。
+
+这里我们还是以“查询全部任务”为例。
+
+### 1) 定义 Mapper 接口
+
+接口依然放在 `mapper` 包下。与注解方式不同的是，这里**不在方法上写 SQL**，而是把 SQL 放到 另一个地方的 XML 文件里。
+
+```java
+package com.wreckloud.wolfpack.mapper;
+
+import com.wreckloud.wolfpack.domain.entity.Mission;
+
+@Mapper
+public interface MissionMapper {
+    // 只声明方法，不写 SQL
+    List<Mission> findAll();
+}
+```
+
+注意接口方法名要和 XML 中的 `<select id="...">` 保持一致。这里就像立了一个“契约”，具体 SQL 写在 XML。
+
+### 2) 编写 XML 映射文件
+
+XML 文件需要放在 `resources/mapper` 目录下（常见规范）。
+
+在使用 XML 映射时，一般有以下约定：
+
+- 接口与 XML 文件同名，方便对应和维护。
+
+例如接口是 `MissionMapper.java`，对应的 XML 就放在 `resources/mapper/MissionMapper.xml`。
+其中，`namespace` 必须写接口的 **全限定类名**（包名 + 类名），比如：
+
+```xml
+<mapper namespace="com.wreckloud.wolfpack.mapper.MissionMapper">
+```
+
+- 接口的方法名要和 XML 中的语句 `id` 保持一致。
+
+比如接口里定义：
+
+```java
+List<Mission> findAll();
+```
+
+则 XML 中要写：
+
+```xml
+<select id="findAll" resultType="com.wreckloud.wolfpack.domain.entity.Mission">
+    select * from mission
+</select>
+```
+
+这样接口、XML 文件、`namespace` 和方法才能正确绑定在一起。
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.wreckloud.wolfpack.mapper.MissionMapper">
+
+    <!-- id 与接口方法名对应，resultType 指定返回的实体类全限定名 -->
+    <select id="findAll" resultType="com.wreckloud.wolfpack.domain.entity.Mission">
+        select id, title, detail, state, create_time createTime, update_time updateTime
+        from mission
+    </select>
+
+</mapper>
+```
+
+- `resultType` 指定返回的实体类路径，MyBatis 会自动封装结果集。
+- 这里顺手用了**列别名**（`create_time createTime`），保证能正确映射到 `Mission` 类的驼峰属性。
+
+### 3) 配置映射文件路径
+
+让 MyBatis 知道 XML 文件在哪里。
+
+在配置文件 `src/main/resources/application.properties` 里添加这句：
+
+```properties
+# 让 MyBatis 扫描 mapper 目录下的所有 XML
+mybatis.mapper-locations=classpath:mapper/*.xml
+```
+
+`classpath:` 表示从 **类路径的根目录** 开始查找资源，也就是 `src/main/resources` 和 `src/main/java` 编译后输出到 `target/classes` 的位置。
+
+所以写 `mapper/*.xml`，指的就是去 `resources/mapper` 目录下找 XML 文件。比如我们放的 `MissionMapper.xml` 就能被扫描到。这样 MyBatis 启动时就会加载这些 XML，与接口方法一一对应。
+
+XML 方式的核心思路：
+
+1. **接口只写方法，不写 SQL**。
+2. **SQL 全放在 XML**，通过 `namespace + id` 与接口方法绑定。
+3. **配置 mapper-locations**，让框架能找到这些 XML。
 
 # 数据库连接池
 
