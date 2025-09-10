@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md",
+                "file": "knowledge/后端 Web 基础/SpringBootWeb入门.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "从 JDBC 到 MyBatis 的数据库与连接池"
+              "title": "SpringBootWeb入门"
             }
           },
           {

@@ -691,6 +691,13 @@ public class MissionController {
 }
 ```
 
+这里拓展一个新的注解：
+
+- **`@Autowired`**：Spring 专用，习惯按类型找。更贴合 Spring，用得更多。
+- **`@Resource`**：JDK 标准注解，习惯按名字找，找不到再按类型。更符合规范，跨框架也能用。
+
+两个都能用，效果大多时候一样，只是默认匹配规则不一样。
+
 ### 字段与属性不一致的问题
 
 到这里，一个基于注解的查询功能就能跑了。  
@@ -858,6 +865,40 @@ XML 方式的核心思路：
 2. **SQL 全放在 XML**，通过 `namespace + id` 与接口方法绑定。
 3. **配置 mapper-locations**，让框架能找到这些 XML。
 
+# 细节补充
+
+Controller接收参数
+接收请求参数：DELETE/depts?id=8
+方式一：通过原始的HttpServletRequest对象获取请求参数。
+@DeleteMapping("/depts")
+public Result delete(HttpServletRequest request){
+String idstr = request.getParameter("id");
+int id = Integer.parseInt(idstr);
+System.out.println（"根据ID删除部门："+id);
+return Result.success();
+
+这种繁琐的方式当然不是推荐的, 接下来是新的注解:
+方式二：通过Spring提供的@RequestParam 注解，将请求参数绑定给方法形参。
+@DeleteMapping("/depts")
+public Result delete(@RequestParam("id"） Integer deptId){
+System.out.printLn（"根据ID删除部门：”+deptId）;
+return Result.success();
+
+aRequestParam注解required属性默认为true，代表该参数必须传递，如果不传递将报错 400 bad request。如果参数可选，可以将属性设置为false。
+
+
+感觉方式三介绍有点多余, 其实就是方式2的延伸而已
+方式三：如果请求参数名与形参变量名相同，直接定义方法形参即可接收。。(省略aRequestParam)
+@DeleteMapping("/depts")
+public Result delete(@RequestParam("id"） Integer id){
+System.out.println（"根据删除部门："+id);
+return Result.success();
+
+
+@DeleteMapping("/depts")
+public Result delete(Integer id){
+System.out.println（"根据iD删除部门：：" + id);
+return Result.success();
 # 数据库连接池
 
 在实际开发中，如果每次执行 SQL 都要重新创建和销毁数据库连接，会非常消耗性能，还可能导致数据库被压垮。**数据库连接池**就是为了解决这个问题——它会提前准备好一定数量的连接放在“池子”里，需要时取出，用完再放回去。

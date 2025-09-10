@@ -423,6 +423,7 @@ public class DeptController {
 }
 ```
 
+
 ### 请求映射注解
 
 在 Spring MVC 里，最基本的注解是 `@RequestMapping`，可以指定路径和请求方式：
@@ -432,7 +433,7 @@ public class DeptController {
 public List<User> listUsers() { ... }
 ```
 
-为了简化，Spring 提供了更直观的衍生注解：
+为了简化 `method = RequestMethod.GET` 这么一长串，Spring 提供了更直观的 `@RequestMapping` 衍生注解：
 
 | 注解             | 对应请求方式 |
 | ---------------- | ------------ |
