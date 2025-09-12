@@ -867,38 +867,69 @@ XML 方式的核心思路：
 
 # 细节补充
 
-Controller接收参数
+Controller 接收参数
 接收请求参数：DELETE/depts?id=8
-方式一：通过原始的HttpServletRequest对象获取请求参数。
+方式一：通过原始的 HttpServletRequest 对象获取请求参数。
 @DeleteMapping("/depts")
 public Result delete(HttpServletRequest request){
 String idstr = request.getParameter("id");
 int id = Integer.parseInt(idstr);
-System.out.println（"根据ID删除部门："+id);
+System.out.println（"根据 ID 删除部门："+id);
 return Result.success();
 
 这种繁琐的方式当然不是推荐的, 接下来是新的注解:
-方式二：通过Spring提供的@RequestParam 注解，将请求参数绑定给方法形参。
+方式二：通过 Spring 提供的@RequestParam 注解，将请求参数绑定给方法形参。
 @DeleteMapping("/depts")
 public Result delete(@RequestParam("id"） Integer deptId){
-System.out.printLn（"根据ID删除部门：”+deptId）;
+System.out.printLn（"根据 ID 删除部门：”+deptId）;
 return Result.success();
 
-aRequestParam注解required属性默认为true，代表该参数必须传递，如果不传递将报错 400 bad request。如果参数可选，可以将属性设置为false。
+aRequestParam 注解 required 属性默认为 true，代表该参数必须传递，如果不传递将报错 400 bad request。如果参数可选，可以将属性设置为 false。
 
-
-感觉方式三介绍有点多余, 其实就是方式2的延伸而已
-方式三：如果请求参数名与形参变量名相同，直接定义方法形参即可接收。。(省略aRequestParam)
+感觉方式三介绍有点多余, 其实就是方式 2 的延伸而已
+方式三：如果请求参数名与形参变量名相同，直接定义方法形参即可接收。。(省略 aRequestParam)
 @DeleteMapping("/depts")
 public Result delete(@RequestParam("id"） Integer id){
 System.out.println（"根据删除部门："+id);
 return Result.success();
 
-
 @DeleteMapping("/depts")
 public Result delete(Integer id){
-System.out.println（"根据iD删除部门：：" + id);
+System.out.println（"根据 iD 删除部门：：" + id);
 return Result.success();
+
+Mapper传递参数
+Mapper
+SQL: delete from dept where id =
+Mapper接口中声明接口方法，实现根据ID删除部门操作：
+@Delete("delete from dept where id =8")
+void delete();
+@Delete("delete from dept where id = #{id}")
+void delete(Integer id);
+
+执行DML语句时，可以返回一个int类型的返回值，表示该DML执行影响的记录数。
+注意：如果mapper接口方法形参只有一个普通类型的参数，#{.}里面的属性名可以随便写，如：#{id}、#{value}。
+
+Mybatis中的#号与$号：
+符号说明场景优缺点
+.}执行时，会将#}替换为？，生成预编译SQL自动设置参数值参数值传递安全、性能高(推荐)
+$!.拼接SQL。直接将参数拼接在SQL语句中，存在SQL注入问题表名、字段名动态设置时使用不安全、性能低
+
+
+Controller接收参数
+接收json格式的请求参数：POST/depts{"name":"教研部"}
+JSON格式的参数，通常会使用一个实体对象进行接收
+规则：JSON数据的键名与方法形参对象的属性名相同，并需要使用aRequestBody注解标识。
+
+Controller接收参数
+接收请求参数（路径参数）：GET/depts/1路径参数
+路径参数：通过请求URL直接传递参数，使用{..}来标识该路径参数，需要使用@PathVariable获取路径参数。
+@GetMapping("/depts/{id}")
+public Result getInfo(@PathVariable Integer id){
+System.out.println（"根据ID查询部门数据："+id）;
+Dept dept = deptService.getInfo(id);
+return Result.success(dept);
+
 # 数据库连接池
 
 在实际开发中，如果每次执行 SQL 都要重新创建和销毁数据库连接，会非常消耗性能，还可能导致数据库被压垮。**数据库连接池**就是为了解决这个问题——它会提前准备好一定数量的连接放在“池子”里，需要时取出，用完再放回去。

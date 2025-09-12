@@ -1,5 +1,5 @@
 ---
-title: Tomcat-web 容器
+title: Tomcat-web Servlet容器
 date: 2025-08-28 14:16:22
 description: 这是一篇新文章!
 order: 2
@@ -37,7 +37,7 @@ Tomcat 的使用非常简单，它是一个“解压即用”的软件，不需�
 
 前往 [Tomcat 9 下载页](https://tomcat.apache.org/download-90.cgi)，在页面中找到 **Binary Distributions（二进制发行版）** 区域，这是下载入口。
 
-![](../../public/images/文章资源/tomcat-web-容器/file-20250830125426982.jpg)
+![](../../public/images/文章资源/tomcat-web-servlet容器/file-20250830125426982.jpg)
 
 在该区域的 **Core** 分类下，会列出几种不同的分发格式，直接聚焦我们需要的文件：
 
@@ -235,3 +235,5 @@ http://localhost:8080/servlet-demo/hello?name=Wreckloud
 ```
 浏览器请求 → Tomcat 接收并解析 → 找到目标 Servlet → 调用相应方法(doGet/doPost...) → 返回响应
 ```
+
+

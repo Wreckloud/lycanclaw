@@ -46,7 +46,7 @@
     "knowledge/后端 Web 基础": [
       "knowledge/后端 Web 基础/互联网与星辰大海.md",
       "knowledge/后端 Web 基础/HTTP 通信协议.md",
-      "knowledge/后端 Web 基础/Tomcat-web 容器.md",
+      "knowledge/后端 Web 基础/Tomcat-web Servlet容器.md",
       "knowledge/后端 Web 基础/SpringBootWeb入门.md",
       "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md"
     ],
@@ -93,6 +93,7 @@
       "knowledge/前端面试/ES6 - JavaScript 中的继承.md"
     ],
     "knowledge/实习实训": [
+      "knowledge/实习实训/从零开始创建Servlet+JSP项目指南.md",
       "knowledge/实习实训/易软门诊.md",
       "knowledge/实习实训/Java后端与AI智能体开发全景梳理.md"
     ],
@@ -116,6 +117,7 @@
       "public/images/首页/default-cover.png"
     ],
     "public/images/文章资源": [
+      "public/images/文章资源/tomcat-web-servlet容器",
       "public/images/文章资源/笔记本-wi-fi-消失的解决方法",
       "public/images/文章资源/从-jdbc-到-mybatis-的数据库与连接池",
       "public/images/文章资源/第二部分-常用-api",
@@ -151,7 +153,6 @@
       "public/images/文章资源/mysql-安装",
       "public/images/文章资源/mysql-数据库基础",
       "public/images/文章资源/springbootweb入门",
-      "public/images/文章资源/tomcat-web-容器",
       "public/images/文章资源/vue-2-渐进式框架",
       "public/images/文章资源/vue2状态管理-vuex",
       "public/images/文章资源/default-cover.jpg"
@@ -395,8 +396,8 @@
       "public/images/文章资源/springbootweb入门/file-20250904112205376.jpg",
       "public/images/文章资源/springbootweb入门/file-20250904143703503.jpg"
     ],
-    "public/images/文章资源/tomcat-web-容器": [
-      "public/images/文章资源/tomcat-web-容器/file-20250830125426982.jpg"
+    "public/images/文章资源/tomcat-web-servlet容器": [
+      "public/images/文章资源/tomcat-web-servlet容器/file-20250830125426982.jpg"
     ],
     "public/images/文章资源/vue-2-渐进式框架": [
       "public/images/文章资源/vue-2-渐进式框架/file-20250607102908190.jpg",

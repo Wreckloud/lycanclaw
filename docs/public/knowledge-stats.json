@@ -186,8 +186,8 @@
   },
   {
     "date": "2025-08-28 14:16:22",
-    "wordCount": 1955,
-    "relativePath": "knowledge/后端 Web 基础/Tomcat-web 容器.md"
+    "wordCount": 1956,
+    "relativePath": "knowledge/后端 Web 基础/Tomcat-web Servlet容器.md"
   },
   {
     "date": "2024-11-21 19:44:28",
@@ -196,7 +196,7 @@
   },
   {
     "date": "2025-07-14 09:17:54",
-    "wordCount": 6846,
+    "wordCount": 7216,
     "relativePath": "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md"
   },
   {
@@ -233,6 +233,11 @@
     "date": "2025-07-13 14:39:36",
     "wordCount": 619,
     "relativePath": "knowledge/实习实训/Java后端与AI智能体开发全景梳理.md"
+  },
+  {
+    "date": "2025-09-12T01:57:35.727Z",
+    "wordCount": 4768,
+    "relativePath": "knowledge/实习实训/从零开始创建Servlet+JSP项目指南.md"
   },
   {
     "date": "2025-08-29 16:14:45",
