@@ -535,7 +535,7 @@ public class Mission {
 
 ```properties
 # --- 数据源 ---
-spring.datasource.url=jdbc:mysql://localhost:3306/wolf_pack?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&characterEncoding=utf8
+spring.datasource.url=jdbc:mysql://localhost:3306/数据库名?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&characterEncoding=utf8
 spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
 spring.datasource.username=你的账号
 spring.datasource.password=你的密码
@@ -898,35 +898,34 @@ public Result delete(Integer id){
 System.out.println（"根据 iD 删除部门：：" + id);
 return Result.success();
 
-Mapper传递参数
+Mapper 传递参数
 Mapper
 SQL: delete from dept where id =
-Mapper接口中声明接口方法，实现根据ID删除部门操作：
+Mapper 接口中声明接口方法，实现根据 ID 删除部门操作：
 @Delete("delete from dept where id =8")
 void delete();
 @Delete("delete from dept where id = #{id}")
 void delete(Integer id);
 
-执行DML语句时，可以返回一个int类型的返回值，表示该DML执行影响的记录数。
-注意：如果mapper接口方法形参只有一个普通类型的参数，#{.}里面的属性名可以随便写，如：#{id}、#{value}。
+执行 DML 语句时，可以返回一个 int 类型的返回值，表示该 DML 执行影响的记录数。
+注意：如果 mapper 接口方法形参只有一个普通类型的参数，#{.}里面的属性名可以随便写，如：#{id}、#{value}。
 
-Mybatis中的#号与$号：
+Mybatis 中的#号与$号：
 符号说明场景优缺点
 .}执行时，会将#}替换为？，生成预编译SQL自动设置参数值参数值传递安全、性能高(推荐)
-$!.拼接SQL。直接将参数拼接在SQL语句中，存在SQL注入问题表名、字段名动态设置时使用不安全、性能低
+$!.拼接 SQL。直接将参数拼接在 SQL 语句中，存在 SQL 注入问题表名、字段名动态设置时使用不安全、性能低
 
+Controller 接收参数
+接收 json 格式的请求参数：POST/depts{"name":"教研部"}
+JSON 格式的参数，通常会使用一个实体对象进行接收
+规则：JSON 数据的键名与方法形参对象的属性名相同，并需要使用 aRequestBody 注解标识。
 
-Controller接收参数
-接收json格式的请求参数：POST/depts{"name":"教研部"}
-JSON格式的参数，通常会使用一个实体对象进行接收
-规则：JSON数据的键名与方法形参对象的属性名相同，并需要使用aRequestBody注解标识。
-
-Controller接收参数
-接收请求参数（路径参数）：GET/depts/1路径参数
-路径参数：通过请求URL直接传递参数，使用{..}来标识该路径参数，需要使用@PathVariable获取路径参数。
+Controller 接收参数
+接收请求参数（路径参数）：GET/depts/1 路径参数
+路径参数：通过请求 URL 直接传递参数，使用{..}来标识该路径参数，需要使用@PathVariable 获取路径参数。
 @GetMapping("/depts/{id}")
 public Result getInfo(@PathVariable Integer id){
-System.out.println（"根据ID查询部门数据："+id）;
+System.out.println（"根据 ID 查询部门数据："+id）;
 Dept dept = deptService.getInfo(id);
 return Result.success(dept);
 

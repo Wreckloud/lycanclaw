@@ -11,14 +11,10 @@
             "id": "548caf87df703cd3",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "knowledge/后端 Web 基础/HTTP 通信协议.md",
-                "mode": "source",
-                "source": false
-              },
+              "type": "empty",
+              "state": {},
               "icon": "lucide-file",
-              "title": "HTTP 通信协议"
+              "title": "新标签页"
             }
           }
         ]
@@ -40,13 +36,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/后端 Web 基础/HTTP 通信协议.md",
+                "file": "knowledge/实习实训/Java_Web_项目构建指南.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "HTTP 通信协议 的大纲"
+              "title": "Java_Web_项目构建指南 的大纲"
             }
           },
           {
@@ -153,15 +149,19 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "548caf87df703cd3",
+  "active": "609913dcbebc90fd",
   "lastOpenFiles": [
-    "knowledge/后端 Web 基础/Tomcat-web Servlet容器.md",
-    "knowledge/后端 Web 基础/HTTP 通信协议.md",
-    "knowledge/后端面试/SQL 基础.md",
+    "knowledge/前端面试/ES6 - JavaScript 中的继承.md",
+    "knowledge/实习实训/Java_Web_项目构建指南.md",
+    "knowledge/实习实训/Java后端与AI智能体开发全景梳理.md",
     "knowledge/实习实训/从零开始创建Servlet+JSP项目指南.md",
+    "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md",
+    "knowledge/后端 Web 基础/HTTP 通信协议.md",
+    "knowledge/实习实训/易软门诊.md",
+    "knowledge/后端 Web 基础/Tomcat-web Servlet容器.md",
+    "knowledge/后端面试/SQL 基础.md",
     "knowledge/后端 Java 基础/第三部分-IO 流.md",
     "knowledge/后端 Java 基础/扩展部分-配置与特殊文件.md",
-    "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md",
     "knowledge/后端 Web 基础/SpringBootWeb入门.md",
     "public/images/文章资源/tomcat-web-servlet容器",
     "knowledge/后端工具库/Maven-项目构建工具.md",
@@ -178,12 +178,8 @@
     "knowledge/后端 Java 基础/第二部分-现代日期时间 API.md",
     "knowledge/后端 Java 基础/第二部分-常用 API.md",
     "knowledge/后端 Java 基础/第一部分-面向对象.md",
-    "knowledge/后端 Java 基础/第一部分-基础语法.md",
-    "thoughts/我从来都不是一个难相处的人.md",
-    "knowledge/后端 Web 基础/web 开发规范.md",
     "public/images/文章资源/从-jdbc-到-mybatis-的数据库与连接池",
     "public/images/文章资源/数据库与连接池",
-    "knowledge/后端数据库/MyBatis 数据库框架.md",
     "public/images/文章资源/http-通信协议/file-20250908092655331.jpg",
     "public/images/文章资源/http-通信协议",
     "public/images/文章资源/mysql-数据库基础/file-20250828162513536.jpg",
