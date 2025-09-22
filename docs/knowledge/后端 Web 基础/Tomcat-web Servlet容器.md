@@ -119,7 +119,7 @@ java.net.BindException: Address already in use
 
    将 `port="8080"` 改为如 `9090` 的其他端口，保存文件后重启 Tomcat 即可。
 
-## Servlet 入门
+# Servlet 入门
 
 **Servlet** 是运行在 Web 服务器中的小型 Java 程序，是 Java 提供的一种 **动态 Web 资源开发技术**。  
 它的工作方式：通过 HTTP 协议接收客户端请求 → 在服务器端处理 → 再返回响应。
@@ -131,11 +131,11 @@ java.net.BindException: Address already in use
 
 总之，Servlet 不能单独运行，必须交给 Tomcat 这样的容器来调度。
 
-### 实现一个 Servlet
+## 实现一个 Servlet
 
-**需求**：编写一个 Servlet，当浏览器访问 `/hello` 时，返回 `"Hello, xxx"`。
+**需求**：编写一个 Servlet，当浏览器访问 `/hello` 时，返回 `"Hello, xxx"`。这里使用的 Tomcat 版本为 11，JDK 17。
 
-#### 1. 创建 Maven 项目
+### 1. 创建 Maven 项目并引入依赖
 
 在 `pom.xml` 中设置打包方式为 `war`：
 
@@ -143,38 +143,75 @@ java.net.BindException: Address already in use
 <packaging>war</packaging>
 ```
 
-#### 2. 引入依赖
-
-在依赖中添加 Servlet API（provided 范围，不会打进包里，运行时由容器提供）：
+添加 Servlet API 依赖，这是给编译器看的 Servlet 接口定义（provided 范围，不会打进包里，运行时由 Servlet 容器提供）：
 
 ```xml
+<!-- 用 jakarta.servlet-api 6.0，并且 provided -->
 <dependency>
-    <groupId>javax.servlet</groupId>
-    <artifactId>javax.servlet-api</artifactId>
-    <version>4.0.1</version>
+    <groupId>jakarta.servlet</groupId>
+    <artifactId>jakarta.servlet-api</artifactId>
+    <version>6.0.0</version>
     <scope>provided</scope>
 </dependency>
 ```
 
-#### 3. 编写 Servlet 类
+添加 Servlet API 依赖，这是给编译器看的 Servlet 接口定义（`provided` 范围，不会打进包里，运行时由 Servlet 容器提供）。
+
+> 注意版本和命名空间要和 Tomcat 匹配，否则可能 404 或无法启动：
+
+```xml
+<!-- Tomcat 10+ 使用 jakarta.* 命名空间，所以要用 jakarta.servlet-api -->
+<dependency>
+    <groupId>jakarta.servlet</groupId>
+    <artifactId>jakarta.servlet-api</artifactId>
+    <version>6.0.0</version> <!-- 对应 Servlet 6.0，适配 Tomcat 11 -->
+    <scope>provided</scope>
+</dependency>
+```
+
+- Tomcat 9 及更早：用 `javax.servlet:javax.servlet-api:4.0.1`（Servlet 4.0，包名是 `javax.servlet.*`）
+- Tomcat 10 及以上：必须用 `jakarta.servlet:jakarta.servlet-api:5.x/6.x`（Servlet 5/6，包名换成 `jakarta.servlet.*`）
+
+注意类中的 `import` 也必须匹配。
+
+配置一下 `<finalName>` 就是告诉 Maven 打包出来的文件名。
+
+```xml
+<build>
+  <finalName>wolfboard</finalName>
+</build>
+```
+
+- 没有写 `<finalName>`Maven 会默认用 `<artifactId>-<version>`，比如：`wolfboard-1.0-SNAPSHOT.war`
+- 写了 `<finalName>wolfboard</finalName>`打包出来的就是 `wolfboard.war`。
+
+访问路径就是
+
+```
+http://localhost:8080/wolfboard/hello
+```
+
+而不是带版本号的
+
+```
+http://localhost:8080/wolfboard-1.0-SNAPSHOT/hello
+```
+
+Tomcat 部署时，会用 war 包名作为上下文路径（context path）。手动统一成 `wolfboard`，以后升级版本打包时路径不会乱掉。
+
+### 2. 编写 Servlet 类
 
 定义一个类继承 `HttpServlet`，重写 `doGet` 方法，并通过注解映射访问路径：
 
 ```java
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-
-@WebServlet("/hello")
 public class HelloServlet extends HttpServlet {
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        String name = req.getParameter("name"); // 获取请求参数
-        String respMsg = "<h1>Hello, " + name + " ~</h1>";
-        resp.setContentType("text/html;charset=UTF-8");
-        resp.getWriter().write(respMsg); // 写出响应
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp)
+            throws ServletException, IOException {
+        resp.setContentType("text/html; charset=UTF-8");
+        String name = req.getParameter("name");
+        if (name == null) name = "狼崽";
+        resp.getWriter().write("<h1>嗷——欢迎，" + name + "！</h1>");
     }
 }
 ```
@@ -184,18 +221,139 @@ public class HelloServlet extends HttpServlet {
 - **`HttpServletRequest`**：请求对象，封装了客户端发来的请求数据（如参数、请求头、URL 等）。
 - **`HttpServletResponse`**：响应对象，封装了服务器返回给客户端的数据（如状态码、响应头、响应体）。
 
-容器在调用 `doGet` 或 `doPost` 方法时，会自动把这两个对象传递给你。
+容器在调用 `doGet` 或 `doPost` 方法时，会自动把这两个对象传递给我们。
 
-### 在 IDEA 中配置 Tomcat
+**现代方式：注解映射**
 
-1. 打开 **Edit Configurations** → 点击 **+** → 选择 **Tomcat Server → Local**。
-2. 配置 Tomcat 目录、版本和端口号。
-3. 切换到 **Deployment** 选项卡，点击 **+** 添加要部署的模块（如 `servlet-demo:war`）。
-4. **Application context** 默认为 `/demo`，可以修改，这会影响访问路径：
+Servlet 3.0 以后可以直接用 `@WebServlet` 注解完成映射，不用再写 `web.xml`，非常方便：
 
-   - `/demo/hello` → 访问上面编写的 `HelloServlet`。
+```java
+@WebServlet("/hello")
+public class HelloServlet extends HttpServlet {
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp)
+            throws ServletException, IOException {
+        resp.setContentType("text/html; charset=UTF-8");
+        String name = req.getParameter("name");
+        resp.getWriter().write("<h1>嗷——欢迎，" + name + "！</h1>");
+    }
+}
+```
 
-## Servlet 执行流程
+这种写法被称为 **“零配置”**，因为不需要再去修改 `web.xml`。
+
+**传统方式：web.xml 配置**
+
+如果不加注解，就要在 `web.xml` 里手动声明和映射 Servlet。`web.xml` 是 Web 应用的 **部署描述符**，放在 `src/main/webapp/WEB-INF/` 下。
+Tomcat 启动时会先读它，看看里面写了哪些：
+
+- **Servlet 映射**（URL → 哪个类）
+- **过滤器**（Filter 链顺序）
+- **监听器**（Listener）
+- **欢迎页、错误页、上下文参数**等等
+
+简单说这就是 Tomcat 路由和初始化的“菜单”。
+
+```xml
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
+         https://jakarta.ee/xml/ns/jakartaee/web-app_6_0.xsd"
+         version="6.0">
+
+  <!-- 1. 声明Servlet -->
+  <servlet>
+    <servlet-name>HelloServlet</servlet-name>
+    <servlet-class>com.wreckloud.hello.HelloServlet</servlet-class>
+  </servlet>
+
+  <!-- 2. 映射URL -->
+  <servlet-mapping>
+    <servlet-name>HelloServlet</servlet-name>
+    <url-pattern>/hello</url-pattern>
+  </servlet-mapping>
+
+</web-app>
+```
+
+- `<servlet>`：告诉容器有个叫 HelloServlet 的类要托管。
+- `<servlet-mapping>`：把 URL `/hello` 交给这个类处理。
+- `<url-pattern>`：可以是具体路径，也可以写通配符，比如 `/wolf/*`。
+
+所以，`web.xml` 就是我们告诉 Tomcat：
+
+> “喂，这里有个 Servlet，它的全限定类名是啥，匹配到哪个 URL 时交给它。”
+
+### 3. 打包 & 部署
+
+编写完 Servlet 之后，需要让 Tomcat 能够找到它并运行，这一步叫“部署”。我们先看两种常见做法：
+
+**现代方式：IDEA 直接部署**
+
+在开发阶段，我们更常用 IDEA 直接把项目部署到 Tomcat，这样改完代码就能立刻调试。
+
+1. 打开 **Edit Configurations** → 点击左上角 **+** → 选择 **Tomcat Server → Local**  
+   IDEA 会要求你选择 Tomcat 的安装目录，填上 Tomcat 11 的根目录。
+2. 在 **Server** 选项卡：
+
+   - 配置好端口（默认 8080，可改成别的避免冲突）
+   - 可以设置 JVM 参数、日志输出目录，方便调试
+
+3. 在 **Deployment** 选项卡：
+
+   - 点击 **+** 添加部署，选择 `Artifact`，挑选你项目打出来的 `war` 或 `war exploded`
+   - `war exploded` 是解压状态的部署，改了代码可以热更新，非常适合开发调试
+
+4. **Application context**：
+
+   - 这里决定了 URL 的上下文路径，比如填 `/wolfboard`，访问时就是：
+
+```
+http://localhost:8080/wolfboard/hello
+```
+
+5. 点击运行/调试按钮，IDEA 会自动打包并把项目发布到 Tomcat，再帮你启动服务器。
+
+一键启动、调试方便、改完代码不用手动重启 Tomcat。 不过依赖 IDEA 环境，真正上线还得手动打 war 包。
+
+**传统方式：手动打包 + 拷贝部署**
+
+这种方式更贴近真实生产环境，也能帮你理解 Tomcat 的部署原理。
+
+1. 在项目根目录执行：
+
+   ```bash
+   mvn clean package
+   ```
+
+   生成的 `wolfboard.war` 会出现在 `target/` 目录下。
+
+2. 拷贝 war 包到 Tomcat 安装目录的 `webapps/` 里：
+
+   ```
+   tomcat/
+     └── webapps/
+          └── wolfboard.war
+   ```
+
+3. 启动 Tomcat：
+
+   - Windows：`bin/startup.bat`
+   - Linux/Mac：`bin/startup.sh`
+
+   Tomcat 会自动解压 war 包成同名文件夹，并把里面的 `web.xml` 读出来，注册你的 Servlet。
+
+4. 访问：
+
+   ```
+   http://localhost:8080/wolfboard/hello
+   ```
+
+5. 如果需要更新，只要重新打包、替换 war，再重启 Tomcat 即可。
+
+跟生产环境一致，容易部署到服务器。 不过每次都要手动打包+替换+重启，开发阶段效率较低。
+
+### 4. 访问
 
 当我们完成代码编写、配置并启动 Tomcat 后，就可以在浏览器中访问 Servlet。  
 例如：
@@ -213,7 +371,7 @@ http://localhost:8080/servlet-demo/hello?name=Wreckloud
 - `/hello` → Servlet 的访问路径（由 `@WebServlet("/hello")` 指定）
 - `?name=Wreckloud` → 请求参数
 
-### 容器的处理过程
+## 容器的处理过程
 
 1. **Tomcat 接收请求**  
    浏览器发送请求后，Tomcat 作为 Servlet 容器会先接收并解析请求。
@@ -236,4 +394,182 @@ http://localhost:8080/servlet-demo/hello?name=Wreckloud
 浏览器请求 → Tomcat 接收并解析 → 找到目标 Servlet → 调用相应方法(doGet/doPost...) → 返回响应
 ```
 
+## 统一编码过滤器
 
+**目的**：统一处理**请求体编码**与**响应的 Content-Type/字符集**，避免中文乱码与各处重复配置。
+
+### 1. 编写 Filter 类
+
+在前面的 `HelloServlet` 里我们写过：
+
+```java
+resp.setContentType("text/html; charset=UTF-8");
+```
+
+这句话分两半的含义：
+
+- `text/html`：告诉浏览器响应是 HTML（MIME 类型）。
+- `charset=UTF-8`：告诉浏览器响应的文本编码是 UTF-8。
+
+把这句写在每个 `doGet/doPost` 里当然可行，更稳的做法是使用 Filter：所有请求先进过滤器，统一入口设置好请求与响应的编码策略；需要特殊类型（比如 JSON、文件下载）时，再在具体 Servlet 里覆盖。
+
+```java
+public class CharacterEncodingFilter implements Filter {
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+            throws IOException, ServletException {
+
+        // 请求体编码（POST/JSON）
+        request.setCharacterEncoding("UTF-8");
+
+        // 响应头默认值（文本类内容用 UTF-8）
+        HttpServletResponse resp = (HttpServletResponse) response;
+        if (resp.getContentType() == null) {
+            resp.setContentType("text/html; charset=UTF-8");
+        }
+
+        // 放行：没有这句，请求就卡死在门口
+        chain.doFilter(request, response);
+    }
+}
+```
+
+我们通过实现接口 `jakarta.servlet.Filter`，让过滤器像一扇“门神”，所有请求和响应在到达或离开目标 Servlet 之前，都会先经过它。
+
+过滤器有三个生命周期方法：
+
+| 方法         | 触发时机           | 作用                                             | 必要性   |
+| ------------ | ------------------ | ------------------------------------------------ | -------- |
+| `init()`     | 应用启动时调用一次 | 读取参数、预热资源                               | 可选     |
+| `doFilter()` | 每次请求都会执行   | 核心处理逻辑；**必须调用 `chain.doFilter`** 放行 | **必须** |
+| `destroy()`  | 应用停止或卸载时   | 释放资源                                         | 可选     |
+
+因此，只要实现 `doFilter` 就能让过滤器工作，`init` 和 `destroy` 按需补充即可。
+
+**现代方式：注解注册**
+
+同样在 Servlet 3.0 以后可以直接用 `@WebFilter` 注解完成注册，不用再写 `web.xml`，非常方便：
+
+```java
+@WebFilter("/*")
+public class CharacterEncodingFilter implements Filter {
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+            throws IOException, ServletException {
+        request.setCharacterEncoding("UTF-8");
+
+        // 兼容 JDK 8+的写法
+        HttpServletResponse resp = (HttpServletResponse) response;
+        if (resp.getContentType() == null) {
+            resp.setContentType("text/html; charset=UTF-8");
+        }
+
+        // 如果项目语言级别是 16+，也可以用 instanceof 模式变量更简洁
+        /*
+        if (response instanceof HttpServletResponse resp) {
+            if (resp.getContentType() == null) {
+                resp.setContentType("text/html; charset=UTF-8");
+            }
+        }
+        */
+
+        chain.doFilter(request, response);
+    }
+}
+```
+
+**传统方式：web.xml 配置**
+
+如果不加注解，就要在 `web.xml` 里手动声明和映射 Filter。
+
+```xml
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
+         https://jakarta.ee/xml/ns/jakartaee/web-app_6_0.xsd"
+         version="6.0">
+
+  <!-- 1. 声明 Filter -->
+  <filter>
+    <filter-name>CharacterEncodingFilter</filter-name>
+    <filter-class>com.wreckloud.filter.CharacterEncodingFilter</filter-class>
+  </filter>
+
+  <!-- 2. 映射路径 -->
+  <filter-mapping>
+    <filter-name>CharacterEncodingFilter</filter-name>
+    <url-pattern>/*</url-pattern>
+  </filter-mapping>
+
+</web-app>
+```
+
+- `<filter>`：告诉容器有个 Filter 类要托管。
+- `<filter-mapping>`：配置它拦截哪些 URL，这里是全局 `/*`。
+
+总之在 Servlet 3.0 以后，都可以通过对应的注解来省去配置 `web.xml` 的过程，非常方便。
+
+### 2. 准备前端页面
+
+我们需要一个最简单的前端页面，放在 `src/main/webapp/index.html`，用来提交表单到服务器：
+
+```html
+<!DOCTYPE html>
+<html lang="zh">
+<head><meta charset="UTF-8"><title>表单测试</title></head>
+<body>
+<form action="echo" method="post">
+  <label>说点什么：<input type="text" name="msg"></label>
+  <button type="submit">提交</button>
+</form>
+</body>
+</html>
+```
+
+HTML 的 `<form>` 标签就是定义一个表单，我们使用了两个常用的属性：
+
+- `action`：提交目标（请求的 URL）
+- `method`：提交方式，常见值：
+  - `get`：参数拼在 URL 后面，适合查询。
+  - `post`：参数放在请求体里，适合提交表单数据。
+
+这里写：`action="echo" method="post"` ，表示当用户点“提交”时，浏览器会向服务器发一个 **POST 请求**，目标路径是 `/echo`， 这是我们待会要定义的类，来处理 POST 请求。
+
+### 3. 编写 EchoServlet 处理 POST 请求
+
+前端表单已经能发请求了，现在我们要写一个后端 Servlet 来接住它，同样使用注解而不去配置繁琐的 xml，新建类：
+
+```java
+@WebServlet("/echo")
+public class EchoServlet extends HttpServlet {
+
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp)
+            throws ServletException, IOException {
+
+        // 1. 取出表单字段
+        String msg = req.getParameter("msg");
+
+        // 2. 设置响应类型
+        resp.setContentType("text/html; charset=UTF-8");
+
+        // 3. 回显给浏览器
+        resp.getWriter().write("<h2>你刚才说：" + msg + "</h2>");
+    }
+}
+```
+
+我们重写 `doPost()` 处理 POST 请求，直接用注解 `@WebServlet("/echo")` 完成映射，当浏览器访问 `/echo` 时，Tomcat 就会调用这个类。
+
+### 运行测试
+
+1. 启动 Tomcat，访问 `http://localhost:8080/wolfboard/index.html`
+2. 输入任意内容 → 点击提交
+3. 浏览器跳转到 `/echo`，页面显示：
+
+```
+你刚才说：狼崽最帅！
+```
+
+说明前端表单 + 后端 Servlet 已经打通。

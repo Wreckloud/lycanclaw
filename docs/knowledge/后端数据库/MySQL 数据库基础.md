@@ -822,3 +822,572 @@ from wolf
 order by id
 limit 5, 5;
 ```
+
+# **多表关系**
+
+在真实的项目开发中，表不是孤立存在的。  
+业务模块之间往往有联系，表结构也要体现这种联系。设计表结构时，我们会先分析业务之间的关系，再把这些关系转成数据库层面的**表与表的关联**。
+
+从设计角度来看，常见的表关系主要有三类：
+
+- **一对多（多对一）**：最常见的关系，比如“狼群和狼”。一个狼群下可以有很多只狼，每只狼只属于一个狼群。
+- **一对一**：较少见，通常用于表拆分。比如“用户”和“身份证信息”，一条用户记录对应唯一的身份证记录。
+- **多对多**：需要中间表来描述。比如“狼”和“猎物”的关系，一只狼可以捕猎多种猎物，一种猎物也可能被多只狼捕到。
+
+## **一对多 / 多对一**
+
+一对多关系是数据库里最常见的关系。  
+拿我们设计的案例来说：一只狼群里可以有很多只狼，每只狼只属于一个狼群，这就是一个标准的“一对多”。
+
+一对多的实现方式就是：
+
+> 在“多”的一方添加一个外键字段，指向“一”的一方的主键。
+
+先建立“主表”（一的一方）：
+
+```sql
+create table wolf_pack (
+  id int primary key comment '狼群编号',
+  name varchar(20) not null comment '狼群名称'
+) comment='狼群表';
+```
+
+这张表记录了所有狼群的基本信息，`id` 作为主键，用来唯一标识一只狼群。
+
+再建立“从表”（多的一方）：
+
+```sql
+create table wolf (
+  id int primary key comment '狼编号',
+  name varchar(20) not null comment '狼名',
+  age int comment '年龄',
+  pack_id int comment '所属狼群',
+) comment='狼表';
+```
+
+这里的 `pack_id` 字段就是逻辑上的外键，用来记录每只狼属于哪个狼群。
+
+如果我们只停留在这一层，没有任何约束，就需要**在代码里自行保证完整性**，比如删除狼群前先检查是否有狼还属于它，否则就可能留下“脏数据”。
+
+### 外键约束
+
+为了让数据库自动帮我们检查完整性，我们可以为 `pack_id` 添加一个外键约束。  
+标准模板如下：
+
+```sql
+constraint 外键名称
+foreign key (外键字段名) references 主表(主键字段名)
+```
+
+建表时直接加上外键：
+
+```sql
+create table wolf (
+  id int primary key comment '狼编号',
+  name varchar(20) not null comment '狼名',
+  age int comment '年龄',
+  pack_id int comment '所属狼群',
+  constraint fk_wolf_pack foreign key (pack_id) references wolf_pack(id)
+) comment='狼表';
+```
+
+这样，如果我们试图删除某个被引用的 `wolf_pack.id`，MySQL 会报错，阻止删除，从而避免出现 `pack_id` 指向不存在的情况。
+
+如果表已经建好，也可以后续添加外键约束：
+
+```sql
+alter table wolf
+add constraint fk_wolf_pack
+foreign key (pack_id) references wolf_pack(id);
+```
+
+这就是**物理外键**，由数据库层面保证数据一致性。
+
+### 物理外键 vs 逻辑外键
+
+在实际项目中，我们通常区分两种做法：
+
+- **物理外键**：用 `foreign key` 建约束，让数据库来帮你检查。
+- **逻辑外键**：只保留字段，不建外键约束，在代码逻辑里手动检查、维护。
+
+物理外键优点是安全，但缺点也明显：
+
+1. 每次增删改都要检查外键，性能略受影响。
+2. 在分布式或多节点数据库里不适用。
+3. 容易引发死锁，增加维护复杂度。
+
+因此，**逻辑外键**是实际项目里更常见的做法：  
+开发者会先查询是否存在关联数据，再决定能不能删，保证业务逻辑灵活可控。
+
+## **一对一**
+
+一对一关系比一对多少见，更多用于**表拆分**，目的是把经常访问的核心字段和不常用的扩展字段分开，提高性能。
+
+在我们的案例里，可以假设每只狼都有一份独立的身份档案（比如血统、出生地、健康状态等信息）。  
+每只狼最多对应一份档案，每份档案也只属于一只狼，这就是标准的“一对一”。
+
+首先建立“主体表”（狼表）：
+
+```sql
+create table wolf (
+  id int primary key comment '狼编号',
+  name varchar(20) not null comment '狼名',
+  age int comment '年龄'
+) comment='狼表';
+```
+
+这张表只保留常用字段，方便日常查询。
+
+再建立“扩展表”（档案表）：
+
+```sql
+create table wolf_profile (
+  id int primary key comment '档案编号',
+  wolf_id int unique comment '对应的狼编号',
+  bloodline varchar(50) comment '血统',
+  birthplace varchar(50) comment '出生地',
+  health varchar(20) comment '健康状态',
+  constraint fk_wolf_profile foreign key (wolf_id) references wolf(id)
+) comment='狼档案表';
+```
+
+这里有两点关键：
+
+1. `wolf_id` 设置为 **唯一（UNIQUE）**，保证一只狼只能有一份档案。
+2. 通过 `foreign key` 建立外键约束，确保 `wolf_id` 必须指向已存在的狼。
+
+这样就实现了“一对一”的关系。
+
+如果不建外键约束，也可以用逻辑外键的方式，通过业务层检查档案是否存在，但仍然必须保证 `wolf_id` 不重复。
+在查询时，可以使用接下来介绍的内连接把两张表拼接起来，查出完整信息。
+
+## **多对多**
+
+多对多关系通常出现在两个对象之间存在“相互多选”的情况。  
+在我们的案例里，一只狼可以捕猎多种猎物，而同一种猎物也可能被多只狼捕到，这就是一个标准的多对多。
+
+多对多的实现方式就是：
+
+> 建立一张中间表，分别用两个外键关联两边的主键，把多对多拆成两个一对多。
+
+先建立“狼表”：
+
+```sql
+create table wolf (
+  id int primary key comment '狼编号',
+  name varchar(20) not null comment '狼名'
+) comment='狼表';
+```
+
+记录每只狼的编号和名字。
+
+再建立“猎物表”：
+
+```sql
+create table prey (
+  id int primary key comment '猎物编号',
+  name varchar(20) not null comment '猎物名称'
+) comment='猎物表';
+```
+
+记录所有猎物的编号和名称。
+
+最后建立“中间表”（捕猎记录表）：
+
+```sql
+create table hunt_record (
+  id int primary key auto_increment comment '记录编号',
+  wolf_id int not null comment '捕猎的狼',
+  prey_id int not null comment '捕获的猎物',
+  hunt_time datetime comment '捕猎时间',
+  constraint fk_hunt_wolf foreign key (wolf_id) references wolf(id),
+  constraint fk_hunt_prey foreign key (prey_id) references prey(id)
+) comment='捕猎记录表';
+```
+
+这里的关键点：
+
+- `wolf_id` 和 `prey_id` 分别作为外键，关联两张主表。
+- 每条记录代表一只狼在某个时间捕获了某个猎物。
+- 通过这张表，我们就能从任意一边查询出对方的所有关联数据。
+
+# **多表查询**
+
+在实际开发中，往往需要从多张表中联合查询数据。  
+比如我们想查出每只狼所属的狼群名称，仅查 `wolf` 表不够，需要把 `wolf_pack` 的数据也拿出来拼在一起。
+
+如果直接把两张表拼在一起，会发生什么？
+
+```sql
+select *
+from wolf, wolf_pack;
+```
+
+这条语句会把 `wolf` 表的每一行和 `wolf_pack` 表的每一行进行**两两组合**，结果就是一个巨大的集合——这就是**笛卡尔积**。
+
+假设两张表的数据是这样的：
+
+`wolf_pack` 表：
+
+| id  | name     |
+| --- | -------- |
+| 1   | 北境之牙 |
+| 2   | 暗影之森 |
+
+`wolf` 表：
+
+| id  | name | pack_id |
+| --- | ---- | ------- |
+| 1   | 狂风 | 1       |
+| 2   | 霜月 | 1       |
+| 3   | 幽爪 | 2       |
+| 4   | 独狼 | null    |
+
+执行查询后，会得到这样的结果（只展示部分）：
+
+| wolf.id | wolf.name | pack_id | wolf_pack.id | wolf_pack.name |
+| ------- | --------- | ------- | ------------ | -------------- |
+| 1       | 狂风      | 1       | 1            | 北境之牙       |
+| 1       | 狂风      | 1       | 2            | 暗影之森       |
+| 2       | 霜月      | 1       | 1            | 北境之牙       |
+| 2       | 霜月      | 1       | 2            | 暗影之森       |
+| …       | …         | …       | …            | …              |
+
+笛卡尔积的行数 = 表 1 行数 × 表 2 行数，所以这里结果有 4 × 2 = 8 条。  
+其中大部分都是“错配”的组合，比如狂风明明属于北境之牙，却被和“暗影之森”也拼到了一起，显然是无效数据。
+
+我们需要加条件，让只属于同一个狼群的记录匹配到一起：
+
+```sql
+select *
+from wolf, wolf_pack
+where wolf.pack_id = wolf_pack.id;
+```
+
+执行后就只剩下有意义的结果：
+
+| wolf.id | wolf.name | pack_id | wolf_pack.id | wolf_pack.name |
+| ------- | --------- | ------- | ------------ | -------------- |
+| 1       | 狂风      | 1       | 1            | 北境之牙       |
+| 2       | 霜月      | 1       | 1            | 北境之牙       |
+| 3       | 幽爪      | 2       | 2            | 暗影之森       |
+
+此时每只狼都正确匹配到了自己所在的狼群，笛卡尔积里无效的组合被消除了。
+
+不过请注意：
+刚才的“独狼”没有出现在结果中，因为它的 `pack_id` 是空值，没有匹配到任何狼群。  
+如果我们仍然想看到这些“独狼”，只是群组列显示为空，就需要用到接下来提到的**外连接**来解决。
+
+## **连接查询**
+
+SQL 其实还给了我们一套更专业的写法——**连接（JOIN）**。
+
+它做的事情还是那一件：把多张表里“能对上的行”拼在一起，只不过语义更清晰，可读性更好，而且更方便扩展到多表。
+
+### `join on` 内连接
+
+内连接就像取交集，只要能对上的行，也就是：
+
+> 两边都满足条件才会出现在结果里。
+
+```sql
+select 字段列表
+from 表A a
+inner join 表B b on a.外键 = b.主键
+where 其他条件;
+```
+
+最简单的写法，其实就是我们上一节用的 `where` 称之为 **隐式内连接**。现在更推荐显式写出 `join`，也就是 **显式内连接** 一眼就能看出是“在连表”：
+
+```sql
+select w.name as 狼, p.name as 狼群
+from wolf w
+inner join wolf_pack p on w.pack_id = p.id;
+```
+
+执行结果仍然只会列出**有狼群的狼**，没有加入狼群的“独狼”就看不到了。
+
+还是用我们之前的两张表，查询结果与上一节是一样的：
+
+| id  | 狼   | 狼群     |
+| --- | ---- | -------- |
+| 1   | 狂风 | 北境之牙 |
+| 2   | 霜月 | 北境之牙 |
+| 3   | 幽爪 | 暗影之森 |
+
+“独狼”依然不会出现在结果里，因为它的 `pack_id` 是空值，匹配不到任何狼群。  
+这就是内连接的特点：只要交集，无法匹配的行会被丢掉。
+
+我们还可以在连表之后加条件、加排序，让结果更干净：
+
+```sql
+select w.name as 狼, p.name as 狼群
+from wolf w
+inner join wolf_pack p on w.pack_id = p.id
+where p.name = '北境之牙'
+order by w.name;
+```
+
+| 狼   | 狼群     |
+| ---- | -------- |
+| 狂风 | 北境之牙 |
+| 霜月 | 北境之牙 |
+
+这样就能查出所有“北境之牙”狼群的狼，按名字排好序。
+
+**多表内连接**
+
+内连接的好处之一，就是可以继续连下去，把三张、四张表都拼在一起。
+
+假设我们还有两张表：
+
+`prey` 表：
+
+| id  | name |
+| --- | ---- |
+| 1   | 野兔 |
+| 2   | 山羊 |
+
+`hunt_record` 表：
+
+| id  | wolf_id | prey_id | hunt_time        |
+| --- | ------- | ------- | ---------------- |
+| 1   | 1       | 1       | 2025-09-01 10:00 |
+| 2   | 3       | 2       | 2025-09-02 15:30 |
+
+我们想查出：每只有捕猎记录的狼，它所在的狼群，以及它捕到的猎物。
+
+```sql
+select w.name as 狼, p.name as 狼群, pr.name as 猎物, hr.hunt_time as 捕猎时间
+from wolf w
+inner join wolf_pack p on w.pack_id = p.id
+inner join hunt_record hr on hr.wolf_id = w.id
+inner join prey pr on pr.id = hr.prey_id;
+```
+
+执行结果：
+
+| 狼   | 狼群     | 猎物 | 捕猎时间         |
+| ---- | -------- | ---- | ---------------- |
+| 狂风 | 北境之牙 | 野兔 | 2025-09-01 10:00 |
+| 幽爪 | 暗影之森 | 山羊 | 2025-09-02 15:30 |
+
+可以看到，这次只返回满足所有条件的行：
+
+- 狼必须能匹配到狼群
+- 必须有对应的捕猎记录
+- 捕猎记录里的 `prey_id` 也要能匹配到猎物
+
+如果一只狼没有捕猎记录，它就不会出现在结果中。
+
+### `LEFT/RIGHT JOIN` 外连接
+
+内连接只取交集，但有时候我们希望**保留某一侧的全部数据**，即便它在另一侧找不到匹配行，也就是解决独狼的特殊情况。
+
+外连接正是为这种场景准备的：
+
+- **左外连接（LEFT JOIN）**：保留左表的所有数据，右表匹配不到就补 `null`。
+
+还是用之前的表：
+
+```sql
+select w.id, w.name as 狼, p.name as 狼群
+from wolf w
+left join wolf_pack p on w.pack_id = p.id;
+```
+
+结果，查出所有狼，哪怕没加入狼群：
+
+| id  | 狼   | 狼群     |
+| --- | ---- | -------- |
+| 1   | 狂风 | 北境之牙 |
+| 2   | 霜月 | 北境之牙 |
+| 3   | 幽爪 | 暗影之森 |
+| 4   | 独狼 | null     |
+
+可以看到，“独狼”也出现了，只是它的 `狼群` 列是空值，这正是左外连接的意义：**左边全要，右边对不上就留空**。
+
+- **右外连接（RIGHT JOIN）**：保留右表的所有数据，左表匹配不到就补 `null`。
+
+如果我们新插入一个暂时还没有狼的狼群：
+
+```sql
+insert into wolf_pack (id, name) values (3, '雪原孤岭');
+```
+
+再执行右外连接：
+
+```sql
+select p.id, p.name as 狼群, w.name as 狼
+from wolf w
+right join wolf_pack p on w.pack_id = p.id;
+```
+
+结果，查出所有狼群，哪怕暂时没有狼：
+
+| 狼群编号 | 狼群     | 狼   |
+| -------- | -------- | ---- |
+| 1        | 北境之牙 | 狂风 |
+| 1        | 北境之牙 | 霜月 |
+| 2        | 暗影之森 | 幽爪 |
+| 3        | 雪原孤岭 | null |
+
+“雪原孤岭”也出现了，即便它还没有任何狼。  
+右外连接的特点是：**右边全要，左边对不上就留空**。
+
+一个常见误区是，在 `where` 里筛选右表的列，把原本补了 `null` 的行都筛掉了，结果又变成了内连接。
+
+**错误写法**（独狼被筛掉）：
+
+```sql
+select w.name, p.name
+from wolf w
+left join wolf_pack p on w.pack_id = p.id
+where p.name = '北境之牙';
+```
+
+正确写法：把条件写在 `on` 后，保留左表的全部行：
+
+```sql
+select w.name, p.name
+from wolf w
+left join wolf_pack p on w.pack_id = p.id and p.name = '北境之牙';
+```
+
+这样独狼依然会出现，只是狼群列是空。
+
+## **子查询**
+
+有时我们要查的数据，需要先从另一张表里算出一个“中间结果”，再拿来当条件过滤，这就是**子查询**。
+
+> 子查询 = 先查子结果 → 再用子结果限制或补充外层查询。
+
+子查询可以出现在多个位置：
+
+- `WHERE/HAVING`：当过滤条件使用（最常见）
+- `FROM`：当一张“临时表”使用（派生表 / 内联视图）
+- `SELECT` 列表：当派生值使用（相关子查询常见）
+
+子查询按返回形态分四类：标量（一个值）/ 列（单列多行）/ 行（一行多列）/ 表（多行多列）。核心要点：外层要“接得住”子查询的形态。
+
+```sql
+select 字段列表
+from 表A
+where 列 = (select 列 from 表B where 条件);
+```
+
+子查询必须先保证能返回合理的结果：有时候只返回一个值（标量子查询），有时候返回一列或一整张临时表。
+
+### 标量子查询
+
+子查询只返回一条一列，用作等号比较或直接当常量用。例如找出捕猎次数最多的狼的名字。
+
+```sql
+select w.name as 狼
+from wolf w
+where w.id = (
+  select hr.wolf_id
+  from hunt_record hr
+  group by hr.wolf_id
+  order by count(*) desc
+  limit 1
+);
+```
+
+执行结果（假设“狂风”捕猎最多）：
+
+| 狼   |
+| ---- |
+| 狂风 |
+
+内层先算出“捕猎次数最多”的 `wolf_id`，外层再据此取狼名。
+
+### 列子查询
+
+子查询产出一个 ID 列，外层用 `IN`/`NOT IN` 去匹配。比如需要查出捕猎过“野兔”的所有狼。
+
+```sql
+select w.name as 狼
+from wolf w
+where w.id in (
+  select hr.wolf_id
+  from hunt_record hr
+  join prey pr on hr.prey_id = pr.id
+  where pr.name = '野兔'
+);
+```
+
+结果：
+
+| 狼   |
+| ---- |
+| 狂风 |
+| 霜月 |
+
+这里 `in` 会自动去重；如果担心集合很大，也可以改成 `exists` 半连接来减少扫描量：
+
+同样是“查打过野兔的狼”，`exists` 往往在大数据量、索引齐全的情况下更省事，因为一旦存在匹配行就不再继续找下一行。
+
+```sql
+select w.name as 狼
+from wolf w
+where exists (
+  select 1
+  from hunt_record hr
+  join prey pr on pr.id = hr.prey_id
+  where hr.wolf_id = w.id
+    and pr.name = '野兔'
+);
+```
+
+可以把它当成“带着 `w.id` 下去问一句：有没有？”有就保留，没就丢弃。集合很小时 `in` 也很好用，集合大时 `exists` 往往更轻快，实际以执行计划为准。
+
+### 行子查询
+
+有时我们既要主键也要统计值，不如把它们先在内层“打包”成一行，让外层一次性连回来即可。例如查出捕猎次数最多的狼和它的捕猎次数。
+
+```sql
+select w.name as 狼, t.cnt as 捕猎次数
+from wolf w,
+     (select hr.wolf_id, count(*) as cnt
+      from hunt_record hr
+      group by hr.wolf_id
+      order by cnt desc
+      limit 1) t
+where w.id = t.wolf_id;
+```
+
+结果：
+
+| 狼   | 捕猎次数 |
+| ---- | -------- |
+| 狂风 | 5        |
+
+思路就是把“计算”和“取名”分步写清：内层生成（`wolf_id`, `cnt`）这一行，外层据 `wolf_id` 回表拿名字。
+
+### 表子查询
+
+子查询产出一行多列，外层一次性“接住”这行，或把它当**一张只含一行的派生表**拼接。例子：先算出每只狼的捕猎次数，再查出次数大于 3 的狼。
+
+```sql
+select t.wolf_id, t.cnt
+from (
+  select hr.wolf_id, count(*) as cnt
+  from hunt_record hr
+  group by hr.wolf_id
+) t
+where t.cnt > 3;
+```
+
+结果：
+
+| wolf_id | cnt |
+| ------- | --- |
+| 1       | 5   |
+| 3       | 4   |
+
+这样写的好处是结构清楚：先把“每只狼的次数”这件事独立出来，外层再决定保留谁、怎排序、要不要再连 `wolf_pack` 显示群名。
+
+这一类 SQL 最容易乱，是因为没有把步骤拆清楚。
+
+建议先单独把内层 `select` 跑出来，确认“形态”和“结果”都正确，再嵌到外层。放哪儿很简单：当条件就丢进 `where/having`，当临时表就丢进 `from (...) 别名`，当派生列就写在 `select (...) as 别名`。保持这条顺序感，基本不会迷路。

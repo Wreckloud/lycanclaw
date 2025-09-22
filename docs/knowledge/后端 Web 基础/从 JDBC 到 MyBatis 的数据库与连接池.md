@@ -440,38 +440,102 @@ MyBatis 提供两种常见的开发方式：
 **1) 新建工程与依赖（`pom.xml`）**
 
 ```xml
-<!-- Web 基础：写 Controller 要用 -->
-<dependency>
-  <groupId>org.springframework.boot</groupId>
-  <artifactId>spring-boot-starter-web</artifactId>
-</dependency>
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.6</version>
+        <relativePath/>
+    </parent>
 
-<!-- MyBatis Spring Boot 起步 -->
-<dependency>
-  <groupId>org.mybatis.spring.boot</groupId>
-  <artifactId>mybatis-spring-boot-starter</artifactId>
-  <version>3.0.3</version>
-</dependency>
+    <properties>
+        <java.version>17</java.version>
+        <lombok.version>1.18.34</lombok.version>
+    </properties>
 
-<!-- MySQL 驱动 -->
-<dependency>
-  <groupId>com.mysql</groupId>
-  <artifactId>mysql-connector-j</artifactId>
-  <scope>runtime</scope>
-</dependency>
+    <dependencies>
+        <!-- Web 基础 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
 
-<!-- Lombok：省去 getter/setter/toString -->
-<dependency>
-  <groupId>org.projectlombok</groupId>
-  <artifactId>lombok</artifactId>
-</dependency>
+        <!-- MyBatis -->
+        <dependency>
+            <groupId>org.mybatis.spring.boot</groupId>
+            <artifactId>mybatis-spring-boot-starter</artifactId>
+            <version>3.0.3</version>
+        </dependency>
 
-<!-- 可选：测试 -->
-<dependency>
-  <groupId>org.springframework.boot</groupId>
-  <artifactId>spring-boot-starter-test</artifactId>
-  <scope>test</scope>
-</dependency>
+        <!-- MySQL 驱动 -->
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Lombok：编译期生效 -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- 分页插件（可选） -->
+        <dependency>
+            <groupId>com.github.pagehelper</groupId>
+            <artifactId>pagehelper-spring-boot-starter</artifactId>
+            <version>1.4.7</version>
+        </dependency>
+
+        <!-- 校验注解 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- Java 8+ 时间序列化支持 -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
+
+        <!-- 测试 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- 编译插件 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <encoding>UTF-8</encoding>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+
+            <!-- Spring Boot 打包插件 -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
 ```
 
 也可以通过脚手架创建项目时勾选：
@@ -557,7 +621,6 @@ mybatis.configuration.map-underscore-to-camel-case=true
 - **Mapper（数据访问）**：只关心 SQL 和映射。这里需要的 SQL 是 `select * from mission`。
 - **Service（业务逻辑）**：如果有规则（比如“只返回进行中的任务”或“按更新时间倒序”），写在这里；本节先直出。
 - **Controller（请求响应）**：接请求 `/missions`，调 Service，返回 JSON。
-  嗯，我懂了。你想要的其实是那种**更通俗、更能对上脑子的解释**，而不是一句话带过去。那我来把这三层拆开讲，让你一眼能分清各自的活是啥：
 
 1. **Mapper 层（数据访问层）**
 
@@ -867,67 +930,228 @@ XML 方式的核心思路：
 
 # 细节补充
 
-Controller 接收参数
-接收请求参数：DELETE/depts?id=8
-方式一：通过原始的 HttpServletRequest 对象获取请求参数。
-@DeleteMapping("/depts")
-public Result delete(HttpServletRequest request){
-String idstr = request.getParameter("id");
-int id = Integer.parseInt(idstr);
-System.out.println（"根据 ID 删除部门："+id);
-return Result.success();
+## Controller 接收参数的方式
 
-这种繁琐的方式当然不是推荐的, 接下来是新的注解:
-方式二：通过 Spring 提供的@RequestParam 注解，将请求参数绑定给方法形参。
-@DeleteMapping("/depts")
-public Result delete(@RequestParam("id"） Integer deptId){
-System.out.printLn（"根据 ID 删除部门：”+deptId）;
-return Result.success();
+**场景**：DELETE `/missions?id=8`
 
-aRequestParam 注解 required 属性默认为 true，代表该参数必须传递，如果不传递将报错 400 bad request。如果参数可选，可以将属性设置为 false。
+### 原始方式
 
-感觉方式三介绍有点多余, 其实就是方式 2 的延伸而已
-方式三：如果请求参数名与形参变量名相同，直接定义方法形参即可接收。。(省略 aRequestParam)
-@DeleteMapping("/depts")
-public Result delete(@RequestParam("id"） Integer id){
-System.out.println（"根据删除部门："+id);
-return Result.success();
+直接用 `HttpServletRequest` 取参数，再手动转型。能说明白底层流程，但繁琐且易错，不推荐在业务代码中使用。
 
-@DeleteMapping("/depts")
-public Result delete(Integer id){
-System.out.println（"根据 iD 删除部门：：" + id);
-return Result.success();
+```java
+@RestController
+@RequestMapping("/missions") // 类级别前缀
+public class MissionController {
 
-Mapper 传递参数
-Mapper
-SQL: delete from dept where id =
-Mapper 接口中声明接口方法，实现根据 ID 删除部门操作：
-@Delete("delete from dept where id =8")
-void delete();
-@Delete("delete from dept where id = #{id}")
-void delete(Integer id);
+    @DeleteMapping
+    public Object deleteLegacy(HttpServletRequest request) {
+        String idStr = request.getParameter("id");
+        Integer id = Integer.valueOf(idStr);
+        System.out.println("根据 ID 删除任务：" + id);
+        // return Result.success();
+        return "ok";
+    }
+}
+```
 
-执行 DML 语句时，可以返回一个 int 类型的返回值，表示该 DML 执行影响的记录数。
-注意：如果 mapper 接口方法形参只有一个普通类型的参数，#{.}里面的属性名可以随便写，如：#{id}、#{value}。
+### `@RequestParam` 注解方式（推荐）
 
-Mybatis 中的#号与$号：
-符号说明场景优缺点
-.}执行时，会将#}替换为？，生成预编译SQL自动设置参数值参数值传递安全、性能高(推荐)
-$!.拼接 SQL。直接将参数拼接在 SQL 语句中，存在 SQL 注入问题表名、字段名动态设置时使用不安全、性能低
+Spring 帮我们把查询参数绑定到方法形参，省去了手动解析与转型。
 
-Controller 接收参数
-接收 json 格式的请求参数：POST/depts{"name":"教研部"}
-JSON 格式的参数，通常会使用一个实体对象进行接收
-规则：JSON 数据的键名与方法形参对象的属性名相同，并需要使用 aRequestBody 注解标识。
+```java
+@DeleteMapping
+public Object delete(@RequestParam("id") Integer missionId) {
+    System.out.println("根据 ID 删除任务：" + missionId);
+    // return Result.success();
+    return "ok";
+}
+```
 
-Controller 接收参数
-接收请求参数（路径参数）：GET/depts/1 路径参数
-路径参数：通过请求 URL 直接传递参数，使用{..}来标识该路径参数，需要使用@PathVariable 获取路径参数。
-@GetMapping("/depts/{id}")
-public Result getInfo(@PathVariable Integer id){
-System.out.println（"根据 ID 查询部门数据："+id）;
-Dept dept = deptService.getInfo(id);
-return Result.success(dept);
+`@RequestParam` 的 `required` 默认为 `true`，表示该参数必须提供；如果可能缺省，可写成：
+
+```java
+@DeleteMapping
+public Object deleteMaybe(@RequestParam(value = "id", required = false) Integer missionId) {
+    if (missionId == null) {
+        // 处理未传 id 的分支
+        return "id is optional in this demo";
+    }
+    System.out.println("根据 ID 删除任务：" + missionId);
+    return "ok";
+}
+```
+
+**等价写法**：如果“请求参数名”与“形参名”相同，可省略 `@RequestParam`：
+
+```java
+@DeleteMapping
+public Object delete(Integer id) {
+    System.out.println("根据 ID 删除任务：" + id);
+    return "ok";
+}
+```
+
+## `@RequestBody` 接收 JSON 请求体：
+
+**场景**：POST `/missions`
+
+以 JSON 形式提交一个任务对象；键名需与实体类属性一致。Controller 只接收并转交，**创建时间/修改时间建议在 Service 层补齐**（体现分层职责）。
+
+```java
+@PostMapping
+public Object create(@RequestBody Mission mission) {
+    // 这里只负责接收与转发，业务字段补充放到 Service
+    System.out.println("准备新增任务：" + mission.getTitle());
+    // return Result.success();
+    return "ok";
+}
+```
+
+- JSON 示例：
+
+```json
+{
+  "title": "修复古塔符阵",
+  "detail": "古塔心室符阵残缺，需重绘三环纹刻",
+  "state": 0
+}
+```
+
+`createTime`、`updateTime` 这些信息一般不从前端传；由 Service 在入库前统一设置。
+
+```java
+@Service
+public class MissionServiceImpl implements MissionService {
+
+    @Resource
+    private MissionMapper missionMapper;
+
+    @Override
+    public void create(Mission mission) {
+        // 1. 补充时间字段
+        mission.setCreateTime(LocalDateTime.now());
+        mission.setUpdateTime(LocalDateTime.now());
+
+        // 2. 调用 Mapper 入库
+        missionMapper.insert(mission);
+    }
+}
+```
+
+## `@PathVariable` 接收路径参数：
+
+**场景**：GET `/missions/1`
+
+路径参数直接写进 URL，没有 `key=value` 形式，用花括号 `{}` 声明占位符。
+
+```java
+@GetMapping("/{id}")
+public Object getById(@PathVariable Integer id) {
+    System.out.println("根据 ID 查询任务：" + id);
+    // Mission mission = missionService.getById(id);
+    // return Result.success(mission);
+    return "ok";
+}
+```
+
+查询参数是 `?id=1`，路径参数是 `/1`。二者都能传值，但 REST 场景下，获取单个资源更常用路径参数。
+
+## 类级别与方法级别映射的组合
+
+为避免在每个方法上都重复 `/missions`，把“公共前缀”放在类上：
+
+```java
+@RestController
+@RequestMapping("/missions")
+public class MissionController {
+
+    @GetMapping("/{id}")           // GET /missions/{id}
+    public Object getById(@PathVariable Integer id) { return "ok"; }
+
+    @PostMapping                    // POST /missions
+    public Object create(@RequestBody Mission mission) { return "ok"; }
+
+    @DeleteMapping                 // DELETE /missions?id=8
+    public Object delete(@RequestParam("id") Integer id) { return "ok"; }
+}
+```
+
+因此，完整路径 = 类上的 `@RequestMapping` 前缀 **+** 方法上的相对路径。
+
+# 功能优化
+
+在实际业务中，前端经常只修改部分字段，比如只改任务标题。
+
+如果用固定 SQL 去更新所有列，没传的字段就会被改成 `null`，显然不合理。**动态 SQL** 可以解决这个问题，它能在运行时按条件拼接 SQL，只更新真正有值的字段。
+
+控制层：接收部分字段更新
+
+接口语义建议用 **PATCH**，表示“部分更新”。路径参数接收任务 ID，请求体接收要修改的字段。
+
+```java
+@PatchMapping("/{id}")
+public Object patch(@PathVariable Integer id, @RequestBody Mission mission) {
+    mission.setId(id); // 把路径参数写回实体
+    int changed = missionService.updateSelective(mission);
+    return changed > 0 ? "ok" : "not modified";
+}
+```
+
+示例请求：
+
+```http
+PATCH /missions/10
+{
+  "title": "银月学者护送·改道北岭"
+}
+```
+
+业务层：补齐通用字段，做简单校验
+
+在 Service 层补充 `updateTime`，并确保至少有一个字段可更新，避免拼出无效 SQL。
+
+```java
+@Override
+public int updateSelective(Mission mission) {
+    mission.setUpdateTime(LocalDateTime.now());
+    boolean nothingToUpdate = mission.getTitle() == null &&
+                              mission.getDetail() == null &&
+                              mission.getState() == null;
+    if (nothingToUpdate) {
+        return 0; // 可选择直接返回或抛出业务异常
+    }
+    return missionMapper.updateSelective(mission);
+}
+```
+
+持久层：XML 动态 SQL
+
+接口方法只声明一次，具体 SQL 放在 XML，用 `<set>` 和 `<if>` 实现动态拼接：
+
+```xml
+<update id="updateSelective">
+  update mission
+  <set>
+    <if test="title != null and title != ''">
+      title = #{title},
+    </if>
+    <if test="detail != null and detail != ''">
+      detail = #{detail},
+    </if>
+    <if test="state != null">
+      state = #{state},
+    </if>
+    <if test="updateTime != null">
+      update_time = #{updateTime}
+    </if>
+  </set>
+  where id = #{id}
+</update>
+```
+
+- `<set>` 自动补上 `SET` 并去掉最后多余的逗号，防止语法错误。
+- `<if>` 控制条件成立才拼接该列。
+- 依旧用 `#{}` 作为占位符，防止 SQL 注入。
 
 # 数据库连接池
 

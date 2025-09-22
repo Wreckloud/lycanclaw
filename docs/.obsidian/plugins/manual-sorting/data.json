@@ -44,6 +44,7 @@
       "knowledge/后端 Java 基础/扩展部分-配置与特殊文件.md"
     ],
     "knowledge/后端 Web 基础": [
+      "knowledge/后端 Web 基础/未命名.md",
       "knowledge/后端 Web 基础/互联网与星辰大海.md",
       "knowledge/后端 Web 基础/HTTP 通信协议.md",
       "knowledge/后端 Web 基础/Tomcat-web Servlet容器.md",
@@ -57,6 +58,7 @@
       "knowledge/后端工具库/Logback-日志技术.md"
     ],
     "knowledge/后端面试": [
+      "knowledge/后端面试/Java 基础.md",
       "knowledge/后端面试/SQL 基础.md"
     ],
     "knowledge/后端数据库": [
@@ -93,6 +95,7 @@
       "knowledge/前端面试/ES6 - JavaScript 中的继承.md"
     ],
     "knowledge/实习实训": [
+      "knowledge/实习实训/社区管理系统功能驱动实现指导.md",
       "knowledge/实习实训/Java后端与AI智能体开发全景梳理.md"
     ],
     "projects": [

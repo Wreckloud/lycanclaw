@@ -373,7 +373,7 @@ public class DeptController {
 2. 错误提示信息（如果有的话）
 3. 实际返回的数据
 
-这样无论是增删改查，前端都能用统一的方式来解析。一个常见的统一响应结果类写法如下：
+这样无论是增删改查，前端都能用统一的方式来解析。一个基础的统一响应结果类写法如下：
 
 ```java
 @Data
@@ -400,7 +400,7 @@ public class Result {
 }
 ```
 
-使用时就很方便：
+一般在 Controller 使用，很方便：
 
 ```java
 @RestController
@@ -423,8 +423,52 @@ public class DeptController {
 }
 ```
 
+**进阶优化：泛型 + 静态工厂方法**
 
-### 请求映射注解
+在基础写法中，`data` 用的是 `Object`，类型不够安全。常见的优化方式是：
+
+1. 把 `data` 改成泛型 `T`，让返回值更明确；
+2. 构造器设为 `private`，避免外部随意 new；
+3. 用静态工厂方法 `success`、`fail` 生成对象，既直观又统一。
+
+```java
+public class Result<T> {
+    private Integer code;   // 1 成功，0 失败
+    private String message;
+    private T data;
+
+    private Result(Integer code, String message, T data) {
+        this.code = code;
+        this.message = message;
+        this.data = data;
+    }
+
+    public static <T> Result<T> success(T data) {
+        return new Result<>(1, "成功", data);
+    }
+
+    public static <T> Result<T> success() {
+        return new Result<>(1, "成功", null);
+    }
+
+    public static <T> Result<T> fail(String message) {
+        return new Result<>(0, "失败: " + message, null);
+    }
+}
+```
+
+这样返回时就能直接写成：
+
+```java
+Result<User> r1 = Result.success(user);
+Result<Void> r2 = Result.fail("部门已存在");
+```
+
+静态方法的 `static <T>` 表示这是一个泛型方法，静态方法不能直接使用类上的泛型参数。所以方法需要自己声明一个 `<T>`，调用时由传入的实参类型自动推断。
+
+虽然也可以用 Lombok 的 `@AllArgsConstructor`、`@NoArgsConstructor` 自动生成构造器自动生成构造器，但像这种关键的公共类，手写会更稳妥，避免兼容问题。
+
+### `@RequestMapping` 请求映射注解
 
 在 Spring MVC 里，最基本的注解是 `@RequestMapping`，可以指定路径和请求方式：
 
@@ -432,6 +476,11 @@ public class DeptController {
 @RequestMapping(value = "/users", method = RequestMethod.GET)
 public List<User> listUsers() { ... }
 ```
+
+当用户访问 `/users` 这个地址时，就会执行 `list()` 方法。它可以放在 **类上** 或 **方法上**：
+
+- 放类上：给整个控制器加一个统一前缀。
+- 放方法上：具体到某个接口的路径。
 
 为了简化 `method = RequestMethod.GET` 这么一长串，Spring 提供了更直观的 `@RequestMapping` 衍生注解：
 
@@ -442,10 +491,10 @@ public List<User> listUsers() { ... }
 | `@PutMapping`    | PUT 请求     |
 | `@DeleteMapping` | DELETE 请求  |
 
-示例：
+这些注解底层还是 `@RequestMapping`，只是写法更简洁。
 
 ```java
-@RestController
+@RestController // 等价于 @Controller + @ResponseBody
 @RequestMapping("/users") // 类级别映射
 public class UserController {
 
@@ -461,7 +510,10 @@ public class UserController {
 }
 ```
 
-这些注解底层还是 `@RequestMapping`，只是写法更简洁。
+示例中的`@RestController`是 Spring 提供的一个组合注解。等价于`@Controller + @ResponseBody`,它的作用是:
+
+1. `@Controller`把类标记为一个 **控制器**，可以接收 HTTP 请求。
+2. `@ResponseBody`默认把方法的返回值直接写入 HTTP 响应体（通常是 JSON），而不是去找一个 JSP 或模板页面。
 
 ## **前后端联调与 Nginx 反向代理**
 
@@ -586,7 +638,9 @@ public class DeptController {
 - **Service** 负责业务逻辑；
 - **Controller** 面向请求和响应。
 
-接口把这三层隔开，使它们各自独立。如果未来更换 DAO 的实现方式（比如从 JDBC 改为 MyBatis），只需要替换实现类，上层调用无需改动。这就是三层架构带来的好处——**解耦与扩展性**。
+接口把这三层隔开，使它们各自独立。如果未来更换 DAO 的实现方式（比如从 JDBC 改为 MyBatis），只需要替换实现类，上层调用无需改动。
+
+这就是三层架构带来的好处——**解耦与扩展性**。
 
 # 分层解耦
 
@@ -607,7 +661,7 @@ public class DeptController {
 
 有了 IoC 容器，我们不需要自己 new 对象。还可以随时替换实现类，而不需要修改调用方代码。这使得项目更加解耦，更容易维护和扩展。
 
-## IoC 与依赖注入的实战
+## IoC 与依赖注入
 
 Spring 提供了两类核心注解：
 
@@ -656,7 +710,7 @@ public class DeptServiceImpl implements DeptService {
 3. 在 Controller 中注入 Service
 
 ```java
-@RestController
+@RestController // 等价于 @Controller + @ResponseBody
 public class DeptController {
     @Autowired
     private DeptService deptService;
