@@ -180,9 +180,19 @@
     "relativePath": "knowledge/后端 Java 基础/第四部分-网络编程.md"
   },
   {
+    "date": "2025-09-25 09:10:12",
+    "wordCount": 488,
+    "relativePath": "knowledge/后端 Web 基础/Spring.md"
+  },
+  {
     "date": "2024-12-01 16:27:02",
-    "wordCount": 6139,
-    "relativePath": "knowledge/后端 Web 基础/SpringBootWeb入门.md"
+    "wordCount": 8669,
+    "relativePath": "knowledge/后端 Web 基础/Spring入门.md"
+  },
+  {
+    "date": "2025-09-29 16:07:46",
+    "wordCount": 6579,
+    "relativePath": "knowledge/后端 Web 基础/SSM注解与XML对照实践.md"
   },
   {
     "date": "2025-08-28 14:16:22",
@@ -196,13 +206,13 @@
   },
   {
     "date": "2025-07-14 09:17:54",
-    "wordCount": 7749,
+    "wordCount": 9600,
     "relativePath": "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md"
   },
   {
-    "date": "2025-09-22T02:43:29.036Z",
-    "wordCount": 336,
-    "relativePath": "knowledge/后端 Web 基础/未命名.md"
+    "date": "2025-09-25 09:10:07",
+    "wordCount": 3029,
+    "relativePath": "knowledge/后端 Web 基础/分页查询.md"
   },
   {
     "date": "2025-07-13 15:28:42",
@@ -226,13 +236,23 @@
   },
   {
     "date": "2025-08-28 16:57:51",
-    "wordCount": 9564,
+    "wordCount": 9563,
     "relativePath": "knowledge/后端数据库/MySQL 数据库基础.md"
   },
   {
     "date": "2025-09-15 08:46:30",
-    "wordCount": 326,
+    "wordCount": 6067,
     "relativePath": "knowledge/后端面试/Java 基础.md"
+  },
+  {
+    "date": "2025-09-29 09:31:57",
+    "wordCount": 328,
+    "relativePath": "knowledge/后端面试/Java 集合.md"
+  },
+  {
+    "date": "2025-10-10 08:49:23",
+    "wordCount": 5590,
+    "relativePath": "knowledge/后端面试/Spring.md"
   },
   {
     "date": "2025-09-05 09:12:32",
@@ -240,12 +260,17 @@
     "relativePath": "knowledge/后端面试/SQL 基础.md"
   },
   {
+    "date": "2025-09-29 09:28:21",
+    "wordCount": 1758,
+    "relativePath": "knowledge/后端面试/网络编程.md"
+  },
+  {
     "date": "2025-07-13 14:39:36",
     "wordCount": 619,
     "relativePath": "knowledge/实习实训/Java后端与AI智能体开发全景梳理.md"
   },
   {
-    "date": "2025-09-22T02:43:29.041Z",
+    "date": "2025-10-10T07:37:20.328Z",
     "wordCount": 0,
     "relativePath": "knowledge/实习实训/社区管理系统功能驱动实现指导.md"
   }

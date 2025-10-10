@@ -44,12 +44,14 @@
       "knowledge/后端 Java 基础/扩展部分-配置与特殊文件.md"
     ],
     "knowledge/后端 Web 基础": [
-      "knowledge/后端 Web 基础/未命名.md",
       "knowledge/后端 Web 基础/互联网与星辰大海.md",
       "knowledge/后端 Web 基础/HTTP 通信协议.md",
+      "knowledge/后端 Web 基础/SSM注解与XML对照实践.md",
       "knowledge/后端 Web 基础/Tomcat-web Servlet容器.md",
-      "knowledge/后端 Web 基础/SpringBootWeb入门.md",
-      "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md"
+      "knowledge/后端 Web 基础/Spring入门.md",
+      "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md",
+      "knowledge/后端 Web 基础/分页查询.md",
+      "knowledge/后端 Web 基础/Spring.md"
     ],
     "knowledge/后端工具库": [
       "knowledge/后端工具库/Maven-项目构建工具.md",
@@ -58,6 +60,9 @@
       "knowledge/后端工具库/Logback-日志技术.md"
     ],
     "knowledge/后端面试": [
+      "knowledge/后端面试/Spring.md",
+      "knowledge/后端面试/Java 集合.md",
+      "knowledge/后端面试/网络编程.md",
       "knowledge/后端面试/Java 基础.md",
       "knowledge/后端面试/SQL 基础.md"
     ],
@@ -118,6 +123,8 @@
       "public/images/首页/default-cover.png"
     ],
     "public/images/文章资源": [
+      "public/images/文章资源/java-基础",
+      "public/images/文章资源/spring入门",
       "public/images/文章资源/tomcat-web-servlet容器",
       "public/images/文章资源/笔记本-wi-fi-消失的解决方法",
       "public/images/文章资源/从-jdbc-到-mybatis-的数据库与连接池",
@@ -153,7 +160,6 @@
       "public/images/文章资源/maven-项目构建工具",
       "public/images/文章资源/mysql-安装",
       "public/images/文章资源/mysql-数据库基础",
-      "public/images/文章资源/springbootweb入门",
       "public/images/文章资源/vue-2-渐进式框架",
       "public/images/文章资源/vue2状态管理-vuex",
       "public/images/文章资源/default-cover.jpg"
@@ -311,6 +317,10 @@
     "public/images/文章资源/http-通信协议": [
       "public/images/文章资源/http-通信协议/file-20250908092655331.jpg"
     ],
+    "public/images/文章资源/java-基础": [
+      "public/images/文章资源/java-基础/file-20250929101958595.jpg",
+      "public/images/文章资源/java-基础/file-20250929102023688.jpg"
+    ],
     "public/images/文章资源/java进阶-常用-api【下篇】": [
       "public/images/文章资源/java进阶-常用-api【下篇】/file-20250801144029924.jpg"
     ],
@@ -384,18 +394,18 @@
       "public/images/文章资源/mysql-数据库基础/file-20250828161928392.jpg",
       "public/images/文章资源/mysql-数据库基础/file-20250829124756354.jpg"
     ],
-    "public/images/文章资源/springbootweb入门": [
-      "public/images/文章资源/springbootweb入门/file-20250904092441316.jpg",
-      "public/images/文章资源/springbootweb入门/file-20250904092503822.jpg",
-      "public/images/文章资源/springbootweb入门/file-20250904092527564.jpg",
-      "public/images/文章资源/springbootweb入门/file-20250904092554495.jpg",
-      "public/images/文章资源/springbootweb入门/file-20250904092601566.jpg",
-      "public/images/文章资源/springbootweb入门/file-20250904092605537.jpg",
-      "public/images/文章资源/springbootweb入门/file-20250904092609800.jpg",
-      "public/images/文章资源/springbootweb入门/file-20250904104910872.jpg",
-      "public/images/文章资源/springbootweb入门/file-20250904110814643.jpg",
-      "public/images/文章资源/springbootweb入门/file-20250904112205376.jpg",
-      "public/images/文章资源/springbootweb入门/file-20250904143703503.jpg"
+    "public/images/文章资源/spring入门": [
+      "public/images/文章资源/spring入门/file-20250904092441316.jpg",
+      "public/images/文章资源/spring入门/file-20250904092503822.jpg",
+      "public/images/文章资源/spring入门/file-20250904092527564.jpg",
+      "public/images/文章资源/spring入门/file-20250904092554495.jpg",
+      "public/images/文章资源/spring入门/file-20250904092601566.jpg",
+      "public/images/文章资源/spring入门/file-20250904092605537.jpg",
+      "public/images/文章资源/spring入门/file-20250904092609800.jpg",
+      "public/images/文章资源/spring入门/file-20250904104910872.jpg",
+      "public/images/文章资源/spring入门/file-20250904110814643.jpg",
+      "public/images/文章资源/spring入门/file-20250904112205376.jpg",
+      "public/images/文章资源/spring入门/file-20250904143703503.jpg"
     ],
     "public/images/文章资源/tomcat-web-servlet容器": [
       "public/images/文章资源/tomcat-web-servlet容器/file-20250830125426982.jpg"

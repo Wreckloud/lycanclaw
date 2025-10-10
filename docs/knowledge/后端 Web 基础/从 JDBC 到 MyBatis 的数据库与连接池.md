@@ -407,6 +407,343 @@ delete from emp where id=?;
 
 只需要编译一次，之后循环传入不同参数即可。这种方式在批量执行时效率更高。
 
+# 数据库连接池
+
+在实际开发中，如果每次执行 SQL 都要重新创建和销毁数据库连接，会非常消耗性能，还可能导致数据库被压垮。**数据库连接池**就是为了解决这个问题——它会提前准备好一定数量的连接放在“池子”里，需要时取出，用完再放回去。
+
+这样做的好处：
+
+- **连接复用**：避免频繁创建销毁，响应更快。
+- **统一管理**：通过限制最大连接数，防止高并发下数据库过载。
+- **自动回收**：检测并回收无效连接，降低泄漏风险。
+
+现在主流的连接池有：
+
+- **HikariCP**（Spring Boot 默认）
+- **Druid**（阿里开源，功能强大，监控能力好）
+- 其他：DBCP、C3P0 等（现代项目中较少用）
+
+## Spring Boot 中的连接池
+
+在 Spring Boot 项目里，无论你是用 **JDBC** 还是 **MyBatis**，其实都已经默认集成了连接池。常见情况：
+
+- 默认使用 **HikariCP**，性能优秀，线程优化良好。
+- 如果想换成 **Druid** 等其他连接池，可以通过添加依赖并修改配置来实现。
+
+1. 引入 Druid 依赖（可选）
+
+```xml
+<dependency>
+  <groupId>com.alibaba</groupId>
+  <artifactId>druid</artifactId>
+  <version>1.2.16</version>
+</dependency>
+```
+
+2.  配置连接池参数
+
+```properties
+spring.datasource.url=jdbc:mysql://localhost:3306/test
+spring.datasource.username=root
+spring.datasource.password=123456
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+# 使用 Druid 作为连接池
+spring.datasource.type=com.alibaba.druid.pool.DruidDataSource
+
+# 初始连接数、最大连接数、最小空闲连接数
+spring.datasource.druid.initial-size=5
+spring.datasource.druid.max-active=20
+spring.datasource.druid.min-idle=5
+```
+
+配置完成后，Spring Boot 会自动帮你管理连接池，无需手动操作。
+
+## 原理演示
+
+理解原理后，你会发现连接池的思路其实很简单：
+
+- 用一个集合保存多个连接
+- 取连接 → 用连接 → 还连接
+
+示例（简化版）：
+
+```java
+public class SimpleConnectionPool {
+    private List<Connection> pool = new ArrayList<>();
+
+    // 初始化时创建固定数量的连接
+    public SimpleConnectionPool(int size) throws Exception {
+        for (int i = 0; i < size; i++) {
+            Connection conn = DriverManager.getConnection(
+                "jdbc:mysql://localhost:3306/test", "root", "123456"
+            );
+            pool.add(conn);
+        }
+    }
+
+    // 获取连接
+    public Connection getConnection() {
+        if (pool.isEmpty()) throw new RuntimeException("连接已用完");
+        return pool.remove(0);
+    }
+
+    // 归还连接
+    public void returnConnection(Connection conn) {
+        pool.add(conn);
+    }
+}
+```
+
+> 真实生产环境下的连接池会考虑线程安全、连接失效检测等问题，所以一般直接用成熟产品（HikariCP / Druid），而不会自己手写。
+
+常见问题
+
+- **连接泄漏**：忘记关闭连接会导致连接池耗尽。主流框架会帮忙管理，但自己写 JDBC 时要记得 `close()`。
+- **最大连接数配置不合理**：过小会“抢不到连接”，过大会把数据库压垮，需要根据业务和服务器性能调整。
+- **监控与调试**：Druid 自带监控页面，可以实时查看连接池状态，非常方便排查问题。
+
+在现代 MyBatis / Spring Boot 项目中，连接池是默认启用且优化过的。我们只需要了解其作用和基本配置即可，除非有特殊需求，否则无需过度关注底层细节。
+
+# SqlSession
+
+`SqlSession` 可以把它想象成“一次面向数据库的会话”：拿着连接，接住你这一段调用链里的所有数据库请求，负责找到要执行的语句，绑定参数去跑，拿回结果再按映射规则装配成对象。
+
+> 拿连接 → 找语句 → 绑参数 → 执行 → 映射结果 → 决定提交/回滚 → 释放资源。
+
+原生 JDBC 那些体力活（拿连接、填参数、跑 SQL、遍历 `ResultSet`、封装对象、关资源）都被包在它的生命周期里，程序员把精力放在 **SQL + 映射** 上就够了。
+
+注意`SqlSession` 不是线程安全的；一次请求/一次事务里用一个，用完就关，或交给容器托管。
+
+## 两种使用形态
+
+1. 原生 MyBatis：
+
+不用 Spring 的时候，就需要显式创建工厂、打开会话、手动处理事务：
+
+```java
+try (InputStream in = Resources.getResourceAsStream("mybatis-config.xml")) { // 文件名惯例用这个
+    SqlSessionFactory factory = new SqlSessionFactoryBuilder().build(in);
+    try (SqlSession session = factory.openSession()) { // 默认不自动提交
+        UserMapper mapper = session.getMapper(UserMapper.class);
+        List<User> list = mapper.queryAll();
+        // 写操作需要你自己决定：
+        // session.commit(); // 正常提交
+        // session.rollback(); // 出错回滚
+    }
+}
+```
+
+- 提交：`insert/update/delete` 不 `commit()` 就是没改。
+- 资源收尾：`close()` 才会释放连接，try-with-resources 最省心。
+
+2. Spring Boot + MyBatis（含 MyBatis-Plus）：
+
+整合 Spring 之后，会话交给 `SqlSessionTemplate` 与事务管理器；手里只有 Mapper 接口的代理。
+
+```java
+@Service
+public class UserService {
+    @Resource private UserMapper userMapper;
+
+    @Transactional
+    public void create(User u){
+        userMapper.insert(u); // 同一事务期间复用同一个 SqlSession
+        // 正常返回自动提交；异常按规则自动回滚
+    }
+}
+```
+
+- 提交谁来拍板：Spring 事务；`@Transactional` 标注的方法正常结束 → 提交，异常 → 回滚。
+- 资源回收：容器；方法结束后自动释放。
+
+# 使用方式
+
+目标很小：用**原生 MyBatis** 做两件事——先**查询全部任务标题**，再**插入一条新任务并提交事务**。所有关键词（Mapper 代理如何定位 SQL、`namespace/id` 的由来、参数绑定、驼峰映射、`commit()` 的必要性、会话的生命周期）都在这个过程中顺势出现。
+
+## 一、数据库与依赖（把舞台先搭好）
+
+下面的表只保留我们示例真正需要的字段：一个主键 `id`、一个标题 `title`，再加上一个 `create_time` 用来演示“下划线 → 驼峰”的自动映射。
+
+```sql
+create table if not exists mission (
+  id int primary key auto_increment,
+  title varchar(100) not null,
+  create_time datetime not null default current_timestamp
+);
+
+insert into mission (title) values ('清剿哥布林洞窟'), ('护送银月学者');
+```
+
+工程依赖保持最小，只引入 MyBatis 和 MySQL 驱动：
+
+```xml
+<dependencies>
+  <dependency>
+    <groupId>org.mybatis</groupId>
+    <artifactId>mybatis</artifactId>
+    <version>3.5.16</version>
+  </dependency>
+  <dependency>
+    <groupId>com.mysql</groupId>
+    <artifactId>mysql-connector-j</artifactId>
+    <version>9.0.0</version>
+  </dependency>
+</dependencies>
+```
+
+这里我们**不使用 Spring**，也就没有 `@Transactional` 和 `SqlSessionTemplate`。会话的创建、提交、回滚与关闭，都由我们自己掌舵。
+
+---
+
+## 二、MyBatis 全局配置（一次把调试与映射开关拨好）
+
+`src/main/resources/mybatis-config.xml`
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+  <settings>
+    <setting name="mapUnderscoreToCamelCase" value="true"/>
+    <setting name="logImpl" value="STDOUT_LOGGING"/>
+  </settings>
+
+  <environments default="dev">
+    <environment id="dev">
+      <transactionManager type="JDBC"/>
+      <dataSource type="POOLED">
+        <property name="driver"   value="com.mysql.cj.jdbc.Driver"/>
+        <property name="url"      value="jdbc:mysql://localhost:3306/wolfpack?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8"/>
+        <property name="username" value="root"/>
+        <property name="password" value="root"/>
+      </dataSource>
+    </environment>
+  </environments>
+
+  <mappers>
+    <mapper resource="mapper/MissionMapper.xml"/>
+  </mappers>
+</configuration>
+```
+
+这份配置做了三件与示例息息相关的事。第一，选择 `JDBC` 事务管理，这意味着稍后做写操作时**必须**显式调用 `commit()`；不提交，数据库不会改变。第二，打开日志输出，控制台会打印**最终 SQL 与参数**，这样“写的是什么、跑成了什么”一眼可见。第三，开启“下划线 → 驼峰”，稍后我们在实体里用 `createTime`，无需在 SQL 里到处起别名。
+
+---
+
+## 三、实体与 Mapper 契约（先把边界画清）
+
+`com.demo.domain.Mission`
+
+```java
+package com.demo.domain;
+
+import java.time.LocalDateTime;
+
+public class Mission {
+  private Integer id;
+  private String title;
+  private LocalDateTime createTime;
+  // getter/setter/toString 省略
+}
+```
+
+`com.demo.mapper.MissionMapper`
+
+```java
+package com.demo.mapper;
+
+import com.demo.domain.Mission;
+import java.util.List;
+
+public interface MissionMapper {
+  List<Mission> findAll();
+  int insert(Mission m);
+}
+```
+
+在这一刻，接口还没有实现类。真正的实现会在运行时由 MyBatis 通过**动态代理**生成；关键在于它如何**定位到我们的 SQL**，这就轮到 XML 登场了。
+
+---
+
+## 四、把 SQL 放进 XML（让“接口方法”落到“具体语句”）
+
+`src/main/resources/mapper/MissionMapper.xml`
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.demo.mapper.MissionMapper">
+
+  <select id="findAll" resultType="com.demo.domain.Mission">
+    select id, title, create_time createTime
+    from mission
+  </select>
+
+  <insert id="insert" parameterType="com.demo.domain.Mission"
+          useGeneratedKeys="true" keyProperty="id">
+    insert into mission(title, create_time)
+    values(#{title}, now())
+  </insert>
+
+</mapper>
+```
+
+`namespace` 必须写成接口的**全限定名**，`id` 必须与接口方法名一致。这样当我们调用 `mapper.findAll()` 时，MyBatis 会把它解析为一个唯一的 `statementId`：`com.demo.mapper.MissionMapper.findAll`，从而精确命中这条 `<select>`。插入语句打开了 `useGeneratedKeys`，数据库生成的自增主键会自动**回填到 `Mission.id`**，等会儿你能直接打印出来。
+
+---
+
+## 五、用 SqlSession 跑两步：先查，再插入并提交
+
+`com.demo.MainRunner`
+
+```java
+package com.demo;
+
+import com.demo.domain.Mission;
+import com.demo.mapper.MissionMapper;
+import org.apache.ibatis.io.Resources;
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
+import org.apache.ibatis.session.SqlSessionFactoryBuilder;
+
+import java.io.InputStream;
+import java.util.List;
+
+public class MainRunner {
+  public static void main(String[] args) throws Exception {
+    try (InputStream in = Resources.getResourceAsStream("mybatis-config.xml")) {
+      SqlSessionFactory factory = new SqlSessionFactoryBuilder().build(in);
+
+      // 第一步：查询（读操作无需提交）
+      try (SqlSession session = factory.openSession()) {
+        MissionMapper mapper = session.getMapper(MissionMapper.class);
+        List<Mission> list = mapper.findAll();
+        list.forEach(m -> System.out.println("[LIST] " + m.getId() + " - " + m.getTitle()));
+      }
+
+      // 第二步：插入并提交（写操作必须提交）
+      try (SqlSession session = factory.openSession()) {
+        MissionMapper mapper = session.getMapper(MissionMapper.class);
+        Mission m = new Mission();
+        m.setTitle("修复古塔符阵");
+        int rows = mapper.insert(m);
+        System.out.println("[INSERT] rows=" + rows + ", newId=" + m.getId());
+        session.commit(); // 不调用这句，库里不会有新记录
+      }
+    }
+  }
+}
+```
+
+第一段会话只做查询，控制台会先显示 MyBatis 打印的 `Preparing` 与 `Parameters`，随后看到我们格式化后的输出。第二段会话进行插入，如果把 `session.commit()` 注释掉，再次查询数据库你将**看不到新行**，这就是 `JDBC` 事务管理下“提交由你拍板”的直观表现。每个 `try (SqlSession …)` 都标志着**一次独立的会话**，会话关闭时连接被释放；这也是为什么不要在多线程之间共享同一个 `SqlSession`。
+
+---
+
+## 六、到这里你应该已经“记住了什么”
+
+此时再回头看几个名词，都会和你的手感直接对上。所谓“Mapper 动态代理”，就是把 `mapper.findAll()` 映射为 `namespace.id` 这条唯一语句；所谓“下划线 → 驼峰”，就是把表里的 `create_time` 自然落到实体的 `createTime`；所谓“事务边界”，在原生 MyBatis 下，就是你打开会话、执行语句、决定是否 `commit()`，最后关闭会话的这一段。把这三点真正跑过一遍，记忆就从抽象名词变成肌肉反应。
+
 # MyBatis 入门
 
 如果说 JDBC 是最底层的数据库操作方式，那么 MyBatis 就是在它之上封装的一款优秀的 **持久层框架**。  
@@ -771,7 +1108,7 @@ public class MissionController {
 
 那该怎么解决呢？有三种思路：
 
-1. 手动结果映射
+1. **手动结果映射**
 
 在 Mapper 方法上通过 `@Results` 指定映射关系：
 
@@ -786,7 +1123,7 @@ List<Mission> findAll();
 
 优点：精确可控。缺点：写起来比较繁琐，每个字段都要声明。
 
-2. 在 SQL 里起别名
+2. **在 SQL 里起别名**
 
 直接在 SQL 语句里把列名改成实体类属性名：
 
@@ -797,7 +1134,7 @@ List<Mission> findAll();
 
 这样查询结果返回的字段名就是 `createTime`、`updateTime`，能直接映射到实体类。
 
-3. 开启驼峰命名映射（推荐）
+3. **开启驼峰命名映射（推荐）**
 
 MyBatis 提供了官方配置，只要字段名和属性名符合驼峰规则，就能自动映射：
 
@@ -991,6 +1328,21 @@ public Object delete(Integer id) {
 }
 ```
 
+如果是 LocalDate 就要用@DataTimeFormat ,因为前端传来的就是字符串, 还要用(pattern ="")把格式指定清楚, 这样才能解析
+
+方式二：在 Controller 方法中通过实体对象封装多个参数。（实体属性与请求参数名保持一致）
+
+@Data
+public class EmpQueryParam {
+private Integer page = 1;//页码
+privateIntegerpageSize=10；//每页展示记录数
+private Stringgname；//姓名
+private Integer gender;//性别
+@DateTimeFormat(pattern = "yyyy-MM-dd")
+privateLocalDatebegin；//入职开始时间
+@DateTimeFormat(pattern = "yyyy-MM-dd")
+privateLocalDateend；//入职结束时间
+
 ## `@RequestBody` 接收 JSON 请求体：
 
 **场景**：POST `/missions`
@@ -1152,101 +1504,3 @@ public int updateSelective(Mission mission) {
 - `<set>` 自动补上 `SET` 并去掉最后多余的逗号，防止语法错误。
 - `<if>` 控制条件成立才拼接该列。
 - 依旧用 `#{}` 作为占位符，防止 SQL 注入。
-
-# 数据库连接池
-
-在实际开发中，如果每次执行 SQL 都要重新创建和销毁数据库连接，会非常消耗性能，还可能导致数据库被压垮。**数据库连接池**就是为了解决这个问题——它会提前准备好一定数量的连接放在“池子”里，需要时取出，用完再放回去。
-
-这样做的好处：
-
-- **连接复用**：避免频繁创建销毁，响应更快。
-- **统一管理**：通过限制最大连接数，防止高并发下数据库过载。
-- **自动回收**：检测并回收无效连接，降低泄漏风险。
-
-现在主流的连接池有：
-
-- **HikariCP**（Spring Boot 默认）
-- **Druid**（阿里开源，功能强大，监控能力好）
-- 其他：DBCP、C3P0 等（现代项目中较少用）
-
-## Spring Boot 中的连接池
-
-在 Spring Boot 项目里，无论你是用 **JDBC** 还是 **MyBatis**，其实都已经默认集成了连接池。常见情况：
-
-- 默认使用 **HikariCP**，性能优秀，线程优化良好。
-- 如果想换成 **Druid** 等其他连接池，可以通过添加依赖并修改配置来实现。
-
-1. 引入 Druid 依赖（可选）
-
-```xml
-<dependency>
-  <groupId>com.alibaba</groupId>
-  <artifactId>druid</artifactId>
-  <version>1.2.16</version>
-</dependency>
-```
-
-2.  配置连接池参数
-
-```properties
-spring.datasource.url=jdbc:mysql://localhost:3306/test
-spring.datasource.username=root
-spring.datasource.password=123456
-spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
-
-# 使用 Druid 作为连接池
-spring.datasource.type=com.alibaba.druid.pool.DruidDataSource
-
-# 初始连接数、最大连接数、最小空闲连接数
-spring.datasource.druid.initial-size=5
-spring.datasource.druid.max-active=20
-spring.datasource.druid.min-idle=5
-```
-
-配置完成后，Spring Boot 会自动帮你管理连接池，无需手动操作。
-
-## 原理演示
-
-理解原理后，你会发现连接池的思路其实很简单：
-
-- 用一个集合保存多个连接
-- 取连接 → 用连接 → 还连接
-
-示例（简化版）：
-
-```java
-public class SimpleConnectionPool {
-    private List<Connection> pool = new ArrayList<>();
-
-    // 初始化时创建固定数量的连接
-    public SimpleConnectionPool(int size) throws Exception {
-        for (int i = 0; i < size; i++) {
-            Connection conn = DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/test", "root", "123456"
-            );
-            pool.add(conn);
-        }
-    }
-
-    // 获取连接
-    public Connection getConnection() {
-        if (pool.isEmpty()) throw new RuntimeException("连接已用完");
-        return pool.remove(0);
-    }
-
-    // 归还连接
-    public void returnConnection(Connection conn) {
-        pool.add(conn);
-    }
-}
-```
-
-> 真实生产环境下的连接池会考虑线程安全、连接失效检测等问题，所以一般直接用成熟产品（HikariCP / Druid），而不会自己手写。
-
-常见问题
-
-- **连接泄漏**：忘记关闭连接会导致连接池耗尽。主流框架会帮忙管理，但自己写 JDBC 时要记得 `close()`。
-- **最大连接数配置不合理**：过小会“抢不到连接”，过大会把数据库压垮，需要根据业务和服务器性能调整。
-- **监控与调试**：Druid 自带监控页面，可以实时查看连接池状态，非常方便排查问题。
-
-在现代 MyBatis / Spring Boot 项目中，连接池是默认启用且优化过的。我们只需要了解其作用和基本配置即可，除非有特殊需求，否则无需过度关注底层细节。

@@ -8,31 +8,17 @@
         "type": "tabs",
         "children": [
           {
-            "id": "5e133071b0ad227a",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "knowledge/后端 Web 基础/未命名.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "未命名"
-            }
-          },
-          {
             "id": "c9f18d13e509bcf8",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端 Java 基础/第二部分-现代日期时间 API.md",
+                "file": "knowledge/后端面试/Spring.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "第二部分-现代日期时间 API"
+              "title": "Spring"
             }
           },
           {
@@ -47,20 +33,6 @@
               },
               "icon": "lucide-file",
               "title": "MySQL 数据库基础"
-            }
-          },
-          {
-            "id": "3ddc88219eb663ea",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "thoughts/獠牙下的野蔷薇.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "獠牙下的野蔷薇"
             }
           }
         ]
@@ -82,13 +54,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/后端 Web 基础/未命名.md",
+                "file": "knowledge/后端面试/Spring.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "未命名 的大纲"
+              "title": "Spring 的大纲"
             }
           },
           {
@@ -122,7 +94,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 200.5
+    "width": 200
   },
   "right": {
     "id": "318f4ed2312b0f42",
@@ -195,34 +167,38 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "5e133071b0ad227a",
+  "active": "c9f18d13e509bcf8",
   "lastOpenFiles": [
-    "thoughts/獠牙下的野蔷薇.md",
-    "knowledge/后端 Web 基础/未命名.md",
-    "knowledge/后端工具库/Logback-日志技术.md",
-    "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md",
+    "knowledge/后端面试/Java 集合.md",
+    "knowledge/后端面试/Spring.md",
+    "knowledge/后端 Web 基础/Spring.md",
+    "knowledge/后端 Web 基础/分页查询.md",
     "knowledge/后端数据库/MySQL 数据库基础.md",
-    "knowledge/后端 Java 基础/第二部分-现代日期时间 API.md",
-    "knowledge/后端 Web 基础/SpringBootWeb入门.md",
-    "knowledge/实习实训/社区管理系统功能驱动实现指导.md",
-    "knowledge/后端面试/Java 基础.md",
-    "knowledge/实习实训/Java后端与AI智能体开发全景梳理.md",
+    "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md",
+    "knowledge/后端 Web 基础/Spring入门.md",
     "knowledge/后端 Web 基础/Tomcat-web Servlet容器.md",
-    "knowledge/实习实训/跟进老师项目进度指南.md",
-    "knowledge/后端 Java 基础/第二部分-异常处理.md",
-    "knowledge/实习实训/社区管理系统完整实现指导.md",
-    "knowledge/后端数据库/未命名.md",
-    "knowledge/后端面试/SQL 基础.md",
+    "knowledge/后端 Web 基础/SSM注解与XML对照实践.md",
     "knowledge/后端 Web 基础/HTTP 通信协议.md",
-    "knowledge/前端基础/网页结构骨架-HTML.md",
-    "knowledge/后端 Java 基础/第二部分-常用 API.md",
-    "knowledge/后端 Java 基础/第一部分-面向对象.md",
-    "knowledge/后端 Java 基础/第一部分-基础语法.md",
+    "knowledge/后端 Web 基础/互联网与星辰大海.md",
+    "knowledge/后端面试/Java 基础.md",
+    "public/images/文章资源/java-基础/file-20250929102023688.jpg",
+    "public/images/文章资源/java-基础/file-20250929101958595.jpg",
+    "public/images/文章资源/java-基础",
+    "knowledge/后端 Java 基础/第四部分-反射与注解.md",
+    "knowledge/后端面试/网络编程.md",
+    "knowledge/后端面试/SQL 基础.md",
+    "knowledge/后端工具库/Logback-日志技术.md",
+    "knowledge/后端 Java 基础/第二部分-现代日期时间 API.md",
+    "knowledge/后端 Java 基础/第三部分-IO 流.md",
+    "knowledge/后端 Java 基础/第三部分-集合.md",
     "knowledge/后端 Java 基础/扩展部分-配置与特殊文件.md",
-    "knowledge/后端 Java 基础/java基础.md",
-    "knowledge/前端面试/ES6 - JavaScript 中的继承.md",
-    "knowledge/实习实训/Java_Web_项目构建指南.md",
-    "knowledge/实习实训/从零开始创建Servlet+JSP项目指南.md",
+    "public/images/文章资源/spring入门",
+    "knowledge/后端 Java 基础/第二部分-异常处理.md",
+    "knowledge/后端 Java 基础/第一部分-基础语法.md",
+    "knowledge/后端 Java 基础/第一部分-面向对象.md",
+    "thoughts/獠牙下的野蔷薇.md",
+    "knowledge/实习实训/社区管理系统功能驱动实现指导.md",
+    "knowledge/实习实训/Java后端与AI智能体开发全景梳理.md",
     "public/images/文章资源/tomcat-web-servlet容器",
     "public/images/文章资源/从-jdbc-到-mybatis-的数据库与连接池",
     "public/images/文章资源/数据库与连接池",
@@ -230,19 +206,15 @@
     "public/images/文章资源/http-通信协议",
     "public/images/文章资源/mysql-数据库基础/file-20250828162513536.jpg",
     "knowledge/后端面试",
-    "public/images/文章资源/springbootweb入门/file-20250904143703503.jpg",
-    "public/images/文章资源/springbootweb入门/file-20250904112205376.jpg",
-    "public/images/文章资源/springbootweb入门/file-20250904110814643.jpg",
-    "public/images/文章资源/springbootweb入门/file-20250904104910872.jpg",
+    "public/images/文章资源/spring入门/file-20250904143703503.jpg",
+    "public/images/文章资源/spring入门/file-20250904112205376.jpg",
+    "public/images/文章资源/spring入门/file-20250904110814643.jpg",
+    "public/images/文章资源/spring入门/file-20250904104910872.jpg",
     "public/images/文章资源/springbootweb入门/file-20250904104718214.jpg",
-    "public/images/文章资源/springbootweb入门/file-20250904092609800.jpg",
-    "public/images/文章资源/springbootweb入门/file-20250904092605537.jpg",
-    "public/images/文章资源/springbootweb入门/file-20250904092601566.jpg",
+    "public/images/文章资源/spring入门/file-20250904092609800.jpg",
     "public/images/文章资源/springbootweb入门",
     "public/images/文章资源/jdbc-数据库连接池",
     "public/images/文章资源/第四部分-网络编程",
-    "public/images/文章资源/扩展部分-配置与特殊文件",
-    "public/images/文章资源/properties与xml-特殊文件",
     "点子合集.canvas"
   ]
 }

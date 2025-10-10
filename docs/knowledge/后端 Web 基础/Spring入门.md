@@ -1,5 +1,5 @@
 ---
-title: SpringBootWeb入门
+title: Spring入门
 date: 2024-12-01 16:27:02
 description: 这是一篇新文章!
 order: 3
@@ -9,7 +9,7 @@ tags:
 
 你可能已经听说过 **Spring**，这个在 Java 开发世界里几乎无处不在的名字。Spring 就像是一个超强的工具箱，里面有一堆各式各样的工具，专门用来解决开发中的各种问题。
 
-![](../../public/images/文章资源/springbootweb入门/file-20250904092503822.jpg)
+![](../../public/images/文章资源/spring入门/file-20250904092503822.jpg)
 
 无论是数据库、Web 应用，还是安全性管理，Spring 都能轻松搞定。
 
@@ -35,20 +35,20 @@ tags:
 
 基于 Spring 官方骨架，创建 SpringBoot 工程，注意保持网络通畅。
 
-![](../../public/images/文章资源/springbootweb入门/file-20250904092441316.jpg)
+![](../../public/images/文章资源/spring入门/file-20250904092441316.jpg)
 
 选择 “新建项目” -> “Spring Initializr”，然后配置好你的项目名称和存储位置。
 语言选择 Java，构建工具选择 **Maven**（默认是 Gradle，记得手动切换一下）。此外，还可以选择需要的 JDK 版本和打包方式。
 
 点击下一步，就能够看到可以选择的依赖，别忘了勾选 Web，因为我们要做一个 Web 应用。完成后，点击创建，会看到项目结构大致如下：
 
-![](../../public/images/文章资源/springbootweb入门/file-20250904092527564.jpg)
+![](../../public/images/文章资源/spring入门/file-20250904092527564.jpg)
 
 > 创建过程可能会需要联网下载一些资源，稍等片刻。
 
 一般来说不需要额外配置，但由于 spring 官网并不在国内，如果下载出现问题，可以考虑使用阿里云镜像：
 
-![](../../public/images/文章资源/springbootweb入门/file-20250904092554495.jpg)
+![](../../public/images/文章资源/spring入门/file-20250904092554495.jpg)
 
 使用阿里云提供的脚手架，将网址：
 
@@ -90,7 +90,7 @@ http://localhost:8080/hello?name=Wreckloud
 
 如果一切顺利，你会看到浏览器返回：
 
-![](../../public/images/文章资源/springbootweb入门/file-20250904092601566.jpg)
+![](../../public/images/文章资源/spring入门/file-20250904092601566.jpg)
 
 现在已经成功用 Spring Boot 构建了一个 Web 应用！
 
@@ -102,7 +102,7 @@ http://localhost:8080/hello?name=Wreckloud
 
 这就和创建普通的 Maven 项目差不多，只是多了些 Spring Boot 的配置。记得配置好项目的名称和存储位置，还有选择 Maven 作为构建工具。
 
-![](../../public/images/文章资源/springbootweb入门/file-20250904104910872.jpg)
+![](../../public/images/文章资源/spring入门/file-20250904104910872.jpg)
 
 **2). 配置 `pom.xml`**
 
@@ -171,7 +171,7 @@ Spring Boot 父工程可以帮助我们自动管理版本，避免自己手动�
 
 完成这些配置后，刷新 Maven，检查一下 Dependencies 下的依赖是否都正确导入。
 
-![](../../public/images/文章资源/springbootweb入门/file-20250904110814643.jpg)
+![](../../public/images/文章资源/spring入门/file-20250904110814643.jpg)
 
 **3).添加启动类**
 
@@ -200,13 +200,13 @@ public class Main {
 
 如果用过 SSM 的 Spring 后，就能深刻体会到 Spring Boot 确实让开发变得更轻松，这一切的背后，离不开我们刚刚在项目中添加的 Spring Web 依赖。
 
-![](../../public/images/文章资源/springbootweb入门/file-20250904092605537.jpg)
+![](../../public/images/文章资源/spring入门/file-20250904092605537.jpg)
 
 可以在右侧的 Maven 面板 中看到所有的依赖。比如，Web 开发所需的起步依赖就是 `spring-boot-starter-web`，它自带了很多 Web 开发需要的功能。
 
 web 开发的 **起步依赖** 是 `spring-boot-starter-web`。
 
-![](../../public/images/文章资源/springbootweb入门/file-20250904092609800.jpg)
+![](../../public/images/文章资源/spring入门/file-20250904092609800.jpg)
 
 而`spring-boot-starter-web`依赖, 又依赖了`spring-boot-starter-tomcat`。由于 maven 的依赖传递特性,，那么在我们创建的 springboot 项目中也就已经有了 tomcat 的依赖, 也就是内嵌的 tomcat。
 
@@ -216,7 +216,7 @@ Tomcat 是一个 Servlet 容器，它的任务就是接收 HTTP 请求并将请�
 
 我们通过运行引导类中的 `main` 方法启动 Spring Boot 应用，实际上就是启动了这个内嵌的 Tomcat 服务器。
 
-![](../../public/images/文章资源/springbootweb入门/file-20250904112205376.jpg)
+![](../../public/images/文章资源/spring入门/file-20250904112205376.jpg)
 
 而请求进入 Tomcat 后，会由 DispatcherServlet 分发给对应的 Controller。我们在代码中写的 `HelloController` 就是在这个过程中发挥作用，接收请求并返回响应。
 
@@ -256,7 +256,7 @@ java -jar springboot-web-quickstart01-0.0.1-SNAPSHOT.jar
 
 也可以找到 Maven 生命周期 面板中的 `install` 或 `package`，点击执行它们来打包项目。
 
-![](../../public/images/文章资源/springbootweb入门/file-20250904143703503.jpg)
+![](../../public/images/文章资源/spring入门/file-20250904143703503.jpg)
 
 这样，你的项目就会在目标机器上启动。但是，要确保对方的机器上安装了 **JDK 环境**，否则他们无法运行 `jar` 文件。
 
@@ -653,15 +653,19 @@ public class DeptController {
 
 那该怎么做？我们可以准备一个“容器”，把对象都放进去。Controller 需要的时候，不再自己创建，而是直接从容器里取。这就是 **Spring 的 IoC 思想**。
 
+接下来，我们就通过实际代码看看 Spring 是如何帮我们解耦的。
+
+## IoC 与依赖注入
+
 - **IoC（Inversion of Control，控制反转）**：对象的创建控制权交给容器，而不是程序自己。
 - **DI（Dependency Injection，依赖注入）**：容器在运行时把需要的对象注入进来。
 - **Bean**：由 IoC 容器创建和管理的对象。
 
-接下来，我们就通过实际代码看看 Spring 是如何帮我们解耦的。
+有了 IoC 容器，我们不再手动 `new` 对象，也不用亲自把依赖一个个塞进去，而是让容器负责创建和装配——我们只管“声明需要”，到用的时候向容器要即可。
 
-有了 IoC 容器，我们不需要自己 new 对象。还可以随时替换实现类，而不需要修改调用方代码。这使得项目更加解耦，更容易维护和扩展。
+下面用同一条示例链路，展示两种主流做法。
 
-## IoC 与依赖注入
+### 注解方式
 
 Spring 提供了两类核心注解：
 
@@ -724,17 +728,140 @@ public class DeptController {
 
 Controller 不再关心具体实现类，完全依赖接口。对象的创建与依赖关系交由 IoC 容器负责。
 
-### Bean 的命名与扫描
+### XML 配置方式
 
-- 默认情况下，Bean 的名字是类名首字母小写。
-- 可以通过注解的 `value` 属性指定 Bean 的名字。
-- 要让这些注解生效，需要开启组件扫描。Spring Boot 默认在 `@SpringBootApplication` 启动类所在包及其子包进行扫描。如果要扩展范围，可以使用 `@ComponentScan` 手动指定。
+在注解普及之前，Spring 是通过 XML 来告诉容器“哪些类要托管、它们之间怎么装配”。虽然现代项目更倾向于注解，但理解 XML 配置能帮我们看懂老项目，也能更直观地感受到 IoC 的核心思想：
+
+> 由容器统一创建和装配对象。
+
+首先，我们需要一个专门的 XML 文件来描述 Bean，可以放在 `src/main/resources/` 目录下。
+
+在 IDEA 中：
+
+1. 在 `resources` 目录右键 → **New → File** → 输入 `applicationContext.xml`
+2. 如果安装了 Spring 插件，可以选择 **Spring Config** 模板，这样会自动生成文件头。
+
+已经创建了空文件也没关系，可以手动补上标准头部，IDEA 有智能提示补全：
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+           https://www.springframework.org/schema/beans/spring-beans.xsd">
+
+</beans>
+```
+
+- `<beans>` 是根标签
+- `xmlns` 和 `xsi:schemaLocation` 告诉 Spring 这是一个 Bean 配置文件，并指向官方 XSD（约束），IDE 才能校验和提示。
+
+1. 注册 Bean
+
+在 `<beans>` 里面用 `<bean>` 注册要托管的类：
+
+```xml
+<bean id="deptDao" class="com.wreckloud.dao.impl.DeptDaoImpl"/>
+```
+
+- `id`：这个 Bean 在容器中的名字，用来取对象。
+- `class`：这个 Bean 的全限定类名，Spring 用反射去 new 出实例。
+
+> 全限定类名：  包名 + 类名
+
+2. 注入依赖
+
+IoC 的核心不是只帮助 new 对象，还能把对象之间的依赖关系也装配好，常见的注入方式有：
+
+- `<property/>` setter 注入
+
+最常见的方式是 **setter 注入**，先用无参构造器创建对象，再调用 setter 方法完成依赖注入：
+
+```xml
+<bean id="deptService" class="com.wreckloud.service.impl.DeptServiceImpl">
+    <property name="deptDao" ref="deptDao"/>
+</bean>
+```
+
+- `<property>` 对应 `setDeptDao()` 方法，把 `deptDao` 这个 Bean 注入进去。
+- `ref` 用来引用前面注册的 Bean。
+
+对应的 Java 类：
+
+```java
+public class DeptServiceImpl implements DeptService {
+    private DeptDao deptDao;
+
+    public void setDeptDao(DeptDao deptDao) {
+        this.deptDao = deptDao;
+    }
+
+    public List<String> queryDeptList() {
+        return deptDao.queryDeptList();
+    }
+}
+```
+
+Setter 注入的好处是依赖可以后期替换，但缺点是对象创建时不是“完备”的，如果忘记调用 setter 可能导致 NPE。
+
+- `<constructor-arg/>`构造器注入
+
+另一种方式是直接通过构造器注入，保证对象创建时就提供完整依赖：
+
+```xml
+<bean id="deptService" class="com.wreckloud.service.impl.DeptServiceImpl">
+    <constructor-arg ref="deptDao"/>
+</bean>
+```
+
+类改成只有带参构造器：
+
+```java
+public class DeptServiceImpl implements DeptService {
+    private final DeptDao deptDao;
+
+    public DeptServiceImpl(DeptDao deptDao) { // 构造器注入
+        this.deptDao = deptDao;
+    }
+
+    public List<String> queryDeptList() {
+        return deptDao.queryDeptList();
+    }
+}
+```
+
+构造器注入更安全：对象一创建就“完备”，不会出现忘记 set 而导致空指针的情况。
+
+- 如果有多个参数，可以用 `index` 或 `type` 指定顺序和类型，避免歧义：
+
+```xml
+<constructor-arg index="0" ref="deptDao"/>
+<constructor-arg index="1" value="3000"/>
+```
+
+4. 从容器中取 Bean 使用
+
+配置好 XML 后，就可以在代码里通过容器拿对象：
+
+```java
+ClassPathXmlApplicationContext ctx = new ClassPathXmlApplicationContext("applicationContext.xml");
+DeptService deptService = ctx.getBean("deptService", DeptService.class);
+System.out.println(deptService.queryDeptList());
+ctx.close();
+```
+
+- `ClassPathXmlApplicationContext` 会读取 XML → 反射创建对象 → 按 `<property>` 或 `<constructor-arg>` 注入依赖 → 放入容器。
+- `getBean` 从容器里按 id 或类型取出 Bean，直接使用。
+
+只要改 XML 里的 `ref`，就能无侵入切换不同实现类，业务代码完全不用动。
 
 ## 依赖注入的冲突解决
 
+### 注解方式
+
 当容器中存在多个同类型的 Bean 时，`@Autowired` 默认会报错。Spring 提供了三种常见方案：
 
-#### 方案一：@Primary
+- **方案一：@Primary**
 
 在实现类上添加 `@Primary`，表示这是首选的 Bean。
 
@@ -748,7 +875,7 @@ public class DeptServiceImpl implements DeptService {
 
 这样当有多个实现时，Spring 会优先选择带有 `@Primary` 的类。
 
-#### 方案二：@Qualifier
+- **方案二：@Qualifier**
 
 使用 `@Qualifier` 明确指定 Bean 的名字。
 
@@ -763,7 +890,7 @@ public class DeptController {
 
 这里的 `deptServiceImpl` 就是 Bean 的名字（默认是类名首字母小写，当然也可以通过注解的 `value` 属性自定义）。
 
-#### 方案三：@Resource
+- **方案三：@Resource**
 
 使用 JSR-250 提供的 `@Resource` 注解，根据名字进行注入。
 
@@ -784,3 +911,224 @@ public class DeptController {
 - 遇到多实现类的情况，可以通过 `@Primary`、`@Qualifier`、`@Resource` 来灵活解决。
 
 这就是 Spring 提供的 IoC 与 DI 的强大之处，也是三层架构能够真正高内聚、低耦合的关键所在。
+
+### XML 方式
+
+在 XML 配置里，也有对应的解决办法。
+
+- **方案一：指定 `primary="true"`**
+
+直接在 `<bean>` 上加 `primary="true"`，表示这是默认选用的 Bean。
+
+```xml
+<bean id="deptDaoMysql" class="com.wreckloud.dao.impl.DeptDao4MysqlImpl" primary="true"/>
+<bean id="deptDaoOracle" class="com.wreckloud.dao.impl.DeptDao4OracleImpl"/>
+```
+
+容器遇到按类型注入时，优先注入标记了 `primary="true"` 的那个 Bean。
+
+- **指定 `ref` 或 `constructor-arg`**
+
+在 Service 的 `<property>` 或 `<constructor-arg>` 里直接指明要注入哪一个 Bean：
+
+```xml
+<bean id="deptService" class="com.wreckloud.service.impl.DeptServiceImpl">
+    <property name="deptDao" ref="deptDaoOracle"/>
+</bean>
+```
+
+这种方式等价于注解里的 `@Qualifier("deptDaoOracle")`，是最明确、最不歧义的写法。
+
+- **方案三：别名（alias）**
+
+如果某个类有多个名字，可以给它起别名，调用方直接按别名取就不会冲突：
+
+```xml
+<bean id="deptDaoMysql" class="com.wreckloud.dao.impl.DeptDao4MysqlImpl"/>
+<alias name="deptDaoMysql" alias="defaultDeptDao"/>
+```
+
+然后在注入时：
+
+```xml
+<property name="deptDao" ref="defaultDeptDao"/>
+```
+
+这种写法适合把具体实现抽象成一个统一的“逻辑名字”，以后只要改 alias 指向的实现，就能切换依赖。
+
+# 核心注解
+
+学了 XML 配置之后就会发现，它固然直观，但要手动写 `<bean>`、`<property>`，项目一大就变成配置地狱。
+现代项目更推荐注解驱动：直接在代码里标注“谁是 Bean、谁需要注入”，让 Spring 自己去扫描、注册、装配。
+
+### 容器管理类注解
+
+核心只有一个：**`@Component`**，意思是“把这个类交给 IoC 容器管理”。
+
+为了语义更清晰，Spring 给常用分层加了三个派生注解——底层效果和 `@Component` 一样，差别只在于名字更能说明角色。
+
+| 注解          | 用途           | 备注                                                                               |
+| ------------- | -------------- | ---------------------------------------------------------------------------------- |
+| `@Controller` | 控制层（Web）  | 标记这是 MVC 控制器，用来接收请求和返回结果                                        |
+| `@Service`    | 业务逻辑层     | 标记这是业务实现类，写具体的业务流程                                               |
+| `@Repository` | DAO/数据访问层 | 标记这是数据访问对象，额外自带异常翻译功能，把 JDBC 异常转成 Spring 的统一异常体系 |
+
+不过在 MyBatis/MyBatis-Plus 项目里，DAO/mapper 层通常是接口，不用手写实现类，而是交给 MyBatis 自动生成动态代理。
+这种场景下我们一般用 `@Mapper`（或在配置类加 `@MapperScan`），这样接口就会自动注册到容器里，相当于完成了 `@Repository` 的工作。
+
+如果不使用 boot, 在 spring 项目里还需要在 xml 中配置
+
+```xml
+<context:component-scan base-package="xxx"/>
+```
+
+## 依赖注入注解
+
+有了 IoC 容器，下一步就是怎么把容器里的 Bean 注入到需要的地方，这些注解的作用类似：告诉容器“请把合适的 Bean 塞给我”。
+
+实际开发里用得最多的是 **`@Autowired`**，因为它和 Spring 集成得最好、功能最全，还能在多实现时用 `@Qualifier` 点名，或者在默认实现上加 `@Primary`。
+
+| 注解         | 注入方式             | 说明                                                        |
+| ------------ | -------------------- | ----------------------------------------------------------- |
+| `@Autowired` | 按类型（byType）     | Spring 独有，能配合 `@Qualifier` 精确指定 Bean 名           |
+| `@Resource`  | 优先按名字（byName） | JSR-250 标准，不依赖 Spring，兼容性好，名字不匹配时再按类型 |
+| `@Inject`    | 按类型（byType）     | JSR-330 标准，语义几乎和 `@Autowired` 一样，用得少          |
+
+## AOP 与事务相关注解
+
+到这里，已经能把三层跑通了，接下来有两个常见的痛点：
+
+1. 横切逻辑到处写：比如每个 Service 方法都要打日志、检查权限、统计耗时，写来写去都是重复代码。
+2. 多步数据库操作容易“半成功”：扣金币成功了但发道具失败，导致数据不一致。
+
+Spring 给的答案就是 AOP + 事务管理，两者都是“框架层的外挂”，帮你在不改业务逻辑的情况下插入额外功能。
+
+### AOP：横向切入逻辑
+
+AOP（面向切面编程）让我们把通用逻辑抽出来，统一织入目标方法执行的前后，不用在每个类手动写重复代码。
+
+| 注解      | 作用场景                           | 常见用途                             |
+| --------- | ---------------------------------- | ------------------------------------ |
+| `@Aspect` | 标记切面类                         | 告诉 Spring 这是要织入横切逻辑的地方 |
+| `@Before` | 方法执行前触发                     | 记录日志、参数校验                   |
+| `@After`  | 方法执行结束后触发（无论成功失败） | 收尾清理、写操作日志                 |
+| `@Around` | 方法前后都能插入，还能决定是否执行 | 性能监控、动态拦截                   |
+
+示例：给所有 Service 方法打日志
+
+```java
+@Aspect
+@Component
+public class LogAspect {
+
+    @Before("execution(* com.wreckloud.service.*.*(..))")
+    public void logBefore() {
+        System.out.println("[LOG] 即将执行方法");
+    }
+
+    @After("execution(* com.wreckloud.service.*.*(..))")
+    public void logAfter() {
+        System.out.println("[LOG] 方法执行结束");
+    }
+}
+```
+
+这样不用在每个 Service 里写 `System.out.println()`，切面会自动帮你插入日志。
+
+### @Transactional：声明事务边界
+
+事务就是“一组要么全成，要么全撤的操作”。在业务里很常见：
+
+> 购买道具：扣金币 → 生成订单 → 发道具
+
+如果扣了金币但订单没生成就会出 bug，所以必须三个操作都成功才提交，否则回滚到没发生前。
+
+用 Spring 事务就能一行搞定，一般加在 **Service 层方法** 或类上。
+
+```java
+@Service
+public class OrderService {
+
+    @Transactional
+    public void placeOrder() {
+        userDao.deductGold(100);
+        orderDao.createOrder();
+        itemDao.giveItem(); // 这里如果抛异常，整个事务都会回滚
+    }
+}
+```
+
+`@Transactional` 默认遇到 **运行时异常** 回滚，受检异常要加 `rollbackFor = Exception.class`。
+自调用无效：同一个类里方法互调不会走代理，事务不会生效。方法必须是 `public` 才会被代理织入事务逻辑。
+
+## Spring Boot 组合注解
+
+Spring Boot 的一大特点就是“少配置、快启动”，而组合注解就是它偷懒的秘诀。它把常用的一堆注解打包成一个，让你一行就能开箱即用。
+
+### `@SpringBootApplication`
+
+几乎所有 Boot 项目的入口类都会写这个注解。它其实是三个注解的组合：
+
+- `@Configuration`：声明这是一个配置类，可以注册 Bean。
+- `@EnableAutoConfiguration`：打开自动配置，根据依赖自动帮你装好常用组件。
+- `@ComponentScan`：从启动类所在包向下扫描所有 `@Component`、`@Service`、`@Controller` 等。
+
+这意味着你只要写好启动类，不用手动配置一大堆 XML 或 JavaConfig，Spring Boot 就能自动发现和装配你的 Bean。
+
+```java
+@SpringBootApplication
+public class WolfApp {
+    public static void main(String[] args) {
+        SpringApplication.run(WolfApp.class, args);
+    }
+}
+```
+
+### `@RestController`
+
+这是后端接口开发最常用的注解，相当于 `@Controller + @ResponseBody`，意思是：
+
+> 这个类的所有方法都直接把返回值写进 HTTP 响应体，而不是去找 JSP 或模板页面。
+
+所以写接口时推荐直接用它，省得每个方法都手写 `@ResponseBody`。
+
+```java
+@RestController
+@RequestMapping("/wolves")
+public class WolfController {
+    @GetMapping("/{id}")
+    public String getWolf(@PathVariable Integer id) {
+        return "狼编号：" + id;
+    }
+}
+```
+
+### @RequestMapping
+
+| 注解             | 对应 HTTP 方法 | 典型用途             |
+| ---------------- | -------------- | -------------------- |
+| `@GetMapping`    | **GET**        | 查询数据、获取资源   |
+| `@PostMapping`   | **POST**       | 新增数据、提交表单   |
+| `@PutMapping`    | **PUT**        | 修改数据（整体更新） |
+| `@DeleteMapping` | **DELETE**     | 删除资源             |
+
+这些是 `@RequestMapping` 的语义糖，更直观好记：
+
+```java
+@GetMapping("/howl")
+public String howl() { ... }
+
+@PostMapping("/hunt")
+public String hunt() { ... }
+```
+
+比起 `@RequestMapping(value = "/howl", method = RequestMethod.GET)` 简洁很多，现代项目基本都用它们。
+
+### `@EnableXXX`
+
+这一类注解用来显式打开某个功能，比如：
+
+- `@EnableScheduling`：启用定时任务（配合 `@Scheduled`）。
+- `@EnableAsync`：启用异步调用（配合 `@Async`）。
+
+一般写在配置类或启动类上就行。
