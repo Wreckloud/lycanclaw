@@ -180,13 +180,8 @@
     "relativePath": "knowledge/后端 Java 基础/第四部分-网络编程.md"
   },
   {
-    "date": "2025-09-25 09:10:12",
-    "wordCount": 488,
-    "relativePath": "knowledge/后端 Web 基础/Spring.md"
-  },
-  {
     "date": "2024-12-01 16:27:02",
-    "wordCount": 8669,
+    "wordCount": 8677,
     "relativePath": "knowledge/后端 Web 基础/Spring入门.md"
   },
   {
@@ -200,6 +195,11 @@
     "relativePath": "knowledge/后端 Web 基础/Tomcat-web Servlet容器.md"
   },
   {
+    "date": "2025-09-25 09:10:12",
+    "wordCount": 2852,
+    "relativePath": "knowledge/后端 Web 基础/事务处理.md"
+  },
+  {
     "date": "2024-11-21 19:44:28",
     "wordCount": 1212,
     "relativePath": "knowledge/后端 Web 基础/互联网与星辰大海.md"
@@ -211,8 +211,13 @@
   },
   {
     "date": "2025-09-25 09:10:07",
-    "wordCount": 3029,
+    "wordCount": 3000,
     "relativePath": "knowledge/后端 Web 基础/分页查询.md"
+  },
+  {
+    "date": "2025-10-13 09:18:56",
+    "wordCount": 1184,
+    "relativePath": "knowledge/后端 Web 基础/文件上传.md"
   },
   {
     "date": "2025-07-13 15:28:42",
@@ -251,7 +256,7 @@
   },
   {
     "date": "2025-10-10 08:49:23",
-    "wordCount": 5590,
+    "wordCount": 6131,
     "relativePath": "knowledge/后端面试/Spring.md"
   },
   {
@@ -270,7 +275,7 @@
     "relativePath": "knowledge/实习实训/Java后端与AI智能体开发全景梳理.md"
   },
   {
-    "date": "2025-10-10T07:37:20.328Z",
+    "date": "2025-10-13T10:50:33.017Z",
     "wordCount": 0,
     "relativePath": "knowledge/实习实训/社区管理系统功能驱动实现指导.md"
   }

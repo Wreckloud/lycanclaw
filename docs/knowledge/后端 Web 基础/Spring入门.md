@@ -512,7 +512,7 @@ public class UserController {
 
 示例中的`@RestController`是 Spring 提供的一个组合注解。等价于`@Controller + @ResponseBody`,它的作用是:
 
-1. `@Controller`把类标记为一个 **控制器**，可以接收 HTTP 请求。
+1. `@Controller`把类标记为一个 **控制器**，并交由 IOC 容器管理，可以接收 HTTP 请求。
 2. `@ResponseBody`默认把方法的返回值直接写入 HTTP 响应体（通常是 JSON），而不是去找一个 JSP 或模板页面。
 
 ## **前后端联调与 Nginx 反向代理**

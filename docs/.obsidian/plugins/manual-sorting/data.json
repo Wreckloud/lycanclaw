@@ -51,7 +51,8 @@
       "knowledge/后端 Web 基础/Spring入门.md",
       "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md",
       "knowledge/后端 Web 基础/分页查询.md",
-      "knowledge/后端 Web 基础/Spring.md"
+      "knowledge/后端 Web 基础/文件上传.md",
+      "knowledge/后端 Web 基础/事务处理.md"
     ],
     "knowledge/后端工具库": [
       "knowledge/后端工具库/Maven-项目构建工具.md",
