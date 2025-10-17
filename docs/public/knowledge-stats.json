@@ -196,7 +196,7 @@
   },
   {
     "date": "2025-09-25 09:10:12",
-    "wordCount": 2852,
+    "wordCount": 4324,
     "relativePath": "knowledge/后端 Web 基础/事务处理.md"
   },
   {
@@ -255,8 +255,18 @@
     "relativePath": "knowledge/后端面试/Java 集合.md"
   },
   {
+    "date": "2025-10-15 09:30:54",
+    "wordCount": 6434,
+    "relativePath": "knowledge/后端面试/MyBatis.md"
+  },
+  {
+    "date": "2025-10-17T13:55:22.272Z",
+    "wordCount": 688,
+    "relativePath": "knowledge/后端面试/Mysql.md"
+  },
+  {
     "date": "2025-10-10 08:49:23",
-    "wordCount": 6131,
+    "wordCount": 13127,
     "relativePath": "knowledge/后端面试/Spring.md"
   },
   {
@@ -275,7 +285,7 @@
     "relativePath": "knowledge/实习实训/Java后端与AI智能体开发全景梳理.md"
   },
   {
-    "date": "2025-10-13T10:50:33.017Z",
+    "date": "2025-10-17T13:55:22.277Z",
     "wordCount": 0,
     "relativePath": "knowledge/实习实训/社区管理系统功能驱动实现指导.md"
   }

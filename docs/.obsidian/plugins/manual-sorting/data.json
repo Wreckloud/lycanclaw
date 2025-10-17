@@ -61,6 +61,8 @@
       "knowledge/后端工具库/Logback-日志技术.md"
     ],
     "knowledge/后端面试": [
+      "knowledge/后端面试/Mysql.md",
+      "knowledge/后端面试/MyBatis.md",
       "knowledge/后端面试/Spring.md",
       "knowledge/后端面试/Java 集合.md",
       "knowledge/后端面试/网络编程.md",
