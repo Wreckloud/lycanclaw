@@ -55,6 +55,11 @@
     "relativePath": "knowledge/前端工具库/npm开始的JS包管理器.md"
   },
   {
+    "date": "2025-10-21 09:50:13",
+    "wordCount": 1217,
+    "relativePath": "knowledge/前端工具库/nvm.md"
+  },
+  {
     "date": "2025-06-07 18:06:38",
     "wordCount": 599,
     "relativePath": "knowledge/前端工具库/在项目重封装 Axios 请求.md"
@@ -210,14 +215,29 @@
     "relativePath": "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md"
   },
   {
+    "date": "2025-10-22 11:23:48",
+    "wordCount": 70,
+    "relativePath": "knowledge/后端 Web 基础/全局异常处理.md"
+  },
+  {
     "date": "2025-09-25 09:10:07",
     "wordCount": 3000,
     "relativePath": "knowledge/后端 Web 基础/分页查询.md"
   },
   {
+    "date": "2025-10-22 11:23:37",
+    "wordCount": 1523,
+    "relativePath": "knowledge/后端 Web 基础/数据回显.md"
+  },
+  {
     "date": "2025-10-13 09:18:56",
     "wordCount": 1184,
     "relativePath": "knowledge/后端 Web 基础/文件上传.md"
+  },
+  {
+    "date": "2025-10-27T13:27:41.064Z",
+    "wordCount": 4551,
+    "relativePath": "knowledge/后端 Web 基础/登录校验.md"
   },
   {
     "date": "2025-07-13 15:28:42",
@@ -256,12 +276,12 @@
   },
   {
     "date": "2025-10-15 09:30:54",
-    "wordCount": 6434,
+    "wordCount": 5819,
     "relativePath": "knowledge/后端面试/MyBatis.md"
   },
   {
-    "date": "2025-10-17T13:55:22.272Z",
-    "wordCount": 688,
+    "date": "2025-10-27T13:27:41.071Z",
+    "wordCount": 20530,
     "relativePath": "knowledge/后端面试/Mysql.md"
   },
   {
@@ -270,9 +290,24 @@
     "relativePath": "knowledge/后端面试/Spring.md"
   },
   {
+    "date": "2025-10-24 08:55:12",
+    "wordCount": 1157,
+    "relativePath": "knowledge/后端面试/Springboot.md"
+  },
+  {
+    "date": "2025-10-20 16:27:29",
+    "wordCount": 1916,
+    "relativePath": "knowledge/后端面试/springMVC.md"
+  },
+  {
     "date": "2025-09-05 09:12:32",
     "wordCount": 3248,
     "relativePath": "knowledge/后端面试/SQL 基础.md"
+  },
+  {
+    "date": "2025-10-27 08:40:21",
+    "wordCount": 2328,
+    "relativePath": "knowledge/后端面试/并发编程.md"
   },
   {
     "date": "2025-09-29 09:28:21",
@@ -285,7 +320,7 @@
     "relativePath": "knowledge/实习实训/Java后端与AI智能体开发全景梳理.md"
   },
   {
-    "date": "2025-10-17T13:55:22.277Z",
+    "date": "2025-10-27T13:27:41.076Z",
     "wordCount": 0,
     "relativePath": "knowledge/实习实训/社区管理系统功能驱动实现指导.md"
   }

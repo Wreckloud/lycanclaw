@@ -9,213 +9,279 @@ tags:
 
 # #{} 和 ${} 的区别
 
-`#{}` 是**预编译占位**，`${}` 是**字符串拼接**。
+`#` 是 MyBatis 中的**预编译占位符**，底层对应 JDBC 的 `PreparedStatement`。  
+执行前会把 `#{}` 替换为 `?`，再通过 `set` 方法安全赋值。  
+这样既能让 SQL 被缓存、执行更快，也能有效防止 SQL 注入（因为参数不会参与 SQL 结构拼接）。
 
-预编译代表 SQL 会在数据库层先生成执行计划，再安全地传入参数；拼接则是直接把参数值塞进 SQL 字符串本身。
+相比之下，`${}` 是**字符串直接替换**，相当于简单拼接。  
+它不参与预编译，因此**只能用于拼接 SQL 结构**（如表名、列名、ORDER BY 字段、LIMIT 参数等），  
+若直接用来接收用户输入，会造成注入风险。
 
-```sql
--- 使用 #{}：
-SELECT * FROM t_user WHERE id = #{id}
+# MyBatis 与 ORM 的区别
 
--- 解析后：
-SELECT * FROM t_user WHERE id = ?
-```
+**MyBatis** 是一种“半自动化”的持久层框架。开发者需要自己编写 SQL 语句，MyBatis 负责管理 JDBC 的底层操作（连接、执行、结果映射等）。  
+这样做虽然比全自动的 Hibernate 略繁琐，但**控制权在开发者手上**，SQL 可调优、可精细化定制，特别适合业务逻辑复杂、性能要求高、SQL 灵活多变的场景。
 
-```sql
--- 使用 ${}：
-SELECT * FROM t_user WHERE id = ${id}
+**Hibernate / JPA** 则属于“全自动化”ORM 框架。它能根据实体类结构自动生成 SQL，让开发者更专注于面向对象编程，但对 SQL 控制较弱、调优不便，适合结构稳定、增删改查占主导的场景。
 
--- 若 id = 1，解析后：
-SELECT * FROM t_user WHERE id = 1
-```
+因此：
 
-真正的重点在于两者的使用时机。业务参数几乎一律使用 `#{}`，因为它：
+- MyBatis 追求 **“灵活与可控”**；
+- Hibernate 追求 **“省力与抽象”**。
 
-- 能自动进行类型转换
-- 避免 SQL 注入
-- 保留执行计划缓存，效率更高
+大多数企业最终选择 MyBatis，是因为它**平衡了效率与掌控**——既简化了 JDBC，又保留了对 SQL 的主导权。
 
-而 `${}` 主要用在这种场景：
+# MyBatis 动态 SQL 标签
 
-- 表名、列名、排序字段这些**不能用 `?` 占位的结构**
-- 例如动态排序、动态表名
+MyBatis 的 **动态 SQL**，本质是让 SQL 能像 Java 逻辑一样“动起来”，但不再用字符串拼接，而是通过 XML 标签来控制拼接逻辑。  
+它的目的有两个：
 
-```sql
- SELECT * FROM ${tableName} ORDER BY ${columnName}
-```
+1. 减少 if-else 拼字符串的冗余，让 SQL 逻辑更清晰；
+2. 根据实际条件动态生成 SQL，既灵活又高效。
 
-如果硬把业务值用 `${}` 拼进去，那就等于**把防线全砸了**。比如：
+常见的标签包括：
 
-```sql
-SELECT * FROM t_user WHERE name = ${name}
-```
+- `<if>`：按条件拼接 SQL；
+- `<where>` / `<trim>`：智能地补 WHERE、去掉多余 AND；
+- `<set>`：动态更新时拼接 SET；
+- `<foreach>`：实现批量 IN 查询或批量插入；
+- `<choose>` / `<when>` / `<otherwise>`：实现多分支逻辑。
 
-当 `name` 是恶意字符串时，SQL 注入几乎是必然的结果。
+### 1. `<if>` 条件判断
 
-# MyBatis 与 ORM（Hibernate / JPA）的区别
-
-MyBatis 更偏向 **SQL 驱动**，ORM 框架更偏向 **对象模型驱动**。
-
-MyBatis 的核心是“让开发者自己写 SQL”，它只负责帮你减少 JDBC 的重复工作；  
-Hibernate / JPA 则希望“你不碰 SQL”，通过对象与表的映射自动生成 SQL。
-
-MyBatis 的特点：
-
-- 直接操作 SQL，开发者掌控力强
-- 灵活，可精准优化性能
-- 半自动映射：框架帮你封装 JDBC 过程（加载驱动、创建连接、执行语句），但 SQL 由你写
-- 学习成本相对低，上手快，但需要懂 SQL
-
-```sql
-<select id="findWolfById" parameterType="int" resultType="Wolf">
-    SELECT * FROM wolf WHERE id = #{id}
+```xml
+<select id="findWolf" resultType="Wolf">
+  SELECT * FROM wolf
+  <where>
+    <if test="name != null and name != ''">
+      wolf_name = #{name}
+    </if>
+    <if test="age != null">
+      AND wolf_age = #{age}
+    </if>
+  </where>
 </select>
 ```
 
-**Hibernate / JPA 的特点：**
+有条件时拼接对应语句，没有时自动忽略。  
+搭配 `<where>` 可自动处理多余的 `AND`。
 
-- 完全基于对象映射，开发者关注实体，不写或少写 SQL
-- 框架自动生成 SQL，维护复杂关系方便
-- 开发效率高，但性能和 SQL 细节的掌控力差
-- 学习曲线更陡，调优难度高
-
-```java
-Wolf wolf = entityManager.find(Wolf.class, 1);
-```
-
-这也意味着：
-
-- MyBatis 更适合对 SQL 性能有精确要求的场景
-- Hibernate / JPA 更适合结构稳定、业务模型清晰的大型项目
-
-# MyBatis 怎么封装动态 SQL？（常见的动态 SQL 标签）
-
-在 MyBatis 里，动态 SQL 是它区别于传统 JDBC 的一大亮点。它并不是简单的字符串拼接，而是通过 **XML 标签** 来在 SQL 语句中实现逻辑判断和灵活拼装。
-面试考这题时，核心要让对方听出你知道「**为什么要这么设计**」以及「**常用标签的适用场景**」。
-
-MyBatis 的动态 SQL 本质上是在执行前，对 Mapper 中的 SQL 进行一轮**逻辑解析**，最终生成一条完整可执行的 SQL。比如根据条件是否为空来决定是否拼接 `WHERE` 语句、遍历集合生成 `IN` 条件、选择不同分支等。
-
-**常见的动态 SQL 标签有：**  
-`<if>`、`<where>`、`<trim>`、`<set>`、`<foreach>`、`<choose>`、`<when>`、`<otherwise>`。
-
-- `<if>`  
-   最基本的条件判断标签，用来控制一段 SQL 是否生效。
+### 2. `<set>` 动态更新字段
 
 ```xml
-  <if test="wolfName != null">
-      AND wolf_name = #{wolfName}
-  </if>
-```
-
-这种方式可以避免无效条件拼接，让 SQL 更加灵活。
-
-- `<where>`  
-   自动处理 `WHERE` 关键字与多余的 `AND` / `OR`，不用手动判断是不是第一个条件。
-
-```xml
-  <where>
-      <if test="wolfId != null">id = #{wolfId}</if>
-      <if test="wolfName != null">AND wolf_name = #{wolfName}</if>
-  </where>
-```
-
-- `<trim>`  
-   类似 `<where>`，但更灵活，可以自定义前缀（如 `WHERE`、`SET`）、移除多余的前缀。
-
-```xml
-  <trim prefix="WHERE" prefixOverrides="AND | OR">
-      <if test="wolfId != null">AND id = #{wolfId}</if>
-      <if test="wolfName != null">AND wolf_name = #{wolfName}</if>
-  </trim>
-```
-
-- `<set>`  
-   多用于 `UPDATE` 语句，自动去掉多余的逗号。
-
-```xml
+<update id="updateWolf">
+  UPDATE wolf
   <set>
-      <if test="wolfName != null">wolf_name = #{wolfName},</if>
-      <if test="wolfAge != null">wolf_age = #{wolfAge}</if>
+    <if test="name != null"> wolf_name = #{name}, </if>
+    <if test="age != null"> wolf_age = #{age}, </if>
+    <if test="color != null"> color = #{color} </if>
   </set>
+  WHERE id = #{id}
+</update>
 ```
 
-- `<foreach>`  
-   循环集合，常用于 `IN` 条件或批量操作。
+`<set>` 会自动去掉最后多余的 `,`，避免拼接错误。
+
+### 3. `<foreach>` 批量操作
 
 ```xml
-  <foreach collection="ids" item="id" open="(" separator="," close=")">
-      #{id}
+<delete id="deleteByIds">
+  DELETE FROM wolf WHERE id IN
+  <foreach collection="idList" item="id" open="(" separator="," close=")">
+    #{id}
   </foreach>
+</delete>
 ```
 
-- `<choose>`、`<when>`、`<otherwise>`  
-   类似 Java 的 `switch-case`，从多种条件中选择一条执行。
+自动拼接成 `IN (1,2,3,4)`，常用于批量删除、查询或插入。
+
+### 4. `<choose>` 分支逻辑
 
 ```xml
-  <choose>
-      <when test="wolfName != null">
-          AND wolf_name = #{wolfName}
+<select id="findWolfSmart" resultType="Wolf">
+  SELECT * FROM wolf
+  <where>
+    <choose>
+      <when test="name != null">
+        wolf_name = #{name}
+      </when>
+      <when test="age != null">
+        wolf_age = #{age}
       </when>
       <otherwise>
-          AND wolf_age > 0
+        color = 'grey'
       </otherwise>
-  </choose>
+    </choose>
+  </where>
+</select>
 ```
 
-这些标签组合起来，就能让 SQL 根据不同的入参自动生成不同的语句，避免冗长的字符串拼接。相比手写 SQL 拼接，动态 SQL 不仅更安全，也更便于维护。
+相当于 Java 的 `switch ... case ... default`。只会匹配第一个满足的条件，避免多重判断。
 
-- 动态 SQL 不是“字符串拼接”，而是“SQL 模板 + 逻辑控制”
-- `if` 负责判断，`where/trim/set` 负责结构，`foreach` 负责循环，`choose` 负责分支
-- 动态 SQL 让 Mapper 变得更灵活，也让项目逻辑更干净
+### 5. `<trim>` 灵活控制前后缀
 
-# MyBatis 怎么实现分页？（利用插件 PageHelper）
+```xml
+<select id="findWolfTrim" resultType="Wolf">
+  SELECT * FROM wolf
+  <trim prefix="WHERE" prefixOverrides="AND |OR ">
+    <if test="name != null"> AND wolf_name = #{name} </if>
+    <if test="age != null"> AND wolf_age = #{age} </if>
+  </trim>
+</select>
+```
 
-面试要点只有两件事：
+`<trim>` 是 `<where>` 的加强版，可以自定义前后缀，更灵活。
 
-- 它是怎么做到的
-- 我怎么正确用
+# MyBatis 插件原理
 
-PageHelper 的核心是基于 MyBatis 插件机制对即将执行的 SQL 做“物理分页改写”，把你本来的查询自动改写成带 `LIMIT/OFFSET`（或对应方言语法）的 SQL，再把查询结果和分页信息一并返回。
+MyBatis 插件通过 **动态代理** 包装四大核心对象，MyBatis 的插件只能拦截这四种核心对象的方法：
 
-> 拦截待执行的 SQL → 按方言添加物理分页语句与参数。
+- `Executor`（SQL 的统一执行入口）
+- `StatementHandler`（负责生成/准备最终要执行的 SQL）
+- `ParameterHandler`（参数安全地绑定到占位符`?`上）
+- `ResultSetHandler`（把结果集映射成对象）
 
-PageHelper = MyBatis 插件 + SQL 改写 + 方言物理分页，对接一行 `startPage` 就能用；深分页要注意成本，必要时切换 **seek** 思路。
+在执行方法时“插队”执行我们自定义的逻辑。插件是基于 **责任链模式**，执行时会层层调用每个代理对象的 `intercept()` 方法。  
+我们实现插件时只需：
 
-分页的工作原理（面试时直接说这段就够）
+1. 实现 `Interceptor` 接口；
+2. 使用 `@Intercepts` 和 `@Signature` 标明拦截目标；
+3. 注册到 MyBatis 配置中。
 
-1. **执行前拦截**：插件拦截 MyBatis 的执行链（Executor/StatementHandler），拿到你写的原始查询。
-2. **SQL 重写**：根据数据库方言把查询改写为**物理分页**（MySQL 就是 `… LIMIT ?, ?`），并绑定分页参数。
-3. **继续放行**：把改写后的 SQL 交给数据库执行；必要时再执行一次统计总数的查询（框架完成）。
-4. **返回包装**：把结果列表和分页元信息（页码、页大小、总条数等）交给你使用。
+这使得开发者能在不修改源码的情况下，对 SQL 执行过程进行灵活扩展。
 
-代码层面的最小闭环
+插件靠动态代理包四大对象，拦方法、做逻辑、再放行。比如分页插件就是拦 `StatementHandler`，在 SQL 发出去前，偷偷在后面拼上 `LIMIT`。
+
+插件要实现 `Interceptor` 接口，写一个 `intercept` 方法：
 
 ```java
-// 1) 进入分页上下文（下一条查询会被分页）
-PageHelper.startPage(pageNum, pageSize);
+@Intercepts({
+    @Signature(
+        type = StatementHandler.class,     // 拦截目标对象类型
+        method = "prepare",                // 拦截目标方法
+        args = {Connection.class, Integer.class}  // 方法参数
+    )
+})
+public class MyPlugin implements Interceptor {
 
-// 2) 正常写你的 Mapper 查询（保持原样，不要自己拼 limit）
-List<User> list = userMapper.queryUsers(cond);
+    // 真正的拦截逻辑
+    @Override
+    public Object intercept(Invocation invocation) throws Throwable {
+        Object target = invocation.getTarget(); // 被拦截对象
+        Method method = invocation.getMethod(); // 被拦截方法
+        Object[] args = invocation.getArgs();   // 参数
 
-// 3) 需要元信息就包一层
-PageInfo<User> page = new PageInfo<>(list);
-// page.getTotal(), page.getList(), page.getPages()...
+        System.out.println("插件介入: " + method.getName());
+
+        // 执行原方法（放行）
+        return invocation.proceed();
+    }
+
+    // 插件包装逻辑（生成代理对象）
+    @Override
+    public Object plugin(Object target) {
+        return Plugin.wrap(target, this);
+    }
+
+    // 插件参数（可从配置文件中读取）
+    @Override
+    public void setProperties(Properties properties) {
+        System.out.println("插件参数：" + properties);
+    }
+}
 ```
 
-和面试官常见追问，直接这么接：
+| 方法              | 功能                               |
+| ----------------- | ---------------------------------- |
+| `intercept()`     | 拦截目标方法，执行增强逻辑（核心） |
+| `plugin()`        | 为目标对象创建代理（决定是否拦截） |
+| `setProperties()` | 读取插件参数（来自配置）           |
 
-- **为什么不自己写 `limit`？**  
-   PageHelper 统一做方言处理与统计，避免手写分页的遗漏与重复劳动；同时能与 MyBatis 的执行链无缝衔接（改写发生在 SQL 真正发送之前）。
-- **逻辑分页 vs 物理分页？**  
-   逻辑分页是查全量再截取，代价高；PageHelper 做的是**物理分页**，直接在数据库层面只取所需页。
-- **深分页怎么办？**  
-   MySQL 的“深分页”（`LIMIT a, b` 中的 `a` 很大）代价高，材料里也点到过这类写法；实战更建议“基于游标/主键的 seek 分页”来减负。
+MyBatis 初始化时会调用 `Plugin.wrap()` 给目标对象包一层代理。执行时先过你这关，再去干原来的事。
 
-可直接落地的使用习惯（少而精的要点）
+# MyBatis 怎么实现分页？
 
-- **把 `startPage` 紧挨查询**：它只对**紧随其后**的一次查询生效，隔了别的查询就会被消费掉。
-- **排序更稳妥**：要么在原 SQL 写 `ORDER BY`，要么使用 `PageHelper.orderBy("xxx desc")`，保证结果稳定。
-- **别手写 `limit` 混用**：交给插件统一改写，避免方言/统计行为不一致。
+PageHelper 的核心是靠 MyBatis **插件拦截** `StatementHandler.prepare(...)`，把一条“原始查询 SQL”自动改造成“统计总数 + 只查当页数据”。
+
+1. 生成一条 **count SQL**：`select count(*) from (原SQL) t` → 拿到总记录数；
+2. 改写 **原 SQL**：在末尾拼接数据库方言的分页片段（如 MySQL 的 `limit ?, ?`）。
+
+我们只需在查询前声明 `PageHelper.startPage(pageNum, pageSize)`，再执行原查询，最后 `new PageInfo<>(list)` 就能同时拿到列表和总数。
+记住，它只作用于紧随其后的那次查询，排序用 `orderBy()` 更安全。
+
+```java
+@GetMapping("/wolves")
+public PageInfo<Wolf> list(@RequestParam int pageNum, @RequestParam int pageSize) {
+    PageHelper.startPage(pageNum, pageSize);   // ① 声明“我要分页”
+    PageHelper.orderBy("wolf_age desc");       // ②（可选）安全地加 ORDER BY
+    List<Wolf> list = wolfMapper.selectAll();  // ③ 执行“正常查询”
+    return new PageInfo<>(list);               // ④ 封装：数据 + 总数 + 页码信息
+}
+```
+
+Mapper：
+
+```xml
+<select id="selectAll" resultType="Wolf">
+  SELECT id, wolf_name, wolf_age, color FROM wolf
+</select>
+```
+
+# MyBatis 主键回填的实现
+
+插入成功后，把数据库生成的主键（通常是自增 id）“回填”到你的 Java 对象里（如 `wolf.setId(...)` 已有值）。
+
+1. **JDBC 原生回填**（推荐，MySQL 常用）：`useGeneratedKeys + keyProperty`
+2. **显式查询主键**（跨库通用/有序列的库）：`<selectKey>`（如 Oracle sequence、部分场景下的 PG）
+
+### `useGeneratedKeys`（最常见的方式）
+
+这种方式是依赖数据库的主键自增机制（如 MySQL 的 `AUTO_INCREMENT`）。  
+在 Mapper XML 中，直接在 `<insert>` 标签上配置两个属性：
+
+```xml
+<insert id="addWolf" parameterType="Wolf"
+        useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO wolf (wolf_name, wolf_age)
+    VALUES (#{wolfName}, #{wolfAge})
+</insert>
+```
+
+- `useGeneratedKeys="true"` 表示启用 JDBC 的 `getGeneratedKeys` 方法，自动获取自增主键。
+- `keyProperty="id"` 告诉 MyBatis 主键要回填到实体类的哪个属性上。
+
+执行后：
+
+```java
+Wolf wolf = new Wolf();
+wolf.setWolfName("Shadow");
+wolf.setWolfAge(7);
+wolfMapper.addWolf(wolf);
+System.out.println(wolf.getId());  // 已被自动回填
+```
+
+这一方式简单直接，推荐在主键为自增 ID 时使用。
+
+### `<selectKey>`（适用于非自增主键）
+
+有些数据库不支持 `getGeneratedKeys`，或者主键生成策略是雪花 ID、序列、UUID，这时可以通过 `<selectKey>` 手动查询或生成主键，再回填。
+
+```xml
+<insert id="addWolfWithSeq" parameterType="Wolf">
+    <selectKey keyProperty="id" order="BEFORE" resultType="int">
+        SELECT NEXTVAL('wolf_seq')
+    </selectKey>
+    INSERT INTO wolf (id, wolf_name, wolf_age)
+    VALUES (#{id}, #{wolfName}, #{wolfAge})
+</insert>
+```
+
+- `keyProperty`：指定回填的字段。
+- `order="BEFORE"`：表示在执行 INSERT 之前先执行 `selectKey` 语句。  
+   （也可以用 `AFTER`，适用于某些返回主键的数据库）
+- `resultType`：指定返回的主键类型。
+
+这种方式更灵活，适合自定义主键生成策略，比如雪花算法、数据库序列等。
 
 # MyBatis 使用的设计模式
 
@@ -278,67 +344,6 @@ mapper.selectWolf(1);
 
 这些步骤由抽象类固定模板，具体的执行逻辑由子类扩展实现。  
 这种结构的好处是：**稳定主流程，允许局部差异化**，非常适合扩展事务、缓存、插件等特性。
-
-# MyBatis 主键回填的实现
-
-MyBatis 中，**主键回填**的本质是：在 `INSERT` 语句执行后，将数据库自动生成的主键值取出来，再**反填到实体对象里**。  
-这在保存新记录时非常常见，比如新增用户、帖子、订单后要立即拿到主键 ID 做后续操作。
-
-MyBatis 提供了两种方式来实现这个能力：`useGeneratedKeys` 与 `<selectKey>`。
-
-- 自增主键 → `useGeneratedKeys`，自动回填
-- 自定义主键 → `<selectKey>`，先查/生成再插入
-
-主键回填的核心 → JDBC 获取或手动查询主键 → 回写到对象属性
-
-### `useGeneratedKeys`（最常见的方式）
-
-这种方式是依赖数据库的主键自增机制（如 MySQL 的 `AUTO_INCREMENT`）。  
-在 Mapper XML 中，直接在 `<insert>` 标签上配置两个属性：
-
-```xml
-<insert id="addWolf" parameterType="Wolf"
-        useGeneratedKeys="true" keyProperty="id">
-    INSERT INTO wolf (wolf_name, wolf_age)
-    VALUES (#{wolfName}, #{wolfAge})
-</insert>
-```
-
-- `useGeneratedKeys="true"` 表示启用 JDBC 的 `getGeneratedKeys` 方法，自动获取自增主键。
-- `keyProperty="id"` 告诉 MyBatis 主键要回填到实体类的哪个属性上。
-
-执行后：
-
-```java
-Wolf wolf = new Wolf();
-wolf.setWolfName("Shadow");
-wolf.setWolfAge(7);
-wolfMapper.addWolf(wolf);
-System.out.println(wolf.getId());  // ✅ 已被自动回填
-```
-
-这一方式简单直接，推荐在主键为自增 ID 时使用。
-
-### `<selectKey>`（适用于非自增主键）
-
-有些数据库不支持 `getGeneratedKeys`，或者主键生成策略是雪花 ID、序列、UUID，这时可以通过 `<selectKey>` 手动查询或生成主键，再回填。
-
-```xml
-<insert id="addWolfWithSeq" parameterType="Wolf">
-    <selectKey keyProperty="id" order="BEFORE" resultType="int">
-        SELECT NEXTVAL('wolf_seq')
-    </selectKey>
-    INSERT INTO wolf (id, wolf_name, wolf_age)
-    VALUES (#{id}, #{wolfName}, #{wolfAge})
-</insert>
-```
-
-- `keyProperty`：指定回填的字段。
-- `order="BEFORE"`：表示在执行 INSERT 之前先执行 `selectKey` 语句。  
-   （也可以用 `AFTER`，适用于某些返回主键的数据库）
-- `resultType`：指定返回的主键类型。
-
-这种方式更灵活，适合自定义主键生成策略，比如雪花算法、数据库序列等。
 
 # MyBatis 一级缓存与二级缓存的区别
 
@@ -450,7 +455,7 @@ SqlSessionFactory factory =
 
 这一步的产物就是 `SqlSessionFactory`，是后面所有会话的“母体”。
 
----
+
 
 ## 会话阶段：创建 SqlSession
 
@@ -543,51 +548,6 @@ MyBatis 的强大扩展性来自它的插件机制。
 - `ResultSetHandler` 根据 ResultMap 规则封装对象
 - 写入缓存（如开启二级缓存）
 - SqlSession 关闭时，清空一级缓存、释放连接、提交或回滚事务。
-
-# MyBatis 插件原理
-
-MyBatis 的插件，本质就是在 SQL 执行链的**关键节点插钩子**。  
-它不会改核心流程，只是用 **动态代理** 把原来的对象“包一层”，在方法执行前后加自己的逻辑。
-
-当 MyBatis 创建执行组件时，比如 `StatementHandler`，它会依次经过插件链，每个插件都能决定：  
-“我要不要拦这个方法，要的话做点什么，不要的话直接放行”。
-
-插件只能动四个核心对象的手脚：
-
-- `Executor`（控制 SQL 执行过程）
-- `StatementHandler`（SQL 准备与执行）
-- `ParameterHandler`（参数处理）
-- `ResultSetHandler`（结果映射）
-
-插件靠动态代理包四大对象，拦方法、做逻辑、再放行。比如分页插件就是拦 `StatementHandler`，在 SQL 发出去前，偷偷在后面拼上 `LIMIT`。
-
-## 插件的样子
-
-插件要实现 `Interceptor` 接口，写一个 `intercept` 方法：
-
-```java
-@Override
-public Object intercept(Invocation invocation) throws Throwable {
-    // 这里可以改 SQL、做日志、审计……
-    return invocation.proceed(); // 放行
-}
-```
-
-MyBatis 初始化时会调用 `Plugin.wrap()` 给目标对象包一层代理。  
-执行时先过你这关，再去干原来的事。
-
----
-
-## 什么时候用
-
-这个机制适合所有“**横切**”的逻辑，比如：
-
-- 分页
-- SQL 审计 / 改写
-- 参数脱敏
-- 结果集处理
-
-不用去改 Mapper，也不用碰框架源码，一层插件就能搞定。
 
 # Xml 映射文件与 Dao 接口的工作原理
 

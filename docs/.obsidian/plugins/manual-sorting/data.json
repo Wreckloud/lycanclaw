@@ -44,6 +44,9 @@
       "knowledge/后端 Java 基础/扩展部分-配置与特殊文件.md"
     ],
     "knowledge/后端 Web 基础": [
+      "knowledge/后端 Web 基础/登录校验.md",
+      "knowledge/后端 Web 基础/全局异常处理.md",
+      "knowledge/后端 Web 基础/数据回显.md",
       "knowledge/后端 Web 基础/互联网与星辰大海.md",
       "knowledge/后端 Web 基础/HTTP 通信协议.md",
       "knowledge/后端 Web 基础/SSM注解与XML对照实践.md",
@@ -61,6 +64,9 @@
       "knowledge/后端工具库/Logback-日志技术.md"
     ],
     "knowledge/后端面试": [
+      "knowledge/后端面试/并发编程.md",
+      "knowledge/后端面试/Springboot.md",
+      "knowledge/后端面试/springMVC.md",
       "knowledge/后端面试/Mysql.md",
       "knowledge/后端面试/MyBatis.md",
       "knowledge/后端面试/Spring.md",
@@ -73,6 +79,7 @@
       "knowledge/后端数据库/MySQL 数据库基础.md"
     ],
     "knowledge/前端工具库": [
+      "knowledge/前端工具库/nvm.md",
       "knowledge/前端工具库/在项目重封装 Axios 请求.md",
       "knowledge/前端工具库/Axios-现代化的 Ajax 请求工具.md",
       "knowledge/前端工具库/Element-Plus SCSS 方案定制主题.md",
