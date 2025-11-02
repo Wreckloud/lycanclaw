@@ -1,5 +1,5 @@
 ---
-title: Maven-项目构建工具
+title: Maven 基础 -项目构建工具
 date: 2024-09-24 11:06:33
 description: 这是一篇新文章!
 publish: true
@@ -24,13 +24,13 @@ Maven 的核心架构由三大块组成：
 - 依赖管理系统 (Dependency Management)：处理项目间的依赖关系
 - 构建生命周期/阶段 (Build Lifecycle & Phases)：规范化构建过程
 
-![Maven核心概念](../../public/images/文章资源/maven-项目构建工具/file-20250627153322075.jpg)
+![Maven核心概念](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153322075.jpg)
 
 ### 依赖管理
 
 没有 Maven 之前，我们需要手动下载每个库的 JAR 文件，然后添加到项目的类路径中——这个过程既繁琐又容易出错。
 
-![手动管理依赖](../../public/images/文章资源/maven-项目构建工具/file-20250627153329632.jpg)
+![手动管理依赖](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153329632.jpg)
 
 而使用 Maven 时，只需在 `pom.xml` 文件中添加简单的配置：
 
@@ -44,13 +44,13 @@ Maven 的核心架构由三大块组成：
 
 Maven 会自动下载这个库以及它所需的所有其他库，解决了"依赖地狱"问题。
 
-![Maven依赖管理](../../public/images/文章资源/maven-项目构建工具/file-20250627153333570.jpg)
+![Maven依赖管理](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153333570.jpg)
 
 ### 标准化构建流程
 
 Maven 提供了标准化的项目构建流程，无论项目规模大小，都可以用相同的命令完成构建。
 
-![Maven构建流程](../../public/images/文章资源/maven-项目构建工具/file-20250627153337513.jpg)
+![Maven构建流程](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153337513.jpg)
 
 通过简单的命令如 `mvn clean install`，Maven 就能自动完成编译代码、运行测试、打包和部署等一系列操作，大大提高了开发效率。
 
@@ -58,7 +58,7 @@ Maven 提供了标准化的项目构建流程，无论项目规模大小，都�
 
 过去，不同 IDE 创建的项目结构差异很大，项目迁移十分痛苦。
 
-![不同IDE的项目结构](../../public/images/文章资源/maven-项目构建工具/file-20250627153342740.jpg)
+![不同IDE的项目结构](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153342740.jpg)
 
 Maven 定义了一套标准的项目目录结构，使得任何人接手项目都能快速理解项目组织方式：
 
@@ -77,7 +77,7 @@ Maven 定义了一套标准的项目目录结构，使得任何人接手项目�
 
 在官网页面下滑至 Files 区域：
 
-![Maven下载页面](../../public/images/文章资源/maven-项目构建工具/file-20250627153347827.jpg)
+![Maven下载页面](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153347827.jpg)
 
 将下载的压缩包解压到一个便于管理的目录。
 
@@ -99,7 +99,7 @@ Maven 仓库用于存储所有依赖的 JAR 包和插件，是 Maven 工作的�
 2. 找到 `<localRepository>` 标签（可以用 Ctrl+F 搜索）
 3. 在注释外添加本地仓库路径
 
-![配置本地仓库](../../public/images/文章资源/maven-项目构建工具/file-20250627153353447.jpg)
+![配置本地仓库](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153353447.jpg)
 
 配置示例：
 
@@ -122,7 +122,7 @@ Maven 官方的中央仓库在国外，访问速度较慢，可以配置国内�
 </mirror>
 ```
 
-![配置阿里云镜像](../../public/images/文章资源/maven-项目构建工具/file-20250627153359311.jpg)
+![配置阿里云镜像](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153359311.jpg)
 
 更多镜像信息可参考 [阿里云 Maven 镜像站使用指南](https://developer.aliyun.com/mvn/guide)。
 
@@ -136,15 +136,15 @@ Maven 官方的中央仓库在国外，访问速度较慢，可以配置国内�
 
 1. 打开系统设置，进入"关于"→"系统高级设置"→"环境变量"
 
-   ![系统环境变量](../../public/images/文章资源/maven-项目构建工具/file-20250627153405010.jpg)
+   ![系统环境变量](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153405010.jpg)
 
 2. 在"系统变量"区域，点击"新建"，创建名为 `Maven_Home` 的变量，值为 Maven 的安装目录
 
-   ![Maven\_Home变量](../../public/images/文章资源/maven-项目构建工具/file-20250627153408863.jpg)
+   ![Maven\_Home变量](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153408863.jpg)
 
 3. 找到 `Path` 变量，点击"编辑"，添加新条目 `%Maven_Home%\bin`
 
-   ![Path变量](../../public/images/文章资源/maven-项目构建工具/file-20250627153413549.jpg)
+   ![Path变量](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153413549.jpg)
 
 4. 依次点击"确定"保存所有设置
 
@@ -160,7 +160,7 @@ mvn -v
 
 如果看到类似下图的 Maven 版本信息，说明安装成功：
 
-![Maven版本验证](../../public/images/文章资源/maven-项目构建工具/file-20250627153421409.jpg)
+![Maven版本验证](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153421409.jpg)
 
 # 在 IDEA 集成 Maven
 
@@ -174,7 +174,7 @@ IntelliJ IDEA 提供了对 Maven 的强大支持，可以直接在 IDE 中使用
 
 1. 在 IDEA 启动页面，选择"Customize"选项卡，点击"All settings..."
 
-   ![IDEA设置入口](../../public/images/文章资源/maven-项目构建工具/file-20250627153430674.jpg)
+   ![IDEA设置入口](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153430674.jpg)
 
 2. 导航至"Build, Execution, Deployment" → "Build Tools" → "Maven"
 
@@ -184,7 +184,7 @@ IntelliJ IDEA 提供了对 Maven 的强大支持，可以直接在 IDE 中使用
    - User settings file：选择 settings.xml 文件
    - Local repository：确认本地仓库位置
 
-   ![IDEA Maven配置](../../public/images/文章资源/maven-项目构建工具/file-20250627153438171.jpg)
+   ![IDEA Maven配置](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153438171.jpg)
 
 4. 点击"Apply"应用设置
 
@@ -197,7 +197,7 @@ Maven 项目需要匹配适当的 Java 版本：
 
 > 推荐：Maven 3.9.x 版本建议使用 Java 17 或更高版本
 
-![Java版本配置](../../public/images/文章资源/maven-项目构建工具/file-20250627153443498.jpg)
+![Java版本配置](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153443498.jpg)
 
 别忘记点击"Apply"保存设置！
 
@@ -208,13 +208,13 @@ Maven 项目遵循标准的目录结构，IDEA 提供了简单的向导来创建
 1. 选择"New Project"或"File" → "New" → "Project..."
 2. 在项目类型中选择"Java"，然后在构建工具(Build tool)中选择"Maven"
 
-   ![创建Maven项目](../../public/images/文章资源/maven-项目构建工具/file-20250627153447883.jpg)
+   ![创建Maven项目](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153447883.jpg)
 
 3. 填写项目信息后点击"Create"
 
 首次创建时，Maven 会下载必要的依赖和插件，可能需要等待片刻。创建完成后，你会看到标准的 Maven 项目结构：
 
-![Maven项目结构](../../public/images/文章资源/maven-项目构建工具/file-20250627153452052.jpg)
+![Maven项目结构](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153452052.jpg)
 
 ## 导入已有项目
 
@@ -224,12 +224,12 @@ Maven 项目遵循标准的目录结构，IDEA 提供了简单的向导来创建
 
 1. 在 IDEA 右侧边栏找到 Maven 图标
 
-   ![Maven工具栏](../../public/images/文章资源/maven-项目构建工具/file-20250627153458995.jpg)
+   ![Maven工具栏](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153458995.jpg)
 
 2. 点击"+"按钮，找到目标 Maven 项目的 `pom.xml` 文件，双击导入
 
 > 如果没有显示，可在"View" → "Appearance" → "Tool Windows Bar"中打开
-> ![](../../public/images/文章资源/maven-项目构建工具/file-20250627162621679.jpg)
+> ![](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627162621679.jpg)
 
 ### 方式二
 
@@ -237,7 +237,7 @@ Maven 项目遵循标准的目录结构，IDEA 提供了简单的向导来创建
 2. 在左侧面板选择"Modules"，点击"+"添加模块
 3. 选择"Import Module"，找到目标 `pom.xml` 文件
 
-   ![通过项目结构导入](../../public/images/文章资源/maven-项目构建工具/file-20250627153508896.jpg)
+   ![通过项目结构导入](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153508896.jpg)
 
 # Maven 核心特性
 
@@ -275,11 +275,11 @@ IDEA 提供智能提示和自动补全功能，输入前几个字符就可以看
 
 如果 IDEA 不提供自动补全，可以访问 [Maven 中央仓库](https://mvnrepository.com/) 搜索需要的库，然后复制依赖配置。
 
-![依赖自动补全](../../public/images/文章资源/maven-项目构建工具/file-20250627153522190.jpg)
+![依赖自动补全](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153522190.jpg)
 
 添加依赖后，点击工具栏中的"重新加载"按钮更新项目：
 
-![重载Maven项目](../../public/images/文章资源/maven-项目构建工具/file-20250627153525761.jpg)
+![重载Maven项目](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153525761.jpg)
 
 ## 依赖传递
 
@@ -287,13 +287,13 @@ Maven 的一大优势是能够自动处理传递依赖关系。当你添加一�
 
 例如，添加 `logback-classic` 后，Maven 会自动引入它所依赖的 `logback-core` 和 `slf4j-api`：
 
-![依赖传递示例](../../public/images/文章资源/maven-项目构建工具/file-20250627153533957.jpg)
+![依赖传递示例](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153533957.jpg)
 
 **查看依赖树**
 
 要查看完整的依赖关系，右键点击 `pom.xml` 文件，选择"Show Dependencies"或"Diagrams" → "Show Diagram"：
 
-![查看依赖树](../../public/images/文章资源/maven-项目构建工具/file-20250627153538570.jpg)
+![查看依赖树](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153538570.jpg)
 
 依赖可视化帮助你了解项目的依赖结构，识别潜在的版本冲突。
 
@@ -307,7 +307,7 @@ Maven 有三套独立的生命周期：
 2. **default**：构建项目
 3. **site**：生成项目文档
 
-![Maven生命周期](../../public/images/文章资源/maven-项目构建工具/file-20250627153544893.jpg)
+![Maven生命周期](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153544893.jpg)
 
 **核心构建阶段**
 
@@ -325,7 +325,7 @@ Maven 有三套独立的生命周期：
 
 在 IDEA 中，可以通过 Maven 工具窗口直接执行这些生命周期阶段：
 
-![IDEA中执行Maven命令](../../public/images/文章资源/maven-项目构建工具/file-20250627153552089.jpg)
+![IDEA中执行Maven命令](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153552089.jpg)
 
 ## 高级依赖管理
 

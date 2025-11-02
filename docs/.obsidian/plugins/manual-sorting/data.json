@@ -44,6 +44,8 @@
       "knowledge/后端 Java 基础/扩展部分-配置与特殊文件.md"
     ],
     "knowledge/后端 Web 基础": [
+      "knowledge/后端 Web 基础/spring boot原理.md",
+      "knowledge/后端 Web 基础/AOP 面向切面编程.md",
       "knowledge/后端 Web 基础/登录校验.md",
       "knowledge/后端 Web 基础/全局异常处理.md",
       "knowledge/后端 Web 基础/数据回显.md",
@@ -58,7 +60,10 @@
       "knowledge/后端 Web 基础/事务处理.md"
     ],
     "knowledge/后端工具库": [
-      "knowledge/后端工具库/Maven-项目构建工具.md",
+      "knowledge/后端工具库/Swagger-生成接口文档.md",
+      "knowledge/后端工具库/nginx-反向代理与负载均衡.md",
+      "knowledge/后端工具库/Maven 基础 - 项目构建工具.md",
+      "knowledge/后端工具库/Maven 进阶 - 分模块设计.md",
       "knowledge/后端工具库/Docker-虚拟化技术.md",
       "knowledge/后端工具库/JUnit-单元测试插件.md",
       "knowledge/后端工具库/Logback-日志技术.md"
@@ -79,9 +84,9 @@
       "knowledge/后端数据库/MySQL 数据库基础.md"
     ],
     "knowledge/前端工具库": [
-      "knowledge/前端工具库/nvm.md",
-      "knowledge/前端工具库/在项目重封装 Axios 请求.md",
+      "knowledge/前端工具库/nvm-Node.js版本控制.md",
       "knowledge/前端工具库/Axios-现代化的 Ajax 请求工具.md",
+      "knowledge/前端工具库/Axios-在项目重封装 Axios 请求.md",
       "knowledge/前端工具库/Element-Plus SCSS 方案定制主题.md",
       "knowledge/前端工具库/ESLint+Prettier 代码规范自动化.md",
       "knowledge/前端工具库/Git-版本控制.md",
@@ -110,10 +115,10 @@
       "knowledge/前端面试/ES6 - JavaScript 中的继承.md"
     ],
     "knowledge/实习实训": [
-      "knowledge/实习实训/社区管理系统功能驱动实现指导.md",
       "knowledge/实习实训/Java后端与AI智能体开发全景梳理.md"
     ],
     "projects": [
+      "projects/苍穹外卖学习计划.md",
       "projects/index.md",
       "projects/online-shoping-vue3.md"
     ],
@@ -133,6 +138,9 @@
       "public/images/首页/default-cover.png"
     ],
     "public/images/文章资源": [
+      "public/images/文章资源/spring-boot原理",
+      "public/images/文章资源/登录校验",
+      "public/images/文章资源/maven-基础-项目构建工具",
       "public/images/文章资源/java-基础",
       "public/images/文章资源/spring入门",
       "public/images/文章资源/tomcat-web-servlet容器",
@@ -167,7 +175,6 @@
       "public/images/文章资源/javascript-常用api",
       "public/images/文章资源/javascript-进阶语法",
       "public/images/文章资源/junit-单元测试插件",
-      "public/images/文章资源/maven-项目构建工具",
       "public/images/文章资源/mysql-安装",
       "public/images/文章资源/mysql-数据库基础",
       "public/images/文章资源/vue-2-渐进式框架",
@@ -185,6 +192,13 @@
     ],
     "public/images/文章资源/从-jdbc-到-mybatis-的数据库与连接池": [
       "public/images/文章资源/从-jdbc-到-mybatis-的数据库与连接池/file-20250902143953528.jpg"
+    ],
+    "public/images/文章资源/登录校验": [
+      "public/images/文章资源/登录校验/file-20251030113319987.jpg",
+      "public/images/文章资源/登录校验/file-20251030113404938.jpg",
+      "public/images/文章资源/登录校验/file-20251030113448546.jpg",
+      "public/images/文章资源/登录校验/file-20251030113552553.jpg",
+      "public/images/文章资源/登录校验/file-20251030140417056.jpg"
     ],
     "public/images/文章资源/第二部分-常用-api": [
       "public/images/文章资源/第二部分-常用-api/file-20250627102707270.jpg",
@@ -359,35 +373,35 @@
       "public/images/文章资源/junit-单元测试插件/file-20250627164757975.jpg",
       "public/images/文章资源/junit-单元测试插件/file-20250627164823953.jpg"
     ],
-    "public/images/文章资源/maven-项目构建工具": [
-      "public/images/文章资源/maven-项目构建工具/file-20250627153322075.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153329632.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153333570.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153337513.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153342740.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153347827.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153353447.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153359311.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153405010.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153408863.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153413549.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153421409.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153430674.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153433977.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153438171.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153443498.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153447883.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153452052.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153458995.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153503483.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153508896.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153522190.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153525761.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153533957.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153538570.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153544893.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627153552089.jpg",
-      "public/images/文章资源/maven-项目构建工具/file-20250627162621679.jpg"
+    "public/images/文章资源/maven-基础-项目构建工具": [
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153322075.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153329632.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153333570.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153337513.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153342740.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153347827.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153353447.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153359311.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153405010.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153408863.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153413549.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153421409.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153430674.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153433977.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153438171.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153443498.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153447883.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153452052.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153458995.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153503483.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153508896.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153522190.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153525761.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153533957.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153538570.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153544893.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153552089.jpg",
+      "public/images/文章资源/maven-基础-项目构建工具/file-20250627162621679.jpg"
     ],
     "public/images/文章资源/mysql-安装": [
       "public/images/文章资源/mysql-安装/file-20250828170516235.jpg",
@@ -403,6 +417,10 @@
       "public/images/文章资源/mysql-数据库基础/file-20250828161616705.jpg",
       "public/images/文章资源/mysql-数据库基础/file-20250828161928392.jpg",
       "public/images/文章资源/mysql-数据库基础/file-20250829124756354.jpg"
+    ],
+    "public/images/文章资源/spring-boot原理": [
+      "public/images/文章资源/spring-boot原理/file-20251031095537046.jpg",
+      "public/images/文章资源/spring-boot原理/file-20251031095747772.jpg"
     ],
     "public/images/文章资源/spring入门": [
       "public/images/文章资源/spring入门/file-20250904092441316.jpg",

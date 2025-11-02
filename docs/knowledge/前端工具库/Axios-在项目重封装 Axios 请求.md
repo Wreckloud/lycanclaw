@@ -1,5 +1,5 @@
 ---
-title: 在项目重封装 Axios 请求
+title: Axios-在项目重封装 Axios 请求
 date: 2025-06-07 18:06:38
 description: 这是一篇新文章!
 publish: true

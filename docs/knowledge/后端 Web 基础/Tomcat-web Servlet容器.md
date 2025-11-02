@@ -52,8 +52,6 @@ Tomcat 的使用非常简单，它是一个“解压即用”的软件，不需�
 - [Tomcat 8](https://tomcat.apache.org/download-80.cgi)（老版本，适配较旧的 Servlet/JSP 规范）
 - [Tomcat Archive](https://archive.apache.org/dist/tomcat/)（历史归档，包含所有已发布的旧版本）
 
-好 🐺，我帮你把 **启动与关闭** 和 **部署项目** 合并整理成一个部分，表达更连贯、读起来不卡：
-
 ## 启动、关闭与部署
 
 Tomcat 是“解压即用”的软件，启动和关闭都依赖于 `bin` 目录下的脚本文件。

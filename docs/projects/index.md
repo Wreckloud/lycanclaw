@@ -8,5 +8,4 @@ comment: false
 
 ## 项目列表
 
-- [进行中-VUE3实战-在线商城系统](./online-shoping-vue3.md)
-- more...
+- [苍穹外卖](苍穹外卖学习计划.md)

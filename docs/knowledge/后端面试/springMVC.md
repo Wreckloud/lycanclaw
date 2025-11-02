@@ -25,15 +25,6 @@ SpringMVC 的核心是 **`DispatcherServlet` 作为前端控制器**，它负责
 
 SpringMVC 的核心运行依赖一组内置组件，每个组件都在请求处理链上承担不同职责，绝大部分都在 `DispatcherServlet` 初始化时完成装配。实际面试中，不需要把所有组件都背下来，重点掌握其中常用的几个就够了。
 
-- **MultipartResolver**：文件上传解析器，处理多部分表单请求（如文件上传）。
-- **LocaleResolver**：国际化解析器，用于根据请求信息确定语言和区域。
-- **ThemeResolver**：主题解析器，一般较少用。
-- **HandlerMapping**：用于保存“请求 URL → 对应处理器（Controller）”的映射关系。
-- **HandlerAdapter**：处理器适配器，通过反射调用目标处理器方法。
-- **HandlerExceptionResolver**：异常解析器，用于统一处理控制器执行过程中的异常。
-- **RequestToViewNameTranslator**：把请求转换为视图名，较少用。
-- **FlashMapManager**：在重定向后临时保存数据，避免 request 信息丢失。
-
 在这些组件中，实际开发和面试重点是：
 
 - **HandlerMapping**（定位处理器）
@@ -42,6 +33,15 @@ SpringMVC 的核心运行依赖一组内置组件，每个组件都在请求处�
 - **MultipartResolver**（文件上传）
 
 其他组件只需知道作用场景即可。
+
+- **MultipartResolver**：文件上传解析器，处理多部分表单请求（如文件上传）。
+- **LocaleResolver**：国际化解析器，用于根据请求信息确定语言和区域。
+- **ThemeResolver**：主题解析器，一般较少用。
+- **HandlerMapping**：用于保存“请求 URL → 对应处理器（Controller）”的映射关系。
+- **HandlerAdapter**：处理器适配器，通过反射调用目标处理器方法。
+- **HandlerExceptionResolver**：异常解析器，用于统一处理控制器执行过程中的异常。
+- **RequestToViewNameTranslator**：把请求转换为视图名，较少用。
+- **FlashMapManager**：在重定向后临时保存数据，避免 request 信息丢失。
 
 # 了解 springmvc 异常是怎么处理的？
 
@@ -126,8 +126,6 @@ SpringMVC 提供了一系列注解来简化请求的映射与参数绑定，大�
    用于绑定请求头中的信息到方法参数，比如 `token`、`User-Agent` 等。
 
 掌握这些注解的使用场景，就能覆盖绝大多数 Web 接口开发需求。
-
-要继续下一题吗？👉 “springmvc 源码（组件初始化与请求处理）”
 
 # springmvc 源码
 
