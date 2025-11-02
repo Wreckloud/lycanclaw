@@ -7,20 +7,46 @@ publish: true
 tags: 
 ---
 
-# 反向代理怎么把前端 URL 拼到后端
+# 反向代理
 
-## 场景设定（狼群任务系统）
+在实际开发中，前端项目与后端服务往往运行在不同端口：
 
-- **前端访问入口**（Nginx 80 端口）：  
-   `http://localhost/api/…`
-- **后端服务**（Spring Boot 在 8080 端口，带统一前缀 `/admin`）：  
-   `http://localhost:8080/admin/…`
+- 前端：`localhost:80`（Nginx）
+- 后端：`localhost:8080`（Spring Boot）
+
+这时，前端直接请求后端接口会遇到跨域问题。  
+反向代理（Reverse Proxy） 的作用，就是让 Nginx 作为中间层，接收前端请求后**转发给后端**，让前端只与 Nginx 打交道。
+
+反向代理还能：
+
+- **解决跨域**  
+   浏览器只看到 `localhost:80`，但 Nginx 实际帮我们转发到 `localhost:8080`。
+- **统一入口**  
+   所有请求都先经过 Nginx，可以在这里加鉴权、缓存、限流等功能。
+- **隐藏后端地址**  
+   外部访问不到真实服务端口，提升安全性。
 
 目标：  
-前端发 `http://localhost/api/employee/login`  
-→ Nginx 转发到 `http://localhost:8080/admin/employee/login`
+前端发出
 
-## 关键配置（就看这一段）
+```
+http://localhost/api/employee/login
+```
+
+→ 由 Nginx 转发到
+
+```
+http://localhost:8080/admin/employee/login
+```
+
+## 配置文件
+
+Nginx 的主配置文件通常位于：
+
+- Windows 安装版：`nginx/conf/nginx.conf`
+- Linux 一般位于：`/etc/nginx/nginx.conf` 或 `conf.d/*.conf`
+
+我们可以在主配置文件中直接添加，也可以在 `conf.d` 目录下新建一个独立文件（例如 `wolf.conf`）。
 
 ```nginx
 # nginx.conf（或 conf.d/wolf.conf）
@@ -28,84 +54,66 @@ server {
     listen       80;
     server_name  localhost;
 
-    # 把 /api/ 开头的请求转发给后端 8080，并把前缀换成 /admin/
+    # 把 /api/ 开头的请求转发到后端 8080，并替换前缀为 /admin/
     location /api/ {
         proxy_pass http://localhost:8080/admin/;
-        # 可选：真实IP/头部、超时等按需加
+        # 可选配置
         # proxy_set_header X-Real-IP $remote_addr;
         # proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 }
 ```
 
-**这行最重要：**
+这行是关键：
 
 ```
 location /api/ { proxy_pass http://localhost:8080/admin/; }
 ```
 
-它的含义是——**把命中的 `/api/…` 这一段换成 `/admin/…`，然后转发给 8080**。
+意思是：
 
-### 映射举例（直观对照表）
+任何以 `/api/` 开头的请求，Nginx 都会把 `/api/` 换成 `/admin/`，再转发到 8080 端口。
 
-| 前端请求（进入 Nginx） | Nginx 转发到后端（8080） |
-| ---------------------- | ------------------------ |
-| `/api/employee/login`  | `/admin/employee/login`  |
-| `/api/missions/1024`   | `/admin/missions/1024`   |
-| `/api/upload/file`     | `/admin/upload/file`     |
+例如
 
-拼接规则就这么简单：**把 `/api/` 切掉、换成 `/admin/`，其他路径原样跟在后面。**
+| 前端访问（进入 Nginx） | 实际转发（到后端）      |
+| ---------------------- | ----------------------- |
+| `/api/employee/login`  | `/admin/employee/login` |
 
----
+拼接规则很简单：
 
-## 为什么要“斜杠”对齐（最容易出错的地方）
+把 `/api/` 切掉，换成 `/admin/`，其余部分原样保留。Nginx 的 `proxy_pass` 在结尾带不带 `/`，行为完全不同。
 
-Nginx 的 `proxy_pass` 在**有无结尾斜杠**时，行为不一样：
-
-1. 有结尾斜杠（**推荐**）
+推荐写法：结尾都有斜杠
 
 ```nginx
 location /api/ {
-    proxy_pass http://localhost:8080/admin/;  # 有 /
+    proxy_pass http://localhost:8080/admin/;
 }
 ```
 
-- 规则：用 `/admin/` **替换** `/api/` 前缀
-- 结果：`/api/employee/login` → `/admin/employee/login` ✓
+- 替换规则：用 `/admin/` 替换 `/api/`
+- 实际效果：`/api/employee/login` → `/admin/employee/login`
 
-2. 没结尾斜杠
+错误写法：proxy_pass 没有斜杠
 
 ```nginx
 location /api/ {
-    proxy_pass http://localhost:8080/admin;   # 没 /
+    proxy_pass http://localhost:8080/admin;
 }
 ```
 
-- 规则：把**整个原始 URI 直接拼到** `/admin` 后面
-- 结果：`/api/employee/login` → `/admin/api/employee/login`（多了 `/api`，错！）
+- 拼接规则：原路径直接拼在 `/admin` 后面
+- 实际效果：`/api/employee/login` → `/admin/api/employee/login`（多了 `/api`）
 
-> 结论：**location 和 proxy_pass 两边的斜杠保持对称**，绝大多数场景用“都有斜杠”的写法就不会错。
+因此，最安全的习惯是：**`location` 与 `proxy_pass` 两边都带斜杠。**
 
----
+# 负载均衡
 
-## 如何快速验证（两种方法）
+在生产环境里，一台后端服务器往往扛不住大量请求。这时候我们会部署**多台后端实例**（比如两台 Spring Boot 服务），让它们分摊压力。  
+Nginx 就是前面的“调度者”，决定每个请求要交给哪一台后端。
 
-1. **curl 本机验证**
-
-```bash
-# 前端入口
-curl -i http://localhost/api/employee/login
-# 看后端日志是否收到了 /admin/employee/login
-```
-
-2. **后端日志观察**  
-   在后端 `Controller` 打印 `request.getRequestURI()`，确认确实命中了 `/admin/employee/login`。
-
----
-
-## 负载均衡时的写法（思路不变）
-
-多台后端时，把目标地址换成 upstream 名称即可，**路径替换规则完全一样**：
+只要后端有多台机器，就用 `upstream` 把它们定义成一个“后端组”，然后在 `proxy_pass` 里使用组名即可：
 
 ```nginx
 upstream wolf_backends {
@@ -127,118 +135,85 @@ server {
 }
 ```
 
----
+Nginx 提供多种调度策略，最常用的就是**轮询、权重、ip_hash**。
 
-## 常见坑与排查顺序
+| 策略名称         | 含义                                   | 使用场景             |
+| ---------------- | -------------------------------------- | -------------------- |
+| **轮询（默认）** | 每个请求依次分配到各个服务器，平均分配 | 最常见，默认方式     |
+| **weight 权重**  | 通过 `weight` 设置不同机器分配比例     | 一台机器性能更强时用 |
+| **ip_hash**      | 根据客户端 IP 固定分配后端             | 需要保持用户会话时用 |
+| **least_conn**   | 优先分配给当前连接最少的机器           | 连接数不均时效果好   |
+| **url_hash**     | 相同 URL 总是发到同一台机器            | 用于缓存类项目       |
+| **fair**         | 响应快的机器优先                       | 第三方模块，了解即可 |
 
-1. **路径多了 `/api`**：多半是 `proxy_pass` 少了尾部 `/`。
-2. **404**：后端根本没有这个 `/admin/...` 路由；或后端有**应用上下文**（比如 `/wolf-app`），Nginx 也要一起补上：
+### 轮询（默认）
 
-   ```nginx
-   proxy_pass http://localhost:8080/wolf-app/admin/;
-   ```
-
-3. **跨域或被拦截**：看后端是否加了权限过滤、CORS 配置；Nginx 也可统一加跨域头部（按需）。
-4. **文件/静态资源也被代理了**：给静态资源单独 `location`，或仅让 `/api/` 走代理，静态交给前端容器/静态目录。
-
----
-
-## 完整最小示例（可直接用）
-
-**后端**（Spring Boot，示意）：
-
-```java
-@RestController
-@RequestMapping("/admin/employee")
-public class EmployeeController {
-    @PostMapping("/login")
-    public Map<String, Object> login(@RequestBody LoginDTO dto) {
-        return Map.of("code", 0, "msg", "ok", "data", Map.of("token", "wolf-token"));
-    }
-}
-```
-
-**Nginx**：
+Nginx 默认使用轮询调度，不写策略时自动启用。
 
 ```nginx
-server {
-    listen 80;
-    server_name localhost;
-
-    location /api/ {
-        proxy_pass http://localhost:8080/admin/;  # 斜杠对齐
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    }
+upstream wolf_backends {
+    server 192.168.100.128:8080;
+    server 192.168.100.129:8080;
 }
 ```
 
-**前端调用**：  
-`POST http://localhost/api/employee/login` → 成功代理到后端 `POST /admin/employee/login`。
-
----
-
-记住一句话就够了：  
-**看 location，换前缀；看 proxy_pass，定后缀；两边斜杠要对齐。**  
-会读这行配置，你就能看懂任何项目的“前端 URL 是怎么拼到后端”的。
-
-如果打开别人的项目
-
-前端发送的请求，是如何请求到后端服务的？
-前端请求地址：http://localhost/api/employee/login
-后端接口地址：http://localhost:8080/admin/employee/login
-
-nginx 反向代理，就是将前端发送的动态请求由 nginx 转发到后端服务器
-
-是什么
+分配效果：
 
 ```
-# 反向代理，处理管理端发送的请求
-location /api/
-proxy_passhttp://localhost:8080/admin/;
-`#proxy_passhttp://webservers/admin/;
+请求1 → 128
+请求2 → 129
+请求3 → 128
+请求4 → 129
 ```
 
-会发现 nginx 里写的配置如下
+就像狼群轮流接单，**最公平也最简单**。
 
-用例子具体说明怎么拼接的
-后端环境搭建－前后端联调
-nginx 反向代理的配置方式：
-server
-listen 80;
-server_namelocalhost;
-location//api/{
-proxy_passhttp://localhost:8080/admin/;#反向代理
-nginx.conf
+### weight 权重
 
-后端环境搭建－前后端联调
-nginx 负载均衡的配置方式：
-upstream webservers{
-server 192.168.100.128:8080;
-server 192.168.100.129:8080;
-server
-listen 80;
-server_namelocalhost;
-location/api/{
-proxy_passhttp://webservers/admin/;#负载均衡
+某些机器更强、CPU 更多，就可以多分一点请求。
 
-nginx 反向代理的好处
-提高访问速度
-进行负载均衡
-保证后端服务安全, 前端用户不知道后端服务 ip
+```nginx
+upstream wolf_backends {
+    server 192.168.100.128:8080 weight=3;
+    server 192.168.100.129:8080 weight=1;
+}
+```
 
-所谓负载均衡，就是把大量的请求按照我们指定
-的方式均衡的分配给集群中的每台服务器
+分配比例大约是 **3:1**。  
+128 比 129 多分配三倍请求，适合资源不均的情况。
 
-nginx 负载均衡策略：
-名称说明
-轮询默认方式
-weight 权重方式，默认为 1，权重越高，被分配的客户端请求就越多
-ip_hash 依据 ip 分配方式，这样每个访客可以固定访问一个后端服务
-least_conn 依据最少连接方式，把请求优先分配给连接数少的后端服务
+> 记住一句话：**weight 越大，吃得越多。**
 
-用的最多的就是前面三个
+### ip_hash
 
-url_hash 依据 url 分配方式，这样相同的 url 会被分配到同一个后端服务
-fair 依据响应时间方式，响应时间短的服务将会被优先分配
+有时候我们希望同一个用户始终访问同一台后端，比如登录状态存在 session 里，这时就用 `ip_hash`。
+
+```nginx
+upstream wolf_backends {
+    ip_hash;
+    server 192.168.100.128:8080;
+    server 192.168.100.129:8080;
+}
+```
+
+这样：
+
+- 用户 A（IP 相同）→ 永远访问 128
+- 用户 B → 永远访问 129
+
+可以保证“会话粘性”，防止登录状态丢失。
+
+> 类似“记住这只猎物是谁，下次还交给同一只狼处理”。
+
+### least_conn（了解）
+
+当有些连接长时间保持时，用这个策略更公平——  
+谁忙得少就给谁。
+
+```nginx
+upstream wolf_backends {
+    least_conn;
+    server 192.168.100.128:8080;
+    server 192.168.100.129:8080;
+}
+```
