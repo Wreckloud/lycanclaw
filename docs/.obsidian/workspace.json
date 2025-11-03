@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端工具库/nginx-反向代理与负载均衡.md",
+                "file": "knowledge/后端 Web 基础/spring boot原理.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "nginx-反向代理与负载均衡"
+              "title": "spring boot原理"
             }
           },
           {
@@ -69,13 +69,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/后端工具库/nginx-反向代理与负载均衡.md",
+                "file": "knowledge/后端 Web 基础/spring boot原理.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "nginx-反向代理与负载均衡 的大纲"
+              "title": "spring boot原理 的大纲"
             }
           },
           {
@@ -184,14 +184,15 @@
   },
   "active": "371a6084d4a0acb0",
   "lastOpenFiles": [
+    "knowledge/后端 Web 基础/HTTP 通信协议.md",
+    "knowledge/后端 Web 基础/spring boot原理.md",
+    "knowledge/后端 Java 基础/第一部分-基础语法.md",
+    "knowledge/后端工具库/nginx-反向代理与负载均衡.md",
     "knowledge/后端工具库/Swagger-生成接口文档.md",
     "knowledge/后端 Web 基础/登录校验.md",
     "knowledge/后端面试/SQL 基础.md",
     "knowledge/后端数据库/MySQL 数据库基础.md",
-    "knowledge/后端 Java 基础/第一部分-基础语法.md",
     "projects/苍穹外卖学习计划.md",
-    "knowledge/后端工具库/nginx-反向代理与负载均衡.md",
-    "knowledge/后端 Web 基础/spring boot原理.md",
     "public/images/文章资源/spring-boot原理/file-20251031095747772.jpg",
     "public/images/文章资源/spring-boot原理/file-20251031095610566.jpg",
     "public/images/文章资源/spring-boot原理/file-20251031095537046.jpg",
@@ -199,7 +200,6 @@
     "knowledge/后端 Web 基础/全局异常处理.md",
     "knowledge/后端 Web 基础/数据回显.md",
     "knowledge/后端 Web 基础/互联网与星辰大海.md",
-    "knowledge/后端 Web 基础/HTTP 通信协议.md",
     "knowledge/后端 Web 基础/Tomcat-web Servlet容器.md",
     "knowledge/后端 Web 基础/Spring入门.md",
     "knowledge/后端工具库/Maven 进阶 - 分模块设计.md",

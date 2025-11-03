@@ -80,8 +80,6 @@ location /api/ { proxy_pass http://localhost:8080/admin/; }
 | ---------------------- | ----------------------- |
 | `/api/employee/login`  | `/admin/employee/login` |
 
-拼接规则很简单：
-
 把 `/api/` 切掉，换成 `/admin/`，其余部分原样保留。Nginx 的 `proxy_pass` 在结尾带不带 `/`，行为完全不同。
 
 推荐写法：结尾都有斜杠
@@ -182,8 +180,6 @@ upstream wolf_backends {
 分配比例大约是 **3:1**。  
 128 比 129 多分配三倍请求，适合资源不均的情况。
 
-> 记住一句话：**weight 越大，吃得越多。**
-
 ### ip_hash
 
 有时候我们希望同一个用户始终访问同一台后端，比如登录状态存在 session 里，这时就用 `ip_hash`。
@@ -203,12 +199,9 @@ upstream wolf_backends {
 
 可以保证“会话粘性”，防止登录状态丢失。
 
-> 类似“记住这只猎物是谁，下次还交给同一只狼处理”。
-
 ### least_conn（了解）
 
-当有些连接长时间保持时，用这个策略更公平——  
-谁忙得少就给谁。
+当有些连接长时间保持时，用这个策略更公平——谁忙得少就给谁。
 
 ```nginx
 upstream wolf_backends {

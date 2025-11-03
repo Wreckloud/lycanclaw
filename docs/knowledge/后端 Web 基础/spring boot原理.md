@@ -1,10 +1,10 @@
 ---
-title: 'spring boot原理'
-date: '2025-10-31 09:48:29'
-description: '这是一篇新文章!'
+title: spring boot原理
+date: 2025-11-03 10:35:21
+description: 这是一篇新文章!
 order: 0
 publish: true
-tags: 
+tags:
 ---
 约定大于配置
 
@@ -89,6 +89,8 @@ private ApplicationContext applicationContext;
 
 观察到他们拿到的地址是一致的, 所以默认是单例的.
 
+
+在IDEA中， 点击Actuator就能查看spring容器的bean， 高版本需要点击一下得到依赖
 
 ### bean作用域
 
@@ -208,3 +210,117 @@ private SAxReader saxReader;不报错了
 
 通过aBean注解的name或value属性可以声明bean的名称，如果不指定，默认bean的名称就是方法名。
 如果第三方bean需要依赖其它bean对象，直接在bean定义方法中设置形参即可，容器会根据类型自动装配。
+
+# 起步依赖原理
+
+spring framework 配置繁琐，springboot就是为了简化配置，快速搭建。约定大于配置。
+
+为甚摸这么快捷
+1.起步以来
+2.自动装配
+
+### 起步依赖
+
+springfamework要引入一大堆依赖， 而springboot引入，起步就可以了， 起步依赖就包含了那些必须的依赖， 因为以来具有传递性。
+
+pringBoot中，为什么引l入了起步依赖，其他相关依赖都有了？
+·起步依赖的原理是Maven的依赖传递
+
+### 自动装配
+
+这个才是boot的重中之重
+
+自动配置
+SpringBoot的自动配置就是当spring容器启动后，一些配置类、bean对象就自动存入到了Ioc容器中，不需要我们
+手动去声明，从而简化了开发，省去了繁琐的配置操作。
+
+为什么可以这样呢？
+
+#### 实现方案
+
+自动配置实现方案一
+使用aComponentScan组件扫描注解，手动扫描引入的第三方依赖中的bean。
+o
+@ComponentScan({"com.example","com.itheima"})
+@SpringBootApplication
+public class SpringbootwebConfigApplication {
+
+但是这种方式一旦引入大量依赖， 数组就会很长， 使用繁琐 性能低
+
+
+自动配置实现方案二这种是重点。
+●方案二：@Import导入。使用aImport导入的类会被Spring加载到Ioc容器中，导入形式主要有以下几种：
+1。导入普通类
+2.导入配置类
+3。导入ImportSelector 接口实现类
+
+最终的 EnableXxxx注解，封装@Import注解解
+
+什么第三方依赖中使用@component及其衍生注解声明bean不生效？
+·基于aComponent及其衍生注解声明的bean要想生效，需要被组件扫描注解扫描到。
+2.有哪些方案可以使其生效呢？
+a。通过aComponentScan注解扫描指定的包
+b.通过aImport注解将其导入到Ioc容器中（四种常见方式）
+
+普通类、配置类、ImportSelector实现列、@EnableXxx
+
+
+#### 源码跟踪
+
+怎么阅读源码，找到主线， 找到入口。经验之谈，因为你第一次看你也不知道那个是主线
+
+自动配置-源码跟踪
+@SpringBootApplication
+public class SpringbootWebConfigApplication{
+public static void main(String[]rgs）{
+SpringApplication.run(SpringbootWebConfigApplication.class，args);
+
+@SpringBootApplication是核心， 最最最神奇的注解， 点进去发现他是一个复合注解
+@SpringBootConuration
+@EnableAutoConfiguration
+@ComponentScan(excludeFilters=@Filter(type =FilterType.CUSTOM，classes=TypeExcludeFilter.class)，
+@Filter(type =FilterType.CUSToM，classes =AutoConfigurationExcludeFilter.class)})
+public@interface SpringBootApplication
+
+该注解标识在SpringBoot工程引导类上，是SpringBoot中最最最重要的注解。该注解由三个部分组成：
+1.aSpringBootConfiguration：该注解与@Configuration注解作用相同，用来声明当前也是一个配置类。
+2.aComponentScan：组件扫描，默认扫描当前引导类所在包及其子包。
+3.@EnableAutoConfiguration：SpringBoot实现自动化配置的核心注解。
+
+
+这其中重要的又是 @EnableAutoConfiguration， 点开看看
+@AutoConfigurationPackage
+@Impor(AutoConfigurationImpoector.class)
+public@interface EnableAutoConfiguration{
+发现 全类名， 在META-INF/spring/org.springframework.lNot.autoconfigure.AutoConfiguration.imp
+spring在这个文件里提前准备了一些依赖。
+
+在低版本（2.7.o以前)的springboot中，自动配置类（XxxAutoConfiguration)是定义在spring.factories文件中。
+
+不过这里有152个依赖， 我们使用的时候会全都使用吗？ 
+不会， 因为还有条件注解，只有满足一些条件才会被加载
+
+#### 条件注解
+
+condition打头的就是
+
+自动配置原理-@Conditional
+●作用：按照一定的条件进行判断，在满足给定条件后才会注册对应的bean对象到SpringIOc容器中。
+●位置：方法、类
++aConditional本身是一个父注解，派生出大量的子注解：
+@ConditionaLOnClass：判断环境中是否有对应字节码文件，才注册bean到Ioc容器。
+@ConditionaLOnMissingBean：判断环境中没有对应的bean（类型或名称），才注册bean到Ioc容器。
+@ConditionaLonProperty：判断配置文件中有对应属性和值，才注册bean到Ioc容器。
+
+当然还有很多， 不过大体上也是跟上面的注解差不多
+
+@Bean
+aConditionalonClass（name="io.jsonwebtoken.Jwts"）//当前环境存在指定的这个类时，才声明该bean
+public HeaderParser headerParser(){...}
+@Bean
+aConditionalonMissingBean//当不存在当前类型的bean时，才声明该bean
+public HeaderParser headerParser(){...}
+。
+@Bean
+aConditionalonProperty（name="name"，havingValue="itheima"）//配置文件中存在对应的属性和值，才注册bean到Ioc容器
+public HeaderP通Java147
