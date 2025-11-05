@@ -1132,3 +1132,32 @@ public String hunt() { ... }
 - `@EnableAsync`：启用异步调用（配合 `@Async`）。
 
 一般写在配置类或启动类上就行。
+
+
+VO DTO
+
+
+复制对象工具类
+
+
+Treatlocal
+
+方式一：在属性上加入注解，对日期进行格式化
+@DateTimeFormat(pattern = "yyyy-MM-dd") 进来
+@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") 出去
+
+不推荐直接
+
+方式二：在WebMvcConfiguration中扩展SpringMVC的消息转换器，统一对日期类型进行格式化处理
+
+扩展mvc框架的消息转换器
+*@paramconverters
+*
+protected void extendMessageConverters(List<HttpMessageConverter<?>>converters）{
+Log.info（"开始扩展消息转换器...")；
+//创建一个消息转化器对象
+MappingJackson2HttpMessageConverter converter =new MappingJackson2HttpMessageConverter();
+//设置对象转换器，可以将Java对象转为json字符串
+converter.setobjectMapper(new JacksonobjectMapper());
+//将我们自己的转换器放入springMvc框架的容器中
+converters.add(o,converter);

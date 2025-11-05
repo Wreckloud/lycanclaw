@@ -105,9 +105,9 @@ public class RecordTimeAspect {
     @Around("execution(* com.wreckloud.service.impl.DeptServiceImpl.*(..))")
     public Object recordTime(ProceedingJoinPoint pjp) throws Throwable {
         long beginTime = System.currentTimeMillis();
-        
+
         Object result = pjp.proceed();  // 调用原始方法
-        
+
         long endTime = System.currentTimeMillis();
         log.info("执行耗时：{}ms", endTime - beginTime);
         return result;
@@ -302,10 +302,7 @@ public void doSomething() { ... }
 然后写切入点：
 
 ```java
-@Pointcut("@annotation(com.wreckloud.anno.Log)")
-public void logPointcut() {}
-
-@Before("logPointcut()")
+@Before("@annotation(com.wreckloud.anno.Log)")
 public void before() {
     log.info("before");
 }
@@ -354,18 +351,18 @@ Spring 中提供了两个相关对象：
 @Before("pt()")
 public void before(JoinPoint joinPoint) {
 
-    // 1. 目标类名
+    // 1. 目标类名  返回完整类名字符串 `com.wreckloud.wolfpack.controller.MissionController`
     String className = joinPoint.getTarget().getClass().getName();
     log.info("className = {}", className);
 
-    // 2. 方法签名
+    // 2. 方法签名 返回 MethodSignature（方法签名对象）里面能读出方法名、返回类型、参数类型等
     Signature signature = joinPoint.getSignature();
 
-    // 3. 方法名
+    // 3. 方法名 返回方法名字本身 `createMission`
     String methodName = signature.getName();
     log.info("methodName = {}", methodName);
 
-    // 4. 方法参数
+    // 4. 方法参数 返回 Object[]，就是这次调用传进来的真实参数数组 `[MissionDTO@xxxx, RequestFacade@xxxx, "abc.def.ghi"]`
     Object[] args = joinPoint.getArgs();
     log.info("args = {}", Arrays.toString(args));
 }

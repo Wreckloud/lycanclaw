@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端 Web 基础/spring boot原理.md",
+                "file": "knowledge/后端 Web 基础/AOP 面向切面编程.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "spring boot原理"
+              "title": "AOP 面向切面编程"
             }
           },
           {
@@ -41,16 +41,16 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端 Java 基础/第三部分-IO 流.md",
+                "file": "knowledge/前端工具库/Git-版本控制.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "第三部分-IO 流"
+              "title": "Git-版本控制"
             }
           }
         ],
-        "currentTab": 1
+        "currentTab": 2
       }
     ],
     "direction": "vertical"
@@ -69,13 +69,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/后端 Web 基础/spring boot原理.md",
+                "file": "knowledge/前端工具库/Git-版本控制.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "spring boot原理 的大纲"
+              "title": "Git-版本控制 的大纲"
             }
           },
           {
@@ -109,7 +109,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 257.5
+    "width": 237.5
   },
   "right": {
     "id": "318f4ed2312b0f42",
@@ -182,16 +182,29 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "371a6084d4a0acb0",
+  "active": "52b95caea32cc57d",
   "lastOpenFiles": [
-    "knowledge/后端 Web 基础/HTTP 通信协议.md",
+    "public/images/文章资源/git-版本控制/file-20250607142847158.jpg",
+    "knowledge/前端工具库/Git-版本控制.md",
+    "public/images/文章资源/git-版本控制/file-20250607142840466.jpg",
+    "public/images/文章资源/git-版本控制/file-20250607142835490.jpg",
     "knowledge/后端 Web 基础/spring boot原理.md",
+    "knowledge/后端面试/Springboot.md",
+    "knowledge/后端面试/并发编程.md",
+    "knowledge/后端数据库/MySQL 数据库基础.md",
+    "knowledge/后端 Web 基础/AOP 面向切面编程.md",
+    "knowledge/后端 Java 基础/第四部分-反射与注解.md",
     "knowledge/后端 Java 基础/第一部分-基础语法.md",
+    "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md",
+    "knowledge/后端 Web 基础/Spring入门.md",
+    "knowledge/后端 Web 基础/分页查询.md",
+    "knowledge/后端 Java 基础/第三部分-IO 流.md",
+    "knowledge/后端 Web 基础/HTTP 通信协议.md",
+    "knowledge/后端 Web 基础/SSM注解与XML对照实践.md",
     "knowledge/后端工具库/nginx-反向代理与负载均衡.md",
     "knowledge/后端工具库/Swagger-生成接口文档.md",
     "knowledge/后端 Web 基础/登录校验.md",
     "knowledge/后端面试/SQL 基础.md",
-    "knowledge/后端数据库/MySQL 数据库基础.md",
     "projects/苍穹外卖学习计划.md",
     "public/images/文章资源/spring-boot原理/file-20251031095747772.jpg",
     "public/images/文章资源/spring-boot原理/file-20251031095610566.jpg",
@@ -201,28 +214,15 @@
     "knowledge/后端 Web 基础/数据回显.md",
     "knowledge/后端 Web 基础/互联网与星辰大海.md",
     "knowledge/后端 Web 基础/Tomcat-web Servlet容器.md",
-    "knowledge/后端 Web 基础/Spring入门.md",
     "knowledge/后端工具库/Maven 进阶 - 分模块设计.md",
     "knowledge/后端面试/Mysql.md",
-    "knowledge/后端面试/并发编程.md",
-    "knowledge/前端工具库/Git-版本控制.md",
-    "knowledge/前端工具库/Axios-现代化的 Ajax 请求工具.md",
-    "knowledge/前端工具库/Axios-在项目重封装 Axios 请求.md",
-    "knowledge/前端工具库/nvm-Node.js版本控制.md",
-    "knowledge/前端工具库/npm开始的JS包管理器.md",
-    "knowledge/前端框架/VUE3状态管理 - Pinia(替代Vuex).md",
-    "knowledge/前端面试/常见算法.md",
-    "knowledge/前端面试/深入 this.md",
-    "knowledge/前端面试/ES6 - JavaScript 中的继承.md",
     "public/images/文章资源/登录校验/file-20251030140417056.jpg",
     "public/images/文章资源/登录校验/file-20251030113552553.jpg",
     "public/images/文章资源/登录校验/file-20251030113209290.jpg",
     "public/images/文章资源/登录校验/file-20251030113448546.jpg",
     "public/images/文章资源/登录校验/file-20251030113404938.jpg",
-    "public/images/文章资源/登录校验/file-20251030113319987.jpg",
     "public/images/文章资源/登录校验",
     "public/images/文章资源/maven-基础-项目构建工具",
-    "public/images/文章资源/java-基础/file-20250929102023688.jpg",
     "public/images/文章资源/java-基础",
     "public/images/文章资源/spring入门",
     "public/images/文章资源/tomcat-web-servlet容器",

@@ -51,7 +51,6 @@
       "knowledge/后端 Web 基础/数据回显.md",
       "knowledge/后端 Web 基础/互联网与星辰大海.md",
       "knowledge/后端 Web 基础/HTTP 通信协议.md",
-      "knowledge/后端 Web 基础/SSM注解与XML对照实践.md",
       "knowledge/后端 Web 基础/Tomcat-web Servlet容器.md",
       "knowledge/后端 Web 基础/Spring入门.md",
       "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md",
@@ -123,6 +122,7 @@
       "projects/online-shoping-vue3.md"
     ],
     "public": [
+      "public/contribution-stats.json",
       "public/images",
       "public/default.png",
       "public/knowledge-stats.json",

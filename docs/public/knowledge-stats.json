@@ -51,7 +51,7 @@
   },
   {
     "date": "2025-04-30 15:48:01",
-    "wordCount": 2653,
+    "wordCount": 2342,
     "relativePath": "knowledge/前端工具库/Git-版本控制.md"
   },
   {
@@ -121,7 +121,7 @@
   },
   {
     "date": "2024-03-30 19:04:12",
-    "wordCount": 9716,
+    "wordCount": 9988,
     "relativePath": "knowledge/后端 Java 基础/第一部分-基础语法.md"
   },
   {
@@ -186,23 +186,18 @@
   },
   {
     "date": "2025-10-28 20:06:03",
-    "wordCount": 2569,
+    "wordCount": 2639,
     "relativePath": "knowledge/后端 Web 基础/AOP 面向切面编程.md"
   },
   {
-    "date": "2025-10-31 09:48:29",
-    "wordCount": 1627,
+    "date": "2025-11-03 10:35:21",
+    "wordCount": 2715,
     "relativePath": "knowledge/后端 Web 基础/spring boot原理.md"
   },
   {
     "date": "2024-12-01 16:27:02",
-    "wordCount": 8677,
+    "wordCount": 8846,
     "relativePath": "knowledge/后端 Web 基础/Spring入门.md"
-  },
-  {
-    "date": "2025-09-29 16:07:46",
-    "wordCount": 6579,
-    "relativePath": "knowledge/后端 Web 基础/SSM注解与XML对照实践.md"
   },
   {
     "date": "2025-08-28 14:16:22",
@@ -276,7 +271,7 @@
   },
   {
     "date": "2025-11-02 10:49:56",
-    "wordCount": 1174,
+    "wordCount": 1134,
     "relativePath": "knowledge/后端工具库/nginx-反向代理与负载均衡.md"
   },
   {
@@ -305,7 +300,7 @@
     "relativePath": "knowledge/后端面试/MyBatis.md"
   },
   {
-    "date": "2025-11-02T15:27:46.840Z",
+    "date": "2025-11-05T07:42:10.528Z",
     "wordCount": 19083,
     "relativePath": "knowledge/后端面试/Mysql.md"
   },
