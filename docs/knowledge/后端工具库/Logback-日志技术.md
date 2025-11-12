@@ -118,6 +118,30 @@ public class Test {
 
 通过配置文件可以决定日志写到哪里（控制台、文件等），以及输出哪些级别的日志。
 
+### 使用注解自动生成对象
+
+上面的写法属于“手动创建 Logger 对象”。  
+在实际项目中我们更常见的是使用 `@Slf4j` 注解，这个注解会自动帮我们生成 logger 对象，就不需要自己写：
+
+```java
+@Slf4j
+public class Test {
+    public static void main(String[] args) {
+        log.info("程序开始执行");
+        int r = 10 / 2;
+        log.info("结果 = {}", r);
+    }
+}
+```
+
+等价于你手动写的：
+
+```java
+private static final Logger LOGGER = LoggerFactory.getLogger(Test.class);
+```
+
+只是 `@Slf4j` 自动把它生成了，而且默认变量名就是 `log`。这种注解方式写法更简洁、统一，是企业项目最常用的方式。
+
 # 日志级别
 
 在日志系统中，**级别**用来区分信息的重要性。不同的级别会决定日志是否被记录下来。常见的日志级别（从低到高）如下：

@@ -117,10 +117,9 @@ public Result publish(@RequestBody MissionDTO missionDTO){
 ```java
 @ApiModel("任务发布请求数据模型")
 public class MissionDTO {
-    @ApiModelProperty("任务标题")
+
     private String title;
 
-    @ApiModelProperty("任务描述")
     private String content;
 }
 ```

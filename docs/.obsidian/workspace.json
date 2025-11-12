@@ -22,35 +22,35 @@
             }
           },
           {
-            "id": "371a6084d4a0acb0",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "knowledge/后端 Web 基础/AOP 面向切面编程.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "AOP 面向切面编程"
-            }
-          },
-          {
             "id": "52b95caea32cc57d",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/前端工具库/Git-版本控制.md",
+                "file": "knowledge/后端工具库/HttpClient.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Git-版本控制"
+              "title": "HttpClient"
+            }
+          },
+          {
+            "id": "70ede8fdd65a2052",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "projects/苍穹外卖学习计划.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "苍穹外卖学习计划"
             }
           }
         ],
-        "currentTab": 2
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -69,13 +69,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/前端工具库/Git-版本控制.md",
+                "file": "knowledge/后端工具库/HttpClient.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Git-版本控制 的大纲"
+              "title": "HttpClient 的大纲"
             }
           },
           {
@@ -109,7 +109,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 237.5
+    "width": 200
   },
   "right": {
     "id": "318f4ed2312b0f42",
@@ -184,43 +184,45 @@
   },
   "active": "52b95caea32cc57d",
   "lastOpenFiles": [
-    "public/images/文章资源/git-版本控制/file-20250607142847158.jpg",
-    "knowledge/前端工具库/Git-版本控制.md",
-    "public/images/文章资源/git-版本控制/file-20250607142840466.jpg",
-    "public/images/文章资源/git-版本控制/file-20250607142835490.jpg",
-    "knowledge/后端 Web 基础/spring boot原理.md",
-    "knowledge/后端面试/Springboot.md",
-    "knowledge/后端面试/并发编程.md",
-    "knowledge/后端数据库/MySQL 数据库基础.md",
-    "knowledge/后端 Web 基础/AOP 面向切面编程.md",
-    "knowledge/后端 Java 基础/第四部分-反射与注解.md",
+    "projects/苍穹外卖学习计划.md",
+    "knowledge/后端工具库/HttpClient.md",
+    "knowledge/实习实训/Java后端与AI智能体开发全景梳理.md",
     "knowledge/后端 Java 基础/第一部分-基础语法.md",
+    "knowledge/后端面试/实习面试清单.md",
+    "knowledge/后端面试/【给自己的话】你并不晚.md",
+    "knowledge/后端数据库/Redis 数据库基础.md",
+    "knowledge/后端 Java 基础/第一部分-面向对象.md",
+    "knowledge/后端 Java 基础/第二部分-常用 API.md",
+    "public/images/文章资源/httpclient/file-20251111145826796.jpg",
+    "public/images/文章资源/httpclient/file-20251111145449576.jpg",
+    "public/images/文章资源/httpclient",
+    "knowledge/后端 Java 基础/第二部分-现代日期时间 API.md",
+    "knowledge/后端面试/Spring.md",
+    "knowledge/前端工具库/Git-版本控制.md",
+    "knowledge/后端 Web 基础/文件上传.md",
+    "public/images/文章资源/redis-数据库基础/file-20251110152628526.jpg",
+    "public/images/文章资源/redis-数据库基础/file-20251110152519950.jpg",
+    "knowledge/后端 Web 基础/AOP 面向切面编程.md",
+    "public/images/文章资源/redis-数据库基础/file-20251110140709180.jpg",
+    "public/images/文章资源/redis-数据库基础/file-20251110140655448.jpg",
+    "public/images/文章资源/redis-数据库基础/file-20251110140626305.jpg",
+    "public/images/文章资源/redis-数据库基础/file-20251109202441517.jpg",
+    "public/images/文章资源/redis-数据库基础",
+    "knowledge/后端数据库/MySQL 数据库基础.md",
+    "knowledge/后端工具库/Maven 进阶 - 分模块设计.md",
+    "knowledge/后端工具库/Maven 基础 - 项目构建工具.md",
+    "public/images/文章资源/maven-基础-项目构建工具/file-20250627153333570.jpg",
+    "knowledge/后端工具库/Docker-虚拟化技术.md",
+    "knowledge/后端工具库/JUnit-单元测试插件.md",
+    "knowledge/后端工具库/Logback-日志技术.md",
+    "knowledge/后端面试/MyBatis.md",
+    "knowledge/后端工具库/Swagger-生成接口文档.md",
+    "knowledge/后端 Web 基础/spring boot原理.md",
+    "knowledge/后端面试/SQL 基础.md",
     "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md",
     "knowledge/后端 Web 基础/Spring入门.md",
-    "knowledge/后端 Web 基础/分页查询.md",
-    "knowledge/后端 Java 基础/第三部分-IO 流.md",
-    "knowledge/后端 Web 基础/HTTP 通信协议.md",
-    "knowledge/后端 Web 基础/SSM注解与XML对照实践.md",
-    "knowledge/后端工具库/nginx-反向代理与负载均衡.md",
-    "knowledge/后端工具库/Swagger-生成接口文档.md",
-    "knowledge/后端 Web 基础/登录校验.md",
-    "knowledge/后端面试/SQL 基础.md",
-    "projects/苍穹外卖学习计划.md",
-    "public/images/文章资源/spring-boot原理/file-20251031095747772.jpg",
-    "public/images/文章资源/spring-boot原理/file-20251031095610566.jpg",
-    "public/images/文章资源/spring-boot原理/file-20251031095537046.jpg",
+    "public/images/文章资源/git-版本控制/file-20250607142847158.jpg",
     "public/images/文章资源/spring-boot原理",
-    "knowledge/后端 Web 基础/全局异常处理.md",
-    "knowledge/后端 Web 基础/数据回显.md",
-    "knowledge/后端 Web 基础/互联网与星辰大海.md",
-    "knowledge/后端 Web 基础/Tomcat-web Servlet容器.md",
-    "knowledge/后端工具库/Maven 进阶 - 分模块设计.md",
-    "knowledge/后端面试/Mysql.md",
-    "public/images/文章资源/登录校验/file-20251030140417056.jpg",
-    "public/images/文章资源/登录校验/file-20251030113552553.jpg",
-    "public/images/文章资源/登录校验/file-20251030113209290.jpg",
-    "public/images/文章资源/登录校验/file-20251030113448546.jpg",
-    "public/images/文章资源/登录校验/file-20251030113404938.jpg",
     "public/images/文章资源/登录校验",
     "public/images/文章资源/maven-基础-项目构建工具",
     "public/images/文章资源/java-基础",
@@ -228,8 +230,6 @@
     "public/images/文章资源/tomcat-web-servlet容器",
     "public/images/文章资源/从-jdbc-到-mybatis-的数据库与连接池",
     "public/images/文章资源/数据库与连接池",
-    "public/images/文章资源/http-通信协议",
-    "knowledge/后端面试",
     "点子合集.canvas"
   ]
 }

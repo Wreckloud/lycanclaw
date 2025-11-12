@@ -59,6 +59,7 @@
       "knowledge/后端 Web 基础/事务处理.md"
     ],
     "knowledge/后端工具库": [
+      "knowledge/后端工具库/HttpClient.md",
       "knowledge/后端工具库/Swagger-生成接口文档.md",
       "knowledge/后端工具库/nginx-反向代理与负载均衡.md",
       "knowledge/后端工具库/Maven 基础 - 项目构建工具.md",
@@ -68,6 +69,7 @@
       "knowledge/后端工具库/Logback-日志技术.md"
     ],
     "knowledge/后端面试": [
+      "knowledge/后端面试/实习面试清单.md",
       "knowledge/后端面试/并发编程.md",
       "knowledge/后端面试/Springboot.md",
       "knowledge/后端面试/springMVC.md",
@@ -80,6 +82,7 @@
       "knowledge/后端面试/SQL 基础.md"
     ],
     "knowledge/后端数据库": [
+      "knowledge/后端数据库/Redis 数据库基础.md",
       "knowledge/后端数据库/MySQL 数据库基础.md"
     ],
     "knowledge/前端工具库": [
@@ -138,6 +141,8 @@
       "public/images/首页/default-cover.png"
     ],
     "public/images/文章资源": [
+      "public/images/文章资源/httpclient",
+      "public/images/文章资源/redis-数据库基础",
       "public/images/文章资源/spring-boot原理",
       "public/images/文章资源/登录校验",
       "public/images/文章资源/maven-基础-项目构建工具",
@@ -333,13 +338,14 @@
       "public/images/文章资源/git-版本控制/file-20250607142809133.jpg",
       "public/images/文章资源/git-版本控制/file-20250607142815202.jpg",
       "public/images/文章资源/git-版本控制/file-20250607142821170.jpg",
-      "public/images/文章资源/git-版本控制/file-20250607142827860.jpg",
-      "public/images/文章资源/git-版本控制/file-20250607142835490.jpg",
-      "public/images/文章资源/git-版本控制/file-20250607142840466.jpg",
-      "public/images/文章资源/git-版本控制/file-20250607142847158.jpg"
+      "public/images/文章资源/git-版本控制/file-20250607142827860.jpg"
     ],
     "public/images/文章资源/http-通信协议": [
       "public/images/文章资源/http-通信协议/file-20250908092655331.jpg"
+    ],
+    "public/images/文章资源/httpclient": [
+      "public/images/文章资源/httpclient/file-20251111145449576.jpg",
+      "public/images/文章资源/httpclient/file-20251111145826796.jpg"
     ],
     "public/images/文章资源/java-基础": [
       "public/images/文章资源/java-基础/file-20250929101958595.jpg",
@@ -376,7 +382,6 @@
     "public/images/文章资源/maven-基础-项目构建工具": [
       "public/images/文章资源/maven-基础-项目构建工具/file-20250627153322075.jpg",
       "public/images/文章资源/maven-基础-项目构建工具/file-20250627153329632.jpg",
-      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153333570.jpg",
       "public/images/文章资源/maven-基础-项目构建工具/file-20250627153337513.jpg",
       "public/images/文章资源/maven-基础-项目构建工具/file-20250627153342740.jpg",
       "public/images/文章资源/maven-基础-项目构建工具/file-20250627153347827.jpg",
@@ -417,6 +422,14 @@
       "public/images/文章资源/mysql-数据库基础/file-20250828161616705.jpg",
       "public/images/文章资源/mysql-数据库基础/file-20250828161928392.jpg",
       "public/images/文章资源/mysql-数据库基础/file-20250829124756354.jpg"
+    ],
+    "public/images/文章资源/redis-数据库基础": [
+      "public/images/文章资源/redis-数据库基础/file-20251110140626305.jpg",
+      "public/images/文章资源/redis-数据库基础/file-20251110140655448.jpg",
+      "public/images/文章资源/redis-数据库基础/file-20251110140709180.jpg",
+      "public/images/文章资源/redis-数据库基础/file-20251110152519950.jpg",
+      "public/images/文章资源/redis-数据库基础/file-20251110152628526.jpg",
+      "public/images/文章资源/redis-数据库基础/file-20251109202441517.jpg"
     ],
     "public/images/文章资源/spring-boot原理": [
       "public/images/文章资源/spring-boot原理/file-20251031095537046.jpg",

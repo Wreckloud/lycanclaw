@@ -226,7 +226,7 @@
   },
   {
     "date": "2025-09-25 09:10:07",
-    "wordCount": 3000,
+    "wordCount": 3036,
     "relativePath": "knowledge/后端 Web 基础/分页查询.md"
   },
   {
@@ -236,7 +236,7 @@
   },
   {
     "date": "2025-10-13 09:18:56",
-    "wordCount": 1184,
+    "wordCount": 1339,
     "relativePath": "knowledge/后端 Web 基础/文件上传.md"
   },
   {
@@ -250,18 +250,23 @@
     "relativePath": "knowledge/后端工具库/Docker-虚拟化技术.md"
   },
   {
+    "date": "2025-11-11 14:53:37",
+    "wordCount": 1792,
+    "relativePath": "knowledge/后端工具库/HttpClient.md"
+  },
+  {
     "date": "2024-11-29 15:21:40",
     "wordCount": 1195,
     "relativePath": "knowledge/后端工具库/JUnit-单元测试插件.md"
   },
   {
     "date": "2025-09-01 09:24:20",
-    "wordCount": 1084,
+    "wordCount": 1238,
     "relativePath": "knowledge/后端工具库/Logback-日志技术.md"
   },
   {
     "date": "2024-09-24 11:06:33",
-    "wordCount": 3087,
+    "wordCount": 3195,
     "relativePath": "knowledge/后端工具库/Maven 基础 - 项目构建工具.md"
   },
   {
@@ -276,13 +281,18 @@
   },
   {
     "date": "2025-11-02 11:23:42",
-    "wordCount": 814,
+    "wordCount": 804,
     "relativePath": "knowledge/后端工具库/Swagger-生成接口文档.md"
   },
   {
     "date": "2025-08-28 16:57:51",
     "wordCount": 9563,
     "relativePath": "knowledge/后端数据库/MySQL 数据库基础.md"
+  },
+  {
+    "date": "2025-11-09 11:15:57",
+    "wordCount": 4150,
+    "relativePath": "knowledge/后端数据库/Redis 数据库基础.md"
   },
   {
     "date": "2025-09-15 08:46:30",
@@ -300,7 +310,7 @@
     "relativePath": "knowledge/后端面试/MyBatis.md"
   },
   {
-    "date": "2025-11-05T07:42:10.528Z",
+    "date": "2025-11-12T08:50:07.383Z",
     "wordCount": 19083,
     "relativePath": "knowledge/后端面试/Mysql.md"
   },
@@ -323,6 +333,11 @@
     "date": "2025-09-05 09:12:32",
     "wordCount": 3248,
     "relativePath": "knowledge/后端面试/SQL 基础.md"
+  },
+  {
+    "date": "2025-11-11 20:00:00",
+    "wordCount": 1976,
+    "relativePath": "knowledge/后端面试/实习面试清单.md"
   },
   {
     "date": "2025-10-27 08:40:21",
