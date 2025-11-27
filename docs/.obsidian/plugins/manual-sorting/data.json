@@ -44,6 +44,9 @@
       "knowledge/后端 Java 基础/扩展部分-配置与特殊文件.md"
     ],
     "knowledge/后端 Web 基础": [
+      "knowledge/后端 Web 基础/MyBatis Plus.md",
+      "knowledge/后端 Web 基础/WebSocket-及时通知.md",
+      "knowledge/后端 Web 基础/Spring Task-定时任务.md",
       "knowledge/后端 Web 基础/spring boot原理.md",
       "knowledge/后端 Web 基础/AOP 面向切面编程.md",
       "knowledge/后端 Web 基础/登录校验.md",
@@ -69,7 +72,7 @@
       "knowledge/后端工具库/Logback-日志技术.md"
     ],
     "knowledge/后端面试": [
-      "knowledge/后端面试/实习面试清单.md",
+      "knowledge/后端面试/面试问题清单.md",
       "knowledge/后端面试/并发编程.md",
       "knowledge/后端面试/Springboot.md",
       "knowledge/后端面试/springMVC.md",
@@ -141,6 +144,7 @@
       "public/images/首页/default-cover.png"
     ],
     "public/images/文章资源": [
+      "public/images/文章资源/mybatis-plus",
       "public/images/文章资源/httpclient",
       "public/images/文章资源/redis-数据库基础",
       "public/images/文章资源/spring-boot原理",
@@ -408,6 +412,9 @@
       "public/images/文章资源/maven-基础-项目构建工具/file-20250627153552089.jpg",
       "public/images/文章资源/maven-基础-项目构建工具/file-20250627162621679.jpg"
     ],
+    "public/images/文章资源/mybatis-plus": [
+      "public/images/文章资源/mybatis-plus/file-20251125101133648.jpg"
+    ],
     "public/images/文章资源/mysql-安装": [
       "public/images/文章资源/mysql-安装/file-20250828170516235.jpg",
       "public/images/文章资源/mysql-安装/file-20250828170522054.jpg",
@@ -424,6 +431,7 @@
       "public/images/文章资源/mysql-数据库基础/file-20250829124756354.jpg"
     ],
     "public/images/文章资源/redis-数据库基础": [
+      "public/images/文章资源/redis-数据库基础/file-20251118153302233.jpg",
       "public/images/文章资源/redis-数据库基础/file-20251110140626305.jpg",
       "public/images/文章资源/redis-数据库基础/file-20251110140655448.jpg",
       "public/images/文章资源/redis-数据库基础/file-20251110140709180.jpg",

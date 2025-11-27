@@ -23,5 +23,8 @@
   "showLineNumber": true,
   "rightToLeft": false,
   "readableLineLength": false,
-  "promptDelete": false
+  "promptDelete": false,
+  "smartIndentList": false,
+  "autoConvertHtml": false,
+  "tabSize": 2
 }

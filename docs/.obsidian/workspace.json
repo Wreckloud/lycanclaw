@@ -8,31 +8,17 @@
         "type": "tabs",
         "children": [
           {
-            "id": "c9f18d13e509bcf8",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "knowledge/后端 Java 基础/第一部分-基础语法.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "第一部分-基础语法"
-            }
-          },
-          {
             "id": "52b95caea32cc57d",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端工具库/HttpClient.md",
+                "file": "knowledge/后端 Java 基础/第三部分-集合.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "HttpClient"
+              "title": "第三部分-集合"
             }
           },
           {
@@ -41,30 +27,29 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端 Web 基础/spring boot原理.md",
+                "file": "knowledge/后端 Web 基础/Spring Task-定时任务.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "spring boot原理"
+              "title": "Spring Task-定时任务"
             }
           },
           {
-            "id": "70ede8fdd65a2052",
+            "id": "4494cf439eabeb79",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "projects/苍穹外卖学习计划.md",
+                "file": "knowledge/后端 Web 基础/MyBatis Plus.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "苍穹外卖学习计划"
+              "title": "MyBatis Plus"
             }
           }
-        ],
-        "currentTab": 2
+        ]
       }
     ],
     "direction": "vertical"
@@ -83,13 +68,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/后端 Web 基础/spring boot原理.md",
+                "file": "knowledge/后端 Java 基础/第三部分-集合.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "spring boot原理 的大纲"
+              "title": "第三部分-集合 的大纲"
             }
           },
           {
@@ -108,7 +93,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "",
+                "query": "Reques",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -123,7 +108,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 200
+    "width": 242.5
   },
   "right": {
     "id": "318f4ed2312b0f42",
@@ -196,16 +181,32 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "03c67853bd4d0c4c",
+  "active": "52b95caea32cc57d",
   "lastOpenFiles": [
-    "knowledge/后端面试/Springboot.md",
-    "knowledge/后端面试/实习面试清单.md",
+    "knowledge/后端面试/面试问题清单.md",
+    "knowledge/后端数据库/MySQL 数据库基础.md",
+    "knowledge/后端工具库/Docker-虚拟化技术.md",
     "projects/苍穹外卖学习计划.md",
-    "knowledge/后端工具库/HttpClient.md",
-    "knowledge/实习实训/Java后端与AI智能体开发全景梳理.md",
+    "knowledge/后端 Web 基础/WebSocket-及时通知.md",
+    "knowledge/后端 Web 基础/MyBatis Plus.md",
+    "knowledge/后端 Web 基础/Spring Task-定时任务.md",
+    "public/images/文章资源/mybatis-plus/file-20251125101133648.jpg",
+    "public/images/文章资源/mybatis-plus",
+    "knowledge/后端面试/实习面试清单.md",
     "knowledge/后端 Java 基础/第一部分-基础语法.md",
-    "knowledge/后端面试/【给自己的话】你并不晚.md",
+    "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md",
+    "knowledge/后端工具库/HttpClient.md",
     "knowledge/后端数据库/Redis 数据库基础.md",
+    "public/images/文章资源/redis-数据库基础/file-20251118153302233.jpg",
+    "knowledge/后端 Web 基础/Spring入门.md",
+    "knowledge/后端 Web 基础/分页查询.md",
+    "knowledge/后端 Web 基础/数据回显.md",
+    "knowledge/后端面试/MyBatis.md",
+    "knowledge/后端 Web 基础/Tomcat-web Servlet容器.md",
+    "knowledge/后端 Web 基础/spring boot原理.md",
+    "knowledge/后端面试/Springboot.md",
+    "knowledge/实习实训/Java后端与AI智能体开发全景梳理.md",
+    "knowledge/后端面试/【给自己的话】你并不晚.md",
     "knowledge/后端 Java 基础/第一部分-面向对象.md",
     "knowledge/后端 Java 基础/第二部分-常用 API.md",
     "public/images/文章资源/httpclient/file-20251111145826796.jpg",
@@ -214,28 +215,13 @@
     "knowledge/后端 Java 基础/第二部分-现代日期时间 API.md",
     "knowledge/后端面试/Spring.md",
     "knowledge/前端工具库/Git-版本控制.md",
-    "knowledge/后端 Web 基础/文件上传.md",
     "public/images/文章资源/redis-数据库基础/file-20251110152628526.jpg",
     "public/images/文章资源/redis-数据库基础/file-20251110152519950.jpg",
-    "knowledge/后端 Web 基础/AOP 面向切面编程.md",
     "public/images/文章资源/redis-数据库基础/file-20251110140709180.jpg",
     "public/images/文章资源/redis-数据库基础/file-20251110140655448.jpg",
     "public/images/文章资源/redis-数据库基础/file-20251110140626305.jpg",
     "public/images/文章资源/redis-数据库基础/file-20251109202441517.jpg",
     "public/images/文章资源/redis-数据库基础",
-    "knowledge/后端数据库/MySQL 数据库基础.md",
-    "knowledge/后端工具库/Maven 进阶 - 分模块设计.md",
-    "knowledge/后端工具库/Maven 基础 - 项目构建工具.md",
-    "public/images/文章资源/maven-基础-项目构建工具/file-20250627153333570.jpg",
-    "knowledge/后端工具库/Docker-虚拟化技术.md",
-    "knowledge/后端工具库/JUnit-单元测试插件.md",
-    "knowledge/后端工具库/Logback-日志技术.md",
-    "knowledge/后端面试/MyBatis.md",
-    "knowledge/后端工具库/Swagger-生成接口文档.md",
-    "knowledge/后端 Web 基础/spring boot原理.md",
-    "knowledge/后端面试/SQL 基础.md",
-    "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md",
-    "public/images/文章资源/git-版本控制/file-20250607142847158.jpg",
     "public/images/文章资源/spring-boot原理",
     "public/images/文章资源/登录校验",
     "public/images/文章资源/maven-基础-项目构建工具",
@@ -243,7 +229,6 @@
     "public/images/文章资源/spring入门",
     "public/images/文章资源/tomcat-web-servlet容器",
     "public/images/文章资源/从-jdbc-到-mybatis-的数据库与连接池",
-    "public/images/文章资源/数据库与连接池",
     "点子合集.canvas"
   ]
 }

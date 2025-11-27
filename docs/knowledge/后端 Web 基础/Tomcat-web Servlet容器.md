@@ -106,6 +106,10 @@ java.net.BindException: Address already in use
 
    然后打开任务管理器找到该 PID 并结束它。
 
+- `a`显示所有连接和侦听端口。
+- `n` 以数字形式显示地址和端口号。
+- `o` 显示拥有的与每个连接关联的进程 ID。
+
 2. **修改监听端口**  
    打开 `conf/server.xml`，找到 Connector 配置，例如：
 

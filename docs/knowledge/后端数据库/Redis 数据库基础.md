@@ -428,7 +428,7 @@ Java 中访问 Redis 有多种客户端实现，它们本质上都是 Redis 的�
 
 Spring Data Redis 使用步骤如下
 
-### 1.引入 Maven 依赖
+1. 引入 Maven 依赖
 
 ```xml
 <dependency>
@@ -437,7 +437,7 @@ Spring Data Redis 使用步骤如下
 </dependency>
 ```
 
-### 2.配置 Redis 连接信息
+2. 配置 Redis 连接信息
 
 ```yaml
 spring:
@@ -449,7 +449,7 @@ spring:
 
 Spring 连接 Redis 的方式与连接 MySQL 的概念相同，都是配置数据源连接参数。
 
-### 3.配置 RedisTemplate（可选）
+3. 配置 RedisTemplate（可选）
 
 Spring Boot 默认会自动创建 `RedisTemplate`，但默认 key 采用 JDK 序列化，可读性较差。通常会自定义一个，至少将 key 的序列化器修改为 `StringRedisSerializer`。
 
@@ -475,7 +475,7 @@ public class RedisConfiguration {
 }
 ```
 
-### 4.使用 RedisTemplate 操作 Redis
+4. 使用 RedisTemplate 操作 Redis
 
 之后在业务层中，直接注入 `RedisTemplate` 就可以进行数据读写。
 
@@ -502,7 +502,7 @@ private RedisTemplate<String, Object> redisTemplate;
 - 存对象：使用 `RedisTemplate<String, Object>`（建议 JSON 序列化）。
 - 统一写法：先取 `ops = xxxTemplate.opsForValue()/opsForHash()` 等，再调用方法。
 
-## ValueOperations（String）
+## ValueOperations
 
 **set/get**
 
@@ -555,7 +555,7 @@ stringRedisTemplate.expire("login:captcha:188****1234", Duration.ofSeconds(60));
 
 或写入时使用 `set(key, val, timeout)` 的重载。
 
-## HashOperations（Hash）
+## HashOperations
 
 **put/get**
 
@@ -591,7 +591,7 @@ redisTemplate.opsForHash().entries("user:1001")  // 读取完整对象（field->
 
 读取哈希所有字段与值/仅字段/仅值。调试与全量读常用。
 
-#### **delete**
+**delete**
 
 ```java
 opsForHash().delete(String key, Object... fields)
@@ -602,7 +602,7 @@ redisTemplate.opsForHash().delete("user:1001", "age")  // 删除字段
 
 > 将 `hashKey` 设置为 String 序列化，`hashValue` 设为 JSON 更利于可读与跨语言。
 
-## ListOperations（List）
+## ListOperations
 
 **leftPush / rightPush**
 
@@ -642,7 +642,7 @@ redisTemplate.opsForList().size("comment:post:2001")  // 列表长度
 
 > 进阶：可用 `rightPopAndLeftPush(src, dst)` 实现安全转移/工作队列模式。
 
-## SetOperations（Set）
+## SetOperations
 
 **add**
 
@@ -689,7 +689,7 @@ redisTemplate.opsForSet().size("tags:user:1001")  // 基数统计
 
 返回集合元素个数。
 
-## ZSetOperations（ZSet）
+## ZSetOperations
 
 **add**
 
@@ -737,7 +737,7 @@ redisTemplate.opsForZSet().remove("rank:hot", "goods_2001")  // 移除成员
 
 删除一个或多个成员。
 
-## 通用操作（配合模板本身）
+## 通用操作
 
 **expire / ttl**
 
@@ -756,3 +756,499 @@ xxxTemplate.hasKey(String key)
 ```
 
 删除/判断 key 是否存在（底层对 DEL/EXISTS 的封装）。
+
+# 缓存的具体应用
+
+在开始写代码之前，先把一个问题说清楚：
+
+**我们明明已经能查数据库了，为什么还需要 Redis？**
+
+以“小程序端展示菜品列表”为例，前端每次打开页面，都会向后端发起查询。默认情况下，这些查询全部落在数据库上。  
+如果访问量不大，数据库还能稳住；但一旦用户并发上来，数据库压力就会开始堆。
+
+结果其实很明显：
+
+- 查询速度变慢
+- 页面加载卡顿
+- 用户体验直接下降
+
+这类纯读操作其实没必要让数据库每次都亲自出马。最合理的方法就是：把查询结果放进 Redis。
+
+一次完整的流程是这样的：
+
+![](../../public/images/文章资源/redis-数据库基础/file-20251118153302233.jpg)
+
+1. 第一次查询时，因为缓存里没有数据 → 去数据库查
+2. 查完后，把结果放入 Redis
+3. 后续再有人查同一个分类的菜品 → 直接从 Redis 拿，不再访问数据库
+
+这样一来，数据库的压力会明显降低，响应速度也稳得多。
+
+接下来使用具体的代码来实现这个接口，大致需求是：
+
+根据分类 id 查询菜品列表，如果缓存中已有对应数据，就直接返回缓存；如果缓存中没有，再访问数据库，并把查询结果写入缓存。
+
+```java
+@GetMapping("/list")
+public Result<List<DishVO>> list(Long categoryId) {
+    // 1. 先查缓存
+    // 2. 缓存没有再查数据库
+    // 3. 查完写入缓存
+}
+```
+
+下面再把内部逻辑一点点展开。
+
+### 生成缓存 key，并尝试读取缓存
+
+我们约定按照“分类维度”做缓存，所以 key 的形式可以定成 `"dish_分类id"`，比如：`dish_1`、`dish_2`。
+
+```java
+String key = "dish_" + categoryId;
+
+// 尝试从 Redis 中读取缓存
+List<DishVO> cache =
+        (List<DishVO>) redisTemplate.opsForValue().get(key);
+```
+
+这里有两个关键信息：
+
+- **缓存维度**：一个分类对应一份缓存数据
+- **缓存内容**：直接存放前端需要展示的 `DishVO` 列表
+
+### 缓存命中
+
+如果 Redis 里已经有这个分类的菜品列表，就没必要再去打数据库了：
+
+```java
+if (cache != null && !cache.isEmpty()) {
+    // 命中缓存，直接返回
+    return Result.success(cache);
+}
+```
+
+这一段就是前面引入里说的那句话的落地：
+
+> “同样的查询，第一次查数据库，后面都直接从 Redis 读。”
+
+对于热点分类，这一步能挡掉绝大部分请求，数据库压力会轻很多。
+
+### 缓存未命中
+
+如果缓存没有，就要回到最传统的一步：查数据库。
+
+这里用实体类封装查询条件，只查某个分类下、处于“起售”状态的菜品：
+
+```java
+Dish dish = new Dish();
+dish.setCategoryId(categoryId);
+dish.setStatus(StatusConstant.ENABLE); // 只查询起售中的菜品
+
+List<DishVO> list = dishService.listWithFlavor(dish);
+```
+
+到这一步为止，其实就是**没有用 Redis 时我们原本就会写的数据库查询逻辑**。
+
+### 把数据库查询结果写入缓存
+
+既然已经查了一次数据库，就顺手把结果放进 Redis，给后面的请求复用：
+
+```java
+redisTemplate.opsForValue().set(key, list);
+```
+
+这里有两个隐含的设计点：
+
+- 缓存的是**完整的业务数据**（`DishVO` 列表），前端可以直接拿来用
+- 下次相同分类再来查询时，就能直接命中这一份缓存
+
+### 返回结果
+
+最后一步，把查询结果返回给调用方：
+
+```java
+return Result.success(list);
+```
+
+到这里，一次完整的流程就走完了：
+
+1. 尝试从 Redis 读取 `dish_分类id` 对应的数据
+2. 若命中缓存 → 直接返回，数据库完全不参与
+3. 若未命中缓存 → 查询数据库 → 把结果写入 Redis → 返回给前端
+
+第一次从数据库读，然后加入到缓存之中，等待下一次查询直接从 Redis 读取。
+
+# 清理缓存
+
+前面我们做了按分类 id 缓存菜品列表的逻辑：
+
+- 第一次查数据库，把结果塞进 `dish_分类id` 这个 key
+- 后面同一个分类的查询都直接走 Redis
+
+听起来很爽，但有一个隐含前提：
+
+> **数据库里的菜品数据不能变，或者变了要让缓存跟着变。**
+
+现实业务里，菜品经常会变化更新，比如基础的 CRUD。如果我们**只改数据库，不动缓存**，Redis 里还会留着一份**旧数据**，用户看到的就会和真实情况不一致。
+
+所以，结论非常简单：
+
+> 只要数据库中的菜品发生变化，就必须把对应分类的缓存删掉，让下一次查询重新从数据库读。
+
+这就是“清理缓存”的核心目的：  
+**保证缓存和数据库的数据尽量一致。**
+
+## 按分类精确删除
+
+前面我们是按分类 id 维度来缓存的：
+
+```text
+key:   dish_1   →  分类 1 的菜品列表
+key:   dish_2   →  分类 2 的菜品列表
+...
+```
+
+那清理缓存的策略也就很自然了：
+
+- 只要某个分类下的菜品被修改，就删掉对应的 `dish_分类id`
+- 下次有人查这个分类时，走一遍“查询数据库 → 写入缓存”的流程即可
+
+不需要整个 Redis 一锅端，只删“受影响的那一类”。
+
+## 哪些操作需要清理缓存
+
+在管理端（`DishController`）中，只要是**会改动菜品数据**的接口，都应该带上缓存清理逻辑。  
+一般包括这几类：
+
+- 新增菜品
+- 修改菜品
+- 起售 / 停售菜品
+- 批量删除菜品
+
+共同点只有一个：
+
+> 这些操作会使“某些分类下的菜品列表”失效。
+
+## 代码层面怎么做？
+
+思路也很简单粗暴：
+
+1. 业务操作：先把数据库里的增删改搞定
+2. 清理缓存：根据受影响的分类 id，删除对应 key
+
+可以封装一个小工具方法，比如放在 `DishService` 里面：
+
+```java
+private void clearDishCache(Long categoryId) {
+    String key = "dish_" + categoryId;
+    redisTemplate.delete(key);
+}
+```
+
+然后在新增 / 修改 / 起售 / 停售 / 删除这些方法里去调用：
+
+```java
+public void saveWithFlavor(DishDTO dto) {
+    // 1. 先处理数据库逻辑（保存菜品、口味等）
+    // ...
+
+    // 2. 清理这个分类下的缓存
+    clearDishCache(dto.getCategoryId());
+}
+```
+
+如果是批量操作（比如批量删除、多条起售/停售），常见做法是收集所有受影响的分类 id，然后循环删：
+
+```java
+private void clearDishCache(Set<Long> categoryIds) {
+    for (Long categoryId : categoryIds) {
+        String key = "dish_" + categoryId;
+        redisTemplate.delete(key);
+    }
+}
+```
+
+这样做的好处是：
+
+- 只删必要的缓存
+- 不用频繁清空整个 Redis
+- 保持“读多写少”场景下的性能优势
+
+# Spring Cache 简化缓存操作
+
+上面的示例里，我们手动写了整套逻辑。这种写法虽然直观，但在真实项目里会更倾向于使用 **Spring Cache** 来简化缓存管理。
+
+Spring Cache 是 Spring 提供的一层“缓存抽象框架”，最大的特点就是：
+
+> **通过注解来启用缓存，不需要手写 Redis 操作。**
+
+换句话说：原本要写十几行的缓存逻辑，现在只需要加两三行注解。
+
+Spring Cache 底层可以切换不同的缓存实现，比如：
+
+- **EhCache**：单 JVM 内存缓存，适合单线程环境
+- **Caffeine**：高性能本地缓存，适合多线程高并发场景
+- **Redis**：最常用、最稳定，适合分布式 **<-重点**
+
+实际项目里几乎都是 Redis 配 Spring Cache。它提供了一套基于注解的缓存机制，可以直接替代我们前面手写的 Redis 缓存流程，核心思想如下：
+
+> “查询用缓存（@Cacheable），数据变了就删缓存（@CacheEvict），必要时更新缓存（@CachePut）。”
+
+在引入依赖后：
+
+```xml
+<!-- Spring Cache -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-cache</artifactId>
+</dependency>
+```
+
+我们只需要把缓存功能打开。
+
+### 启用缓存功能 `@EnableCaching`
+
+接着在 Spring Boot 的启动类上加：
+
+```java
+@EnableCaching
+@SpringBootApplication
+public class Application {
+	...
+}
+```
+
+这一步相当于告诉 Spring：等下我会用缓存相关的注解，你把它们都准备好。
+
+### 查询时优先读缓存 `@Cacheable` （常用）
+
+`@Cacheable` 用于“读操作”。它的核心行为是：
+
+1. 方法执行前检查缓存；
+2. 找得到就直接返回缓存数据；
+3. 找不到才执行方法，并把返回值写入缓存。
+
+换句话说，它就是把我们之前手写的“先查 Redis → 查不到再查数据库”的流程自动化了。
+
+通常将 `@Cacheable` 写在 **Service 层的方法** 上，让 Controller 保持干净，只负责接收请求和返回结果。
+
+接口定义：
+
+```java
+public interface DishService {
+    List<DishVO> listByCategory(Long categoryId);
+}
+```
+
+业务实现（使用缓存）：
+
+```java
+@Cacheable(cacheNames = "dishCache", key = "#categoryId")
+public List<DishVO> listByCategory(Long categoryId) {
+    Dish dish = new Dish();
+    dish.setCategoryId(categoryId);
+    dish.setStatus(StatusConstant.ENABLE);
+    return dishMapper.listWithFlavor(dish);
+}
+```
+
+Controller 保持干净：
+
+```java
+@GetMapping("/list")
+public Result<List<DishVO>> list(Long categoryId) {
+    return Result.success(dishService.listByCategory(categoryId));
+}
+```
+
+这里的缓存逻辑完全由 `@Cacheable` 接管：
+
+- 缓存中有 → 不执行数据库查询
+- 缓存中没有 → 执行查询，并写入缓存
+
+完全替代我们之前的手写版。
+
+#### 关键属性 `cacheNames`
+
+`cacheNames` 决定了：
+
+- 这一类缓存属于哪个区域（类似一个文件夹）
+- 最终 Redis key 的**前缀**
+
+它 **不决定唯一键的内容**，只是用来做隔离。
+
+```java
+@Cacheable(cacheNames = "dishCache", key = "#categoryId")
+```
+
+最终 Redis 保存一个键：
+
+```cpp
+dishCache::3
+```
+
+这里的 `dishCache` 就来自 `cacheNames`。Spring Cache 的默认 key 生成器就是把它拼成：
+
+```cpp
+cacheNames + "::" + key
+```
+
+这是 Spring Cache 的规范格式。
+
+#### 关键属性 `key`
+
+`key` 用来决定，这条缓存到底保存在哪个位置。例如：
+
+```java
+key = "#categoryId"
+```
+
+如果调用方法时参数 `categoryId = 3`，Spring 会将 `#categoryId` 解析为 `3`。
+
+最终生成：
+
+```
+dishCache::3
+```
+
+也就是说：
+
+- **前半部分**来自 `cacheNames`
+- **后半部分**来自 `key` 表达式的解析结果
+
+#### SpEL
+
+为什么要写 `key = "#categoryId"` 因为方法的参数是在运行时才知道的，Spring 必须用一种表达式从“方法上下文”里把参数值取出来。  
+这个表达式语言就是 SpEL（Spring Expression Language）\*\*。
+
+`#categoryId` 的含义是：
+
+> “取当前方法的一个名为 categoryId 的参数值”。
+
+因此：
+
+- 如果传入 `listByCategory(3)`
+- 那么 `#categoryId` → `3`
+
+这就是为何它会出现在最终缓存键里的原因。所有写法都是为了能“取到参数值”，只是写法不同。
+
+最推荐的写法就是之前演示的：
+
+```
+#参数名
+```
+
+例如：
+
+```java
+key = "#categoryId"
+```
+
+其他等价写法（备用而已）：
+
+- `#root.args[0]` —— 当前方法的第一个参数
+- `#p0` / `#a0` —— 第一个参数的简写
+- 字符串拼接写法：`"#categoryId + ':' + #status"`
+
+例如多参数情况：
+
+```java
+@Cacheable(cacheNames="dishCache", key="#categoryId + ':' + #status")
+```
+
+传入 `(3, 1)` 时：
+
+```
+dishCache::3:1
+```
+
+有时候一个参数不足以唯一标识一份数据（如 category 和 status 要共同决定查询结果）。  
+Spring Cache 就允许你自由组合 key。
+
+
+## 执行方法并更新缓存 `@CachePut`
+
+方法**一定会执行**，执行后把返回值写入缓存（覆盖原值）。适合“按 id 缓存单条数据”的场景，比如修改之后希望缓存立即更新。
+
+放在哪新增、修改的方法。
+
+```java
+@CachePut(cacheNames = "user", key = "#result.id")
+public User save(@RequestBody User user) {
+    userMapper.insert(user);
+    return user;
+}
+```
+
+- `#result` 代表方法返回值，`#result.id` 是返回对象里的 id 字段
+
+用`#result`作为 key，可以保证“查询”和“更新”用的是同一个缓存键
+
+> 按分类缓存菜品列表时，一般用不到这个注解；按 id 缓存时会用得多。
+
+## 删除缓存 `@CacheEvict` （常用）
+
+用于清理缓存。删除某一条，或整块区域。写操作（新增、修改、删除、起售、停售）通常都会配合 `@CacheEvict`。
+
+- `cacheNames`：要删哪个缓存区域
+- `key`：删哪一条
+- `allEntries = true`：删除该区域下的**所有**缓存
+
+### 示例 1：删一条
+
+```java
+@CacheEvict(cacheNames = "user", key = "#id")
+public void deleteById(Long id) {
+    userMapper.deleteById(id);
+}
+```
+
+### 示例 2：清空整个区域
+
+```java
+@CacheEvict(cacheNames = "user", allEntries = true)
+public void deleteAll() {
+    userMapper.deleteAll();
+}
+```
+
+### 回到菜品案例：写操作怎么配合？
+
+按分类缓存的菜品列表：
+
+```java
+@Cacheable(cacheNames = "dishCache", key = "#categoryId")
+```
+
+那只要该分类的菜品发生变化（增、删、改、起售/停售），就删除对应 key：
+
+```java
+@CacheEvict(cacheNames = "dishCache", key = "#dto.categoryId")
+public void saveDish(DishDTO dto) {
+    dishMapper.insert(...);
+}
+```
+
+如果是“批量更新多个分类”，常见两种方式：
+
+1. 手工循环删多个 key
+2. 粗暴一点：一次性删掉整个 `dishCache` 区域：
+
+```java
+@CacheEvict(cacheNames = "dishCache", allEntries = true)
+public void batchUpdateStatus(List<Long> ids) {
+    dishMapper.updateStatus(ids);
+}
+```
+
+## 5. SpEL 规则（只记必需的）
+
+你常用的就下面这些：
+
+- `#参数名`（最清晰）
+- `#root.args[0]`（参数位置）
+- `#p0` / `#a0`（也是第一个参数）
+- `#result`（方法返回值）
+- `#result.id`（返回值的属性）
+
+> 写缓存键时永远优先用：**#参数名**

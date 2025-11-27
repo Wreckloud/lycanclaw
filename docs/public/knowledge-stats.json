@@ -190,9 +190,19 @@
     "relativePath": "knowledge/后端 Web 基础/AOP 面向切面编程.md"
   },
   {
+    "date": "2025-11-24 20:31:26",
+    "wordCount": 1570,
+    "relativePath": "knowledge/后端 Web 基础/MyBatis Plus.md"
+  },
+  {
     "date": "2025-11-03 10:35:21",
     "wordCount": 4661,
     "relativePath": "knowledge/后端 Web 基础/spring boot原理.md"
+  },
+  {
+    "date": "2025-11-21 14:45:07",
+    "wordCount": 506,
+    "relativePath": "knowledge/后端 Web 基础/Spring Task-定时任务.md"
   },
   {
     "date": "2024-12-01 16:27:02",
@@ -201,8 +211,13 @@
   },
   {
     "date": "2025-08-28 14:16:22",
-    "wordCount": 4106,
+    "wordCount": 4149,
     "relativePath": "knowledge/后端 Web 基础/Tomcat-web Servlet容器.md"
+  },
+  {
+    "date": "2025-11-27T00:28:26.851Z",
+    "wordCount": 0,
+    "relativePath": "knowledge/后端 Web 基础/WebSocket-及时通知.md"
   },
   {
     "date": "2025-09-25 09:10:12",
@@ -291,7 +306,7 @@
   },
   {
     "date": "2025-11-09 11:15:57",
-    "wordCount": 4150,
+    "wordCount": 7284,
     "relativePath": "knowledge/后端数据库/Redis 数据库基础.md"
   },
   {
@@ -310,7 +325,7 @@
     "relativePath": "knowledge/后端面试/MyBatis.md"
   },
   {
-    "date": "2025-11-13T03:28:02.422Z",
+    "date": "2025-11-27T00:28:26.863Z",
     "wordCount": 19083,
     "relativePath": "knowledge/后端面试/Mysql.md"
   },
@@ -335,11 +350,6 @@
     "relativePath": "knowledge/后端面试/SQL 基础.md"
   },
   {
-    "date": "2025-11-11 20:00:00",
-    "wordCount": 1976,
-    "relativePath": "knowledge/后端面试/实习面试清单.md"
-  },
-  {
     "date": "2025-10-27 08:40:21",
     "wordCount": 2328,
     "relativePath": "knowledge/后端面试/并发编程.md"
@@ -348,6 +358,11 @@
     "date": "2025-09-29 09:28:21",
     "wordCount": 1758,
     "relativePath": "knowledge/后端面试/网络编程.md"
+  },
+  {
+    "date": "2025-11-24 15:40:15",
+    "wordCount": 10552,
+    "relativePath": "knowledge/后端面试/面试问题清单.md"
   },
   {
     "date": "2025-07-13 14:39:36",
