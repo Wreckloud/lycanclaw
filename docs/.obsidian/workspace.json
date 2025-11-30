@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端 Java 基础/第三部分-集合.md",
+                "file": "knowledge/后端 Web 基础/MyBatis Plus.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "第三部分-集合"
+              "title": "MyBatis Plus"
             }
           },
           {
@@ -49,8 +49,7 @@
               "title": "一盏灯后的夜"
             }
           }
-        ],
-        "currentTab": 2
+        ]
       }
     ],
     "direction": "vertical"
@@ -69,13 +68,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "thoughts/一盏灯后的夜.md",
+                "file": "knowledge/后端 Web 基础/MyBatis Plus.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "一盏灯后的夜 的大纲"
+              "title": "MyBatis Plus 的大纲"
             }
           },
           {
@@ -182,14 +181,14 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "4494cf439eabeb79",
+  "active": "52b95caea32cc57d",
   "lastOpenFiles": [
-    "thoughts/叼住时间的尾巴.md",
     "thoughts/一盏灯后的夜.md",
-    "thoughts/电子音乐.md",
-    "thoughts/从一盏灯开始的文明.md",
     "knowledge/后端 Web 基础/MyBatis Plus.md",
     "knowledge/后端 Java 基础/第三部分-集合.md",
+    "thoughts/叼住时间的尾巴.md",
+    "thoughts/电子音乐.md",
+    "thoughts/从一盏灯开始的文明.md",
     "knowledge/后端面试/面试问题清单.md",
     "knowledge/后端数据库/MySQL 数据库基础.md",
     "knowledge/后端工具库/Docker-虚拟化技术.md",
