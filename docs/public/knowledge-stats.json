@@ -121,12 +121,12 @@
   },
   {
     "date": "2024-03-30 19:04:12",
-    "wordCount": 9988,
+    "wordCount": 9897,
     "relativePath": "knowledge/后端 Java 基础/第一部分-基础语法.md"
   },
   {
     "date": "2024-12-25 13:39:20",
-    "wordCount": 15140,
+    "wordCount": 15138,
     "relativePath": "knowledge/后端 Java 基础/第一部分-面向对象.md"
   },
   {
@@ -181,7 +181,7 @@
   },
   {
     "date": "2025-09-01 11:25:55",
-    "wordCount": 5857,
+    "wordCount": 5743,
     "relativePath": "knowledge/后端 Java 基础/第四部分-网络编程.md"
   },
   {
@@ -191,7 +191,7 @@
   },
   {
     "date": "2025-11-24 20:31:26",
-    "wordCount": 4894,
+    "wordCount": 5696,
     "relativePath": "knowledge/后端 Web 基础/MyBatis Plus.md"
   },
   {
@@ -206,7 +206,7 @@
   },
   {
     "date": "2024-12-01 16:27:02",
-    "wordCount": 8846,
+    "wordCount": 9214,
     "relativePath": "knowledge/后端 Web 基础/Spring入门.md"
   },
   {
@@ -215,7 +215,7 @@
     "relativePath": "knowledge/后端 Web 基础/Tomcat-web Servlet容器.md"
   },
   {
-    "date": "2025-11-30T12:01:32.473Z",
+    "date": "2025-12-12T08:29:14.545Z",
     "wordCount": 0,
     "relativePath": "knowledge/后端 Web 基础/WebSocket-及时通知.md"
   },
@@ -256,7 +256,7 @@
   },
   {
     "date": "2025-10-26T09:48:02",
-    "wordCount": 6572,
+    "wordCount": 6516,
     "relativePath": "knowledge/后端 Web 基础/登录校验.md"
   },
   {
@@ -325,7 +325,7 @@
     "relativePath": "knowledge/后端面试/MyBatis.md"
   },
   {
-    "date": "2025-11-30T12:01:32.497Z",
+    "date": "2025-12-12T08:29:14.570Z",
     "wordCount": 19083,
     "relativePath": "knowledge/后端面试/Mysql.md"
   },

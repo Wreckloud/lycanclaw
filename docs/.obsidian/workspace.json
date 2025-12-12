@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端 Web 基础/MyBatis Plus.md",
+                "file": "knowledge/后端 Java 基础/第四部分-网络编程.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "MyBatis Plus"
+              "title": "第四部分-网络编程"
             }
           },
           {
@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端 Web 基础/Spring Task-定时任务.md",
+                "file": "projects/index.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Spring Task-定时任务"
+              "title": "index"
             }
           },
           {
@@ -49,7 +49,8 @@
               "title": "一盏灯后的夜"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -68,13 +69,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/后端 Web 基础/MyBatis Plus.md",
+                "file": "projects/index.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "MyBatis Plus 的大纲"
+              "title": "index 的大纲"
             }
           },
           {
@@ -93,7 +94,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "Reques",
+                "query": "",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -108,7 +109,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 240.5
+    "width": 226.5
   },
   "right": {
     "id": "318f4ed2312b0f42",
@@ -181,37 +182,37 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "52b95caea32cc57d",
+  "active": "03c67853bd4d0c4c",
   "lastOpenFiles": [
-    "thoughts/一盏灯后的夜.md",
-    "knowledge/后端 Web 基础/MyBatis Plus.md",
-    "knowledge/后端 Java 基础/第三部分-集合.md",
-    "thoughts/叼住时间的尾巴.md",
-    "thoughts/电子音乐.md",
-    "thoughts/从一盏灯开始的文明.md",
-    "knowledge/后端面试/面试问题清单.md",
-    "knowledge/后端数据库/MySQL 数据库基础.md",
-    "knowledge/后端工具库/Docker-虚拟化技术.md",
+    "projects/online-shoping-vue3.md",
+    "projects/index.md",
     "projects/苍穹外卖学习计划.md",
-    "knowledge/后端 Web 基础/WebSocket-及时通知.md",
+    "knowledge/后端 Web 基础/MyBatis Plus.md",
+    "knowledge/后端面试/Mysql.md",
+    "knowledge/后端面试/springMVC.md",
+    "knowledge/后端面试/Springboot.md",
+    "knowledge/后端面试/并发编程.md",
+    "knowledge/后端面试/面试问题清单.md",
+    "knowledge/后端 Java 基础/第一部分-面向对象.md",
+    "knowledge/后端 Java 基础/第一部分-基础语法.md",
+    "knowledge/后端 Web 基础/登录校验.md",
+    "knowledge/后端 Web 基础/spring boot原理.md",
+    "knowledge/后端 Web 基础/全局异常处理.md",
+    "knowledge/后端 Web 基础/Spring入门.md",
+    "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md",
+    "knowledge/后端 Java 基础/第二部分-常用 API.md",
+    "knowledge/后端工具库/Maven 进阶 - 分模块设计.md",
+    "knowledge/后端 Java 基础/第三部分-集合.md",
+    "knowledge/后端 Java 基础/第三部分-IO 流.md",
     "knowledge/后端 Web 基础/Spring Task-定时任务.md",
+    "knowledge/后端 Java 基础/第四部分-网络编程.md",
+    "knowledge/后端数据库/Redis 数据库基础.md",
+    "knowledge/后端面试/MyBatis.md",
+    "thoughts/一盏灯后的夜.md",
+    "thoughts/叼住时间的尾巴.md",
     "public/images/文章资源/mybatis-plus/file-20251125101133648.jpg",
     "public/images/文章资源/mybatis-plus",
-    "knowledge/后端面试/实习面试清单.md",
-    "knowledge/后端 Java 基础/第一部分-基础语法.md",
-    "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md",
-    "knowledge/后端工具库/HttpClient.md",
-    "knowledge/后端数据库/Redis 数据库基础.md",
     "public/images/文章资源/redis-数据库基础/file-20251118153302233.jpg",
-    "knowledge/后端 Web 基础/Spring入门.md",
-    "knowledge/后端 Web 基础/分页查询.md",
-    "knowledge/后端 Web 基础/数据回显.md",
-    "knowledge/后端面试/MyBatis.md",
-    "knowledge/后端 Web 基础/Tomcat-web Servlet容器.md",
-    "knowledge/后端 Web 基础/spring boot原理.md",
-    "knowledge/后端面试/Springboot.md",
-    "knowledge/实习实训/Java后端与AI智能体开发全景梳理.md",
-    "knowledge/后端面试/【给自己的话】你并不晚.md",
     "public/images/文章资源/httpclient/file-20251111145826796.jpg",
     "public/images/文章资源/httpclient/file-20251111145449576.jpg",
     "public/images/文章资源/httpclient",

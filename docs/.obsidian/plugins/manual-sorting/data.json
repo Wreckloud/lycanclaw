@@ -123,9 +123,7 @@
       "knowledge/实习实训/Java后端与AI智能体开发全景梳理.md"
     ],
     "projects": [
-      "projects/苍穹外卖学习计划.md",
-      "projects/index.md",
-      "projects/online-shoping-vue3.md"
+      "projects/index.md"
     ],
     "public": [
       "public/contribution-stats.json",

@@ -19,9 +19,6 @@ MyBatis-Plus（简称 **MP**）是基于 MyBatis 的增强框架。
 
 MyBatis 是手动挡，MyBatis-Plus 是给手动挡加了自动起步、自动挂挡的辅助装置，但你仍然可以自己换挡。
 
-主子，好，我知道你要的那种笔记味道：
-**不做专门总结，但在关键句子里自然强调重点，给未来的你留下清晰的“记忆钩子”。**
-
 # 基本使用
 
 MyBatis-Plus 的使用方式也如同其他工具一样：**引依赖 → 写 Mapper → 写实体 → 配置（可选）**。
@@ -83,7 +80,7 @@ SELECT * FROM user WHERE id = 1;
 
 不需要提前写 SQL，也不需要定义额外的方法；等到需要更复杂的 where 条件，再使用 Wrapper 进行扩展即可。
 
-# 传递 Wrapper：更灵活的 where 条件
+**传递 Wrapper：更灵活的 where 条件**
 
 除了最基础的“按主键”操作，BaseMapper 的方法还支持传入条件构造器（Wrapper）。
 这类方法的结构很统一：
@@ -110,14 +107,9 @@ List<User> list = userMapper.selectList(wrapper);
 SELECT * FROM user WHERE username = 'jack';
 ```
 
-**这一点非常重要：
-MP 的通用 CRUD + Wrapper 是绝大多数业务逻辑的基础组合。**
+这一点非常重要：
+MP 的通用 CRUD + Wrapper 是绝大多数业务逻辑的基础组合。
 
-后面你学习 QueryWrapper、LambdaWrapper，那是 MP 里更优雅的写法，但它们的入口都在这里。
-
----
-
-# 这一段的存在意义（自然总结，不单独开 Summary）
 
 写完“依赖 + Mapper”之后，你需要有一个“能立即跑起来的例子”，这样后续才容易理解 Wrapper 的作用。
 这部分 CRUD 示例就是最基本的“落地使用”。
@@ -128,14 +120,6 @@ MP 的通用 CRUD + Wrapper 是绝大多数业务逻辑的基础组合。**
 - Wrapper 可以作为 where 条件传进去
 
 后面学条件构造器、自定义 SQL 才有意义。
-
----
-
-主子，如果你要，我还可以继续补一小节：
-**“BaseMapper 常用方法速览（以学习理解为主，不做死记表格）”**
-让你知道 selectOne / selectBatchIds / updateBatch / selectPage 是怎么用的。
-
-你要不要？
 
 # 常用注解
 
@@ -745,3 +729,173 @@ void updateBalanceByWrapper(@Param("amount") int amount,
 ```
 
 只要你传进来的参数名是 `ew`，MP 就会自动把 Wrapper 解析成一整段 where SQL，塞进 `${ew.customSqlSegment}` 那里。
+
+# Service 接口
+
+
+为什么, 
+(Iservice )
+
+用了有什么好处
+
+(怎么用)
+原来接口 serrvice 继承 iservice
+
+例如一个.. 编一个简单有利的例子
+```
+
+```
+然后实现类, 常规本来就需要实现service, 因为继承了iservice, 根据继承实现的知识(详细说一下), 然后我们就得实现全部的方法, 但是呢这样肯定很麻烦啊, 我们就需要继承servicer
+```
+```
+(为什么可以这样)
+别忘了@service注入容器. 
+
+这样就能使用之前提到的, 很方便的方法了
+
+
+(然后是一个比较实际的案例)
+基于Restful风格实现下列接口
+分析：基于Restful风格实现下面的接口：
+
+编号
+方式
+1
+新增用户
+POST
+/users
+UserFor
+mDTO
+无
+2
+删除用户
+DELE
+TE
+/users/{id}
+用户id
+无
+3
+根据id查询
+用户
+GET
+/users/{id}
+用户id
+Uservo
+4
+根据id批量
+GET
+/users?ids=l,2,3
+用户id集
+Uservo
+查询
+合
+集合
+用户
+根据id扣减
+id
+余额
+PUT
+/users/{id}/deduction/{amount}
+扣减
+无
+金额
+
+分析：
+这些是常见的基本接口，可以直接在
+controller中调用mybatisPlus的service接口提供的方法实现；不需要再写任何业务方法
+
+
+要编写具体的接口，实现web功能；需要引l入spring-boot-starter-web;
+另外；为了方便测试可以引l入knife4j的依赖；通过访问界面来测试所写的接口。因此我们可以添加如下依赖：
+
+```
+<!--swagger-<dependency>
+<groupId>com.github.xiaoymin</groupId>
+<artifactId>knife4j-openapi2-spring-boot-starter</artifactId><version>4.1.0</version>
+</dependency><!--web--><dependency>
+<groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+```
+
+引入后在applicatin.yaml配置一下
+
+knife4j:
+enable: true  开启swaggeropenapi:
+titlc：用户接口管理
+description：用户接口管理version: 1.0.0
+concal： group:
+default:
+group-name: defaultapi-rule: packageapi-rule-resources:
+- com.itheima.mp.controlher
+
+
+
+定义UserController
+要能够被swagger可访问测试接口的话；在处理编写可以设置对应注解；示例如下：
+@Api (tags ="用户管理接口")@RestController
+@RequestMapping("/user")@RequiredArgsConstructor
+public class UserController {
+private final IUserService userService;
+
+```
+@Api（"用户接口管理"）@RestController
+@RequestMapping (v"/users")@RequiredArgsConstructorpublic class UserController ↑
+/*@Autowired
+private IuserService userService;*/
+private final IuserService userservice;
+@ApiOperation（"新增用户")@PostMapping
+public void saveUser (@RequestBody UserFormDTo userFormDTo) 1
+//转换为user
+User user - BeanUtil.copyProperties(userFormDro, User.class) ;userservice.save (user) ;
+```
+
+@RequiredArgsConstructor 就不需要像以前一样写 @Autowire 了
+
+copyProperties是来自hutoll工具包的, 目的是 支支持user对象, 但是传进来的是DTO
+
+其他的删改查也差不多
+
+@Apioperation("删除用户")@DeleteMapping (v"/{id}")
+public void deleteUser(@Pathvariable("id") Long id) {
+userService, removeById(id) ;
+@ApiOperation("根据id查询用户")@GetMapping (v"/[id}")
+public Uservo queryById(@PathVariable("id") Long id) {
+User user = userService.getById(id) ;
+return BeanUtil.copyProperties(user, Uservo.class) ;
+
+注意这边也是一样的, 也需要转换成期望的类型
+
+@ApiOperation("根据id批量查询用户")@GetMapping
+```
+public hist<Uservo> queryByIds (@RequestParam ("ids")List<Iong> ids) (List<User> userList = userService.listByIds(ids) ;
+return BeanUtil.copyToList (userList, UserVo.class) ;
+```
+就是这样了, 然后用swagger进行一系列测试了
+
+根据余额扣减
+
+分析：
+这个接口有特别的业务逻辑（判断用户正常（不为2）、余额充足才能做扣减），需要再Service中新增方法来实现
+
+contrller层
+```
+自定义一个server
+(Override  1 usage
+public void deductPalanceById(Long id, int anount) f//1、判断用户是否存在
+User uner - this.getById(id) ;
+if (user -- null Il user.getstalusi) -- 2) [throw new RuntineExcoplion ("用户有间题");
+//2 判断余额是否充足；当前的用户的余额是否大于等于要扣除的金额il (user.gotBalance(] < anount) {
+Lhrow new RuntimeExeeptien ("余额不足") ;
+//3扣减
+userMapper.deduetBalanceByTd (amomnt, id) :
+
+mapper层
+eUpdate f"update user set balance - balanee
+veid dednetRalaneeById (oParam ("amount") int. amount, eParam("id") Long id) :
+```
+
+# Iservice Lambda
+
+需求：实现一个根据复杂条件查询用户的接口，查询条件如下：·name：用户名关键字，可以为空
+。status：用户状态，可以为空
+·minBalance：最小余额，可以为空·maxBalance：最大余额，可以为空

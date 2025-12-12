@@ -468,6 +468,96 @@ Result<Void> r2 = Result.fail("部门已存在");
 
 虽然也可以用 Lombok 的 `@AllArgsConstructor`、`@NoArgsConstructor` 自动生成构造器自动生成构造器，但像这种关键的公共类，手写会更稳妥，避免兼容问题。
 
+在实际项目开发中，我们通常会再把 `Result` 类做一次增强，使它达到真正“企业级可复用”的程度，包括：
+
+- **序列化支持**（方便后端之间传输对象）
+- **更明确的状态码规范**
+- **更严谨的泛型约束**
+- **避免外部随意 new，保持返回结构统一**
+
+最终实现如下：
+
+```java
+/**
+ * 统一返回结果（企业级版本）
+ * @param <T> 返回的数据类型
+ */
+@Data
+public class Result<T> implements Serializable {
+
+    private Integer code;   // 0 成功，非 0 表示失败
+    private String msg;     // 提示信息
+    private T data;         // 实际数据
+
+    private Result(Integer code, String msg, T data) {
+        this.code = code;
+        this.msg = msg;
+        this.data = data;
+    }
+
+    /** ---------------- 静态工厂：成功响应 ---------------- */
+
+    public static <T> Result<T> ok() {
+        return new Result<>(0, "success", null);
+    }
+
+    public static <T> Result<T> ok(T data) {
+        return new Result<>(0, "success", data);
+    }
+
+    /** ---------------- 静态工厂：失败响应 ---------------- */
+
+    public static <T> Result<T> fail(String msg) {
+        return new Result<>(-1, msg, null);
+    }
+
+    public static <T> Result<T> fail(Integer code, String msg) {
+        return new Result<>(code, msg, null);
+    }
+}
+```
+
+使用示例：
+
+```java
+@GetMapping("/users")
+public Result<UserVO> getUser() {
+    UserVO user = new UserVO("wolf", "狼王");
+    return Result.ok(user);
+}
+
+@PostMapping("/update")
+public Result<Void> update(@RequestBody UpdateDTO dto) {
+    if (!service.update(dto)) {
+        return Result.fail("更新失败");
+    }
+    return Result.ok();
+}
+```
+
+返回 JSON 永远保持相同结构：
+
+```json
+{
+  "code": 0,
+  "msg": "success",
+  "data": { ... }
+}
+```
+
+或者失败情况：
+
+```json
+{
+  "code": -1,
+  "msg": "更新失败",
+  "data": null
+}
+```
+
+通过统一响应结构，后端避免了“接口风格混乱”的问题；前端也可以用同一套解析逻辑处理所有接口，大幅降低开发成本。
+
+## 统一异常处理
 ### `@RequestMapping` 请求映射注解
 
 在 Spring MVC 里，最基本的注解是 `@RequestMapping`，可以指定路径和请求方式：
@@ -1133,12 +1223,9 @@ public String hunt() { ... }
 
 一般写在配置类或启动类上就行。
 
-
 VO DTO
 
-
 复制对象工具类
-
 
 Treatlocal
 
@@ -1148,16 +1235,16 @@ Treatlocal
 
 不推荐直接
 
-方式二：在WebMvcConfiguration中扩展SpringMVC的消息转换器，统一对日期类型进行格式化处理
+方式二：在 WebMvcConfiguration 中扩展 SpringMVC 的消息转换器，统一对日期类型进行格式化处理
 
-扩展mvc框架的消息转换器
-*@paramconverters
-*
-protected void extendMessageConverters(List<HttpMessageConverter<?>>converters）{
-Log.info（"开始扩展消息转换器...")；
-//创建一个消息转化器对象
-MappingJackson2HttpMessageConverter converter =new MappingJackson2HttpMessageConverter();
-//设置对象转换器，可以将Java对象转为json字符串
-converter.setobjectMapper(new JacksonobjectMapper());
-//将我们自己的转换器放入springMvc框架的容器中
-converters.add(o,converter);
+扩展 mvc 框架的消息转换器
+\*@paramconverters
+
+- protected void extendMessageConverters(List<HttpMessageConverter<?>>converters）{
+  Log.info（"开始扩展消息转换器...")；
+  //创建一个消息转化器对象
+  MappingJackson2HttpMessageConverter converter =new MappingJackson2HttpMessageConverter();
+  //设置对象转换器，可以将 Java 对象转为 json 字符串
+  converter.setobjectMapper(new JacksonobjectMapper());
+  //将我们自己的转换器放入 springMvc 框架的容器中
+  converters.add(o,converter);
