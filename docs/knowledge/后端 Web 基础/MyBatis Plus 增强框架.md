@@ -1,10 +1,10 @@
 ---
-title: 'MyBatis Plus'
-date: '2025-11-24 20:31:26'
-description: '这是一篇新文章!'
+title: MyBatis Plus 增强框架
+date: 2025-11-24 20:31:26
+description: 这是一篇新文章!
 order: 0
 publish: true
-tags: 
+tags:
 ---
 
 MyBatis-Plus（简称 **MP**）是基于 MyBatis 的增强框架。
@@ -350,7 +350,7 @@ MP 增强出来的能力，像主键策略、字段更新策略，都在这里�
 
 在 MP 里，几乎所有带条件的操作（查询、更新、删除）都离不开“条件构造器”。它的核心用途就是生成 where 子句 —— 不用写动态 SQL，不用手动拼接字符串。
 
-![](../../public/images/文章资源/mybatis-plus/file-20251125101133648.jpg)
+![](../../public/images/文章资源/mybatis-plus-增强框架/file-20251125101133648.jpg)
 
 在 MyBatis 原生写法里，这些 `where` 条件往往要写在 XML 里，用 `<if>` 拼接、再注意 AND 的位置，不仅繁琐，也容易写错。
 MP 给出的 Wrapper 系列，就是把这些逻辑用一段 Java 代码表达出来，结构更清晰，也更容易复用和调试。
@@ -730,13 +730,6 @@ void updateBalanceByWrapper(@Param("amount") int amount,
 
 只要你传进来的参数名是 `ew`，MP 就会自动把 Wrapper 解析成一整段 where SQL，塞进 `${ew.customSqlSegment}` 那里。
 
-# Service 接口
-
-
-为什么, 
-(Iservice )
-
-用了有什么好处
 
 (怎么用)
 原来接口 serrvice 继承 iservice
@@ -896,6 +889,11 @@ veid dednetRalaneeById (oParam ("amount") int. amount, eParam("id") Long id) :
 
 # Iservice Lambda
 
-需求：实现一个根据复杂条件查询用户的接口，查询条件如下：·name：用户名关键字，可以为空
-。status：用户状态，可以为空
-·minBalance：最小余额，可以为空·maxBalance：最大余额，可以为空
+
+的lambdaQuery 
+lambdaUpdate 
+批量插入  开启 rewitebatchedStatements
+
+静态工具类 db
+
+枚举类型处理器

@@ -17,6 +17,7 @@
     "knowledge": [
       "knowledge/后端 Java 基础",
       "knowledge/后端 Web 基础",
+      "knowledge/后端 微服务基础",
       "knowledge/后端工具库",
       "knowledge/后端面试",
       "knowledge/后端数据库",
@@ -26,6 +27,9 @@
       "knowledge/前端面试",
       "knowledge/实习实训",
       "knowledge/index.md"
+    ],
+    "knowledge/后端 微服务基础": [
+      "knowledge/后端 微服务基础/微服务基础.md"
     ],
     "knowledge/后端 Java 基础": [
       "knowledge/后端 Java 基础/第一部分-基础语法.md",
@@ -44,7 +48,7 @@
       "knowledge/后端 Java 基础/扩展部分-配置与特殊文件.md"
     ],
     "knowledge/后端 Web 基础": [
-      "knowledge/后端 Web 基础/MyBatis Plus.md",
+      "knowledge/后端 Web 基础/MyBatis Plus 增强框架.md",
       "knowledge/后端 Web 基础/WebSocket-及时通知.md",
       "knowledge/后端 Web 基础/Spring Task-定时任务.md",
       "knowledge/后端 Web 基础/spring boot原理.md",
@@ -62,6 +66,7 @@
       "knowledge/后端 Web 基础/事务处理.md"
     ],
     "knowledge/后端工具库": [
+      "knowledge/后端工具库/Docker.md",
       "knowledge/后端工具库/HttpClient.md",
       "knowledge/后端工具库/Swagger-生成接口文档.md",
       "knowledge/后端工具库/nginx-反向代理与负载均衡.md",
@@ -85,6 +90,8 @@
       "knowledge/后端面试/SQL 基础.md"
     ],
     "knowledge/后端数据库": [
+      "knowledge/后端数据库/六 设计题.md",
+      "knowledge/后端数据库/Access 极限速通.md",
       "knowledge/后端数据库/Redis 数据库基础.md",
       "knowledge/后端数据库/MySQL 数据库基础.md"
     ],
@@ -120,6 +127,7 @@
       "knowledge/前端面试/ES6 - JavaScript 中的继承.md"
     ],
     "knowledge/实习实训": [
+      "knowledge/实习实训/Java 转 NestJS.md",
       "knowledge/实习实训/Java后端与AI智能体开发全景梳理.md"
     ],
     "projects": [
@@ -142,7 +150,8 @@
       "public/images/首页/default-cover.png"
     ],
     "public/images/文章资源": [
-      "public/images/文章资源/mybatis-plus",
+      "public/images/文章资源/微服务基础",
+      "public/images/文章资源/mybatis-plus-增强框架",
       "public/images/文章资源/httpclient",
       "public/images/文章资源/redis-数据库基础",
       "public/images/文章资源/spring-boot原理",
@@ -318,6 +327,9 @@
       "public/images/文章资源/网页视觉样式-css/file-20250602213021967.jpg",
       "public/images/文章资源/网页视觉样式-css/file-20250602213036913.jpg"
     ],
+    "public/images/文章资源/微服务基础": [
+      "public/images/文章资源/微服务基础/file-20251228104248099.jpg"
+    ],
     "public/images/文章资源/我从人间走过": [
       "public/images/文章资源/我从人间走过/file-20250623142321302.jpg"
     ],
@@ -410,8 +422,8 @@
       "public/images/文章资源/maven-基础-项目构建工具/file-20250627153552089.jpg",
       "public/images/文章资源/maven-基础-项目构建工具/file-20250627162621679.jpg"
     ],
-    "public/images/文章资源/mybatis-plus": [
-      "public/images/文章资源/mybatis-plus/file-20251125101133648.jpg"
+    "public/images/文章资源/mybatis-plus-增强框架": [
+      "public/images/文章资源/mybatis-plus-增强框架/file-20251125101133648.jpg"
     ],
     "public/images/文章资源/mysql-安装": [
       "public/images/文章资源/mysql-安装/file-20250828170516235.jpg",
