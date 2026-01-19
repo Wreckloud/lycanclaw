@@ -35,7 +35,8 @@
               "title": "MySQL 数据库基础"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -54,13 +55,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/后端数据库/六 设计题.md",
+                "file": "knowledge/后端数据库/MySQL 数据库基础.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "六 设计题 的大纲"
+              "title": "MySQL 数据库基础 的大纲"
             }
           },
           {
@@ -167,10 +168,10 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "32e602448e3823c4",
+  "active": "2ff9f7e12d096626",
   "lastOpenFiles": [
-    "knowledge/后端数据库/Access 极限速通.md",
     "knowledge/后端数据库/六 设计题.md",
+    "knowledge/后端数据库/Access 极限速通.md",
     "knowledge/后端数据库/MySQL 数据库基础.md",
     "_scaffolds/post.md",
     "knowledge/后端 Web 基础/MyBatis Plus 增强框架.md",
