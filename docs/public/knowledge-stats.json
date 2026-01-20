@@ -215,7 +215,7 @@
     "relativePath": "knowledge/后端 Web 基础/Tomcat-web Servlet容器.md"
   },
   {
-    "date": "2026-01-19T08:30:06.446Z",
+    "date": "2026-01-20T08:50:52.253Z",
     "wordCount": 0,
     "relativePath": "knowledge/后端 Web 基础/WebSocket-及时通知.md"
   },
@@ -270,7 +270,7 @@
     "relativePath": "knowledge/后端工具库/Docker-虚拟化技术.md"
   },
   {
-    "date": "2026-01-19T08:30:06.453Z",
+    "date": "2026-01-20T08:50:52.258Z",
     "wordCount": 130,
     "relativePath": "knowledge/后端工具库/Docker.md"
   },
@@ -325,6 +325,11 @@
     "relativePath": "knowledge/后端数据库/Redis 数据库基础.md"
   },
   {
+    "date": "2026-01-20T08:50:52.264Z",
+    "wordCount": 10513,
+    "relativePath": "knowledge/后端数据库/五、阅读程序.md"
+  },
+  {
     "date": "2026-01-19 16:16:11",
     "wordCount": 5422,
     "relativePath": "knowledge/后端数据库/六 设计题.md"
@@ -345,7 +350,7 @@
     "relativePath": "knowledge/后端面试/MyBatis.md"
   },
   {
-    "date": "2026-01-19T08:30:06.464Z",
+    "date": "2026-01-20T08:50:52.268Z",
     "wordCount": 19083,
     "relativePath": "knowledge/后端面试/Mysql.md"
   },
@@ -385,7 +390,7 @@
     "relativePath": "knowledge/后端面试/面试问题清单.md"
   },
   {
-    "date": "2026-01-19T08:30:06.470Z",
+    "date": "2026-01-20T08:50:52.272Z",
     "wordCount": 744,
     "relativePath": "knowledge/实习实训/Java 转 NestJS.md"
   },

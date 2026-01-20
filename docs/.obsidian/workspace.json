@@ -4,39 +4,24 @@
     "type": "split",
     "children": [
       {
-        "id": "cf32a7f0cd9477c9",
+        "id": "57b49faf48feed40",
         "type": "tabs",
         "children": [
           {
-            "id": "32e602448e3823c4",
+            "id": "28ff7694e3ea0cac",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端数据库/六 设计题.md",
+                "file": "knowledge/后端数据库/五、阅读程序.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "六 设计题"
-            }
-          },
-          {
-            "id": "2ff9f7e12d096626",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "knowledge/后端 微服务基础/微服务基础.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "微服务基础"
+              "title": "五、阅读程序"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -55,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/后端 微服务基础/微服务基础.md",
+                "file": "knowledge/后端数据库/五、阅读程序.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "微服务基础 的大纲"
+              "title": "五、阅读程序 的大纲"
             }
           },
           {
@@ -168,17 +153,29 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "2ff9f7e12d096626",
+  "active": "28ff7694e3ea0cac",
   "lastOpenFiles": [
-    "knowledge/后端数据库/MySQL 数据库基础.md",
+    "public/images/文章资源/五、阅读程序/file-20260120161203115.jpg",
+    "public/images/文章资源/五、阅读程序/file-20260120160929118.jpg",
+    "public/images/文章资源/五、阅读程序/file-20260120155939608.jpg",
+    "public/images/文章资源/五、阅读程序/file-20260120155533235.jpg",
+    "public/images/文章资源/五、阅读程序/file-20260120145203689.jpg",
+    "public/images/文章资源/五、阅读程序/file-20260120141328801.jpg",
+    "public/images/文章资源/五、阅读程序/file-20260120121632007.jpg",
+    "public/images/文章资源/五、阅读程序/file-20260120113619212.jpg",
+    "knowledge/后端 微服务基础/微服务基础.md",
+    "knowledge/后端数据库/五、阅读程序.md",
+    "public/images/文章资源/五、阅读程序/file-20260120113207070.jpg",
+    "public/images/文章资源/五、阅读程序/file-20260120112505964.jpg",
+    "public/images/文章资源/五、阅读程序/file-20260120110522154.jpg",
+    "public/images/文章资源/五、阅读程序",
     "knowledge/后端数据库/六 设计题.md",
+    "knowledge/后端数据库/MySQL 数据库基础.md",
     "knowledge/后端数据库/Access 极限速通.md",
     "_scaffolds/post.md",
     "knowledge/后端 Web 基础/MyBatis Plus 增强框架.md",
     "knowledge/后端数据库/Redis 数据库基础.md",
     "knowledge/实习实训/用户登录流程设计-V2.md",
-    "knowledge/后端 微服务基础/微服务基础.md",
-    "public/images/文章资源/微服务基础/file-20251228104248099.jpg",
     "public/images/文章资源/微服务基础",
     "knowledge/后端 Java 基础/第四部分-网络编程.md",
     "knowledge/后端 微服务基础",
@@ -198,24 +195,12 @@
     "public/images/文章资源/mybatis-plus-增强框架",
     "knowledge/后端 Java 基础/第一部分-基础语法.md",
     "projects/index.md",
-    "projects/online-shoping-vue3.md",
-    "projects/苍穹外卖学习计划.md",
-    "public/images/文章资源/mybatis-plus-增强框架/file-20251125101133648.jpg",
     "public/images/文章资源/mybatis-plus",
-    "public/images/文章资源/redis-数据库基础/file-20251118153302233.jpg",
-    "public/images/文章资源/httpclient/file-20251111145826796.jpg",
-    "public/images/文章资源/httpclient/file-20251111145449576.jpg",
     "public/images/文章资源/httpclient",
-    "public/images/文章资源/redis-数据库基础/file-20251110152628526.jpg",
-    "public/images/文章资源/redis-数据库基础/file-20251110152519950.jpg",
-    "public/images/文章资源/redis-数据库基础/file-20251110140709180.jpg",
-    "public/images/文章资源/redis-数据库基础/file-20251110140655448.jpg",
-    "public/images/文章资源/redis-数据库基础/file-20251110140626305.jpg",
     "public/images/文章资源/redis-数据库基础",
     "public/images/文章资源/spring-boot原理",
     "public/images/文章资源/登录校验",
     "public/images/文章资源/maven-基础-项目构建工具",
-    "public/images/文章资源/java-基础",
     "点子合集.canvas"
   ]
 }
