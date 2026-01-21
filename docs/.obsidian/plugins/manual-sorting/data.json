@@ -90,8 +90,9 @@
       "knowledge/后端面试/SQL 基础.md"
     ],
     "knowledge/后端数据库": [
+      "knowledge/后端数据库/四、代码填空题.md",
       "knowledge/后端数据库/五、阅读程序.md",
-      "knowledge/后端数据库/六 设计题.md",
+      "knowledge/后端数据库/六、设计题.md",
       "knowledge/后端数据库/Access 极限速通.md",
       "knowledge/后端数据库/Redis 数据库基础.md",
       "knowledge/后端数据库/MySQL 数据库基础.md"
@@ -151,6 +152,7 @@
       "public/images/首页/default-cover.png"
     ],
     "public/images/文章资源": [
+      "public/images/文章资源/五、阅读程序",
       "public/images/文章资源/微服务基础",
       "public/images/文章资源/mybatis-plus-增强框架",
       "public/images/文章资源/httpclient",
@@ -333,6 +335,22 @@
     ],
     "public/images/文章资源/我从人间走过": [
       "public/images/文章资源/我从人间走过/file-20250623142321302.jpg"
+    ],
+    "public/images/文章资源/五、阅读程序": [
+      "public/images/文章资源/五、阅读程序/file-20260120103033568.jpg",
+      "public/images/文章资源/五、阅读程序/file-20260120104749718.jpg",
+      "public/images/文章资源/五、阅读程序/file-20260120105847992.jpg",
+      "public/images/文章资源/五、阅读程序/file-20260120110522154.jpg",
+      "public/images/文章资源/五、阅读程序/file-20260120112505964.jpg",
+      "public/images/文章资源/五、阅读程序/file-20260120113207070.jpg",
+      "public/images/文章资源/五、阅读程序/file-20260120113619212.jpg",
+      "public/images/文章资源/五、阅读程序/file-20260120121632007.jpg",
+      "public/images/文章资源/五、阅读程序/file-20260120141328801.jpg",
+      "public/images/文章资源/五、阅读程序/file-20260120145203689.jpg",
+      "public/images/文章资源/五、阅读程序/file-20260120155533235.jpg",
+      "public/images/文章资源/五、阅读程序/file-20260120155939608.jpg",
+      "public/images/文章资源/五、阅读程序/file-20260120160929118.jpg",
+      "public/images/文章资源/五、阅读程序/file-20260120161203115.jpg"
     ],
     "public/images/文章资源/支线部分-gui程序开发": [],
     "public/images/文章资源/axios-现代化的-ajax-请求工具": [

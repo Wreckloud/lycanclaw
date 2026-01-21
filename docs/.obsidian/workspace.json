@@ -13,6 +13,20 @@
             "state": {
               "type": "markdown",
               "state": {
+                "file": "knowledge/后端数据库/六、设计题.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "六、设计题"
+            }
+          },
+          {
+            "id": "31f181ae07cf6de7",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
                 "file": "knowledge/后端数据库/五、阅读程序.md",
                 "mode": "source",
                 "source": false
@@ -40,13 +54,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/后端数据库/五、阅读程序.md",
+                "file": "knowledge/后端数据库/六、设计题.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "五、阅读程序 的大纲"
+              "title": "六、设计题 的大纲"
             }
           },
           {
@@ -155,6 +169,11 @@
   },
   "active": "28ff7694e3ea0cac",
   "lastOpenFiles": [
+    "knowledge/后端数据库/四、代码填空题.md",
+    "public/images/文章资源/四、代码填空题/file-20260121121732773.jpg",
+    "public/images/文章资源/四、代码填空题",
+    "knowledge/后端数据库/五、阅读程序.md",
+    "knowledge/后端数据库/六、设计题.md",
     "public/images/文章资源/五、阅读程序/file-20260120161203115.jpg",
     "public/images/文章资源/五、阅读程序/file-20260120160929118.jpg",
     "public/images/文章资源/五、阅读程序/file-20260120155939608.jpg",
@@ -164,12 +183,8 @@
     "public/images/文章资源/五、阅读程序/file-20260120121632007.jpg",
     "public/images/文章资源/五、阅读程序/file-20260120113619212.jpg",
     "knowledge/后端 微服务基础/微服务基础.md",
-    "knowledge/后端数据库/五、阅读程序.md",
     "public/images/文章资源/五、阅读程序/file-20260120113207070.jpg",
-    "public/images/文章资源/五、阅读程序/file-20260120112505964.jpg",
-    "public/images/文章资源/五、阅读程序/file-20260120110522154.jpg",
     "public/images/文章资源/五、阅读程序",
-    "knowledge/后端数据库/六 设计题.md",
     "knowledge/后端数据库/MySQL 数据库基础.md",
     "knowledge/后端数据库/Access 极限速通.md",
     "_scaffolds/post.md",
@@ -194,13 +209,11 @@
     "knowledge/后端工具库/Docker.md",
     "public/images/文章资源/mybatis-plus-增强框架",
     "knowledge/后端 Java 基础/第一部分-基础语法.md",
-    "projects/index.md",
     "public/images/文章资源/mybatis-plus",
     "public/images/文章资源/httpclient",
     "public/images/文章资源/redis-数据库基础",
     "public/images/文章资源/spring-boot原理",
     "public/images/文章资源/登录校验",
-    "public/images/文章资源/maven-基础-项目构建工具",
     "点子合集.canvas"
   ]
 }
