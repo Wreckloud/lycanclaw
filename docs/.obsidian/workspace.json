@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端数据库/六、设计题.md",
+                "file": "knowledge/后端数据库/四、代码填空题.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "六、设计题"
+              "title": "四、代码填空题"
             }
           },
           {
@@ -54,13 +54,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/后端数据库/六、设计题.md",
+                "file": "knowledge/后端数据库/四、代码填空题.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "六、设计题 的大纲"
+              "title": "四、代码填空题 的大纲"
             }
           },
           {
@@ -169,11 +169,11 @@
   },
   "active": "28ff7694e3ea0cac",
   "lastOpenFiles": [
+    "knowledge/后端数据库/六、设计题.md",
     "knowledge/后端数据库/四、代码填空题.md",
     "public/images/文章资源/四、代码填空题/file-20260121121732773.jpg",
     "public/images/文章资源/四、代码填空题",
     "knowledge/后端数据库/五、阅读程序.md",
-    "knowledge/后端数据库/六、设计题.md",
     "public/images/文章资源/五、阅读程序/file-20260120161203115.jpg",
     "public/images/文章资源/五、阅读程序/file-20260120160929118.jpg",
     "public/images/文章资源/五、阅读程序/file-20260120155939608.jpg",
