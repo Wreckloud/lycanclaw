@@ -218,6 +218,8 @@ private String id; // 比如一个业务意义的订单号
 
 ### 雪花算法 `ASSIGN_ID`
 
+默认的策略
+
 在分布式系统、微服务、多节点部署的场景下，数据库自增可能无法满足你对全局唯一性的要求，这时就可以让 MP 用雪花算法为你生成一个 64 位的主键。
 
 ```java
@@ -228,6 +230,13 @@ private Long id;
 插入前不需要自己 set，MP 会在插入时自动生成一个主键值。
 这种策略在现代项目里非常常见，因为它不依赖数据库，适合服务拆分后的业务。
 
+
+还有几个了解
+
+NONE
+INPuT
+ASSINE_UUID 
+ASSIGN_ID
 ## `@TableField` 字段映射处理
 
 `@TableField` 用来解决实体字段与数据库列名之间“不对称”的所有情况。只要默认规则（驼峰转下划线）对不上，就用它让映射关系说清楚。
@@ -310,6 +319,7 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true  # 下划线字段自动转驼峰
     cache-enabled: false                # 二级缓存是否开启（一般在 Web 项目里都是 false）
+		log-impl: org.apache.ibatis.logging
 ```
 
 - `map-underscore-to-camel-case`
@@ -897,3 +907,109 @@ lambdaUpdate
 静态工具类 db
 
 枚举类型处理器
+
+
+IService接口
+Mybatis-Plus不仅提供了Map层接口BaseMapper，还提供了通用的Service层接口及默认实现，并在其中封装了一些常用的service模板方法。通用接口为IService，默认实现为 ServiceImpl，其中封装的方法可以分为以下
+save：新增
+remove：删除
+update：更新
+get：查询单个结果
+List：查询集合结果
+count：计数
+page：分页查询 I
+
+基本的增删改查
+咱们先来看下基本的CRUD接口，新增：
+save(T):boolean
+(m）
+(m）
+(m）
+saveBatch(Collection<T>): booleansaveBatch(Collection<T>, int): booleansaveOrUpdateBatch(Collection<T>): booleansaveOrUpdateBatch(Collection<T>, int): booleansaveOrUpdate(T): boolean
+saveOrUpdate(T, Wrapper<T>): boolean
+save是新增单个元素]saveBatch是批量新增
+saveOrUpdate 是根据id判断，如果数据存在就更新，不存在则新增saveOrUpdateBatch是批量的新增或修改
+
+删除：
+IService
+8
+removeBvld(Serializable):booleanremoveByld(Serializable, boolean): booleanremoveByld(T): boolean
+removeByMap(Map<String, Object>): booleanremove(Wrapper<T>): boolean
+removeBylds(Collection<?>): boolean
+removeBylds(Collection<?>, boolean): booleanremoveBatchBylds(Collection<?>): booleanremoveBatchBylds(Collection<?>,boolean):booleanremoveBatchBylds(Collection<?>, int): booleanremoveBatchBylds(Collection<?>,int, boolean):boolean
+removeById：根据id删除removeByIds：根据id批量删除
+removeByMap：根据Map中的键值对条件删除remove(Wrapper<T>)：根据Wrapper条件删除~removeBatchByIds~~：暂不支持
+
+修改：
+IService
+m  saveOrUpdateBatch(Collection<T>): booleansaveOrUpdateBatch(Collection<T>, int): boolean
+3
+updateByld(T): booleanupdate(Wrapper<T>): booleanupdate(T, Wrapper<T>): boolean
+(m）
+updateBatchByld(Collection<T>): booleanupdateBatchByld(CMection<T>, int): boolean
+(m)  saveorUpdate(T): boolean
+ktUpdate(): KtUpdateChainWrapper<T>update(): UpdateChainWrapper<T>
+lambdaUpdate(): LambdaUpdateChainWrapper<T>m saveOrUpdate(T, Wrapper<T>): boolean
+updateById：根据id修改
+update(Wrapper<T>)：根据 UpdateWrapper 修改，Wrapper 中包含 set 和 where 部分update(T, Wrapper<T>)：按照 T 内的数据修改与Wrapper 匹配到的数据
+updateBatchById：根据id批量修改
+
+Get:
+IService
+3
+getByld(Serializable): TgetOne(Wrapper<T>): T
+(m）
+getOne(Wrapper<T>, boolean): T
+(m)  getMap(Wrapper<T>): Map<String, Object>(m
+getObj(Wrapper<T>, Function<? super Object, V>): V
+(mgetBaseMapper(:BaseMapper<T>
+(m) getEntityClass(): Classb
+getById：根据id查询1条数据
+getOne(Wrapper<T>)：根据 Wrapper 查询1条数据
+getBaseMapper ：获取 Service 内的 BaseMapper 实现，某些时候需要直接调用 Mapper 内的自定义SQL时可以用这个方法获取到Mapper
+
+
+List:
+1
+IService
+listBylds(Collection<?extends Serializable>): List<T>
+mlistByMap(Map<String, Object>): List<T> list(Wrapper<T>): List<T>
+list(): List<T>
+listMaps(Wrapper<T>): List<Map<String,Object>>m  listMaps(): List<Map<String, Object>>mlistobjs(): List<object>
+m  listobjs(Function<? super Object, V>): List<V>
+BI
+listObjs(Wrapper<T>): List<Object>
+m  listObjs(Wrapper<T>, Function<? super Object, V>): List<V>
+listByIds：根据id批量查询
+list(Wrapper<T>）：根据Wrapper条件查询多条数据list()：查询所有
+
+Count:
+IService
+count(): long
+count(Wrapper<T>): long
+count（）：统计所有数量
+count(Wrapper<T>）：统计符合Wrapper 条件的数据数量
+
+
+用
+
+![](../../public/images/文章资源/mybatis-plus-增强框架/file-20260304101703944.jpg)
+
+由于 Service 中经常需要定义与业务有关的自定义方法，因此咱们不能直接使用 IService，而是自定义Service 接口，然后继承 IService 以拓展方法。同时，让自定义的 Service实现类 继承 ServiceImpl，这样就不用自己实现IService中的接口了。
+
+
+
+## 分页插件
+
+MyBatis-Plus 的分页插件 PaginationInnerInterceptor 提供了强大的分页功能,支持多种数据库,使得分页查询变得简单高效。
+
+
+于 v3.5.9 起，PaginationInnerInterceptor 已分离出来。如需使用，则需单独引l入mybatis-plus-jsqlparser 依赖
+代码块
+咱们当前引入的MyBatisPlus版本是：3.5.11。因此，要想使用分页功能，还需要再引入一个依赖：
+XML 
+<dependency>
+<groupId>com.baomidou</groupId>
+<artifactId>mybatis-plus-jsqlparser</artifactId><version>3.5.11</version>
+</dependency>
+接下来，在项目中新建一个配置类：com.itheima.config.MybatisConfig

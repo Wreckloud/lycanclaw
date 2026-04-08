@@ -8,31 +8,31 @@
         "type": "tabs",
         "children": [
           {
-            "id": "28ff7694e3ea0cac",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "knowledge/后端数据库/四、代码填空题.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "四、代码填空题"
-            }
-          },
-          {
             "id": "31f181ae07cf6de7",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端数据库/五、阅读程序.md",
+                "file": "knowledge/后端 Java 基础/第一部分-面向对象高级.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "五、阅读程序"
+              "title": "第一部分-面向对象高级"
+            }
+          },
+          {
+            "id": "7b06271dd556ed6e",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "knowledge/后端 Java 基础/第二部分-常用 API.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "第二部分-常用 API"
             }
           }
         ]
@@ -54,13 +54,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/后端数据库/四、代码填空题.md",
+                "file": "knowledge/后端 Java 基础/第一部分-面向对象高级.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "四、代码填空题 的大纲"
+              "title": "第一部分-面向对象高级 的大纲"
             }
           },
           {
@@ -155,7 +155,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 290.5
+    "width": 266.5
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -167,54 +167,54 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "28ff7694e3ea0cac",
+  "active": "31f181ae07cf6de7",
   "lastOpenFiles": [
+    "knowledge/后端 Java 基础/第二部分-常用 API.md",
+    "knowledge/后端 Java 基础/第一部分-面向对象高级.md",
+    "knowledge/后端 Java 基础/第一部分-面向对象基础.md",
+    "knowledge/后端 Java 基础/第一部分-基础语法.md",
+    "public/images/文章资源/第一部分-面向对象基础",
+    "knowledge/实习实训/java_study_schedule_2026-03-03_to_2026-06-30.md",
+    "knowledge/实习实训/java-restart-log.md",
+    "knowledge/前端基础/网页结构骨架-HTML.md",
+    "knowledge/后端 Web 基础/互联网与星辰大海.md",
+    "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md",
+    "thoughts/数字世界的构建手册.md",
+    "knowledge/后端数据库/MySQL 数据库基础.md",
+    "knowledge/后端 Web 基础/登录校验.md",
+    "knowledge/后端 Web 基础/MyBatis Plus 增强框架.md",
+    "public/images/文章资源/mybatis-plus-增强框架/file-20260304101703944.jpg",
+    "public/images/文章资源/mybatis-plus-增强框架/file-20260304101642267.jpg",
+    "thoughts/RE ACTION.md",
+    "thoughts/笔记本 Wi-Fi 消失的解决方法.md",
+    "thoughts/一盏灯后的夜.md",
+    "thoughts/博客现状架构与重构路线图.md",
+    "未命名.md",
+    "knowledge/前端面试/ES6 - JavaScript 中的继承.md",
+    "knowledge/实习实训/Java后端与AI智能体开发全景梳理.md",
+    "knowledge/实习实训/Java 转 NestJS.md",
+    "knowledge/前端面试/java_study_schedule_2026-03-03_to_2026-06-30.md",
+    "knowledge/后端数据库/五、阅读程序.md",
+    "knowledge/后端数据库/四、代码填空题.md",
     "public/images/文章资源/四、代码填空题/file-20260121174008569.jpg",
     "public/images/文章资源/四、代码填空题/file-20260121173219225.jpg",
     "public/images/文章资源/四、代码填空题/file-20260121162303842.jpg",
     "public/images/文章资源/四、代码填空题/file-20260121161927522.jpg",
     "public/images/文章资源/四、代码填空题/file-20260121161042318.jpg",
-    "knowledge/后端数据库/五、阅读程序.md",
     "knowledge/后端数据库/六、设计题.md",
-    "knowledge/后端数据库/四、代码填空题.md",
     "public/images/文章资源/四、代码填空题/file-20260121143407758.jpg",
     "public/images/文章资源/四、代码填空题/file-20260121121732773.jpg",
     "public/images/文章资源/四、代码填空题",
     "public/images/文章资源/五、阅读程序/file-20260120161203115.jpg",
-    "public/images/文章资源/五、阅读程序/file-20260120160929118.jpg",
-    "public/images/文章资源/五、阅读程序/file-20260120155939608.jpg",
-    "public/images/文章资源/五、阅读程序/file-20260120155533235.jpg",
     "knowledge/后端 微服务基础/微服务基础.md",
     "public/images/文章资源/五、阅读程序",
-    "knowledge/后端数据库/MySQL 数据库基础.md",
-    "knowledge/后端数据库/Access 极限速通.md",
-    "_scaffolds/post.md",
-    "knowledge/后端 Web 基础/MyBatis Plus 增强框架.md",
-    "knowledge/后端数据库/Redis 数据库基础.md",
-    "knowledge/实习实训/用户登录流程设计-V2.md",
     "public/images/文章资源/微服务基础",
-    "knowledge/后端 Java 基础/第四部分-网络编程.md",
     "knowledge/后端 微服务基础",
-    "knowledge/后端 Web 基础/spring boot原理.md",
-    "knowledge/后端 Web 基础/WebSocket-及时通知.md",
-    "knowledge/后端 Java 基础/第三部分-IO 流.md",
-    "knowledge/后端 Java 基础/第四部分-反射与注解.md",
-    "knowledge/后端 Java 基础/第三部分-File 类.md",
-    "knowledge/后端 Java 基础/第四部分-多线程.md",
-    "knowledge/后端 Web 基础/登录校验.md",
-    "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md",
-    "knowledge/后端面试/MyBatis.md",
-    "knowledge/实习实训/用户登录注册表设计-V2.md",
-    "thoughts/一盏灯后的夜.md",
-    "knowledge/实习实训/Java 转 NestJS.md",
-    "knowledge/后端工具库/Docker.md",
     "public/images/文章资源/mybatis-plus-增强框架",
-    "knowledge/后端 Java 基础/第一部分-基础语法.md",
     "public/images/文章资源/mybatis-plus",
     "public/images/文章资源/httpclient",
     "public/images/文章资源/redis-数据库基础",
     "public/images/文章资源/spring-boot原理",
-    "public/images/文章资源/登录校验",
     "点子合集.canvas"
   ]
 }
