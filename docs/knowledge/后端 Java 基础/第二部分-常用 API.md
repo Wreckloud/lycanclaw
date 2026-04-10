@@ -64,11 +64,7 @@ public String toString() {
 
 ## equals 方法
 
-`equals` 方法用于比较两个对象是否相等。比较对象时，应该使用`equals()`而不是`==`操作符。
-
-因为`==`比较的是对象的引用（内存地址），而我们通常需要比较的是对象的内容。
-
-Object 类中 equals 的默认实现：
+`equals` 方法用于比较两个对象是否相等。`Object` 类中 `equals` 的默认实现如下：
 
 ```java
 public boolean equals(Object obj) {
@@ -76,7 +72,7 @@ public boolean equals(Object obj) {
 }
 ```
 
-> 在 IDE 中，按住 Ctrl 点击方法名可以跳转到其实现类。
+因为`==`比较的是对象的引用（内存地址），而我们通常需要比较的是对象的内容。此时就可以重写父类方法,自己定制比较规则
 
 Object 类只提供了基础实现，许多类（如 String）都重写了这个方法来实现符合业务逻辑的比较。例如：
 
