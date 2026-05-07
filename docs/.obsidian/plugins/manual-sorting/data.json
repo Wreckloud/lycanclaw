@@ -66,6 +66,7 @@
       "knowledge/后端 Web 基础/事务处理.md"
     ],
     "knowledge/后端工具库": [
+      "knowledge/后端工具库/若依框架.md",
       "knowledge/后端工具库/Docker.md",
       "knowledge/后端工具库/HttpClient.md",
       "knowledge/后端工具库/Swagger-生成接口文档.md",
@@ -125,6 +126,7 @@
       "knowledge/前端面试/ES6 - JavaScript 中的继承.md"
     ],
     "knowledge/实习实训": [
+      "knowledge/实习实训/java_course_audit_and_real_plan_2026-04-12.md",
       "knowledge/实习实训/java-restart-log.md",
       "knowledge/实习实训/Java后端与AI智能体开发全景梳理.md"
     ],
@@ -148,6 +150,7 @@
       "public/images/首页/default-cover.png"
     ],
     "public/images/文章资源": [
+      "public/images/文章资源/第四部分-反射与注解",
       "public/images/文章资源/第一部分-面向对象基础",
       "public/images/文章资源/微服务基础",
       "public/images/文章资源/mybatis-plus-增强框架",
@@ -217,7 +220,6 @@
     "public/images/文章资源/第二部分-常用-api": [
       "public/images/文章资源/第二部分-常用-api/file-20250627102707270.jpg",
       "public/images/文章资源/第二部分-常用-api/file-20250627102732340.jpg",
-      "public/images/文章资源/第二部分-常用-api/file-20250627102749604.jpg",
       "public/images/文章资源/第二部分-常用-api/file-20250627102813717.jpg",
       "public/images/文章资源/第二部分-常用-api/file-20250627102821477.jpg",
       "public/images/文章资源/第二部分-常用-api/file-20250627102843347.jpg"
@@ -248,6 +250,9 @@
     "public/images/文章资源/第四部分-多线程": [
       "public/images/文章资源/第四部分-多线程/file-20250820104206819.jpg",
       "public/images/文章资源/第四部分-多线程/file-20250820141504323.jpg"
+    ],
+    "public/images/文章资源/第四部分-反射与注解": [
+      "public/images/文章资源/第四部分-反射与注解/file-20260429150451231.jpg"
     ],
     "public/images/文章资源/第四部分-网络编程": [
       "public/images/文章资源/第四部分-网络编程/file-20250901152924343.jpg",
@@ -392,8 +397,6 @@
     ],
     "public/images/文章资源/maven-基础-项目构建工具": [
       "public/images/文章资源/maven-基础-项目构建工具/file-20250627153322075.jpg",
-      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153329632.jpg",
-      "public/images/文章资源/maven-基础-项目构建工具/file-20250627153337513.jpg",
       "public/images/文章资源/maven-基础-项目构建工具/file-20250627153342740.jpg",
       "public/images/文章资源/maven-基础-项目构建工具/file-20250627153347827.jpg",
       "public/images/文章资源/maven-基础-项目构建工具/file-20250627153353447.jpg",

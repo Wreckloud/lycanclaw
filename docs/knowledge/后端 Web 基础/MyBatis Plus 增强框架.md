@@ -110,7 +110,6 @@ SELECT * FROM user WHERE username = 'jack';
 这一点非常重要：
 MP 的通用 CRUD + Wrapper 是绝大多数业务逻辑的基础组合。
 
-
 写完“依赖 + Mapper”之后，你需要有一个“能立即跑起来的例子”，这样后续才容易理解 Wrapper 的作用。
 这部分 CRUD 示例就是最基本的“落地使用”。
 当你明白：
@@ -230,13 +229,13 @@ private Long id;
 插入前不需要自己 set，MP 会在插入时自动生成一个主键值。
 这种策略在现代项目里非常常见，因为它不依赖数据库，适合服务拆分后的业务。
 
-
 还有几个了解
 
 NONE
 INPuT
-ASSINE_UUID 
+ASSINE_UUID
 ASSIGN_ID
+
 ## `@TableField` 字段映射处理
 
 `@TableField` 用来解决实体字段与数据库列名之间“不对称”的所有情况。只要默认规则（驼峰转下划线）对不上，就用它让映射关系说清楚。
@@ -481,25 +480,57 @@ userMapper.update(null, wrapper);
 
 ## LambdaWrapper
 
-上面示例中，我们写了 "username"、"balance" 这样的字符串字段名。这种写法有一个天然的问题：写错不会报错，字段名改了 IDE 也不会提示。
+前面使用普通 `QueryWrapper` 或 `UpdateWrapper` 时，字段名通常需要写成字符串。
 
-为此 MP 推荐使用 Lambda 版本的 Wrapper：
+```java
+QueryWrapper<User> wrapper = new QueryWrapper<>();
+
+wrapper.like("username", "o");
+wrapper.ge("balance", 1000);
+```
+
+这种写法能正常使用，但有一个比较明显的问题：**字段名是字符串，写错了编译器不会提醒。**
+
+比如把 `"username"` 写成 `"usernmae"`，代码本身不会报错，只有运行 SQL 时才可能出问题。
+以后如果实体类字段改名，IDE 也不会自动帮我们修改这些字符串。项目小的时候问题不明显，一旦代码多起来，这种字符串字段就很容易变成隐藏雷点。
+
+为了解决这个问题，MyBatis-Plus 提供了 Lambda 版本的 Wrapper。
 
 - LambdaQueryWrapper
 - LambdaUpdateWrapper
 
-它们的特点是：字段使用方法引用而不是字符串。
+LambdaWrapper 的核心特点是：**字段不再使用字符串，而是使用实体类的 getter 方法引用。**
 
-示例，仍然是最开始的查询：
+也就是说，原来这样写：
+
+```java
+wrapper.eq("username", "wreckloud");
+```
+
+现在可以改成：
+
+```java
+wrapper.eq(User::getUsername, "wreckloud");
+```
+
+`User::getUsername` 表示引用 `User` 类中的 `getUsername` 方法。MyBatis-Plus 会根据这个 getter 方法推断出对应的字段。
+
+这样写更安全，因为字段和实体类方法绑定在一起。字段名改了，IDE 能跟着检查；方法不存在了，代码编译阶段就会报错，不用等到运行 SQL 时才发现。
+
+### LambdaQueryWrapper
+
+`LambdaQueryWrapper` 用来构造查询条件，对应的是 SQL 中的 `SELECT ... WHERE ...`。
+
+例如查询用户名中包含 `"o"`，并且余额大于等于 `1000` 的用户：
 
 ```java
 LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
 
 wrapper.select(
-    User::getId,
-    User::getUsername,
-    User::getInfo,
-    User::getBalance
+        User::getId,
+        User::getUsername,
+        User::getInfo,
+        User::getBalance
 );
 
 wrapper.like(User::getUsername, "o");
@@ -508,150 +539,127 @@ wrapper.ge(User::getBalance, 1000);
 List<User> list = userMapper.selectList(wrapper);
 ```
 
-这样写有几个明显好处：
+这里可以按 SQL 思路理解：
 
-- 字段是方法引用，不是字符串，IDE 能跟踪 → 更安全
-- 字段改名时，你的 wrapper 会同步更新
-- 整体语言更 Java 风，也更适合多人协作
+```sql
+SELECT id, username, info, balance
+FROM user
+WHERE username LIKE '%o%'
+  AND balance >= 1000;
+```
 
-Wrapper 的目的始终很简单：
-让 SQL 条件写起来更自然、更安全。不是替代 SQL，而是把 SQL 写得更干净。
+这段代码里有两个重点。
 
-## 常用方法
+`select` 用来指定查询哪些字段。如果不写 `select`，默认会查询实体类对应的所有字段。
+`like` 和 `ge` 用来指定查询条件，分别对应模糊查询和大于等于。
 
-Wrapper 的方法其实很好记：**SQL 里怎么写条件，MP 里基本就有同名的方法。**
-查询、更新、删除的 where 条件都靠它们来构建。
+LambdaQueryWrapper 常用在根据条件查询数据的场景中，比如按用户名搜索、按状态筛选、按时间排序、按多个条件组合查询等。
 
-### 等值与比较
+常见查询条件可以这样记：
 
-这些方法是 Wrapper 最基本的能力，对应 SQL 的比较条件：
+| 方法          | SQL 含义     | 示例                               |
+| ------------- | ------------ | ---------------------------------- |
+| `eq`          | 等于         | `eq(User::getStatus, 1)`           |
+| `ne`          | 不等于       | `ne(User::getStatus, 0)`           |
+| `gt`          | 大于         | `gt(User::getBalance, 1000)`       |
+| `ge`          | 大于等于     | `ge(User::getBalance, 1000)`       |
+| `lt`          | 小于         | `lt(User::getBalance, 1000)`       |
+| `le`          | 小于等于     | `le(User::getBalance, 1000)`       |
+| `like`        | 模糊查询     | `like(User::getUsername, "o")`     |
+| `in`          | 在某个集合中 | `in(User::getId, ids)`             |
+| `between`     | 在某个范围内 | `between(User::getAge, 18, 30)`    |
+| `orderByDesc` | 降序排序     | `orderByDesc(User::getCreateTime)` |
+| `orderByAsc`  | 升序排序     | `orderByAsc(User::getCreateTime)`  |
+
+查询时要重点分清：**条件方法是在描述 WHERE 部分，排序方法是在描述 ORDER BY 部分。**
+
+例如：
 
 ```java
-wrapper.eq("username", "jack");   // username = 'jack'
-wrapper.ne("status", 0);          // status != 0
-wrapper.gt("balance", 500);       // balance > 500
-wrapper.ge("balance", 1000);      // balance >= 1000
-wrapper.lt("age", 30);            // age < 30
-wrapper.le("age", 20);            // age <= 20
+LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+
+wrapper.eq(User::getStatus, 1);
+wrapper.like(User::getUsername, "wolf");
+wrapper.orderByDesc(User::getCreateTime);
+
+List<User> list = userMapper.selectList(wrapper);
 ```
 
-gt / ge / lt / le 就是 greater / less 的缩写。
+大致对应：
 
-### 模糊查询
+```sql
+SELECT *
+FROM user
+WHERE status = 1
+  AND username LIKE '%wolf%'
+ORDER BY create_time DESC;
+```
 
-像名字搜索、模糊匹配这种情况非常常见：
+### LambdaUpdateWrapper
+
+`LambdaUpdateWrapper` 用来构造更新语句，对应的是 SQL 中的 `UPDATE ... SET ... WHERE ...`。
+
+查询 Wrapper 只关心“查谁”，而更新 Wrapper 需要同时关心两件事：**改什么，以及改谁。**
+
+例如把 id 为 `1` 的用户昵称改为 `"灰狼"`：
 
 ```java
-wrapper.like("username", "o");        // '%o%'
-wrapper.likeRight("username", "t");   // 't%'
-wrapper.likeLeft("username", "t");    // '%t'
+LambdaUpdateWrapper<User> wrapper = new LambdaUpdateWrapper<>();
+
+wrapper.eq(User::getId, 1L);
+wrapper.set(User::getNickname, "灰狼");
+
+userMapper.update(null, wrapper);
 ```
 
-### 范围与集合
+这段代码大致对应：
 
-范围筛选、批量条件都会用到：
+```sql
+UPDATE user
+SET nickname = '灰狼'
+WHERE id = 1;
+```
+
+这里最关键的是 `set` 和 `eq` 的分工。
+
+| 方法                          | 作用                 |
+| ----------------------------- | -------------------- |
+| `set`                         | 指定要修改的字段和值 |
+| `eq` / `in` / `lt` 等条件方法 | 指定哪些数据会被修改 |
+
+所以写 `LambdaUpdateWrapper` 时，脑子里一定要有这个顺序：**先确认 WHERE 条件收住范围，再确认 SET 修改内容。**
+
+如果只写 `set`，不写条件，就可能造成大范围更新。更新语句的危险点不在于语法难，而在于条件漏掉之后影响范围太大。
+
+例如下面这种写法就很危险：
 
 ```java
-wrapper.between("age", 18, 30); // 18 <= age <= 30
-wrapper.in("id", 1, 2, 3);      // id in (1,2,3)
+LambdaUpdateWrapper<User> wrapper = new LambdaUpdateWrapper<>();
+
+wrapper.set(User::getStatus, 0);
+
+userMapper.update(null, wrapper);
 ```
 
-### 排序、分组
+它的意思接近于：
+
+```sql
+UPDATE user
+SET status = 0;
+```
+
+如果没有其他拦截或保护机制，这可能会把整张用户表的状态都改掉。所以更新操作一定要先写条件。
+
+更合理的写法是：
 
 ```java
-wrapper.orderByAsc("balance");
-wrapper.orderByDesc("create_time");
+LambdaUpdateWrapper<User> wrapper = new LambdaUpdateWrapper<>();
 
-wrapper.groupBy("status");
-wrapper.having("COUNT(*) > 1");
+wrapper.eq(User::getId, 1L);
+wrapper.set(User::getStatus, 0);
+
+userMapper.update(null, wrapper);
 ```
-
-这些方法在查询统计类接口里很常用。
-
-### 组合条件（and / or）
-
-Wrapper 支持链式写法，也支持嵌套：
-
-```java
-wrapper.eq("status", 1)
-       .or()
-       .gt("balance", 200);
-```
-
-嵌套形式（适合复杂逻辑）：
-
-```java
-wrapper.and(w -> w.gt("balance", 1000)
-                  .lt("balance", 5000));
-```
-
-### 指定查询字段（select）
-
-如果只想查部分字段，可以直接在 Wrapper 中声明：
-
-```java
-wrapper.select("id", "username", "balance");
-```
-
-配合 Lambda：
-
-```java
-lambdaWrapper.select(User::getId, User::getUsername);
-```
-
-# 自定义 SQL
-
-前面的例子里，所有 where 条件都是在 service 里用 Wrapper 写完，然后直接调用内置的 CRUD 方法。
-但有时候，**通用的 `update` / `select` 已经不够用了**，比如要写：
-
-- 扣减余额：`balance = balance - #{amount}`
-- 复杂 join、统计函数
-- 特殊 SQL 特性（like 函数、数据库方言特性等）
-
-这种时候，就需要自己写 SQL 了。
-
-不过，我们**不想再回到 MyBatis 时代，把所有条件手写到 XML 里**，所以 MP 提供了一个折中方案：
-
-> where 条件仍然交给 Wrapper 构建，剩下那部分 SQL 自己写。
-
-需求：更新 id 为 1、2、4 的用户，余额扣 200。
-
-完全不用 MP 的写法（纯 XML）：
-
-```xml
-<update id="updateBalanceByIds">
-    UPDATE user
-    SET balance = balance - #{amount}
-    WHERE id IN
-    <foreach collection="ids" separator="," item="id" open="(" close=")">
-        #{id}
-    </foreach>
-</update>
-```
-
-这里所有东西（`id in (...)`）都得自己写。如果以后条件变了（比如新增一个 `status = 1`），还得改 XML。
-
-用 Wrapper 的写法：
-
-where 用 Wrapper，SQL 只写“固定部分”。写法仍然是：更新 id 为 1、2、4 的用户，余额扣 200。但是 where 条件由 Wrapper 构建，不在 XML 里拼。
-
-1. 在 service / 测试代码中构建 Wrapper
-
-```java
-List<Long> ids = List.of(1L, 2L, 4L);
-int amount = 200;
-
-// 1. 构建 where 条件：id in (1,2,4)
-LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<User>()
-        .in(User::getId, ids);
-
-// 2. 调用自定义 mapper 方法 (待会去mapper声明此方法)
-userMapper.updateBalanceByWrapper(amount, wrapper);
-```
-
-2. Mapper 接口中声明方法（关键：`@Param("ew")`）
-
-在构建好 Wrapper 之后，需要在 Mapper 中声明一个“自定义 SQL 方法”。
 
 ## 注解写法
 
@@ -740,26 +748,29 @@ void updateBalanceByWrapper(@Param("amount") int amount,
 
 只要你传进来的参数名是 `ew`，MP 就会自动把 Wrapper 解析成一整段 where SQL，塞进 `${ew.customSqlSegment}` 那里。
 
-
 (怎么用)
 原来接口 serrvice 继承 iservice
 
 例如一个.. 编一个简单有利的例子
+
 ```
 
 ```
-然后实现类, 常规本来就需要实现service, 因为继承了iservice, 根据继承实现的知识(详细说一下), 然后我们就得实现全部的方法, 但是呢这样肯定很麻烦啊, 我们就需要继承servicer
+
+然后实现类, 常规本来就需要实现 service, 因为继承了 iservice, 根据继承实现的知识(详细说一下), 然后我们就得实现全部的方法, 但是呢这样肯定很麻烦啊, 我们就需要继承 servicer
+
 ```
+
 ```
+
 (为什么可以这样)
-别忘了@service注入容器. 
+别忘了@service 注入容器.
 
 这样就能使用之前提到的, 很方便的方法了
 
-
 (然后是一个比较实际的案例)
-基于Restful风格实现下列接口
-分析：基于Restful风格实现下面的接口：
+基于 Restful 风格实现下列接口
+分析：基于 Restful 风格实现下面的接口：
 
 编号
 方式
@@ -775,26 +786,26 @@ mDTO
 DELE
 TE
 /users/{id}
-用户id
+用户 id
 无
 3
-根据id查询
+根据 id 查询
 用户
 GET
 /users/{id}
-用户id
+用户 id
 Uservo
 4
-根据id批量
+根据 id 批量
 GET
 /users?ids=l,2,3
-用户id集
+用户 id 集
 Uservo
 查询
 合
 集合
 用户
-根据id扣减
+根据 id 扣减
 id
 余额
 PUT
@@ -805,11 +816,10 @@ PUT
 
 分析：
 这些是常见的基本接口，可以直接在
-controller中调用mybatisPlus的service接口提供的方法实现；不需要再写任何业务方法
+controller 中调用 mybatisPlus 的 service 接口提供的方法实现；不需要再写任何业务方法
 
-
-要编写具体的接口，实现web功能；需要引l入spring-boot-starter-web;
-另外；为了方便测试可以引l入knife4j的依赖；通过访问界面来测试所写的接口。因此我们可以添加如下依赖：
+要编写具体的接口，实现 web 功能；需要引 l 入 spring-boot-starter-web;
+另外；为了方便测试可以引 l 入 knife4j 的依赖；通过访问界面来测试所写的接口。因此我们可以添加如下依赖：
 
 ```
 <!--swagger-<dependency>
@@ -820,21 +830,20 @@ controller中调用mybatisPlus的service接口提供的方法实现；不需要�
 </dependency>
 ```
 
-引入后在applicatin.yaml配置一下
+引入后在 applicatin.yaml 配置一下
 
 knife4j:
-enable: true  开启swaggeropenapi:
+enable: true 开启 swaggeropenapi:
 titlc：用户接口管理
-description：用户接口管理version: 1.0.0
+description：用户接口管理 version: 1.0.0
 concal： group:
 default:
 group-name: defaultapi-rule: packageapi-rule-resources:
+
 - com.itheima.mp.controlher
 
-
-
-定义UserController
-要能够被swagger可访问测试接口的话；在处理编写可以设置对应注解；示例如下：
+定义 UserController
+要能够被 swagger 可访问测试接口的话；在处理编写可以设置对应注解；示例如下：
 @Api (tags ="用户管理接口")@RestController
 @RequestMapping("/user")@RequiredArgsConstructor
 public class UserController {
@@ -854,33 +863,36 @@ User user - BeanUtil.copyProperties(userFormDro, User.class) ;userservice.save (
 
 @RequiredArgsConstructor 就不需要像以前一样写 @Autowire 了
 
-copyProperties是来自hutoll工具包的, 目的是 支支持user对象, 但是传进来的是DTO
+copyProperties 是来自 hutoll 工具包的, 目的是 支支持 user 对象, 但是传进来的是 DTO
 
 其他的删改查也差不多
 
 @Apioperation("删除用户")@DeleteMapping (v"/{id}")
 public void deleteUser(@Pathvariable("id") Long id) {
 userService, removeById(id) ;
-@ApiOperation("根据id查询用户")@GetMapping (v"/[id}")
+@ApiOperation("根据 id 查询用户")@GetMapping (v"/[id}")
 public Uservo queryById(@PathVariable("id") Long id) {
 User user = userService.getById(id) ;
 return BeanUtil.copyProperties(user, Uservo.class) ;
 
 注意这边也是一样的, 也需要转换成期望的类型
 
-@ApiOperation("根据id批量查询用户")@GetMapping
+@ApiOperation("根据 id 批量查询用户")@GetMapping
+
 ```
 public hist<Uservo> queryByIds (@RequestParam ("ids")List<Iong> ids) (List<User> userList = userService.listByIds(ids) ;
 return BeanUtil.copyToList (userList, UserVo.class) ;
 ```
-就是这样了, 然后用swagger进行一系列测试了
+
+就是这样了, 然后用 swagger 进行一系列测试了
 
 根据余额扣减
 
 分析：
-这个接口有特别的业务逻辑（判断用户正常（不为2）、余额充足才能做扣减），需要再Service中新增方法来实现
+这个接口有特别的业务逻辑（判断用户正常（不为 2）、余额充足才能做扣减），需要再 Service 中新增方法来实现
 
-contrller层
+contrller 层
+
 ```
 自定义一个server
 (Override  1 usage
@@ -899,117 +911,650 @@ veid dednetRalaneeById (oParam ("amount") int. amount, eParam("id") Long id) :
 
 # Iservice Lambda
 
+`IService<T>` 是 MyBatis-Plus 提供的通用 Service 接口。
 
-的lambdaQuery 
-lambdaUpdate 
-批量插入  开启 rewitebatchedStatements
+它的核心作用是：**让 Service 层天然拥有一套基础 CRUD 方法。**
 
-静态工具类 db
+比如对于用户表，如果已经有 `User` 实体类和 `UserMapper`，那么只要让自己的 `UserService` 继承 `IService<User>`，就可以直接使用 `save`、`removeById`、`updateById`、`getById`、`list`、`count` 等方法。
 
-枚举类型处理器
+它解决的是基础操作重复编写的问题。真正的业务判断，比如账号是否重复、权限是否允许、状态是否能修改，仍然应该写在自己的 Service 方法里。
 
+## Service 接口与实现类的标准写法
 
-IService接口
-Mybatis-Plus不仅提供了Map层接口BaseMapper，还提供了通用的Service层接口及默认实现，并在其中封装了一些常用的service模板方法。通用接口为IService，默认实现为 ServiceImpl，其中封装的方法可以分为以下
-save：新增
-remove：删除
-update：更新
-get：查询单个结果
-List：查询集合结果
-count：计数
-page：分页查询 I
+实际开发中，一般不会直接使用 `IService`，而是定义自己的业务 Service 接口，让它继承 `IService`。
 
-基本的增删改查
-咱们先来看下基本的CRUD接口，新增：
-save(T):boolean
-(m）
-(m）
-(m）
-saveBatch(Collection<T>): booleansaveBatch(Collection<T>, int): booleansaveOrUpdateBatch(Collection<T>): booleansaveOrUpdateBatch(Collection<T>, int): booleansaveOrUpdate(T): boolean
-saveOrUpdate(T, Wrapper<T>): boolean
-save是新增单个元素]saveBatch是批量新增
-saveOrUpdate 是根据id判断，如果数据存在就更新，不存在则新增saveOrUpdateBatch是批量的新增或修改
+```java
+public interface UserService extends IService<User> {
+    // 这里写和用户业务相关的自定义方法
+}
+```
 
-删除：
-IService
-8
-removeBvld(Serializable):booleanremoveByld(Serializable, boolean): booleanremoveByld(T): boolean
-removeByMap(Map<String, Object>): booleanremove(Wrapper<T>): boolean
-removeBylds(Collection<?>): boolean
-removeBylds(Collection<?>, boolean): booleanremoveBatchBylds(Collection<?>): booleanremoveBatchBylds(Collection<?>,boolean):booleanremoveBatchBylds(Collection<?>, int): booleanremoveBatchBylds(Collection<?>,int, boolean):boolean
-removeById：根据id删除removeByIds：根据id批量删除
-removeByMap：根据Map中的键值对条件删除remove(Wrapper<T>)：根据Wrapper条件删除~removeBatchByIds~~：暂不支持
+然后让实现类继承 `ServiceImpl`，并实现自己的 Service 接口。
 
-修改：
-IService
-m  saveOrUpdateBatch(Collection<T>): booleansaveOrUpdateBatch(Collection<T>, int): boolean
-3
-updateByld(T): booleanupdate(Wrapper<T>): booleanupdate(T, Wrapper<T>): boolean
-(m）
-updateBatchByld(Collection<T>): booleanupdateBatchByld(CMection<T>, int): boolean
-(m)  saveorUpdate(T): boolean
-ktUpdate(): KtUpdateChainWrapper<T>update(): UpdateChainWrapper<T>
-lambdaUpdate(): LambdaUpdateChainWrapper<T>m saveOrUpdate(T, Wrapper<T>): boolean
-updateById：根据id修改
-update(Wrapper<T>)：根据 UpdateWrapper 修改，Wrapper 中包含 set 和 where 部分update(T, Wrapper<T>)：按照 T 内的数据修改与Wrapper 匹配到的数据
-updateBatchById：根据id批量修改
+```java
+@Service
+public class UserServiceImpl
+        extends ServiceImpl<UserMapper, User>
+        implements UserService {
+}
+```
 
-Get:
-IService
-3
-getByld(Serializable): TgetOne(Wrapper<T>): T
-(m）
-getOne(Wrapper<T>, boolean): T
-(m)  getMap(Wrapper<T>): Map<String, Object>(m
-getObj(Wrapper<T>, Function<? super Object, V>): V
-(mgetBaseMapper(:BaseMapper<T>
-(m) getEntityClass(): Classb
-getById：根据id查询1条数据
-getOne(Wrapper<T>)：根据 Wrapper 查询1条数据
-getBaseMapper ：获取 Service 内的 BaseMapper 实现，某些时候需要直接调用 Mapper 内的自定义SQL时可以用这个方法获取到Mapper
+这里有两个泛型需要看懂：
 
+```java
+ServiceImpl<UserMapper, User>
+```
 
-List:
-1
-IService
-listBylds(Collection<?extends Serializable>): List<T>
-mlistByMap(Map<String, Object>): List<T> list(Wrapper<T>): List<T>
-list(): List<T>
-listMaps(Wrapper<T>): List<Map<String,Object>>m  listMaps(): List<Map<String, Object>>mlistobjs(): List<object>
-m  listobjs(Function<? super Object, V>): List<V>
-BI
-listObjs(Wrapper<T>): List<Object>
-m  listObjs(Wrapper<T>, Function<? super Object, V>): List<V>
-listByIds：根据id批量查询
-list(Wrapper<T>）：根据Wrapper条件查询多条数据list()：查询所有
+`UserMapper` 表示当前 Service 底层使用哪个 Mapper 操作数据库。
+`User` 表示当前 Service 主要操作哪个实体类。
 
-Count:
-IService
-count(): long
-count(Wrapper<T>): long
-count（）：统计所有数量
-count(Wrapper<T>）：统计符合Wrapper 条件的数据数量
-
-
-用
+这样写之后，`UserServiceImpl` 不需要手动实现 `IService` 中的基础方法，因为 `ServiceImpl` 已经帮我们实现好了。
 
 ![](../../public/images/文章资源/mybatis-plus-增强框架/file-20260304101703944.jpg)
 
-由于 Service 中经常需要定义与业务有关的自定义方法，因此咱们不能直接使用 IService，而是自定义Service 接口，然后继承 IService 以拓展方法。同时，让自定义的 Service实现类 继承 ServiceImpl，这样就不用自己实现IService中的接口了。
+重点是：**自己的 Service 接口负责扩展业务方法，`ServiceImpl` 负责提供基础 CRUD 实现。**
 
+## IService 方法分类
 
+`IService` 的方法很多，不过看方法名前缀就能判断大概用途。
+
+| 方法前缀 | 作用         |
+| -------- | ------------ |
+| `save`   | 新增         |
+| `remove` | 删除         |
+| `update` | 修改         |
+| `get`    | 查询单个结果 |
+| `list`   | 查询集合结果 |
+| `count`  | 统计数量     |
+| `page`   | 分页查询     |
+
+接下来一个个详细说明:
+
+### 新增：save
+
+新增相关方法主要以 `save` 开头。
+
+| 方法                                                 | 作用                                   |
+| ---------------------------------------------------- | -------------------------------------- |
+| `save(T entity)`                                     | 新增一条数据                           |
+| `saveBatch(Collection<T> entityList)`                | 批量新增                               |
+| `saveBatch(Collection<T> entityList, int batchSize)` | 按指定批次大小批量新增                 |
+| `saveOrUpdate(T entity)`                             | 根据主键判断，存在则更新，不存在则新增 |
+| `saveOrUpdateBatch(Collection<T> entityList)`        | 批量新增或修改                         |
+
+最基础的是 `save`，用于插入一条数据。
+
+```java
+User user = new User();
+user.setUsername("wreckloud");
+user.setNickname("灰狼");
+
+userService.save(user);
+```
+
+`saveBatch` 用于批量插入。
+
+```java
+List<User> users = new ArrayList<>();
+
+users.add(new User("wolf01", "灰狼"));
+users.add(new User("wolf02", "白狼"));
+
+userService.saveBatch(users);
+```
+
+如果数据量比较大，可以指定每批处理多少条。
+
+```java
+userService.saveBatch(users, 1000);
+```
+
+不过要注意：**使用 `saveBatch` 不代表批量插入一定已经达到最优性能。**
+
+如果数据库使用 MySQL，通常还需要在 JDBC URL 中开启：
+
+```properties
+rewriteBatchedStatements=true
+```
+
+如果使用 `application.properties`，写法如下：
+
+```properties
+spring.datasource.url=jdbc:mysql://localhost:3306/test?useUnicode=true&characterEncoding=utf8&rewriteBatchedStatements=true
+```
+
+这个参数的作用是让 MySQL 驱动对批处理语句进行优化。开启后，驱动可能会把多条插入语句合并成更高效的批量操作。
+
+这里可以这样理解：
+
+- `saveBatch` : 在代码层面使用批量保存方法
+- `rewriteBatchedStatements=true` : 在 MySQL 驱动层面优化批处理执行
+
+这个参数适合数据量较大的场景，比如批量导入用户、初始化数据、批量保存日志、批量写入消息记录等。普通少量数据插入时，不需要太纠结它。
+
+`saveOrUpdate` 用于“不确定是新增还是修改”的场景。它会根据实体对象的主键判断数据库中是否已经存在对应记录。
+
+```java
+userService.saveOrUpdate(user);
+```
+
+这里要注意：**`saveOrUpdate` 的判断依赖主键。**
+
+如果实体对象没有主键值，通常会走新增。
+如果实体对象有主键值，并且数据库中存在对应记录，通常会走更新。
+
+所以它虽然方便，但不要无脑使用。业务语义明确时，新增就用 `save`，修改就用 `updateById`。只有在“新增或修改都合理”的场景下，才适合使用 `saveOrUpdate`。
+
+### 删除：remove
+
+删除相关方法主要以 `remove` 开头。
+
+| 方法                                         | 作用                      |
+| -------------------------------------------- | ------------------------- |
+| `removeById(Serializable id)`                | 根据主键删除一条数据      |
+| `removeByIds(Collection<?> idList)`          | 根据主键批量删除          |
+| `removeByMap(Map<String, Object> columnMap)` | 根据 Map 中的字段条件删除 |
+| `remove(Wrapper<T> queryWrapper)`            | 根据条件构造器删除        |
+
+最常见的是根据 id 删除。
+
+```java
+userService.removeById(1L);
+```
+
+批量删除可以使用 `removeByIds`。
+
+```java
+List<Long> ids = List.of(1L, 2L, 3L);
+
+userService.removeByIds(ids);
+```
+
+如果要根据字段删除，可以使用 `removeByMap`。
+
+```java
+Map<String, Object> map = new HashMap<>();
+map.put("status", 0);
+
+userService.removeByMap(map);
+```
+
+这表示删除 `status = 0` 的数据。
+
+更复杂的删除条件，一般使用 `remove(Wrapper<T>)`。这一块会涉及条件构造器，可以先知道它存在。
+
+删除方法最重要的点是：**先确认删除条件，再执行删除。**
+
+尤其是条件删除，如果条件写得太宽，可能会误删大量数据。实际项目中，很多业务不会真正物理删除，而是通过状态字段做逻辑删除，比如把 `deleted` 改为 `1`，或者把状态改为“已禁用”。
+
+### 修改：update
+
+修改相关方法主要以 `update` 开头。
+
+| 方法                                                       | 作用                   |
+| ---------------------------------------------------------- | ---------------------- |
+| `updateById(T entity)`                                     | 根据主键修改           |
+| `update(T entity, Wrapper<T> updateWrapper)`               | 根据条件修改           |
+| `updateBatchById(Collection<T> entityList)`                | 根据主键批量修改       |
+| `updateBatchById(Collection<T> entityList, int batchSize)` | 按指定批次大小批量修改 |
+
+最常用的是 `updateById`。
+
+```java
+User user = new User();
+user.setId(1L);
+user.setNickname("灰狼");
+
+userService.updateById(user);
+```
+
+这段代码表示根据 `id = 1` 找到用户，然后把昵称修改为 `"灰狼"`。
+
+这里的重点是：**`updateById` 必须依赖主键。** 如果实体对象里没有 id，它就不知道要修改哪一条数据。
+
+批量修改可以使用 `updateBatchById`。
+
+```java
+userService.updateBatchById(userList);
+```
+
+它适合多条数据都已经有主键，并且要分别更新各自内容的场景。
+
+`update(T entity, Wrapper<T> updateWrapper)` 用于根据条件修改数据。这里的 `entity` 表示要修改成什么内容，`Wrapper` 表示哪些数据需要被修改。
+
+```java
+User user = new User();
+user.setStatus(0);
+
+userService.update(user, updateWrapper);
+```
+
+这类写法需要结合条件构造器使用。修改方法最重要的点是：**先确认修改范围，再确认修改内容。**
+
+按照 SQL 的思路看，修改永远是两部分：
+
+```sql
+UPDATE 表
+SET 修改内容
+WHERE 修改条件;
+```
+
+如果 `WHERE` 条件不清楚，修改就可能变成事故。
+
+### 查询单个：get
+
+查询单个结果的方法主要以 `get` 开头。
+
+| 方法                                               | 作用                               |
+| -------------------------------------------------- | ---------------------------------- |
+| `getById(Serializable id)`                         | 根据主键查询一条数据               |
+| `getOne(Wrapper<T> queryWrapper)`                  | 根据条件查询一条数据               |
+| `getMap(Wrapper<T> queryWrapper)`                  | 查询一条数据并返回 Map             |
+| `getObj(Wrapper<T> queryWrapper, Function mapper)` | 查询一个对象并进行结果转换         |
+| `getBaseMapper()`                                  | 获取当前 Service 内部使用的 Mapper |
+
+最常用的是 `getById`。
+
+```java
+User user = userService.getById(1L);
+```
+
+它的语义非常明确：根据主键查询一条数据。
+
+`getOne` 用于根据条件查询一条数据。
+
+```java
+User user = userService.getOne(queryWrapper);
+```
+
+这一块先不展开条件构造器，只需要记住：**`getOne` 适合结果本来就应该唯一的场景。**
+
+比如根据唯一用户名、唯一邮箱、唯一编号查询数据。如果条件可能查出多条记录，就不要随便使用 `getOne`，否则结果可能不符合预期。
+
+`getMap` 会把查询结果封装成 `Map<String, Object>`。
+
+```java
+Map<String, Object> userMap = userService.getMap(queryWrapper);
+```
+
+这种写法不常作为业务主线使用，更多是在只需要临时拿字段和值时使用。
+
+`getBaseMapper()` 可以拿到当前 Service 内部的 Mapper。
+
+```java
+UserMapper userMapper = userService.getBaseMapper();
+```
+
+这个方法在某些时候有用，比如 Mapper 里写了自定义 SQL，而当前又在 Service 层想调用它。不过一般业务中，不要频繁绕来绕去。能通过 Service 方法表达清楚的，就优先写在 Service 里。
+
+### 查询集合：list
+
+查询多条数据的方法主要以 `list` 开头。
+
+| 方法                                       | 作用                      |
+| ------------------------------------------ | ------------------------- |
+| `list()`                                   | 查询全部数据              |
+| `list(Wrapper<T> queryWrapper)`            | 根据条件查询集合          |
+| `listByIds(Collection<?> idList)`          | 根据多个主键查询集合      |
+| `listByMap(Map<String, Object> columnMap)` | 根据 Map 字段条件查询集合 |
+| `listMaps()`                               | 查询集合并返回 Map 列表   |
+| `listObjs()`                               | 查询单列结果              |
+
+最简单的是 `list()`。
+
+```java
+List<User> users = userService.list();
+```
+
+它会查询整张表。
+
+这里要特别注意：**`list()` 是全表查询，数据量不确定时不要随便用。**
+
+在测试、小表、配置表中使用问题不大。但如果是用户表、消息表、帖子表这类数据量可能增长的表，直接 `list()` 就很危险，容易带来性能问题。
+
+根据多个 id 查询，可以使用 `listByIds`。
+
+```java
+List<Long> ids = List.of(1L, 2L, 3L);
+
+List<User> users = userService.listByIds(ids);
+```
+
+根据 Map 条件查询，可以使用 `listByMap`。
+
+```java
+Map<String, Object> map = new HashMap<>();
+map.put("status", 1);
+
+List<User> users = userService.listByMap(map);
+```
+
+这表示查询 `status = 1` 的用户。
+
+如果查询条件比较复杂，一般使用 `list(Wrapper<T>)`。这一块同样等后面整理 Wrapper 或 LambdaQuery 时再展开。
+
+### 统计：count
+
+统计数量的方法主要是 `count`。
+
+| 方法                             | 作用                   |
+| -------------------------------- | ---------------------- |
+| `count()`                        | 统计全部数据数量       |
+| `count(Wrapper<T> queryWrapper)` | 统计符合条件的数据数量 |
+
+统计总数：
+
+```java
+long total = userService.count();
+```
+
+根据条件统计：
+
+```java
+long count = userService.count(queryWrapper);
+```
+
+`count` 的返回值是 `long`，因为数据数量可能很大。
+
+它常用于后台统计、分页前的数据总数计算、判断某类数据是否存在等场景。
+
+例如注册时判断用户名是否存在，本质上就可以查数量：
+
+```java
+long count = userService.count(queryWrapper);
+
+if (count > 0) {
+    throw new RuntimeException("用户名已存在");
+}
+```
+
+不过这类业务代码后面通常会配合条件构造器使用，这里先记住 `count` 的定位即可。
+
+### 分页：page
+
+分页查询使用 `page` 方法。
+
+| 方法                                          | 作用             |
+| --------------------------------------------- | ---------------- |
+| `page(Page<T> page)`                          | 分页查询全部数据 |
+| `page(Page<T> page, Wrapper<T> queryWrapper)` | 根据条件分页查询 |
+
+分页需要先创建 `Page` 对象。
+
+```java
+Page<User> page = new Page<>(1, 10);
+```
+
+这里的两个参数分别表示：
+
+| 参数 | 含义     |
+| ---- | -------- |
+| `1`  | 当前页码 |
+| `10` | 每页条数 |
+
+然后调用分页方法。
+
+```java
+Page<User> result = userService.page(page);
+```
+
+如果需要带条件，就使用第二种写法。
+
+```java
+Page<User> result = userService.page(page, queryWrapper);
+```
+
+分页结果中不仅有当前页数据，还包含总数、页码、每页条数等信息。
+
+常用信息大概是：
+
+| 方法           | 含义           |
+| -------------- | -------------- |
+| `getRecords()` | 当前页数据列表 |
+| `getTotal()`   | 总记录数       |
+| `getCurrent()` | 当前页码       |
+| `getSize()`    | 每页条数       |
+| `getPages()`   | 总页数         |
+
+示例：
+
+```java
+List<User> records = result.getRecords();
+long total = result.getTotal();
+long pages = result.getPages();
+```
+
+分页查询的重点是：**列表页优先分页，不要直接全表 list。**
+
+后台管理、用户列表、帖子列表、消息记录列表，通常都应该使用分页查询。
 
 ## 分页插件
 
-MyBatis-Plus 的分页插件 PaginationInnerInterceptor 提供了强大的分页功能,支持多种数据库,使得分页查询变得简单高效。
+前面已经认识了 `IService` 提供的 `page` 方法。它是我们在业务代码中发起分页查询的入口，例如：
 
+```java
+Page<User> result = userService.page(page);
+```
 
-于 v3.5.9 起，PaginationInnerInterceptor 已分离出来。如需使用，则需单独引l入mybatis-plus-jsqlparser 依赖
-代码块
-咱们当前引入的MyBatisPlus版本是：3.5.11。因此，要想使用分页功能，还需要再引入一个依赖：
-XML 
+`page` 方法负责发起分页查询，真正让 SQL 变成分页 SQL 的，是 MyBatis-Plus 的分页插件 `PaginationInnerInterceptor`。如果没有配置分页插件，分页方法就缺少底层拦截和改写 SQL 的能力。
+
+它们的关系可以这样看：
+
+1. `Page<T>` 保存分页参数和分页结果
+2. `IService.page(...)` 在 Service 层发起分页查询
+3. `PaginationInnerInterceptor` 拦截 SQL，并根据数据库生成分页 SQL
+4. `mybatis-plus-jsqlparser` v3.5.9 之后分页插件需要额外引入的依赖
+
+### 引入分页插件依赖
+
+MyBatis-Plus 的分页插件 `PaginationInnerInterceptor` 支持 MySQL 等多种数据库，可以让分页查询写起来更简单。
+
+需要注意的是，从 MyBatis-Plus `v3.5.9` 开始，`PaginationInnerInterceptor` 相关支持已经被拆分出来。如果项目使用的是 `3.5.9` 或之后的版本，需要额外引入 `mybatis-plus-jsqlparser` 依赖。([MyBatis-Plus][1])
+
+当前项目使用的 MyBatis-Plus 版本是 `3.5.11`，因此在 `pom.xml` 中补充对应版本依赖：
+
+```xml
 <dependency>
-<groupId>com.baomidou</groupId>
-<artifactId>mybatis-plus-jsqlparser</artifactId><version>3.5.11</version>
+    <groupId>com.baomidou</groupId>
+    <artifactId>mybatis-plus-jsqlparser</artifactId>
+    <version>3.5.11</version>
 </dependency>
-接下来，在项目中新建一个配置类：com.itheima.config.MybatisConfig
+```
+
+这里要注意：**`mybatis-plus-jsqlparser` 的版本最好和当前 MyBatis-Plus 版本保持一致。**
+
+如果主依赖是 `3.5.11`，这里也写 `3.5.11`，这样可以减少版本冲突问题。
+
+### 配置分页插件
+
+依赖引入之后，还需要在项目中配置 MyBatis-Plus 插件。
+
+可以在项目中新建配置类：
+
+```java
+com.wreckloud.config.MybatisConfig
+```
+
+完整代码如下：
+
+```java
+package com.wreckloud.config;
+
+import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
+import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class MybatisConfig {
+
+    @Bean
+    public MybatisPlusInterceptor mybatisPlusInterceptor() {
+        // 初始化 MyBatis-Plus 核心插件对象
+        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+
+        // 创建分页插件
+        PaginationInnerInterceptor paginationInnerInterceptor =
+                new PaginationInnerInterceptor();
+
+        // 限制单页最大查询数量，避免一次查询过多数据
+        paginationInnerInterceptor.setMaxLimit(1000L);
+
+        // 将分页插件添加到 MyBatis-Plus 插件链中
+        interceptor.addInnerInterceptor(paginationInnerInterceptor);
+
+        return interceptor;
+    }
+}
+```
+
+这段配置代码比较固定，要知道它完成了两件事：
+
+- 创建 `MybatisPlusInterceptor`初始化 MyBatis-Plus 插件容器
+- 添加 `PaginationInnerInterceptor` 启用分页 SQL 拦截与改写能力
+
+其中 `setMaxLimit(1000L)` 表示单页最多允许查询 1000 条数据。它不是必须配置，但实际项目中建议保留，避免前端传一个过大的 `pageSize`，导致一次性查询太多数据。
+
+### 使用 page 方法完成分页
+
+分页插件配置完成后，就可以使用 `IService` 提供的 `page` 方法进行分页查询。
+
+先创建分页对象：
+
+```java
+Page<User> page = new Page<>(1, 10);
+```
+
+这里的两个参数分别表示：
+
+| 参数 | 含义     |
+| ---- | -------- |
+| `1`  | 当前页码 |
+| `10` | 每页条数 |
+
+然后调用 `page` 方法：
+
+```java
+Page<User> result = userService.page(page);
+```
+
+如果需要带条件查询，可以传入条件构造器：
+
+```java
+Page<User> result = userService.page(page, queryWrapper);
+```
+
+分页查询结果中不仅有当前页数据，还包含总数、页码等分页信息。
+
+| 方法           | 含义           |
+| -------------- | -------------- |
+| `getRecords()` | 当前页数据列表 |
+| `getTotal()`   | 总记录数       |
+| `getCurrent()` | 当前页码       |
+| `getSize()`    | 每页条数       |
+| `getPages()`   | 总页数         |
+
+例如：
+
+```java
+List<User> records = result.getRecords();
+long total = result.getTotal();
+long pages = result.getPages();
+```
+
+这里的重点是：**列表页优先使用分页，不要直接全表 `list()`。**
+
+后台管理、用户列表、帖子列表、消息记录列表，通常都应该使用分页查询。`list()` 更适合数据量很小、范围明确的场景。
+
+### Controller 和 Service 中的分页写法
+
+实际项目中，分页通常不会直接写在 Controller 里，而是由 Controller 接收查询参数，再交给 Service 层处理。
+
+例如先定义一个查询参数对象：
+
+```java
+public class EmpQueryParam {
+
+    private Long page;
+    private Long pageSize;
+
+    // 其他查询条件后面再补
+}
+```
+
+Controller 层只负责接收参数并调用 Service：
+
+```java
+@GetMapping
+public Result page(EmpQueryParam param) {
+    log.info("员工列表查询条件：{}", param);
+
+    PageResult<Emp> pageResult = empService.getPageResult(param);
+
+    return Result.success(pageResult);
+}
+```
+
+Service 接口中定义分页业务方法：
+
+```java
+public interface EmpService extends IService<Emp> {
+
+    PageResult<Emp> getPageResult(EmpQueryParam param);
+}
+```
+
+Service 实现类继承 `ServiceImpl`，然后实现分页方法：
+
+```java
+@Service
+public class EmpServiceImpl
+        extends ServiceImpl<EmpMapper, Emp>
+        implements EmpService {
+
+    @Override
+    public PageResult<Emp> getPageResult(EmpQueryParam param) {
+        Page<Emp> pageParam = Page.of(param.getPage(), param.getPageSize());
+
+        pageParam.addOrder(OrderItem.desc("update_time"));
+
+        Page<Emp> result = page(pageParam);
+
+        return new PageResult<>(result.getTotal(), result.getRecords());
+    }
+}
+```
+
+这里有两个点需要特别看清楚。
+
+第一，`EmpServiceImpl` 要继承：
+
+```java
+ServiceImpl<EmpMapper, Emp>
+```
+
+这样它才能直接使用 `IService` 中的 `page` 方法。
+
+第二，分页对象变量建议不要也叫 `page`。如果写成：
+
+```java
+Page<Emp> page = Page.of(param.getPage(), param.getPageSize());
+page = page(page);
+```
+
+虽然能看懂，但容易把变量 `page` 和方法 `page(...)` 混在一起。更推荐写成：
+
+```java
+Page<Emp> pageParam = Page.of(param.getPage(), param.getPageSize());
+Page<Emp> result = page(pageParam);
+```
+
+这样读起来更清楚。
+
+`pageParam.addOrder(OrderItem.desc("update_time"))` 表示按照最后修改时间倒序排序。它对应的 SQL 思路就是：
+
+```sql
+ORDER BY update_time DESC
+```
+
+这类列表查询通常要有一个稳定排序字段，否则不同页之间的数据顺序可能不稳定。

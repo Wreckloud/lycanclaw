@@ -131,7 +131,7 @@
   },
   {
     "date": "2024-12-25 13:39:20",
-    "wordCount": 16765,
+    "wordCount": 22570,
     "relativePath": "knowledge/后端 Java 基础/第一部分-面向对象高级.md"
   },
   {
@@ -151,12 +151,12 @@
   },
   {
     "date": "2025-08-07 09:40:47",
-    "wordCount": 12863,
+    "wordCount": 12890,
     "relativePath": "knowledge/后端 Java 基础/第三部分-集合.md"
   },
   {
     "date": "2025-02-09 10:27:43",
-    "wordCount": 12071,
+    "wordCount": 11092,
     "relativePath": "knowledge/后端 Java 基础/第二部分-常用 API.md"
   },
   {
@@ -176,12 +176,12 @@
   },
   {
     "date": "2025-08-14 16:04:34",
-    "wordCount": 3489,
+    "wordCount": 4611,
     "relativePath": "knowledge/后端 Java 基础/第四部分-反射与注解.md"
   },
   {
     "date": "2025-08-19 10:37:28",
-    "wordCount": 7087,
+    "wordCount": 8211,
     "relativePath": "knowledge/后端 Java 基础/第四部分-多线程.md"
   },
   {
@@ -196,7 +196,7 @@
   },
   {
     "date": "2025-11-24 20:31:26",
-    "wordCount": 6503,
+    "wordCount": 9724,
     "relativePath": "knowledge/后端 Web 基础/MyBatis Plus 增强框架.md"
   },
   {
@@ -220,7 +220,7 @@
     "relativePath": "knowledge/后端 Web 基础/Tomcat-web Servlet容器.md"
   },
   {
-    "date": "2026-04-10T11:05:59.701Z",
+    "date": "2026-05-07T11:54:27.368Z",
     "wordCount": 0,
     "relativePath": "knowledge/后端 Web 基础/WebSocket-及时通知.md"
   },
@@ -275,8 +275,8 @@
     "relativePath": "knowledge/后端工具库/Docker-虚拟化技术.md"
   },
   {
-    "date": "2026-04-10T11:05:59.707Z",
-    "wordCount": 130,
+    "date": "2026-05-07T11:54:27.374Z",
+    "wordCount": 492,
     "relativePath": "knowledge/后端工具库/Docker.md"
   },
   {
@@ -296,7 +296,7 @@
   },
   {
     "date": "2024-09-24 11:06:33",
-    "wordCount": 3195,
+    "wordCount": 3422,
     "relativePath": "knowledge/后端工具库/Maven 基础 - 项目构建工具.md"
   },
   {
@@ -313,6 +313,11 @@
     "date": "2025-11-02 11:23:42",
     "wordCount": 804,
     "relativePath": "knowledge/后端工具库/Swagger-生成接口文档.md"
+  },
+  {
+    "date": "2026-05-06 08:13:09",
+    "wordCount": 169,
+    "relativePath": "knowledge/后端工具库/若依框架.md"
   },
   {
     "date": "2025-08-28 16:57:51",
@@ -340,7 +345,7 @@
     "relativePath": "knowledge/后端面试/MyBatis.md"
   },
   {
-    "date": "2026-04-10T11:05:59.716Z",
+    "date": "2026-05-07T11:54:27.383Z",
     "wordCount": 19083,
     "relativePath": "knowledge/后端面试/Mysql.md"
   },
@@ -380,9 +385,14 @@
     "relativePath": "knowledge/后端面试/面试问题清单.md"
   },
   {
-    "date": "2026-04-10T11:05:59.721Z",
+    "date": "2026-05-07T11:54:27.387Z",
     "wordCount": 125,
     "relativePath": "knowledge/实习实训/java-restart-log.md"
+  },
+  {
+    "date": "2026-05-07T11:54:27.388Z",
+    "wordCount": 2683,
+    "relativePath": "knowledge/实习实训/java_course_audit_and_real_plan_2026-04-12.md"
   },
   {
     "date": "2025-07-13 14:39:36",

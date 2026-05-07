@@ -10,238 +10,274 @@ order: 1
 
 # Maven 简介
 
-Maven 是 [Apache 软件基金会](https://www.apache.org/) 推出的一个强大的 **项目管理和构建自动化工具**，专为 Java 项目设计。
-
-> [查看 Apache 所有开源项目](https://www.apache.org/index.html#projects-list)
-
-它的名称来源于意第绪语，意为"知识积累者"，正如其名，Maven 帮助开发者管理项目的复杂性和依赖关系。
-
-Maven 基于项目对象模型 (Project Object Model, POM) 的概念，通过一个简单的描述文件 (pom.xml)，就能自动完成项目的构建、测试和部署等复杂工作。
-
-Maven 不是单纯“帮你下载 jar 包”的工具，它是一个完整的软件构建管理体系。它的核心由三块组成：
-
-**1）项目对象模型 POM（Project Object Model）**
-
-整个 Maven 项目的世界观规则都由 `pom.xml` 这个文件来定义。
-
-**2）依赖管理系统**
-
-我们不再需要手动下载一堆 jar 丢进 lib。只要在 pom 里声明依赖，Maven 会自动从仓库把对应版本的库拉下来，并处理版本冲突、传递依赖等问题。
-
-**3）构建生命周期 / 阶段**
-
-Maven 整个构建流程是规范化的流水线，从清理、编译、测试、打包、安装、部署都有固定阶段。
-
-> 生命周期就是按固定阶段一步步执行。
+Maven 是 Java 项目中常用的构建和依赖管理工具。
+它最直接的作用，是把项目中原本需要手动处理的事情规范化，比如下载依赖、编译代码、运行测试、打包项目等。
 
 ![Maven核心概念](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153322075.jpg)
 
-### 依赖管理系统
+以前如果项目需要使用第三方库，通常要自己去下载对应的 JAR 包，再手动添加到项目里。
+项目一大，依赖之间还可能互相依赖，版本也容易乱。
 
-没有 Maven 之前，我们需要手动下载每个库的 JAR 文件，然后添加到项目的类路径中——这个过程既繁琐又容易出错。
+Maven 解决的就是这类问题：只要在 `pom.xml` 中声明依赖，Maven 就会根据配置自动下载对应的库，并处理它们之间的传递依赖关系。
 
-![手动管理依赖](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153329632.jpg)
-
-而使用 Maven 时，只需在 `pom.xml` 文件中添加简单的配置：
+例如：
 
 ```xml
 <dependency>
-    <groupId>org.springframework</groupId>    <!-- 组织ID -->
-    <artifactId>spring-core</artifactId>      <!-- 项目ID -->
-    <version>5.3.20</version>                 <!-- 版本号 -->
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-core</artifactId>
+    <version>5.3.20</version>
 </dependency>
 ```
 
-Maven 会自动下载这个库以及它所需的所有其他库，解决了"依赖地狱"问题。
+这段配置表示项目需要使用 `spring-core`。Maven 会根据这组坐标去仓库中查找对应版本的依赖，并下载到本地仓库中，供项目使用。
 
-### 标准化构建流程
+除此之外，Maven 做到了 Java 项目的统一管理规范。它主要解决三件事：
 
-Maven 提供了标准化的项目构建流程，无论项目规模大小，都可以用相同的命令完成构建。
+**1）统一依赖管理**
 
-![Maven构建流程](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153337513.jpg)
+项目需要什么库，就在 `pom.xml` 中声明什么依赖。
 
-通过简单的命令如 `mvn clean install`，Maven 就能自动完成编译代码、运行测试、打包和部署等一系列操作，大大提高了开发效率。
+Maven 会负责下载依赖，并处理依赖之间的关系，避免手动管理 JAR 包带来的混乱。
 
-### 统一项目结构
+**2）统一构建流程**
 
-过去，不同 IDE 创建的项目结构差异很大，项目迁移十分痛苦。
+Maven 把项目构建拆成了一套固定流程，例如清理、编译、测试、打包、安装等。
+开发者可以通过统一的命令执行这些操作，例如：
+
+```bash
+mvn clean install
+```
+
+这条命令会清理旧的构建结果，重新编译项目，运行测试，打包项目，并将构建结果安装到本地仓库。
+
+**3）统一项目结构**
+
+Maven 对项目目录有一套默认约定。
+
+常见结构如下：
+
+```text
+src/main/java        主代码
+src/main/resources   主资源文件
+src/test/java        测试代码
+src/test/resources   测试资源文件
+```
+
+有了这套结构，不同项目之间的组织方式会更加统一。无论是 IDEA、Maven 命令，还是其他构建工具，都能按照约定识别项目中的代码、资源和测试内容。
 
 ![不同IDE的项目结构](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153342740.jpg)
 
-Maven 定义了一套标准的项目目录结构，使得任何人接手项目都能快速理解项目组织方式：
+简单来说，Maven 的核心价值就是：用统一的 `pom.xml` 管理项目依赖，用固定的生命周期管理构建流程，用标准目录结构管理项目代码。
 
-- `src/main/java`：主代码
-- `src/main/resources`：主资源文件
-- `src/test/java`：测试代码
-- `src/test/resources`：测试资源文件
+# Maven 环境配置
 
-这种标准化不仅便于团队协作，也让工具能更智能地处理项目内容。
+## 使用 IDEA 自带 Maven（推荐）
 
-# Maven 安装
+现在使用 IDEA 开发 Maven 项目时，一般不需要再手动下载安装 Maven。IDEA 本身已经内置了 Maven，日常学习、普通 Java 项目和 Spring Boot 项目，直接使用 IDEA 自带的 Maven 就够了。
 
-## 下载并解压 Maven
+进入 IDEA 设置：
 
-访问 [Maven 官方下载页面](https://maven.apache.org/download.cgi)，获取最新的 `Binary zip archive` 压缩包。
+```text
+Settings / Preferences
+→ Build, Execution, Deployment
+→ Build Tools
+→ Maven
+```
 
-在官网页面下滑至 Files 区域：
+常见配置项包括：
+
+- `Maven home path`：Maven 的位置，可以选择 IDEA 自带的 Bundled Maven，也可以选择自己安装的 Maven
+- `User settings file`：Maven 的用户配置文件，通常是 `settings.xml`
+- `Local repository`：本地仓库位置，默认一般是 `用户目录/.m2/repository`
+
+如果只是学习和普通开发，`Maven home path` 选择 IDEA 自带的 Bundled Maven 即可，不需要额外下载安装 Maven。
+
+![IDEA Maven配置](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153438171.jpg)
+
+## 手动安装 Maven
+
+手动安装 Maven 不是不能用，而是现在已经不再是必选步骤。只有在需要命令行执行 `mvn`、团队统一 Maven 版本、服务器部署、CI/CD 构建，或者项目明确要求某个 Maven 版本时，才需要单独安装 Maven。
+
+如果希望在命令行中的任意位置使用 `mvn` 命令，就需要手动安装 Maven，并配置环境变量。
+
+访问 [Maven 官方下载页面](https://maven.apache.org/download.cgi)，下载 `Binary zip archive` 压缩包。
 
 ![Maven下载页面](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153347827.jpg)
 
-推荐将下载的压缩包解压到一个便于管理的目录。以下以我的路径 `D:\Code\apache\apache-maven-3.9.9` 为例进行配置。
-
-> 重要提示：为避免兼容性问题，路径中请不要包含中文或空格。
-
-## 配置 Maven 仓库
-
-Maven 仓库用于存储所有依赖的 JAR 包和插件，是 Maven 工作的核心。首先，新建一个专门的文件夹作为本地仓库，例如：
+下载完成后，将压缩包解压到一个方便管理的目录，例如：
 
 ```
-D:\Code\apache\maven_repo
+D:\Code\apache\apache-maven-3.9.9
 ```
+
+路径尽量不要包含中文或空格，避免后续某些工具识别路径时出现问题。
+
+### 配置环境变量
+
+如果要在命令行中直接使用 `mvn`，需要把 Maven 的 `bin` 目录加入系统环境变量。
+
+先新建一个系统变量，例如：
+
+```text
+MAVEN_HOME = D:\Code\apache\apache-maven-3.9.9
+```
+
+![Maven_Home变量](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153408863.jpg)
+
+然后在 `Path` 中添加：
+
+```text
+%MAVEN_HOME%\bin
+```
+
+![Path变量](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153413549.jpg)
+
+这里变量名要和引用时保持一致。如果变量名叫 `MAVEN_HOME`，那么 Path 中就写 `%MAVEN_HOME%\bin`；如果变量名叫 `MAVEN`，就写 `%MAVEN%\bin`。
+
+配置完成后，打开命令提示符或 PowerShell，输入：
+
+```bash
+mvn -v
+```
+
+如果能看到 Maven 版本、Java 版本和系统信息，就说明命令行环境配置成功。
+
+![Maven版本验证](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153421409.jpg)
+
+## settings.xml 配置文件
+
+`settings.xml` 是 Maven 的配置文件，常用于配置本地仓库、镜像源、代理、私服账号等信息。
+
+它常见有两个位置：
+
+```text
+用户级配置：用户目录/.m2/settings.xml
+全局配置：Maven安装目录/conf/settings.xml
+```
+
+日常开发更推荐使用用户级配置，因为它只影响当前用户，不会直接修改 Maven 安装目录。使用 IDEA 时，也可以在 Maven 设置中手动指定 `settings.xml` 文件的位置。
 
 ### 配置本地仓库
 
-1. 打开 Maven 安装目录下的 `conf/settings.xml` 文件
-2. 找到 `<localRepository>` 标签（可以用 Ctrl+F 搜索）
-3. 在注释外添加本地仓库路径
+Maven 下载的依赖默认会存放在本地仓库中。默认位置一般是：
 
-![配置本地仓库](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153353447.jpg)
+```text
+用户目录/.m2/repository
+```
 
-配置示例：
+如果希望把依赖统一放到其他磁盘，可以在 `settings.xml` 中配置 `localRepository`：
 
 ```xml
 <localRepository>D:\Code\apache\maven_repo</localRepository>
 ```
 
-### 配置远程镜像仓库
+![配置本地仓库](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153353447.jpg)
 
-Maven 官方的中央仓库在国外，访问速度较慢，可以配置国内镜像提升下载速度。在 `conf/settings.xml` 文件中的 `<mirrors>` 标签下添加阿里云镜像：
+这一步不是必须的。如果默认仓库位置够用，可以不改。
+
+### 配置镜像源
+
+Maven 默认会从中央仓库下载依赖。如果下载速度比较慢，可以在 `settings.xml` 中配置国内镜像源。
+
+例如配置阿里云 Maven 镜像：
 
 ```xml
 <mirror>
-    <id>alimaven</id>
-    <name>aliyun maven</name>
-    <url>http://maven.aliyun.com/nexus/content/groups/public/</url>
+    <id>aliyunmaven</id>
+    <name>Aliyun Maven</name>
+    <url>https://maven.aliyun.com/repository/public</url>
     <mirrorOf>central</mirrorOf>
 </mirror>
 ```
 
 ![配置阿里云镜像](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153359311.jpg)
 
-更多镜像信息参考 [阿里云 Maven 镜像站使用指南](https://developer.aliyun.com/mvn/guide)。
+镜像源的作用是加快依赖下载速度。如果默认中央仓库访问正常，也可以不配置。
 
-## 配置环境变量
+## 配置 Maven 使用的 Java 版本
 
-为了在命令行中的任何位置使用 Maven 命令，需要将 Maven 加入环境变量。
+Maven 项目还需要注意 Java 版本。这里要区分两个概念：
 
-> 注意：修改系统环境变量前请谨慎操作，错误配置可能影响系统稳定性。
+一个是 Maven 运行时使用的 JDK，另一个是项目源码编译时使用的 JDK。
 
-**配置步骤：**
-
-1. 打开系统设置，进入"关于"→"系统高级设置"→"环境变量"
-
-   ![系统环境变量](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153405010.jpg)
-
-2. 在"系统变量"区域，点击"新建"，创建名为 `Maven_Home` 的变量，值为 Maven 的安装目录
-
-   ![Maven_Home变量](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153408863.jpg)
-
-3. 找到 `Path` 变量，点击"编辑"，添加新条目 `%Maven_Home%\bin`
-
-   ![Path变量](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153413549.jpg)
-
-4. 依次点击**三次**"确定"保存所有设置
-
-变量名和使用的占位符必须一致。例如，如果变量名设置为 `MAVEN`，引用时应写作 `%MAVEN%\bin`。
-
-## 验证安装
-
-打开命令提示符或 PowerShell，输入：
-
-```bash
-mvn -v
-```
-
-如果看到类似下图的 Maven 版本信息，说明安装成功：
-
-![Maven版本验证](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153421409.jpg)
-
-# 在 IDEA 集成 Maven
-
-IntelliJ IDEA 提供了对 Maven 的强大支持，可以直接在 IDE 中使用 Maven 的所有功能。
-
-## 配置 Maven 环境
-
-建议配置全局 Maven 设置，这样所有项目都能使用相同的 Maven 配置。
-
-### 关联外部 Maven
-
-1. 在 IDEA 启动页面，选择"Customize"选项卡，点击"All settings..."
-
-   ![IDEA设置入口](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153430674.jpg)
-
-2. 导航至"Build, Execution, Deployment" → "Build Tools" → "Maven"
-
-3. 配置以下项目：
-
-   - Maven home path：选择 Maven 安装目录
-   - User settings file：选择 settings.xml 文件
-   - Local repository：确认本地仓库位置
-
-   ![IDEA Maven配置](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153438171.jpg)
-
-4. 点击"Apply"应用设置
-
-### 配置 Java 版本
-
-Maven 项目需要匹配适当的 Java 版本：
-
-1. 在同一设置窗口，切换到"Runner"选项卡设置运行时 JRE 版本
-2. 导航至"Build Tools" → "Maven" → "Java Compiler"设置编译器版本
-
-> 推荐：Maven 3.9.x 版本建议使用 Java 17 或更高版本
+在 IDEA 中，可以在 Maven 设置的 `Runner` 页面配置 Maven 运行时使用的 JRE，也可以在 `Java Compiler` 中配置项目编译版本。
 
 ![Java版本配置](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153443498.jpg)
 
-别忘记点击"Apply"保存设置！
+日常开发时，IDEA 项目 SDK、Maven Runner 使用的 JDK、Java Compiler 编译版本最好保持一致。否则可能出现 IDEA 中能运行，但 Maven 打包失败的情况。
+
+如果是 Spring Boot 3 项目，通常使用 Java 17 或更高版本；如果是旧项目，就按项目要求选择 Java 8、Java 11 或其他版本。
 
 ## 创建 Maven 项目
 
-Maven 项目遵循标准的目录结构，IDEA 提供了简单的向导来创建新的 Maven 项目。
+在 IDEA 中创建 Maven 项目时，可以直接在新建项目页面选择构建工具为 Maven。
 
-1. 选择"New Project"或"File" → "New" → "Project..."
-2. 在项目类型中选择"Java"，然后在构建工具(Build tool)中选择"Maven"
+操作路径：
 
-   ![创建Maven项目](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153447883.jpg)
+```text
+File
+→ New
+→ Project
+```
 
-3. 填写项目信息后点击"Create"
+然后在项目类型中选择 `Java`，并将构建工具选择为 `Maven`。
 
-首次创建时，Maven 会下载必要的依赖和插件，可能需要等待片刻。创建完成后，你会看到标准的 Maven 项目结构：
+![创建Maven项目](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153447883.jpg)
+
+创建完成后，IDEA 会生成 Maven 项目的基础结构，并自动识别 `pom.xml` 文件。
+
+常见目录结构如下：
+
+```text
+src/main/java        主代码
+src/main/resources   主资源文件
+src/test/java        测试代码
+src/test/resources   测试资源文件
+pom.xml              Maven 项目配置文件
+```
 
 ![Maven项目结构](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153452052.jpg)
 
-## 导入已有项目
+第一次创建或打开 Maven 项目时，IDEA 可能会下载必要的插件和依赖，等待下载完成即可。
 
-接手已有的 Maven 项目时，IDEA 提供了多种方式导入。关键是定位到项目的 `pom.xml` 文件。
+## 导入已有 Maven 项目
 
-### 方式一
+接手已有 Maven 项目时，关键是找到项目中的 `pom.xml` 文件。只要 IDEA 正确识别了 `pom.xml`，就能把项目作为 Maven 项目导入。
 
-1. 在 IDEA 右侧边栏找到 Maven 图标
+### 方式一：通过 Maven 工具窗口导入
 
-   ![Maven工具栏](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153458995.jpg)
+在 IDEA 右侧找到 Maven 工具窗口，点击 `+`，选择目标项目的 `pom.xml` 文件。
 
-2. 点击"+"按钮，找到目标 Maven 项目的 `pom.xml` 文件，双击导入
+![Maven工具栏](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153458995.jpg)
 
-> 如果没有显示，可在"View" → "Appearance" → "Tool Windows Bar"中打开
-> ![](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627162621679.jpg)
+如果右侧没有 Maven 工具栏，可以在菜单中打开：
 
-### 方式二
+```text
+View
+→ Appearance
+→ Tool Windows Bar
+```
 
-1. 选择"File" → "Project Structure"打开项目结构对话框
-2. 在左侧面板选择"Modules"，点击"+"添加模块
-3. 选择"Import Module"，找到目标 `pom.xml` 文件
+![打开工具窗口栏](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627162621679.jpg)
 
-   ![通过项目结构导入](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153508896.jpg)
+### 方式二：通过项目结构导入模块
+
+也可以通过项目结构导入已有 Maven 模块：
+
+```text
+File
+→ Project Structure
+→ Modules
+→ +
+→ Import Module
+```
+
+然后选择目标项目的 `pom.xml` 文件。
+
+![通过项目结构导入](../../public/images/文章资源/maven-基础-项目构建工具/file-20250627153508896.jpg)
+
+一般情况下，直接打开包含 `pom.xml` 的项目目录，IDEA 就会自动识别 Maven 项目。只有在识别失败、模块丢失，或者需要手动添加子模块时，才需要使用上面这些导入方式。
 
 # Maven 核心特性
 

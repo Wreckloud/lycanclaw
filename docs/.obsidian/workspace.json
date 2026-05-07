@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端 Java 基础/第一部分-面向对象高级.md",
+                "file": "knowledge/前端基础/网页视觉样式-CSS.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "第一部分-面向对象高级"
+              "title": "网页视觉样式-CSS"
             }
           },
           {
@@ -27,15 +27,16 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端 Java 基础/第二部分-常用 API.md",
+                "file": "thoughts/献给狼，献给你.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "第二部分-常用 API"
+              "title": "献给狼，献给你"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -54,13 +55,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/后端 Java 基础/第一部分-面向对象高级.md",
+                "file": "thoughts/献给狼，献给你.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "第一部分-面向对象高级 的大纲"
+              "title": "献给狼，献给你 的大纲"
             }
           },
           {
@@ -94,7 +95,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 226.5
+    "width": 304.5
   },
   "right": {
     "id": "318f4ed2312b0f42",
@@ -167,44 +168,47 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "31f181ae07cf6de7",
+  "active": "7b06271dd556ed6e",
   "lastOpenFiles": [
-    "knowledge/后端 Java 基础/第二部分-常用 API.md",
-    "knowledge/后端 Java 基础/第一部分-面向对象高级.md",
-    "public/images/文章资源/第一部分-面向对象基础/file-20250626172112970.jpg",
-    "knowledge/后端 Java 基础/第一部分-面向对象基础.md",
-    "knowledge/后端 Java 基础/第一部分-基础语法.md",
-    "public/images/文章资源/第一部分-面向对象基础",
-    "knowledge/实习实训/java_study_schedule_2026-03-03_to_2026-06-30.md",
-    "knowledge/实习实训/java-restart-log.md",
-    "knowledge/前端基础/网页结构骨架-HTML.md",
-    "knowledge/后端 Web 基础/互联网与星辰大海.md",
-    "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md",
+    "public/images/文章资源/献给狼，献给你/file-20260507195406516.jpg",
+    "public/images/文章资源/献给狼，献给你",
+    "thoughts/我从人间走过.md",
+    "thoughts/我从来都不是一个难相处的人.md",
+    "thoughts/光不在彼方.md",
+    "thoughts/环境变量.md",
+    "thoughts/竟然被回关.md",
+    "thoughts/獠牙下的野蔷薇.md",
+    "thoughts/每个人都拥有的言灵.md",
     "thoughts/数字世界的构建手册.md",
-    "knowledge/后端数据库/MySQL 数据库基础.md",
-    "knowledge/后端 Web 基础/登录校验.md",
+    "thoughts/献给狼，献给你.md",
+    "knowledge/后端工具库/Maven 基础 - 项目构建工具.md",
+    "knowledge/后端工具库/Docker.md",
+    "knowledge/后端工具库/若依框架.md",
     "knowledge/后端 Web 基础/MyBatis Plus 增强框架.md",
+    "knowledge/后端 Java 基础/第四部分-反射与注解.md",
+    "public/images/文章资源/第四部分-反射与注解/file-20260429150451231.jpg",
+    "public/images/文章资源/第四部分-反射与注解",
+    "knowledge/后端 Java 基础/第四部分-网络编程.md",
+    "knowledge/后端 Java 基础/第四部分-多线程.md",
+    "knowledge/后端 Java 基础/第三部分-IO 流.md",
+    "knowledge/前端工具库/Axios-现代化的 Ajax 请求工具.md",
+    "knowledge/后端 Java 基础/第三部分-File 类.md",
+    "knowledge/后端 Java 基础/第三部分-Stream 流.md",
+    "knowledge/后端 Java 基础/第一部分-面向对象高级.md",
+    "knowledge/后端 Java 基础/第二部分-常用 API.md",
+    "knowledge/后端 Java 基础/第二部分-异常处理.md",
+    "knowledge/后端 Java 基础/第二部分-现代日期时间 API.md",
+    "knowledge/后端 Java 基础/第三部分-集合.md",
+    "public/images/文章资源/第二部分-常用-api/file-20250627102749604.jpg",
+    "public/images/文章资源/第一部分-面向对象基础/file-20250626172112970.jpg",
+    "public/images/文章资源/第一部分-面向对象基础",
     "public/images/文章资源/mybatis-plus-增强框架/file-20260304101703944.jpg",
     "public/images/文章资源/mybatis-plus-增强框架/file-20260304101642267.jpg",
-    "thoughts/RE ACTION.md",
-    "thoughts/笔记本 Wi-Fi 消失的解决方法.md",
-    "thoughts/一盏灯后的夜.md",
-    "thoughts/博客现状架构与重构路线图.md",
-    "未命名.md",
-    "knowledge/前端面试/ES6 - JavaScript 中的继承.md",
-    "knowledge/实习实训/Java后端与AI智能体开发全景梳理.md",
-    "knowledge/实习实训/Java 转 NestJS.md",
-    "knowledge/前端面试/java_study_schedule_2026-03-03_to_2026-06-30.md",
-    "knowledge/后端数据库/五、阅读程序.md",
-    "knowledge/后端数据库/四、代码填空题.md",
     "public/images/文章资源/四、代码填空题/file-20260121174008569.jpg",
     "public/images/文章资源/四、代码填空题/file-20260121173219225.jpg",
     "public/images/文章资源/四、代码填空题/file-20260121162303842.jpg",
     "public/images/文章资源/四、代码填空题/file-20260121161927522.jpg",
     "public/images/文章资源/四、代码填空题/file-20260121161042318.jpg",
-    "knowledge/后端数据库/六、设计题.md",
-    "public/images/文章资源/四、代码填空题/file-20260121143407758.jpg",
-    "public/images/文章资源/四、代码填空题/file-20260121121732773.jpg",
     "public/images/文章资源/四、代码填空题",
     "public/images/文章资源/五、阅读程序",
     "public/images/文章资源/微服务基础",
@@ -212,8 +216,6 @@
     "public/images/文章资源/mybatis-plus-增强框架",
     "public/images/文章资源/mybatis-plus",
     "public/images/文章资源/httpclient",
-    "public/images/文章资源/redis-数据库基础",
-    "public/images/文章资源/spring-boot原理",
     "点子合集.canvas"
   ]
 }

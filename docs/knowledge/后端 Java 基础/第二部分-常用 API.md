@@ -8,13 +8,26 @@ tags:
   - Java
 ---
 
-API(Application Programming Interface)，即应用程序接口，是预先定义好的一套规则和标准，使不同的应用程序能够互相通信和协作。
+## API
 
-API 就像餐厅的菜单，告诉你可以点什么菜（功能），但不会告诉你厨师是如何做这道菜的（实现细节）。
+API（Application Programming Interface），也就是**应用程序接口**。这个名字放到现在的学习场景里，更直接一点说就是：
 
-在 Java 中，核心类库就是 Java 官方为开发者提供的一套标准 API。掌握这些 API，就像拥有了一整箱精密工具，能够更高效地构建应用程序。
+> 别人提前写好的一套功能，我们按照约定的方式去调用就行。
+
+比如前面接触过的 `Scanner`、`Random`，本质上都是 Java 已经提供好的工具类。我们不用自己从零去写“键盘录入”或者“随机数生成”的底层逻辑，而是直接调用现成代码来完成需求。
+
+在 Java 中，官方提供的这一整套标准工具库，就叫做 **Java 核心类库**。
+它里面包含了大量已经封装好的类和接口，覆盖输入输出、字符串处理、集合、时间、网络、多线程等很多常见开发场景。
 
 ![](../../public/images/文章资源/第二部分-常用-api/file-20250627102707270.jpg)
+
+也就是说，`Scanner` 和 `Random` 只是其中非常小的一部分。真正的 Java API 远不止这两个，而是多到不可能靠硬背全记住。
+
+也完全根本没必要硬背。API 是拿来**查、拿来用、拿来在实践里慢慢混熟**的。
+
+放到现在这个时代，现在除了文档，还有 IDEA 的代码提示、搜索引擎、教程，甚至 AI 都能帮你快速定位一个类的常见用法。
+
+官方文档可以作为查阅入口：
 
 [Java® 平台、标准版和 Java 开发工具包 版本 17 API 规范](https://doc.qzxdp.cn/jdk/17/zh/api/index.html)
 
@@ -200,6 +213,693 @@ Objects.compare(obj1, obj2, comparator);
 ```
 
 **工具类**就是一堆静态方法的集合，不用 new 对象，直接用"类名.方法名"调用。而 Objects 工具类专门用来安全操作对象，避免常见错误。
+
+# String 类
+
+`String` 是 Java 中最常用的引用类型之一，用来表示字符串，也就是文本内容。
+
+它有一个很特别的地方：
+虽然 `String` 是引用类型，变量中实际保存的也是对象的地址值，但在创建字符串时，不一定非要像普通对象那样使用 `new`，也可以像基本类型那样，直接使用双引号赋值。
+
+```java
+String s1 = "Wreckloud";
+String s2 = new String("Wreckloud");
+```
+
+这两种写法都能得到字符串对象，不过需要注意，它们在内存中的处理方式并不一样。
+
+## 基本创建方式
+
+#### 双引号创建
+
+Java 为字符串专门准备了一块区域，叫作字符串常量池。
+
+当代码中直接出现双引号字符串时，Java 会先到字符串常量池中查找有没有相同内容的字符串。
+如果有，就直接复用；如果没有，才会把它放进去。
+
+例如：
+
+```java id="7g1a9w"
+String s1 = "abc";
+String s2 = "abc";
+```
+
+这里 `s1` 和 `s2` 的内容相同，而且都是双引号直接创建。因此它们会指向常量池中的同一个字符串对象。
+
+```java id="8m3h0v"
+System.out.println(s1 == s2); // true
+```
+
+这说明，双引号创建的字符串会优先复用常量池中的对象。
+
+#### `new` 创建
+
+如果使用 `new` 来创建字符串，那么情况就不一样了。
+
+```java id="v9d2ql"
+String s3 = new String("abc");
+```
+
+这一句，不仅 `new` 后面的 `"abc"` 这份内容，本身会出现在字符串常量池中，而且 `new String("abc")` 还会额外在**堆内存**中再创建一个新的字符串对象。
+
+也就是说，`new` 创建字符串时，真正得到的是堆中的新对象，而不会直接复用常量池中的那个对象。
+
+例如：
+
+```java id="e84ws1"
+String s1 = "abc";
+String s2 = "abc";
+String s3 = new String("abc");
+
+System.out.println(s1 == s2); // true
+System.out.println(s1 == s3); // false
+```
+
+这里：
+
+`s1 == s2` 为 `true`，是因为它们指向常量池中的同一个对象。
+`s1 == s3` 为 `false`，是因为 `s3` 指向的是堆中新的对象。
+
+- 双引号创建字符串：优先使用常量池中的对象
+- `new` 创建字符串：会在堆中重新创建对象
+
+所以在实际开发中，**更推荐直接使用双引号创建字符串**。写法更简单，也能更好地利用字符串常量池。
+
+`String` 还有一个很重要的特点：字符串对象一旦创建，内容就不能改变。所谓“修改字符串”，本质上并不是改原来的对象，而是生成一个新的字符串对象。
+
+### `intern()`
+
+如果确实需要手动获取常量池中的字符串引用，可以使用 `intern()` 方法。
+
+ntern() 的作用是：
+返回当前字符串在常量池中对应的那个字符串对象的引用。
+
+- 如果常量池中已经有内容相同的字符串，就直接返回常量池中的引用
+- 如果没有，就把这个字符串内容放入常量池，再返回常量池中的引用
+
+```java id="g42ir8"
+String s1 = new String("abc");
+String s2 = s1.intern();
+String s3 = "abc";
+
+System.out.println(s2 == s3); // true
+```
+
+不过这个方法平时用得并不多，了解即可。
+
+## 其他创建方式
+
+总之，通常更推荐直接使用字符串字面量创建 `String` 对象，写法更简单，也能更好地利用字符串常量池。
+
+```java id="n9mk6g"
+String s = "hello";
+```
+
+除了这种方式，`String` 也提供了构造方法来创建字符串对象。不过需要注意，使用构造方法创建字符串时，通常都会在堆内存中再创建新的对象。
+
+1. 根据已有字符串创建新对象
+
+```java id="jlwm3u"
+String(String original)
+```
+
+例如：
+
+```java id="5v5rjf"
+String s1 = "abc";
+String s2 = new String(s1);
+```
+
+这里 `s2` 会在堆内存中创建一个新的字符串对象。这种写法实际开发中并不常用，了解即可。
+
+2. 根据字节数组创建字符串
+
+```java id="976khc"
+String(byte[] bytes)
+```
+
+例如：
+
+```java id="1tv8gw"
+byte[] data = {72, 101, 108, 108, 111};
+String s = new String(data);
+```
+
+这会把字节数组中的内容转换成字符串。
+
+3. 按指定编码把字节数组转换成字符串
+
+```java id="d7y8g2"
+String(byte[] bytes, Charset charset)
+```
+
+例如：
+
+```java id="qmdg7y"
+byte[] data = {-28, -67, -96, -27, -91, -67};
+String s = new String(data, StandardCharsets.UTF_8);
+```
+
+这种写法比上一种更常用，因为字节转换成字符串时，编码方式往往很重要。
+
+4. 根据字符数组创建字符串
+
+```java id="om8tnq"
+String(char[] value)
+```
+
+例如：
+
+```java id="qwurfx"
+char[] chars = {'J', 'a', 'v', 'a'};
+String s = new String(chars);
+```
+
+这会把字符数组中的内容转换成字符串。
+
+## 判断与比较方法
+
+String 类提供了一系列用于判断和比较字符串的方法，这些方法让我们能够灵活地处理各种字符串操作场景。
+
+### 内容比较
+
+比较字符串的内容是否相同，是最基本的字符串操作之一：
+
+```java
+// 严格比较字符串内容是否完全相同（区分大小写）
+boolean equals(Object obj)
+
+// 比较字符串内容是否相同（忽略大小写）
+boolean equalsIgnoreCase(String str)
+```
+
+使用示例：
+
+```java
+String str1 = "Hello";
+String str2 = "hello";
+
+System.out.println(str1.equals(str2));         // false（大小写敏感）
+System.out.println(str1.equalsIgnoreCase(str2)); // true（忽略大小写）
+```
+
+### 空值检查
+
+检查字符串是否为空是处理用户输入或外部数据时的常见需求：
+
+```java
+// 检查字符串长度是否为0（即""）
+boolean isEmpty()
+
+// 检查字符串是否为空或全为空白字符（Java 11+）
+boolean isBlank()
+```
+
+这两个方法的区别在于对空白字符的处理：
+
+```java
+System.out.println("".isEmpty());     // true
+System.out.println("   ".isEmpty());  // false（含空格）
+
+System.out.println("   ".isBlank());  // true
+System.out.println(" \t\n".isBlank());// true（含制表符、换行符）
+```
+
+### 前后缀检查
+
+判断字符串的开头或结尾是否匹配特定内容：
+
+```java
+// 判断字符串是否以指定前缀开头
+boolean startsWith(String prefix)
+
+// 判断字符串是否以指定后缀结尾
+boolean endsWith(String suffix)
+```
+
+这些方法在处理文件路径、URL 等场景中特别有用：
+
+```java
+String path = "/data/images/photo.jpg";
+
+System.out.println(path.startsWith("/data")); // true
+System.out.println(path.endsWith(".jpg"));    // true
+System.out.println(path.endsWith(".png"));    // false
+```
+
+### 内容匹配
+
+检查字符串是否包含特定内容：
+
+```java
+// 判断是否包含指定子字符串
+boolean contains(CharSequence cs)
+
+// 判断是否符合正则表达式规则
+boolean matches(String regex)
+```
+
+实际应用示例：
+
+```java
+// 检查文本中是否包含关键词
+String text = "Java编程基础";
+System.out.println(text.contains("编程"));  // true
+
+// 使用正则表达式验证手机号格式
+String phone = "13800138000";
+System.out.println(phone.matches("1[3-9]\\d{9}")); // true
+```
+
+通过合理组合这些判断方法，我们可以构建出强大而灵活的字符串处理逻辑，满足各种业务场景需求。
+
+## 获取方法
+
+String 类提供了多种方法用于获取字符串的特定信息或提取字符串的特定部分，这些方法是字符串处理的基础。
+
+### 基础属性获取
+
+要获取字符串的基本属性，可以使用以下方法：
+
+```java
+// 获取字符串的长度（字符数量）
+int length()
+
+// 获取指定索引位置的字符
+char charAt(int index)
+```
+
+这些方法使我们能够了解字符串的基本结构：
+
+```java
+String text = "Java编程";
+System.out.println(text.length());   // 5（注意：一个中文字符的长度为1）
+System.out.println(text.charAt(0));  // 'J'
+System.out.println(text.charAt(4));  // '程'
+```
+
+> 注意：字符串索引从 0 开始，如果索引超出范围会抛出 StringIndexOutOfBoundsException 异常。
+
+### 切割与截取
+
+从字符串中提取特定部分是常见操作：
+
+```java
+// 按照正则表达式分割字符串
+String[] split(String regex)
+
+// 截取指定索引范围的子字符串（含起始，不含结束）
+String substring(int beginIndex, int endIndex)
+
+// 从指定位置截取到末尾
+String substring(int beginIndex)
+```
+
+使用示例：
+
+```java
+// 分割字符串
+String data = "张三,李四,王五";
+String[] names = data.split(",");  // 得到["张三", "李四", "王五"]
+
+// 截取子字符串
+String url = "https://www.example.com";
+String domain = url.substring(8, 21);  // "www.example"
+String topDomain = url.substring(21);  // ".com"
+```
+
+### 查找定位
+
+查找字符或子字符串在原字符串中的位置：
+
+```java
+// 查找字符/字符串首次出现的位置
+int indexOf(String str)
+int indexOf(int ch)  // 可以传入字符或ASCII码
+
+// 查找字符/字符串最后一次出现的位置
+int lastIndexOf(String str)
+
+// 从指定位置开始查找
+int indexOf(String str, int fromIndex)
+```
+
+使用这些方法可以帮助我们确定字符串中特定内容的位置：
+
+```java
+String sentence = "Java是一门面向对象的编程语言";
+
+// 查找子字符串位置
+int pos = sentence.indexOf("编程");  // 返回9
+int notFound = sentence.indexOf("Python");  // 返回-1（未找到）
+
+// 查找字符位置
+int charPos = sentence.indexOf('向');  // 返回6
+
+// 查找最后一次出现的位置
+String repeat = "香蕉,苹果,香蕉,橙子";
+int last = repeat.lastIndexOf("香蕉");  // 返回6
+```
+
+> 当查找不到指定内容时，indexOf 和 lastIndexOf 方法都返回-1。
+
+### 类型转换
+
+字符串可以转换为其他数据类型：
+
+```java
+// 转换为字符数组
+char[] toCharArray()
+
+// 转换为字节数组（使用平台默认编码）
+byte[] getBytes()
+
+// 使用指定编码转换为字节数组
+byte[] getBytes(Charset charset)
+```
+
+这些转换方法在处理文件 IO 或网络传输时特别有用：
+
+```java
+String message = "Hello";
+
+// 转换为字符数组
+char[] chars = message.toCharArray();  // ['H', 'e', 'l', 'l', 'o']
+
+// 转换为字节数组
+byte[] bytes = message.getBytes();  // [72, 101, 108, 108, 111]
+
+// 使用特定编码转换
+byte[] utf8Bytes = message.getBytes(StandardCharsets.UTF_8);
+```
+
+掌握这些获取方法，可以让我们更高效地处理各种字符串操作任务，从简单的字符提取到复杂的文本分析都能游刃有余。
+
+## 转换方法
+
+String 类提供了丰富的转换方法，让我们能够轻松修改文本内容。无论是替换字符、改变大小写，还是处理空格，都可以通过这些方法实现。
+
+### 替换操作
+
+替换是字符串处理中最常用的操作之一：
+
+```java
+// 替换所有匹配的字符/字符串
+String replace(CharSequence target, CharSequence replacement)
+
+// 使用正则表达式替换所有匹配项
+String replaceAll(String regex, String replacement)
+
+// 只替换第一个匹配的正则表达式
+String replaceFirst(String regex, String replacement)
+```
+
+这些方法的使用场景各有不同：
+
+```java
+// 简单替换
+String text = "Hello World!";
+String result = text.replace("l", "*");  // "He**o Wor*d!"
+
+// 正则表达式替换
+String code = "用户ID: 12345, 余额: 9876";
+String masked = code.replaceAll("\\d", "*");  // "用户ID: *****, 余额: ****"
+
+// 只替换首次出现
+String date = "2023-04-05-2023";
+String fixed = date.replaceFirst("2023", "2024");  // "2024-04-05-2023"
+```
+
+### 大小写转换
+
+改变字符串的大小写是国际化应用中常见需求：
+
+```java
+// 将字符串全部转换为小写
+String toLowerCase()
+
+// 将字符串全部转换为大写
+String toUpperCase()
+```
+
+这些方法会智能地处理各种语言的大小写规则：
+
+```java
+String mixed = "Java Programming";
+System.out.println(mixed.toLowerCase());  // "java programming"
+System.out.println(mixed.toUpperCase());  // "JAVA PROGRAMMING"
+
+// 支持国际字符
+String german = "Äpfel";  // 德语"苹果"
+System.out.println(german.toLowerCase());  // "äpfel"
+```
+
+### 空格处理
+
+处理字符串首尾的空白字符：
+
+```java
+// 删除字符串前后的空白字符（Java 11+）
+String strip()
+
+// 删除字符串前后的空格、制表符、换行符等（传统方法）
+String trim()
+```
+
+这两个方法有微妙但重要的区别：
+
+```java
+// trim()只处理ASCII空白字符（空格、制表符等）
+String text = "  Hello  ";
+System.out.println(text.trim());  // "Hello"
+
+// strip()能处理所有Unicode空白字符（包括全角空格等）
+String textWithUnicode = "　Hello　";  // 含有全角空格
+System.out.println(textWithUnicode.strip());  // "Hello"
+System.out.println(textWithUnicode.trim());   // "　Hello　"（全角空格未被去除）
+```
+
+### 格式化字符串
+
+创建格式化文本时，可以使用静态方法：
+
+```java
+// 使用指定格式创建字符串
+static String format(String format, Object... args)
+```
+
+这个方法类似于 C 语言中的 printf：
+
+```java
+// 创建格式化字符串
+String message = String.format("用户: %s, 年龄: %d", "张三", 25);
+System.out.println(message);  // "用户: 张三, 年龄: 25"
+
+// 格式化数值
+String price = String.format("价格: %.2f元", 99.8);
+System.out.println(price);  // "价格: 99.80元"
+```
+
+这些转换方法都有一个重要特点：**它们不会修改原始字符串**，而是返回一个新的字符串。这是因为 Java 中的 String 类是不可变的（immutable），确保了字符串操作的线程安全性。
+
+## 拼接方法
+
+Java 提供了多种字符串拼接方式，适用于不同的场景。选择合适的拼接方法可以提高代码效率和可读性。
+
+### 使用+运算符
+
+最简单直观的字符串拼接方式是使用加号运算符：
+当包含变量拼接时
+会自动调用 stringbuider 调用拼接方法， 然后把拼接完成的 stringbuider 对象自动调用 tostring 方法， 最后把转换之后的字符串地址交给变量， 注意 stringbuider 对象和最后的 string 结果分别占据了两个不同的地址值
+
+```java
+// 使用+运算符拼接字符串
+String firstName = "张";
+String lastName = "三";
+String fullName = firstName + lastName;  // "张三"
+
+// 可以同时拼接多个值和不同类型
+int age = 25;
+String info = "姓名：" + fullName + "，年龄：" + age;  // "姓名：张三，年龄：25"
+```
+
+“abc” ”“
+
+当都是字面量拼接，java 会有字面量优化机制， 在编译的时候优化， 真正在字节码里面是一样的
+
+虽然+运算符使用方便，但在循环中频繁拼接字符串会导致性能问题，因为每次拼接都会创建新的字符串对象。
+
+# `StringBuilder` 高效拼接
+
+在 Java 中，String 是不可变的，每次拼接都会创建新对象。对于频繁拼接字符串的场景，尤其是在循环中，应该使用`StringBuilder`类：
+
+```java
+// 创建空的StringBuilder对象
+StringBuilder sb1 = new StringBuilder();  // 空字符串，初始容量16字符
+
+// 创建带初始内容的StringBuilder对象
+StringBuilder sb2 = new StringBuilder("Wreckloud");  // 内容为"Wreckloud"
+
+// 创建指定容量的StringBuilder对象
+StringBuilder sb3 = new StringBuilder(50);  // 空字符串，初始容量50字符
+```
+
+StringBuilder 是一个可变的字符序列，内部维护一个字符数组，支持动态增长。与 String 不同，它的操作不会创建新对象，而是在原对象上直接修改。尤其是在循环或大量拼接操作中，大大提高了性能。
+
+### 链式调用
+
+常用方法，例如`append`方法添加内容：
+
+```java
+sb.append("维克罗德");
+sb.append("Wreckloud");
+sb.append(666);
+sb.append(true);
+
+// 直接得到了内容，因为toString被重写了
+System.out.println(sb);  // 输出：维克罗德Wreckloud666true
+```
+
+也可以使用链式调用（Chained Method Call），让代码更简洁：
+
+```java
+sb.append("维克罗德").append("Wreckloud").append(666);
+```
+
+查看`append`方法源码，会发现它`return this`，每个 `append()` 方法内部都返回了 `this` 对象，也就是原本的那个 `StringBuilder`。
+
+```Java{5}
+@Override
+@IntrinsicCandidate
+public final StringBuilder append(String str) {
+    super.append(str);
+    return this;
+}
+```
+
+### 转成 String 返回
+
+虽然 `StringBuilder` 很强大，但开发中我们最终使用的往往是 `String` 类型，为什么不能直接把 `StringBuilder` 传给方法？因为多数 API 都要求参数是 `String`，比如：
+
+```java
+public void print(String s) { ... } // 是不接受 StringBuilder
+```
+
+这是因为 `String` 是标准类型、不可变、可共享，几乎所有库和框架都是围绕它设计的。而 `StringBuilder` 是辅助工具，系统方法并不识别。
+
+> 所以：**拼接完后必须 `.toString()` 转换成 String 才能交付使用。**
+
+除了通用性，`String` 还有两个关键优势：
+
+- **不可变性**：线程安全，可共享，适合当常量
+- **常量池优化**：所有 `"文本"` 形式的字符串都会进入字符串常量池，实现复用
+
+```java
+String a = "hello";
+String b = "hello";
+System.out.println(a == b); // true，两个变量引用同一常量池中的对象
+```
+
+而如果你写的是：
+
+```java
+String a = new String("hello");
+```
+
+这会在堆上重新创建一个对象，不再复用常量池中的 `"hello"` 字面量，既浪费内存，也违背了常量池的优化初衷。
+
+> 因此，对于**需要频繁拼接或修改字符串**的场景，推荐使用 `StringBuilder`，能显著提升性能，减少内存开销。
+> 但如果字符串操作本身不多，或只是单纯定义变量、传参，使用 `String` 更简洁，也能充分利用字符串常量池的优势。
+
+### 常用方法
+
+除此之外，StringBuilder 还提供了丰富的字符串操作方法：
+
+| 方法                          | 说明               | 示例                            |
+| ----------------------------- | ------------------ | ------------------------------- |
+| `append(内容)`                | 追加内容到末尾     | `builder.append(" World")`      |
+| `insert(位置, 内容)`          | 在指定位置插入内容 | `builder.insert(5, ",")`        |
+| `replace(开始, 结束, 字符串)` | 替换指定范围内容   | `builder.replace(0, 5, "Hi")`   |
+| `delete(开始, 结束)`          | 删除指定范围内容   | `builder.delete(2, 4)`          |
+| `toString()`                  | 转换为 String      | `String s = builder.toString()` |
+| `length()`                    | 获取长度           | `int len = builder.length()`    |
+
+# `StringBuffer` 线程安全
+
+StringBuffer 是 Java 提供的线程安全版 StringBuilder，专为多线程环境下的字符串操作设计。它们在功能和用法上几乎完全相同，但在内部实现和适用场景上有重要区别。
+
+这种差异导致：
+
+- StringBuffer：线程安全，适合多线程环境
+- StringBuilder：线程不安全，但性能更高，适合单线程环境
+
+除此之外，StringBuffer 的创建和使用方式与 StringBuilder 完全一样。
+
+在实际开发中，我们大多都接触的是单线程场景（方法内部的局部变量），因此几乎都应该用 StringBuilder。除非确认有多线程访问同一个对象，否则使用 StringBuilder 即可，这将在以后的内容中提到。
+
+# `StringJoiner` 快速拼接
+
+`StringJoiner` 是从 JDK 8 引入的字符串处理类，用来**简洁拼接多个字符串**，  
+底层原理跟 `StringBuilder` 类似，但专注**格式化拼接**，比如加逗号、加括号等场景。
+
+它的构造方式决定了输出格式：
+
+```java
+// 只指定分隔符（最常用）
+new StringJoiner(",")
+
+// 指定分隔符 + 前缀 + 后缀
+new StringJoiner(",", "[", "]")
+```
+
+没有花里胡哨的操作，`StringJoiner` 的方法设计非常精炼，都是围绕"拼接"本身：
+
+| 方法名            | 说明                     |
+| ----------------- | ------------------------ |
+| `add(String str)` | 添加元素，区别`append()` |
+| `toString()`      | 返回最终拼接结果         |
+| `length()`        | 返回拼接后字符串的长度   |
+
+例如，将 int 数组格式化为字符串输出
+
+**原写法（用 `StringBuilder` 拼接）**
+
+```java
+public static String getArrayData(int[] arr) {
+    if (arr == null) return null;
+
+    StringBuilder sb = new StringBuilder();
+    sb.append("[");
+    for (int i = 0; i < arr.length; i++) {
+        sb.append(arr[i]);
+        if (i != arr.length - 1) sb.append("，");
+    }
+    sb.append("]");
+    return sb.toString();
+}
+```
+
+虽然能用，但拼接逻辑零散，而且你得**手动判断**是不是最后一个元素。
+
+**推荐（用 `StringJoiner`）**
+
+代码一下子就干净了许多：
+
+```java
+public static String getArrayData(int[] arr) {
+    if (arr == null) return null;
+
+    StringJoiner sj = new StringJoiner("，", "[", "]");
+    for (int num : arr) {
+        sj.add(Integer.toString(num)); // 注意只接收 String 类型，需要转换一下
+    }
+    return sj.toString();
+}
+```
+
+这样写不仅语义清晰，而且**不需要关心逗号位置、边界处理**，一切交给 `StringJoiner` 来做。
+
+> `StringBuilder` 用于**自由拼接**，`StringJoiner` 用于**规则拼接**，比如加逗号、加中括号、加空格等。
 
 # 包装类
 
@@ -582,884 +1282,6 @@ int[] c = {3, 2, 1};
 System.out.println(Arrays.equals(a, b)); // true
 System.out.println(Arrays.equals(a, c)); // false
 ```
-
-# Lambda 表达式
-
-在  Java 8 之前，实现接口需要写匿名内部类的写法正如我们前面介绍的那样：
-
-```java
-Arrays.sort(students, new Comparator<Student>() {
-    @Override
-    public int compare(Student o1, Student o2) {
-        // 按年龄升序
-        return o1.getAge() - o2.getAge();
-    }
-});
-```
-
-Lambda 表达式让这种"一次性"的功能实现变得简洁，让上面的代码简化成这样：
-
-```java
-Arrays.sort(students, (o1, o2) -> o1.getAge() - o2.getAge());
-```
-
-Lambda 的标准格式长这样：
-
-```java
-(参数列表) -> { 方法体 }
-```
-
-它本质上就是把"接口里唯一的抽象方法"用一行语法快速实现了。比如：
-
-```java
-// 传统写法：匿名内部类
-Animal a1 = new Animal() {
-    @Override
-    public void run() {
-        System.out.println("跑的贼快~~~~");
-    }
-};
-a1.run();
-```
-
-如果 Animal 是一个只有一个抽象方法的接口（也叫"函数式接口"），就能用 Lambda 简化：
-
-```java
-Animal a2 = () -> System.out.println("跑的贼快~~~~");
-a2.run();
-```
-
-### 使用条件
-
-需要特别注意的是，Lambda 并不能简化所有匿名内部类的代码，它只能用于简化"函数式接口"的匿名内部类实现。
-
-什么是函数式接口？
-
-- 有且仅有一个抽象方法的接口
-- 通常会有  @FunctionalInterface  注解标记（有这个注解的接口必定是函数式接口）
-
-例如，抽象类就不能使用  Lambda：
-
-```java
-abstract class Animal {
-    public abstract void run();
-}
-// 这里不能用 Lambda，因为 Animal 是抽象类而非接口
-```
-
-而函数式接口则可以：
-
-```java
-@FunctionalInterface  // 函数式接口中有且仅有一个抽象方法
-interface Swimming {
-    void swim();
-}
-
-// 传统方式
-Swimming s1 = new Swimming() {
-    @Override
-    public void swim() {
-        System.out.println("学生贼溜~~~~");
-    }
-};
-s1.swim();
-
-// Lambda 简化方式
-Swimming s2 = () -> System.out.println("学生贼溜~~~~");
-s2.swim();
-```
-
-### 工作原理
-
-Lambda 之所以能这样简化代码，是因为 Java  编译器能够通过上下文推断出真实的代码形式。编译器根据接口定义自动补全了必要的代码结构。
-
-这在 API 调用中特别有用：
-
-```Java
-// 传统方式
-Arrays.setAll(scores, new IntToDoubleFunction() {
-    @Override
-    public double applyAsDouble(int index) {
-        return scores[index] + 10;
-    }
-});
-
-// Lambda 简化方式
-Arrays.setAll(scores, (int index) -> {
-    return scores[index] + 10;
-});
-```
-
-### 进阶写法
-
-Lambda 表达式还可以进一步简化，遵循以下规则：
-
-1. 参数类型可以省略不写
-2. 如果只有一个参数，参数类型可以省略，同时括号()也可以省略
-3. 如果方法体只有一行代码，可以省略大括号，同时如果这行代码是  return 语句，必须去掉  return 关键字
-
-让我们看看同一个例子的逐步简化过程：
-
-```java
-// 原始形式
-Arrays.setAll(scores, new IntToDoubleFunction() {
-    @Override
-    public double applyAsDouble(int index) {
-        return scores[index] + 10;
-    }
-});
-
-// 基本 Lambda 形式
-Arrays.setAll(scores, (int index) -> {
-    return scores[index] + 10;
-});
-
-// 省略参数类型
-Arrays.setAll(scores, (index) -> {
-    return scores[index] + 10;
-});
-
-// 单参数省略括号
-Arrays.setAll(scores, index -> {
-    return scores[index] + 10;
-});
-
-// 单行方法体省略大括号和 return
-Arrays.setAll(scores, index -> scores[index] + 10);
-```
-
-这就是 Lambda 的全部精髓：让"只用一次的小功能"写起来又快又清楚，代码更聚焦于业务本身。
-
-抱歉，我没有很好地遵循您的规则。让我重新整理这部分内容，保持专业风格但带点口语化表达，突出"是什么、为什么、怎么用"，并保持与前面内容一致的风格。
-
-### 方法引用
-
-方法引用是 Java 8 的另一个新特性，它的目的是让已经很简洁的 Lambda 表达式变得更加精简。其实 Lambda 表达式已经足够简洁了，方法引用更多是一种"锦上添花"的语法，了解即可。
-
-#### 静态方法引用
-
-**语法格式：`类名::静态方法`**
-
-当我们的 Lambda 表达式里只是在调用一个静态方法，并且参数完全一致时，就可以使用静态方法引用：
-
-```java
-// 假设有个静态方法用于比较学生身高
-public static int compareByHeight(Student o1, Student o2) {
-    return Double.compare(o1.getHeight(), o2.getHeight());
-}
-
-// Lambda 写法
-Arrays.sort(students, (o1, o2) -> Student.compareByHeight(o1, o2));
-
-// 静态方法引用写法
-Arrays.sort(students, Student::compareByHeight);
-```
-
-这种写法虽然简洁，但有时为了使用方法引用而专门定义静态方法:
-
-```
-额外定义的静态方法
-```
-
-反而会增加代码量。直接使用 `Double.compare()` 可能更加直观。
-
-#### 实例方法引用
-
-**语法格式：`对象::实例方法`**
-
-如果 Lambda 表达式里调用的是某个对象的实例方法，参数列表一致，就可以使用实例方法引用：
-
-```java
-// 假设有个比较器对象
-Test2 t = new Test2();
-
-// Lambda 写法
-Arrays.sort(students, (o1, o2) -> t.compare(o1, o2));
-
-// 实例方法引用
-Arrays.sort(students, t::compare);
-```
-
-这种方式在实际开发中使用较少，可读性也相对较差，更多是在 JDK 内部使用。
-
-#### 特定类型方法引用
-
-**语法格式：`类型::方法`**
-
-这种形式比较特殊：Lambda 表达式的第一个参数是方法的调用者，剩余参数是方法的参数。这时可以使用特定类型方法引用：
-
-```java
-// 需要对字符串数组进行忽略大小写排序
-String[] names = {"dlei", "Angela", "baby", "Coach", "andy"};
-
-// Lambda 写法
-Arrays.sort(names, (o1, o2) -> o1.compareToIgnoreCase(o2));
-
-// 特定类型方法引用
-Arrays.sort(names, String::compareToIgnoreCase);
-```
-
-这个例子中，`o1.compareToIgnoreCase(o2)` 正好符合特定类型方法引用的模式，所以可以简化为 `String::compareToIgnoreCase`。
-
-#### 构造器引用
-
-**语法格式：`类名::new`**
-
-当 Lambda 表达式只是用来创建对象时，可以使用构造器引用：
-
-```java
-// 定义一个函数式接口
-@FunctionalInterface
-interface Create {
-    Car createCar(String name);
-}
-
-// Lambda 写法
-Create c1 = name -> new Car(name);
-
-// 构造器引用
-Create c1 = Car::new;
-
-// 使用
-Car car = c1.createCar("布加迪威龙");
-```
-
-构造器引用虽然简洁，但实际应用场景相对有限，更多出现在框架内部或工厂模式中。
-
-方法引用是一种高级语法糖，它让代码在特定场景下更加简洁。但也要注意，过度追求简洁可能会降低代码可读性，所以在实际开发中应当根据团队习惯和代码上下文灵活使用。
-
-# String 类
-
-String 是 Java 中使用频率最高的引用类型之一，用于表示文本内容。它有一个重要特点：可以直接使用字符串字面量创建对象，而不必像其他引用类型那样必须使用`new`关键字。
-
-> String 是不可变的，每次修改其实都是生成了一个新对象，原内容不会变。
-
-```java
-// 直接使用字符串字面量创建
-String name = "Java学习";
-
-// 普通引用类型的创建方式
-StringBuilder sb = new StringBuilder();
-```
-
-## 创建方式（拓展）
-
-实际开发中，**推荐使用字符串字面量的方式创建字符串**，这样更加简洁高效。
-
-除了使用字面量，String 类还提供了多种构造方法。下面是几种常见的构造方法：
-
-1. 根据现有字符串创建新的字符串对象
-
-```java
-String(String original)
-// 示例
-String copy = new String("原始字符串");
-```
-
-2. 使用平台默认编码将字节数组转换为字符串
-
-```java
-String(byte[] bytes)
-// 示例
-byte[] data = {72, 101, 108, 108, 111}; // ASCII码对应Hello
-String text = new String(data);
-```
-
-3. 使用指定编码将字节数组转换为字符串
-
-```java
-String(byte[] bytes, Charset charset)
-// 示例
-byte[] data = {-28, -67, -96, -27, -91, -67}; // UTF-8编码的"中文"
-String text = new String(data, StandardCharsets.UTF_8);
-```
-
-4. 将字符数组转换为字符串
-
-```java
-String(char[] value)
-// 示例
-char[] chars = {'J', 'a', 'v', 'a'};
-String language = new String(chars);
-```
-
-## 字符串常量池
-
-Java 中的字符串字面量会被存储在一个特殊的内存区域，称为"字符串常量池"。这种设计有助于节省内存，因为相同内容的字符串可以共享同一个实例。
-
-![](../../public/images/文章资源/第二部分-常用-api/file-20250627102749604.jpg)
-
-**字面量创建与 new 创建的区别**：
-
-- 使用字面量创建字符串时，JVM 会先检查常量池中是否存在相同内容的字符串
-
-  - 如果存在，则直接返回常量池中的引用
-  - 如果不存在，则在常量池中创建新的字符串对象
-
-- 使用 new 创建字符串时，无论常量池中是否存在相同内容的字符串，都会在堆内存中创建新的对象
-
-这种区别可以通过一个简单示例展示：
-
-```java
-// 字符串常量池示例
-String s1 = "Hello";  // 在常量池中创建"Hello"
-String s2 = "Hello";  // 复用常量池中的"Hello"
-String s3 = new String("Hello");  // 在堆内存中创建新对象
-
-// 比较引用是否相同
-System.out.println(s1 == s2);  // true (同一个对象)
-System.out.println(s1 == s3);  // false (不同对象)
-
-// 比较内容是否相同
-System.out.println(s1.equals(s3)); // true (内容相同)
-```
-
-这也是推荐使用字面量的一个原因，其能够利用字符串常量池提高内存使用效率。
-
-## intern 方法
-
-当我们需要手动将字符串添加到常量池中时，可以使用`intern()`方法：
-
-```java
-// intern方法示例
-String str1 = new String("计算机");  // 堆内存中的对象
-String str2 = str1.intern();         // 获取常量池中的引用
-String str3 = "计算机";              // 直接从常量池获取
-```
-
-这个方法的工作原理是：
-
-- 检查常量池中是否已存在内容相同的字符串
-- 若存在，返回常量池中的引用
-- 若不存在，将此字符串添加到常量池并返回其引用
-
-验证效果：
-
-```java
-// 验证intern的效果
-System.out.println(str1 == str2);  // false，str1指向堆内存，str2指向常量池
-System.out.println(str2 == str3);  // true，str2和str3都指向常量池中的同一对象
-```
-
-通过合理使用字符串常量池和 intern 方法，可以在处理大量重复字符串时优化内存使用。不过，除非有特殊需求，否则一般**不需要**手动调用 intern 方法。
-
-## 判断与比较方法
-
-String 类提供了一系列用于判断和比较字符串的方法，这些方法让我们能够灵活地处理各种字符串操作场景。
-
-### 内容比较
-
-比较字符串的内容是否相同，是最基本的字符串操作之一：
-
-```java
-// 严格比较字符串内容是否完全相同（区分大小写）
-boolean equals(Object obj)
-
-// 比较字符串内容是否相同（忽略大小写）
-boolean equalsIgnoreCase(String str)
-```
-
-使用示例：
-
-```java
-String str1 = "Hello";
-String str2 = "hello";
-
-System.out.println(str1.equals(str2));         // false（大小写敏感）
-System.out.println(str1.equalsIgnoreCase(str2)); // true（忽略大小写）
-```
-
-### 空值检查
-
-检查字符串是否为空是处理用户输入或外部数据时的常见需求：
-
-```java
-// 检查字符串长度是否为0（即""）
-boolean isEmpty()
-
-// 检查字符串是否为空或全为空白字符（Java 11+）
-boolean isBlank()
-```
-
-这两个方法的区别在于对空白字符的处理：
-
-```java
-System.out.println("".isEmpty());     // true
-System.out.println("   ".isEmpty());  // false（含空格）
-
-System.out.println("   ".isBlank());  // true
-System.out.println(" \t\n".isBlank());// true（含制表符、换行符）
-```
-
-### 前后缀检查
-
-判断字符串的开头或结尾是否匹配特定内容：
-
-```java
-// 判断字符串是否以指定前缀开头
-boolean startsWith(String prefix)
-
-// 判断字符串是否以指定后缀结尾
-boolean endsWith(String suffix)
-```
-
-这些方法在处理文件路径、URL 等场景中特别有用：
-
-```java
-String path = "/data/images/photo.jpg";
-
-System.out.println(path.startsWith("/data")); // true
-System.out.println(path.endsWith(".jpg"));    // true
-System.out.println(path.endsWith(".png"));    // false
-```
-
-### 内容匹配
-
-检查字符串是否包含特定内容：
-
-```java
-// 判断是否包含指定子字符串
-boolean contains(CharSequence cs)
-
-// 判断是否符合正则表达式规则
-boolean matches(String regex)
-```
-
-实际应用示例：
-
-```java
-// 检查文本中是否包含关键词
-String text = "Java编程基础";
-System.out.println(text.contains("编程"));  // true
-
-// 使用正则表达式验证手机号格式
-String phone = "13800138000";
-System.out.println(phone.matches("1[3-9]\\d{9}")); // true
-```
-
-通过合理组合这些判断方法，我们可以构建出强大而灵活的字符串处理逻辑，满足各种业务场景需求。
-
-## 获取方法
-
-String 类提供了多种方法用于获取字符串的特定信息或提取字符串的特定部分，这些方法是字符串处理的基础。
-
-### 基础属性获取
-
-要获取字符串的基本属性，可以使用以下方法：
-
-```java
-// 获取字符串的长度（字符数量）
-int length()
-
-// 获取指定索引位置的字符
-char charAt(int index)
-```
-
-这些方法使我们能够了解字符串的基本结构：
-
-```java
-String text = "Java编程";
-System.out.println(text.length());   // 5（注意：一个中文字符的长度为1）
-System.out.println(text.charAt(0));  // 'J'
-System.out.println(text.charAt(4));  // '程'
-```
-
-> 注意：字符串索引从 0 开始，如果索引超出范围会抛出 StringIndexOutOfBoundsException 异常。
-
-### 切割与截取
-
-从字符串中提取特定部分是常见操作：
-
-```java
-// 按照正则表达式分割字符串
-String[] split(String regex)
-
-// 截取指定索引范围的子字符串（含起始，不含结束）
-String substring(int beginIndex, int endIndex)
-
-// 从指定位置截取到末尾
-String substring(int beginIndex)
-```
-
-使用示例：
-
-```java
-// 分割字符串
-String data = "张三,李四,王五";
-String[] names = data.split(",");  // 得到["张三", "李四", "王五"]
-
-// 截取子字符串
-String url = "https://www.example.com";
-String domain = url.substring(8, 21);  // "www.example"
-String topDomain = url.substring(21);  // ".com"
-```
-
-### 查找定位
-
-查找字符或子字符串在原字符串中的位置：
-
-```java
-// 查找字符/字符串首次出现的位置
-int indexOf(String str)
-int indexOf(int ch)  // 可以传入字符或ASCII码
-
-// 查找字符/字符串最后一次出现的位置
-int lastIndexOf(String str)
-
-// 从指定位置开始查找
-int indexOf(String str, int fromIndex)
-```
-
-使用这些方法可以帮助我们确定字符串中特定内容的位置：
-
-```java
-String sentence = "Java是一门面向对象的编程语言";
-
-// 查找子字符串位置
-int pos = sentence.indexOf("编程");  // 返回9
-int notFound = sentence.indexOf("Python");  // 返回-1（未找到）
-
-// 查找字符位置
-int charPos = sentence.indexOf('向');  // 返回6
-
-// 查找最后一次出现的位置
-String repeat = "香蕉,苹果,香蕉,橙子";
-int last = repeat.lastIndexOf("香蕉");  // 返回6
-```
-
-> 当查找不到指定内容时，indexOf 和 lastIndexOf 方法都返回-1。
-
-### 类型转换
-
-字符串可以转换为其他数据类型：
-
-```java
-// 转换为字符数组
-char[] toCharArray()
-
-// 转换为字节数组（使用平台默认编码）
-byte[] getBytes()
-
-// 使用指定编码转换为字节数组
-byte[] getBytes(Charset charset)
-```
-
-这些转换方法在处理文件 IO 或网络传输时特别有用：
-
-```java
-String message = "Hello";
-
-// 转换为字符数组
-char[] chars = message.toCharArray();  // ['H', 'e', 'l', 'l', 'o']
-
-// 转换为字节数组
-byte[] bytes = message.getBytes();  // [72, 101, 108, 108, 111]
-
-// 使用特定编码转换
-byte[] utf8Bytes = message.getBytes(StandardCharsets.UTF_8);
-```
-
-掌握这些获取方法，可以让我们更高效地处理各种字符串操作任务，从简单的字符提取到复杂的文本分析都能游刃有余。
-
-## 转换方法
-
-String 类提供了丰富的转换方法，让我们能够轻松修改文本内容。无论是替换字符、改变大小写，还是处理空格，都可以通过这些方法实现。
-
-### 替换操作
-
-替换是字符串处理中最常用的操作之一：
-
-```java
-// 替换所有匹配的字符/字符串
-String replace(CharSequence target, CharSequence replacement)
-
-// 使用正则表达式替换所有匹配项
-String replaceAll(String regex, String replacement)
-
-// 只替换第一个匹配的正则表达式
-String replaceFirst(String regex, String replacement)
-```
-
-这些方法的使用场景各有不同：
-
-```java
-// 简单替换
-String text = "Hello World!";
-String result = text.replace("l", "*");  // "He**o Wor*d!"
-
-// 正则表达式替换
-String code = "用户ID: 12345, 余额: 9876";
-String masked = code.replaceAll("\\d", "*");  // "用户ID: *****, 余额: ****"
-
-// 只替换首次出现
-String date = "2023-04-05-2023";
-String fixed = date.replaceFirst("2023", "2024");  // "2024-04-05-2023"
-```
-
-### 大小写转换
-
-改变字符串的大小写是国际化应用中常见需求：
-
-```java
-// 将字符串全部转换为小写
-String toLowerCase()
-
-// 将字符串全部转换为大写
-String toUpperCase()
-```
-
-这些方法会智能地处理各种语言的大小写规则：
-
-```java
-String mixed = "Java Programming";
-System.out.println(mixed.toLowerCase());  // "java programming"
-System.out.println(mixed.toUpperCase());  // "JAVA PROGRAMMING"
-
-// 支持国际字符
-String german = "Äpfel";  // 德语"苹果"
-System.out.println(german.toLowerCase());  // "äpfel"
-```
-
-### 空格处理
-
-处理字符串首尾的空白字符：
-
-```java
-// 删除字符串前后的空白字符（Java 11+）
-String strip()
-
-// 删除字符串前后的空格、制表符、换行符等（传统方法）
-String trim()
-```
-
-这两个方法有微妙但重要的区别：
-
-```java
-// trim()只处理ASCII空白字符（空格、制表符等）
-String text = "  Hello  ";
-System.out.println(text.trim());  // "Hello"
-
-// strip()能处理所有Unicode空白字符（包括全角空格等）
-String textWithUnicode = "　Hello　";  // 含有全角空格
-System.out.println(textWithUnicode.strip());  // "Hello"
-System.out.println(textWithUnicode.trim());   // "　Hello　"（全角空格未被去除）
-```
-
-### 格式化字符串
-
-创建格式化文本时，可以使用静态方法：
-
-```java
-// 使用指定格式创建字符串
-static String format(String format, Object... args)
-```
-
-这个方法类似于 C 语言中的 printf：
-
-```java
-// 创建格式化字符串
-String message = String.format("用户: %s, 年龄: %d", "张三", 25);
-System.out.println(message);  // "用户: 张三, 年龄: 25"
-
-// 格式化数值
-String price = String.format("价格: %.2f元", 99.8);
-System.out.println(price);  // "价格: 99.80元"
-```
-
-这些转换方法都有一个重要特点：**它们不会修改原始字符串**，而是返回一个新的字符串。这是因为 Java 中的 String 类是不可变的（immutable），确保了字符串操作的线程安全性。
-
-## 拼接方法
-
-Java 提供了多种字符串拼接方式，适用于不同的场景。选择合适的拼接方法可以提高代码效率和可读性。
-
-### 使用+运算符
-
-最简单直观的字符串拼接方式是使用加号运算符：
-
-```java
-// 使用+运算符拼接字符串
-String firstName = "张";
-String lastName = "三";
-String fullName = firstName + lastName;  // "张三"
-
-// 可以同时拼接多个值和不同类型
-int age = 25;
-String info = "姓名：" + fullName + "，年龄：" + age;  // "姓名：张三，年龄：25"
-```
-
-虽然+运算符使用方便，但在循环中频繁拼接字符串会导致性能问题，因为每次拼接都会创建新的字符串对象。
-
-# `StringBuilder` 高效拼接
-
-在 Java 中，String 是不可变的，每次拼接都会创建新对象。对于频繁拼接字符串的场景，尤其是在循环中，应该使用`StringBuilder`类：
-
-```java
-// 创建空的StringBuilder对象
-StringBuilder sb1 = new StringBuilder();  // 空字符串，初始容量16字符
-
-// 创建带初始内容的StringBuilder对象
-StringBuilder sb2 = new StringBuilder("Wreckloud");  // 内容为"Wreckloud"
-
-// 创建指定容量的StringBuilder对象
-StringBuilder sb3 = new StringBuilder(50);  // 空字符串，初始容量50字符
-```
-
-StringBuilder 是一个可变的字符序列，内部维护一个字符数组，支持动态增长。与 String 不同，它的操作不会创建新对象，而是在原对象上直接修改。尤其是在循环或大量拼接操作中，大大提高了性能。
-
-### 链式调用
-
-常用方法，例如`append`方法添加内容：
-
-```java
-sb.append("维克罗德");
-sb.append("Wreckloud");
-sb.append(666);
-sb.append(true);
-
-// 直接得到了内容，因为toString被重写了
-System.out.println(sb);  // 输出：维克罗德Wreckloud666true
-```
-
-也可以使用链式调用（Chained Method Call），让代码更简洁：
-
-```java
-sb.append("维克罗德").append("Wreckloud").append(666);
-```
-
-查看`append`方法源码，会发现它`return this`，每个 `append()` 方法内部都返回了 `this` 对象，也就是原本的那个 `StringBuilder`。
-
-```Java{5}
-@Override
-@IntrinsicCandidate
-public final StringBuilder append(String str) {
-    super.append(str);
-    return this;
-}
-```
-
-### 转成 String 返回
-
-虽然 `StringBuilder` 很强大，但开发中我们最终使用的往往是 `String` 类型，为什么不能直接把 `StringBuilder` 传给方法？因为多数 API 都要求参数是 `String`，比如：
-
-```java
-public void print(String s) { ... } // 是不接受 StringBuilder
-```
-
-这是因为 `String` 是标准类型、不可变、可共享，几乎所有库和框架都是围绕它设计的。而 `StringBuilder` 是辅助工具，系统方法并不识别。
-
-> 所以：**拼接完后必须 `.toString()` 转换成 String 才能交付使用。**
-
-除了通用性，`String` 还有两个关键优势：
-
-- **不可变性**：线程安全，可共享，适合当常量
-- **常量池优化**：所有 `"文本"` 形式的字符串都会进入字符串常量池，实现复用
-
-```java
-String a = "hello";
-String b = "hello";
-System.out.println(a == b); // true，两个变量引用同一常量池中的对象
-```
-
-而如果你写的是：
-
-```java
-String a = new String("hello");
-```
-
-这会在堆上重新创建一个对象，不再复用常量池中的 `"hello"` 字面量，既浪费内存，也违背了常量池的优化初衷。
-
-> 因此，对于**需要频繁拼接或修改字符串**的场景，推荐使用 `StringBuilder`，能显著提升性能，减少内存开销。
-> 但如果字符串操作本身不多，或只是单纯定义变量、传参，使用 `String` 更简洁，也能充分利用字符串常量池的优势。
-
-### 常用方法
-
-除此之外，StringBuilder 还提供了丰富的字符串操作方法：
-
-| 方法                          | 说明               | 示例                            |
-| ----------------------------- | ------------------ | ------------------------------- |
-| `append(内容)`                | 追加内容到末尾     | `builder.append(" World")`      |
-| `insert(位置, 内容)`          | 在指定位置插入内容 | `builder.insert(5, ",")`        |
-| `replace(开始, 结束, 字符串)` | 替换指定范围内容   | `builder.replace(0, 5, "Hi")`   |
-| `delete(开始, 结束)`          | 删除指定范围内容   | `builder.delete(2, 4)`          |
-| `toString()`                  | 转换为 String      | `String s = builder.toString()` |
-| `length()`                    | 获取长度           | `int len = builder.length()`    |
-
-# `StringBuffer` 线程安全
-
-StringBuffer 是 Java 提供的线程安全版 StringBuilder，专为多线程环境下的字符串操作设计。它们在功能和用法上几乎完全相同，但在内部实现和适用场景上有重要区别。
-
-这种差异导致：
-
-- StringBuffer：线程安全，适合多线程环境
-- StringBuilder：线程不安全，但性能更高，适合单线程环境
-
-除此之外，StringBuffer 的创建和使用方式与 StringBuilder 完全一样。
-
-在实际开发中，我们大多都接触的是单线程场景（方法内部的局部变量），因此几乎都应该用 StringBuilder。除非确认有多线程访问同一个对象，否则使用 StringBuilder 即可，这将在以后的内容中提到。
-
-# `StringJoiner` 快速拼接
-
-`StringJoiner` 是从 JDK 8 引入的字符串处理类，用来**简洁拼接多个字符串**，  
-底层原理跟 `StringBuilder` 类似，但专注**格式化拼接**，比如加逗号、加括号等场景。
-
-它的构造方式决定了输出格式：
-
-```java
-// 只指定分隔符（最常用）
-new StringJoiner(",")
-
-// 指定分隔符 + 前缀 + 后缀
-new StringJoiner(",", "[", "]")
-```
-
-没有花里胡哨的操作，`StringJoiner` 的方法设计非常精炼，都是围绕"拼接"本身：
-
-| 方法名            | 说明                     |
-| ----------------- | ------------------------ |
-| `add(String str)` | 添加元素，区别`append()` |
-| `toString()`      | 返回最终拼接结果         |
-| `length()`        | 返回拼接后字符串的长度   |
-
-例如，将 int 数组格式化为字符串输出
-
-**原写法（用 `StringBuilder` 拼接）**
-
-```java
-public static String getArrayData(int[] arr) {
-    if (arr == null) return null;
-
-    StringBuilder sb = new StringBuilder();
-    sb.append("[");
-    for (int i = 0; i < arr.length; i++) {
-        sb.append(arr[i]);
-        if (i != arr.length - 1) sb.append("，");
-    }
-    sb.append("]");
-    return sb.toString();
-}
-```
-
-虽然能用，但拼接逻辑零散，而且你得**手动判断**是不是最后一个元素。
-
-**推荐（用 `StringJoiner`）**
-
-代码一下子就干净了许多：
-
-```java
-public static String getArrayData(int[] arr) {
-    if (arr == null) return null;
-
-    StringJoiner sj = new StringJoiner("，", "[", "]");
-    for (int num : arr) {
-        sj.add(Integer.toString(num)); // 注意只接收 String 类型，需要转换一下
-    }
-    return sj.toString();
-}
-```
-
-这样写不仅语义清晰，而且**不需要关心逗号位置、边界处理**，一切交给 `StringJoiner` 来做。
-
-> `StringBuilder` 用于**自由拼接**，`StringJoiner` 用于**规则拼接**，比如加逗号、加中括号、加空格等。
 
 # Math
 
