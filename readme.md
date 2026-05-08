@@ -48,6 +48,7 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 - `docs/.vitepress/theme/utils/`
   - 运行时服务：`audioService`、`audioManager`
   - API 封装：`commentApi`、`pageViewApi`
+  - API 响应解析：`apiResponseParsers`
   - 纯工具：`contentMetrics`
 - `docs/.vitepress/theme/setup/`
   - `registerGlobalComponents`：集中管理全局组件与运行时注入

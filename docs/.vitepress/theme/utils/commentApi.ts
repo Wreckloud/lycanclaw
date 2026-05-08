@@ -3,6 +3,10 @@
  * 提供获取最新评论、评论数量与时间格式化能力。
  */
 import { formatRecentCommentTime } from './timeDisplayPolicy.js'
+import {
+  parseWalineCommentCountResponse,
+  parseWalineRecentCommentsResponse
+} from './apiResponseParsers.js'
 
 const WALINE_SERVER_URL = 'https://lycanclaw-comment.netlify.app/.netlify/functions/comment'
 const COMMENT_ENDPOINT = `${WALINE_SERVER_URL}/comment`
@@ -35,12 +39,6 @@ export interface WalineComment {
   createdAt?: string
   updatedAt?: string
   ACL?: any
-}
-
-interface WalineEnvelope<T> {
-  errno?: number
-  errmsg?: string
-  data?: T
 }
 
 let isPreloading = false
@@ -115,49 +113,6 @@ async function requestJson<T>(url: string): Promise<T> {
   return (await response.json()) as T
 }
 
-function normalizeCommentsResponse(data: unknown): WalineComment[] {
-  if (Array.isArray(data)) {
-    return data as WalineComment[]
-  }
-
-  if (data && typeof data === 'object' && 'data' in data) {
-    const envelope = data as WalineEnvelope<unknown>
-    if (Array.isArray(envelope.data)) {
-      return envelope.data as WalineComment[]
-    }
-  }
-
-  return []
-}
-
-function parseCommentCountResponse(data: unknown, path: string): number {
-  if (typeof data === 'number') {
-    return data
-  }
-
-  if (!data || typeof data !== 'object') {
-    return 0
-  }
-
-  const record = data as Record<string, unknown>
-
-  if ('data' in record && typeof record.data === 'number') {
-    return record.data
-  }
-
-  const pathWithoutSlash = path.startsWith('/') ? path.slice(1) : path
-  const pathWithSlash = path.startsWith('/') ? path : `/${path}`
-
-  const candidates = [path, pathWithoutSlash, pathWithSlash]
-  for (const candidate of candidates) {
-    if (typeof record[candidate] === 'number') {
-      return record[candidate] as number
-    }
-  }
-
-  return 0
-}
-
 function buildRecentCommentsUrl(count: number): string {
   return `${COMMENT_ENDPOINT}?type=recent&count=${count}&_t=${Date.now()}`
 }
@@ -202,7 +157,7 @@ export async function getRecentComments(
   const fetchPromise = (async () => {
     try {
       const data = await requestJson<unknown>(buildRecentCommentsUrl(count))
-      const comments = normalizeCommentsResponse(data)
+      const comments = parseWalineRecentCommentsResponse(data) as WalineComment[]
       if (comments.length > 0) {
         saveRecentCommentsToCache(comments)
       }
@@ -228,7 +183,7 @@ export async function getCommentCount(path: string): Promise<number> {
 
   try {
     const data = await requestJson<unknown>(buildCommentCountUrl(path))
-    return parseCommentCountResponse(data, path)
+    return parseWalineCommentCountResponse(data, path)
   } catch (error) {
     console.error('[CommentAPI] 获取评论数失败:', error)
     return 0
