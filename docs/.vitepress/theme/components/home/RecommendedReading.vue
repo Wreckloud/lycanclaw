@@ -6,21 +6,12 @@ import {
   useEventListener, 
   useWindowSize, 
   useIntervalFn,
-  useDebounceFn,
-  useSwipe
+  useDebounceFn
 } from '@vueuse/core'
 import { formatMonthDayCn } from '../../utils/time'
+import { fetchRecommendedPosts, type RecommendedPost } from '../../utils/recommendedApi'
 // 导入推荐文章配置
 import { recommendedPosts as configuredPostsPaths } from '../../../config/recommended-posts.js'
-
-// 类型定义
-interface Post {
-  url: string
-  title: string
-  description: string
-  date: string
-  tags: string[]
-}
 
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
@@ -30,7 +21,7 @@ const sectionRef = ref<HTMLElement | null>(null)
 const carouselRef = ref<HTMLElement | null>(null)
 const animationTriggerRef = ref<HTMLElement | null>(null) // 专门用于动画触发
 const isVisible = ref(false)
-const recommendedPosts = ref<Post[]>([])
+const recommendedPosts = ref<RecommendedPost[]>([])
 const isLoading = ref(true)
 const hasError = ref(false)
 
@@ -332,53 +323,15 @@ onBeforeUnmount(() => {
 async function fetchPosts() {
   if (!isBrowser) return
   
-  try {
-    isLoading.value = true
-    hasError.value = false
-    
-    // 尝试从预生成的recommended-posts.json获取数据
-    try {
-      const response = await fetch(withBase('/recommended-posts.json'))
-      if (response.ok) {
-        recommendedPosts.value = await response.json()
-        isLoading.value = false
-        return
-      }
-    } catch (e) {
-      // 如果预生成数据不存在，则从posts.json获取
-    }
-    
-    // 从posts.json获取所有文章
-    const postsResponse = await fetch(withBase('/posts.json'))
-    if (!postsResponse.ok) {
-      throw new Error('加载文章数据失败')
-    }
-    
-    const allPosts = await postsResponse.json()
-    
-    // 使用配置文件中的推荐文章
-    const posts = configuredPostsPaths
-      .map(postPath => {
-        const originalPost = allPosts.find(post => post.url === postPath)
-        if (!originalPost) return null
-        
-        return {
-          url: originalPost.url,
-          title: originalPost.frontmatter.title,
-          description: originalPost.frontmatter.description || originalPost.excerpt || '',
-          date: originalPost.frontmatter.date,
-          tags: originalPost.frontmatter.tags || []
-        }
-      })
-      .filter(post => post !== null)
-    
-    recommendedPosts.value = posts.slice(0, props.maxPosts)
-    isLoading.value = false
-  } catch (error) {
-    console.error('Error loading recommended posts:', error)
-    hasError.value = true
-    isLoading.value = false
-  }
+  isLoading.value = true
+  hasError.value = false
+  recommendedPosts.value = await fetchRecommendedPosts(
+    withBase,
+    configuredPostsPaths,
+    props.maxPosts
+  )
+  hasError.value = recommendedPosts.value.length === 0
+  isLoading.value = false
 }
 
 </script>

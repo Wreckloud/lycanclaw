@@ -3,19 +3,15 @@
  * 网站页脚数据面板组件
  * 显示网站运行时间、版权信息和一言API
  */
-import { onMounted, ref, onBeforeUnmount, computed } from 'vue'
-import { useData } from 'vitepress'
+import { onMounted, ref, onBeforeUnmount } from 'vue'
 import { useSidebar } from 'vitepress/theme'
+import { fetchHitokoto } from '../utils/siteApi'
 
 // 获取页面数据和侧边栏状态
-const { page, frontmatter } = useData()
 const { hasSidebar } = useSidebar()
 
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
-
-// 删除可视性状态和引用
-const containerRef = ref(null)
 
 // ===== 版权年份相关 =====
 // 当前年份
@@ -37,21 +33,14 @@ const seconds = ref(0)
 let timer: number | null = null
 
 // ===== 一言API相关 =====
-const hitokoto = ref("死亡是涅灭，亦或是永恒？")
+const DEFAULT_HITOKOTO = '死亡是涅灭，亦或是永恒？'
+const hitokoto = ref(DEFAULT_HITOKOTO)
 
 /**
  * 获取一言内容
  */
-const fetchHitokoto = async () => {
-  try {
-    const response = await fetch('https://v1.hitokoto.cn')
-    if (response.ok) {
-      const data = await response.json()
-      hitokoto.value = data.hitokoto
-    }
-  } catch (error) {
-    console.error('Failed to fetch hitokoto:', error)
-  }
+const updateHitokoto = async () => {
+  hitokoto.value = await fetchHitokoto(DEFAULT_HITOKOTO)
 }
 
 /**
@@ -81,7 +70,7 @@ onMounted(() => {
   timer = window.setInterval(updateTimer, 1000)
   
   // 加载一言
-  fetchHitokoto()
+  updateHitokoto()
 })
 
 onBeforeUnmount(() => {
@@ -95,7 +84,7 @@ onBeforeUnmount(() => {
 
 <template>
   <!-- 只在没有侧边栏时显示页脚 -->
-  <footer v-if="!hasSidebar" ref="containerRef" class="VPFooter">
+  <footer v-if="!hasSidebar" class="VPFooter">
     <div class="container">
       <!-- 页脚内容 -->
       <div class="footer-content">

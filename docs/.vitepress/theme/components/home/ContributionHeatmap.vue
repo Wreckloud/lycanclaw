@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * GitHub风格贡献热力图
  * 基于ECharts实现，显示文章发布的热力分布
@@ -9,6 +9,7 @@ import * as echarts from 'echarts/core'
 import { CalendarComponent, VisualMapComponent } from 'echarts/components'
 import { HeatmapChart } from 'echarts/charts'
 import { CanvasRenderer } from 'echarts/renderers'
+import type { EChartsType } from 'echarts/core'
 import {
   fetchKnowledgeStats,
   fetchPublishedThoughtPosts
@@ -17,6 +18,7 @@ import {
   buildDateWordCountMap,
   getOneYearDateRange
 } from '../../utils/homeAnalytics'
+import { logError } from '../../utils/logger'
 
 // 按需注册组件
 echarts.use([
@@ -33,9 +35,9 @@ const { isDark: themeIsDark } = useData()
 const isBrowser = typeof window !== 'undefined'
 
 // 引用DOM元素
-const heatmapRef = ref(null)
-const containerRef = ref(null)
-const animationTriggerRef = ref(null) // 添加动画触发元素引用
+const heatmapRef = ref<HTMLElement | null>(null)
+const containerRef = ref<HTMLElement | null>(null)
+const animationTriggerRef = ref<HTMLElement | null>(null) // 添加动画触发元素引用
 
 // 滚动状态
 const scrollPosition = ref(0)
@@ -48,7 +50,7 @@ const hasError = ref(false)
 const isDark = computed(() => themeIsDark.value) // 使用VitePress的主题状态
 
 // 热力图数据
-const heatmapData = ref([])
+const heatmapData = ref<Array<[string, number]>>([])
 const yearRange = ref({
   start: '',
   end: ''
@@ -95,7 +97,7 @@ function getThemeColors() {
 }
 
 // 热力图实例
-const chartInstance = ref(null)
+const chartInstance = ref<EChartsType | null>(null)
 
 // 获取图表配置
 function getChartOption() {
@@ -149,7 +151,7 @@ function getChartOption() {
 // 设置横向滚动
 function setupHorizontalScroll() {
   if (containerRef.value) {
-    wheelListener = (e) => {
+    wheelListener = (e: WheelEvent) => {
       if (e.deltaY !== 0 && containerRef.value) {
         e.preventDefault()
         containerRef.value.scrollLeft += e.deltaY
@@ -183,7 +185,7 @@ function setupIntersectionObserver() {
   if (!isBrowser || !window.IntersectionObserver) return
   
   const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
+    entries.forEach((entry) => {
       if (entry.isIntersecting && !isVisible.value) {
         isVisible.value = true
         // 触发滚动动画
@@ -240,7 +242,7 @@ function initChart() {
       updateScrollPosition()
     })
   } catch (err) {
-    console.error('Error initializing heatmap:', err)
+    logError('ContributionHeatmap', '初始化热力图失败', err)
     hasError.value = true
   }
 }
@@ -254,7 +256,7 @@ watch(isDark, (newVal, oldVal) => {
     // 重新初始化图表以应用新主题
     nextTick(() => {
       if (chartInstance.value) {
-        const el = chartInstance.value.getDom();
+        const el = chartInstance.value.getDom()
         chartInstance.value.dispose();
         el.style.backgroundColor = newVal ? 'transparent' : '';
         chartInstance.value = echarts.init(el, newVal ? 'dark' : undefined);
@@ -283,8 +285,8 @@ function handleResize() {
 }
 
 // 保存需要清理的资源
-let cleanupObserver = null
-let wheelListener = null
+let cleanupObserver: (() => void) | null = null
+let wheelListener: ((event: WheelEvent) => void) | null = null
 
 onMounted(async () => {
   // 确保只在浏览器环境中执行
@@ -302,7 +304,7 @@ onMounted(async () => {
     const endDate = new Date(yearRange.value.end)
     
     // 转换为热力图需要的数据格式 [日期, 字数]
-    const tempData = []
+    const tempData: Array<[string, number]> = []
     
     // 遍历日期范围内的每一天
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
@@ -313,7 +315,7 @@ onMounted(async () => {
     
     // 计算颜色范围
     const maxValue = Math.max(
-      ...tempData.map(item => item[1]),
+      ...tempData.map((item) => item[1]),
       1 // 确保至少为1，避免所有数据为0的情况
     )
     
@@ -337,7 +339,7 @@ onMounted(async () => {
       }, 100) // 添加一点延迟，以确保DOM完全渲染
     })
   } catch (error) {
-    console.error('Error loading heatmap data:', error)
+    logError('ContributionHeatmap', '加载热力图数据失败', error)
     hasError.value = true
     isLoading.value = false
   }
