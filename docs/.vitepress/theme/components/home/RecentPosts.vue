@@ -5,6 +5,7 @@ import { useIntersectionObserver } from '@vueuse/core'
 import { estimateReadMinutes } from '../../utils/contentMetrics.js'
 import { parseDateInput } from '../../utils/time.js'
 import { formatRecentPostTime } from '../../utils/timeDisplayPolicy.js'
+import { fetchPublishedThoughtPosts } from '../../utils/contentData.js'
 
 // 类型定义
 interface Post {
@@ -76,21 +77,7 @@ async function fetchPosts() {
   if (!isBrowser) return
   
   try {
-    // 从生成的JSON文件获取数据
-    const response = await fetch(withBase('/posts.json'))
-    if (!response.ok) {
-      throw new Error('加载文章数据失败')
-    }
-    
-    const posts = await response.json()
-    
-    // 严格过滤，只显示publish为true的随想文章
-    const filteredPosts = posts.filter((post: Post) => 
-      post.frontmatter.publish === true && 
-      post.relativePath.startsWith('thoughts/') &&
-      post.relativePath !== 'thoughts/index.md' &&
-      post.relativePath !== 'thoughts/tags.md'
-    )
+    const filteredPosts = (await fetchPublishedThoughtPosts(withBase)) as Post[]
     
     // 按日期排序，取最新的几篇
     recentPosts.value = filteredPosts

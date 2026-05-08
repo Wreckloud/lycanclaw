@@ -49,6 +49,7 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
   - 运行时服务：`audioService`、`audioManager`
   - API 封装：`commentApi`、`pageViewApi`
   - API 响应解析：`apiResponseParsers`
+  - 内容数据层：`contentData`
   - 纯工具：`contentMetrics`
 - `docs/.vitepress/theme/setup/`
   - `registerGlobalComponents`：集中管理全局组件与运行时注入
@@ -106,3 +107,8 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 ## 维护检查
 
 - `pnpm run build`：验证数据生成 + VitePress 构建完整链路
+
+## Git 忽略约定
+
+- 已忽略 Obsidian 元数据目录：`.obsidian/`、`**/.obsidian/`、`.trash/`
+- 构建产物与缓存不入库：`docs/.vitepress/cache/`、`docs/.vitepress/dist/`

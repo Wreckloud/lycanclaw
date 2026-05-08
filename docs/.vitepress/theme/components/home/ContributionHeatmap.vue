@@ -9,6 +9,12 @@ import * as echarts from 'echarts/core'
 import { CalendarComponent, VisualMapComponent } from 'echarts/components'
 import { HeatmapChart } from 'echarts/charts'
 import { CanvasRenderer } from 'echarts/renderers'
+import { parseDateInput } from '../../utils/time.js'
+import { countWords } from '../../utils/contentMetrics.js'
+import {
+  fetchKnowledgeStats,
+  fetchPublishedThoughtPosts
+} from '../../utils/contentData.js'
 
 // 按需注册组件
 echarts.use([
@@ -37,7 +43,6 @@ const isVisible = ref(false) // 添加可见性状态
 // 组件状态
 const isLoading = ref(true)
 const hasError = ref(false)
-const debugInfo = ref('') // 保留调试信息但默认不显示
 const isDark = computed(() => themeIsDark.value) // 使用VitePress的主题状态
 
 // 热力图数据
@@ -47,19 +52,6 @@ const yearRange = ref({
   end: ''
 })
 const visualMapMax = ref(100)
-
-// 平滑滚动热力图
-function scrollHeatmap(delta) {
-  if (!containerRef.value) return
-  
-  const targetScroll = scrollPosition.value + delta
-  
-  // 使用原生动画API实现平滑滚动
-  containerRef.value.scrollTo({
-    left: targetScroll,
-    behavior: 'smooth'
-  })
-}
 
 // 更新滚动位置
 function updateScrollPosition() {
@@ -117,57 +109,6 @@ function getThemeColors() {
   }
 }
 
-// 尝试解析各种可能的日期格式
-function parseDateString(dateString) {
-  if (!dateString) return null
-  
-  // 如果是对象类型或Date实例，直接返回
-  if (dateString instanceof Date) return dateString
-  
-  // 处理字符串类型
-  if (typeof dateString === 'string') {
-    // 去除可能的引号
-    const cleanDateStr = dateString.replace(/^["']|["']$/g, '')
-    
-    // 尝试通过正则匹配YYYY-MM-DD格式
-    const match = cleanDateStr.match(/(\d{4})-(\d{1,2})-(\d{1,2})/)
-    if (match) {
-      const year = parseInt(match[1])
-      const month = parseInt(match[2]) - 1 // 月份从0开始
-      const day = parseInt(match[3])
-      return new Date(year, month, day)
-    }
-    
-    // 尝试直接用Date构造函数解析
-    const parseDate = new Date(cleanDateStr)
-    if (!isNaN(parseDate.getTime())) {
-      return parseDate
-    }
-  }
-  
-  // 所有解析方法都失败
-  return null
-}
-
-// 内联实现countWord函数
-function countWord(data) {
-  const pattern = /[a-zA-Z0-9_\u0392-\u03C9\u00C0-\u00FF\u0600-\u06FF\u0400-\u04FF]+|[\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3040-\u309F\uAC00-\uD7AF]+/g
-  const m = data.match(pattern)
-  let count = 0
-  if (!m) {
-    return 0
-  }
-  for (let i = 0; i < m.length; i += 1) {
-    if (m[i].charCodeAt(0) >= 0x4E00) {
-      count += m[i].length
-    }
-    else {
-      count += 1
-    }
-  }
-  return count
-}
-
 // 热力图实例
 const chartInstance = ref(null)
 
@@ -223,15 +164,14 @@ function getChartOption() {
 // 设置横向滚动
 function setupHorizontalScroll() {
   if (containerRef.value) {
-    // 监听滚轮事件
-    containerRef.value.addEventListener('wheel', (e) => {
-      if (e.deltaY !== 0) {
+    wheelListener = (e) => {
+      if (e.deltaY !== 0 && containerRef.value) {
         e.preventDefault()
         containerRef.value.scrollLeft += e.deltaY
       }
-    }, { passive: false });
-    
-    // 初始化滚动位置
+    }
+
+    containerRef.value.addEventListener('wheel', wheelListener, { passive: false })
     updateScrollPosition()
   }
 }
@@ -301,19 +241,6 @@ function initChart() {
     // 初始化图表
     const chart = echarts.init(heatmapRef.value, isDark.value ? 'dark' : undefined)
     
-    // 添加测试数据（如果没有真实数据）
-    if (heatmapData.value.length === 0 || heatmapData.value.every(item => item[1] === 0)) {
-      // 添加一些测试数据点
-      const testData = []
-      const today = new Date()
-      for (let i = 0; i < 30; i++) {
-        const date = new Date(today)
-        date.setDate(today.getDate() - i * 3)
-        testData.push([formatDate(date), Math.floor(Math.random() * 500)])
-      }
-      heatmapData.value = [...heatmapData.value, ...testData]
-    }
-    
     // 设置图表选项
     chart.setOption(getChartOption())
     
@@ -331,12 +258,6 @@ function initChart() {
     console.error('Error initializing heatmap:', err)
     hasError.value = true
   }
-}
-
-// 更新图表配置选项
-function updateChartOptions() {
-  if (!chartInstance.value) return
-  chartInstance.value.setOption(getChartOption())
 }
 
 // 监听主题变化
@@ -366,27 +287,6 @@ watch(isDark, (newVal, oldVal) => {
   }
 }, { immediate: false });
 
-// 检测并设置当前主题
-function detectTheme() {
-  if (!isBrowser) return
-  
-  // 获取HTML元素上的dark类
-  const isDarkMode = document.documentElement.classList.contains('dark')
-  if (isDark.value !== isDarkMode) {
-    // 不需要手动设置isDark，因为它是一个computed属性，会自动跟随themeIsDark变化
-  }
-}
-
-// 监听主题变化
-function setupThemeChangeListener() {
-  if (!isBrowser) return
-  
-  // 不再需要初始检测主题，因为使用了VitePress的isDark
-  
-  // 返回空函数作为清理函数
-  return () => {};
-}
-
 // 处理窗口大小变化
 function handleResize() {
   if (chartInstance.value) {
@@ -398,29 +298,15 @@ function handleResize() {
 }
 
 // 保存需要清理的资源
-let cleanupThemeListener = null;
-let cleanupObserver = null; // 添加观察器清理变量
+let cleanupObserver = null
+let wheelListener = null
 
 onMounted(async () => {
   // 确保只在浏览器环境中执行
   if (!isBrowser) return
   
   try {
-    // 从生成的JSON文件获取数据
-    const response = await fetch(withBase('/posts.json'))
-    if (!response.ok) {
-      throw new Error('加载文章数据失败')
-    }
-    
-    const posts = await response.json()
-    
-    // 只获取随想文章
-    const thoughtsPosts = posts.filter(post => 
-      post.frontmatter.publish === true && 
-      post.relativePath.startsWith('thoughts/') && 
-      post.relativePath !== 'thoughts/index.md' &&
-      post.relativePath !== 'thoughts/tags.md'
-    )
+    const thoughtsPosts = await fetchPublishedThoughtPosts(withBase)
     
     // 初始化按日期统计的字数映射
     const dateWordCountMap = {}
@@ -429,37 +315,26 @@ onMounted(async () => {
     thoughtsPosts.forEach(post => {
       if (post.frontmatter.date) {
         // 使用增强的日期解析
-        const parsedDate = parseDateString(post.frontmatter.date)
+        const parsedDate = parseDateInput(post.frontmatter.date)
         if (parsedDate) {
           const dateStr = formatDate(parsedDate)
           // 使用文章总字数作为数据点
-          const wordCount = countWord(post.content || '')
+          const wordCount = countWords(post.content || '')
           dateWordCountMap[dateStr] = (dateWordCountMap[dateStr] || 0) + wordCount
         }
       }
     })
     
-    // 尝试加载知识笔记统计数据
-    try {
-      const knowledgeResponse = await fetch(withBase('/knowledge-stats.json'))
-      if (knowledgeResponse.ok) {
-        const knowledgeStats = await knowledgeResponse.json()
-        
-        // 累加知识笔记的字数和更新日期
-        knowledgeStats.forEach(item => {
-          if (item.date) {
-            // 尝试解析日期，如果失败则跳过
-            const parsedDate = parseDateString(item.date)
-            if (parsedDate) {
-              const dateStr = formatDate(parsedDate)
-              dateWordCountMap[dateStr] = (dateWordCountMap[dateStr] || 0) + item.wordCount
-            }
-          }
-        })
+    const knowledgeStats = await fetchKnowledgeStats(withBase)
+    knowledgeStats.forEach(item => {
+      if (item.date) {
+        const parsedDate = parseDateInput(item.date)
+        if (parsedDate) {
+          const dateStr = formatDate(parsedDate)
+          dateWordCountMap[dateStr] = (dateWordCountMap[dateStr] || 0) + item.wordCount
+        }
       }
-    } catch (knowledgeError) {
-      // 忽略知识笔记统计数据的加载错误，不影响主要功能
-    }
+    })
     
     // 确定日期范围
     yearRange.value = getYearRange()
@@ -493,9 +368,6 @@ onMounted(async () => {
     // 渲染完成后，需要设置isLoading为false
     isLoading.value = false
     
-    // 设置主题变化监听器
-    cleanupThemeListener = setupThemeChangeListener()
-    
     // 确保DOM已渲染后初始化图表
     nextTick(() => {
       setTimeout(() => {
@@ -514,11 +386,6 @@ onMounted(async () => {
 // 组件卸载时清理资源
 onBeforeUnmount(() => {
   if (isBrowser) {
-    // 清理主题监听器
-    if (cleanupThemeListener) {
-      cleanupThemeListener()
-    }
-    
     // 清理观察器
     if (cleanupObserver) {
       cleanupObserver()
@@ -526,8 +393,8 @@ onBeforeUnmount(() => {
     
     // 清理事件监听器
     window.removeEventListener('resize', handleResize)
-    if (containerRef.value) {
-      containerRef.value.removeEventListener('wheel', () => {})
+    if (containerRef.value && wheelListener) {
+      containerRef.value.removeEventListener('wheel', wheelListener)
     }
     
     // 销毁图表实例
