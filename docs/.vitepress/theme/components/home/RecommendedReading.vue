@@ -9,6 +9,7 @@ import {
   useDebounceFn,
   useSwipe
 } from '@vueuse/core'
+import { formatMonthDayCn } from '../../utils/time.js'
 // 导入推荐文章配置
 import { recommendedPosts as configuredPostsPaths } from '../../../config/recommended-posts.js'
 
@@ -380,25 +381,6 @@ async function fetchPosts() {
   }
 }
 
-// 格式化日期
-function formatDate(dateString: string): string {
-  if (!dateString) return ''
-
-  const cleanDateString = String(dateString).replace(/^['"]|['"]$/g, '')
-  const match = cleanDateString.match(/(\d{4})-(\d{2})-(\d{2})/)
-
-  if (match) {
-    return `${match[2]}月${match[3]}日`
-  }
-
-  const date = new Date(cleanDateString)
-  if (isNaN(date.getTime())) return ''
-
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-
-  return `${month}月${day}日`
-}
 </script>
 
 <template>
@@ -462,7 +444,7 @@ function formatDate(dateString: string): string {
               <p class="post-excerpt">{{ post.description }}</p>
 
               <div class="post-meta">
-                <span class="post-date">{{ formatDate(post.date) }}</span>
+                <span class="post-date">{{ formatMonthDayCn(post.date) }}</span>
                 <span class="post-separator">/</span>
                 <span class="post-category">推荐</span>
 

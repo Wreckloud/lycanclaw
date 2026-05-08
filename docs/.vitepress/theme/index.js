@@ -31,8 +31,6 @@ import { preloadRecentComments } from './utils/commentApi';
 // 使用异步组件实现按需加载
 const AsyncArticleMetadata = defineAsyncComponent(() => import('./components/ArticleMetadata.vue'));
 const AsyncPostList = defineAsyncComponent(() => import('./components/PostList.vue'));
-const AsyncDataPanel = defineAsyncComponent(() => import('./components/DataPanel.vue'));
-const AsyncPostTitle = defineAsyncComponent(() => import('./components/PostTitle.vue'));
 const AsyncComment = defineAsyncComponent(() => import('./components/Comment.vue'));
 const AsyncRecentComments = defineAsyncComponent(() => import('./components/home/RecentComments.vue'));
 
@@ -121,8 +119,6 @@ export default {
     // 注册全局组件（使用异步组件）
     app.component('ArticleMetadata', AsyncArticleMetadata);
     app.component('PostList', AsyncPostList);
-    app.component('DataPanel', AsyncDataPanel);
-    app.component('PostTitle', AsyncPostTitle);
     app.component('Comment', AsyncComment);
     app.component('RecentComments', AsyncRecentComments);
     

@@ -12,9 +12,8 @@
   "scripts": {
     "dev": "pnpm run generate-data && vitepress dev docs",
     "build": "pnpm run generate-data && vitepress build docs",
+    "test": "node --test tests",
     "preview": "vitepress preview docs",
-    "generate-posts": "node docs/.vitepress/scripts/generate-posts-data.js",
-    "generate-knowledge-stats": "node docs/.vitepress/scripts/generate-knowledge-stats.js",
     "generate-site-data": "node docs/.vitepress/scripts/generate-site-data.js",
     "generate-recommended": "node docs/.vitepress/scripts/generate-recommended-data.js",
     "generate-data": "pnpm run generate-site-data && pnpm run generate-recommended"

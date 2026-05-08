@@ -3,6 +3,8 @@ import { ref, onMounted, computed } from 'vue'
 import { useData } from 'vitepress'
 import { withBase } from 'vitepress'
 import { useIntersectionObserver } from '@vueuse/core'
+import { estimateReadMinutes } from '../utils/contentMetrics.js'
+import { formatDateCn } from '../utils/time.js'
 
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
@@ -11,25 +13,6 @@ const isBrowser = typeof window !== 'undefined'
 const sectionRef = ref(null)
 const animationTriggerRef = ref(null) // 添加专门的动画触发引用
 const isVisible = ref(false)
-
-// 内联实现countWord函数
-function countWord(data) {
-  const pattern = /[a-zA-Z0-9_\u0392-\u03C9\u00C0-\u00FF\u0600-\u06FF\u0400-\u04FF]+|[\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3040-\u309F\uAC00-\uD7AF]+/g
-  const m = data.match(pattern)
-  let count = 0
-  if (!m) {
-    return 0
-  }
-  for (let i = 0; i < m.length; i += 1) {
-    if (m[i].charCodeAt(0) >= 0x4E00) {
-      count += m[i].length
-    }
-    else {
-      count += 1
-    }
-  }
-  return count
-}
 
 // 过滤出thoughts目录下的文章，且publish为true的文章
 const thoughtsPosts = ref([])
@@ -169,39 +152,9 @@ onMounted(async () => {
   }
 })
 
-// 格式化日期
-function formatDate(dateString) {
-  if (!dateString) return ''
-  
-  // 处理可能带引号的日期字符串
-  const cleanDateString = String(dateString).replace(/^['"]|['"]$/g, '')
-  
-  // 直接从日期字符串中提取年月日
-  const match = cleanDateString.match(/(\d{4})-(\d{2})-(\d{2})/)
-  
-  if (match) {
-    const year = match[1]
-    const month = match[2]
-    const day = match[3]
-    
-    return `${year}年${month}月${day}日`
-  }
-  
-  // 如果无法提取，则回退到Date对象
-  const date = new Date(cleanDateString)
-  if (isNaN(date.getTime())) return ''
-  
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  
-  return `${year}年${month}月${day}日`
-}
-
 // 计算阅读时间
 function calculateReadTime(content) {
-  const wordCount = countWord(content || '')
-  return Math.ceil(wordCount / 300)
+  return estimateReadMinutes(content || '')
 }
 
 // 获取当前主题模式
@@ -251,7 +204,7 @@ function getPostExcerpt(post) {
           <p class="post-excerpt">{{ getPostExcerpt(post) }}</p>
           
           <div class="post-meta">
-            <span class="post-date">{{ formatDate(post.frontmatter.date) }}</span>
+            <span class="post-date">{{ formatDateCn(post.frontmatter.date) }}</span>
             <span class="post-separator">/</span>
             <span class="post-read-time">约{{ calculateReadTime(post.content) }}分钟读完</span>
             <span class="post-separator">/</span>

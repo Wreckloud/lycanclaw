@@ -28,3 +28,78 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 - 阅读量统计
 
 这些动态能力目前仍可以先沿用现有方案，后续再逐步迁移到更可控的服务中。
+
+## Theme 架构规范
+
+### 目标
+
+- 在不改变现有功能的前提下，降低维护成本
+- 明确组件职责边界（layout、content、section、common、utils）
+- 非必要不新增全局组件注册
+
+### 目录约定
+
+- `docs/.vitepress/theme/components/`
+  - `MyLayout.vue`：页面级布局编排
+  - `PostList.vue`、`PostTitle.vue`、`Comment.vue`、`DataPanel.vue`：核心内容组件
+  - `home/`：首页专用区块
+  - `about/`：关于页专用区块
+  - `common/`：跨页面复用组件
+- `docs/.vitepress/theme/utils/`
+  - 运行时服务：`audioService`、`audioManager`
+  - API 封装：`commentApi`、`pageViewApi`
+  - 纯工具：`contentMetrics`
+- `docs/.vitepress/theme/styles/`
+  - 全局样式与修复样式
+
+### 开发规则
+
+- 页面专用组件优先局部 import，不默认全局注册
+- 仅当 Markdown 直接使用时才做全局组件注册
+- 重复逻辑统一提取到 `utils/`，避免复制粘贴
+- 网络请求统一放在 `utils/*Api.ts` 内封装
+- 动画和 DOM 生命周期逻辑放在组件内部 `onMounted/onBeforeUnmount`
+
+### 当前基线
+
+- 当前构建可通过（VitePress `1.6.3`）
+- 已清理一批失效脚本和未引用文件
+- 文章字数/阅读时长逻辑已收敛到 `utils/contentMetrics.js`
+
+### 下一步清理方向
+
+- 拆分 `theme/index.js` 的路由副作用逻辑为更小模块
+- 补充 ESLint 规则，优先拦截未使用导入和死代码
+- 为 `commentApi/pageViewApi` 增加更细粒度测试用例
+
+## 时间显示规范
+
+为避免各组件重复手写日期解析，时间显示统一由 `docs/.vitepress/theme/utils/time.js` 负责。
+
+### 场景规则
+
+- 文章详情元信息：显示绝对时间到秒（`YYYY年MM月DD日 HH:mm:ss`）
+- 文章列表页：显示绝对日期（`YYYY年MM月DD日`）
+- 首页推荐：显示简短日期（`MM月DD日`）
+- 近期动态：`1-6天` 显示 `X天前`，`7-13天` 显示 `1周前`，更久显示绝对日期
+- 最新评论：`1-6天` 显示 `X天前`，之后按 `X周前` 递进，超过 1 个月后显示绝对日期
+- 任何跨年的绝对日期都必须显示年份（例如 `2025年07月08日`）
+
+### 统一工具
+
+- `parseDateInput(input)`：统一解析 frontmatter 与 API 返回的日期
+- `formatDateCn(input, { withYear, withTime })`：绝对时间格式化
+- `formatMonthDayCn(input)`：简短日期格式化
+- `formatRelativeTimeCn(input, options)`：相对时间格式化
+  - 支持 `maxRelativeWeeks`，用于限制最多显示到几周前（例如近期动态只显示 `1周前`）
+- `timeDisplayPolicy.js`：统一管理“近期动态/最新评论”等时间展示策略，组件只调用封装方法
+
+### 代码约束
+
+- 组件内不再新增手写 `formatDate`、`new Date(string)` 解析逻辑
+- 日期排序前先调用 `parseDateInput`，避免跨浏览器解析差异
+
+## 维护检查
+
+- `pnpm test`：运行时间格式与显示策略的最小回归测试
+- `pnpm run build`：验证数据生成 + VitePress 构建完整链路

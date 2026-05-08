@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { withBase } from 'vitepress'
 import { useIntersectionObserver } from '@vueuse/core'
+import { estimateReadMinutes } from '../../utils/contentMetrics.js'
+import { parseDateInput } from '../../utils/time.js'
+import { formatRecentPostTime } from '../../utils/timeDisplayPolicy.js'
 
 // 类型定义
 interface Post {
@@ -91,7 +94,11 @@ async function fetchPosts() {
     
     // 按日期排序，取最新的几篇
     recentPosts.value = filteredPosts
-      .sort((a: Post, b: Post) => new Date(b.frontmatter.date).getTime() - new Date(a.frontmatter.date).getTime())
+      .sort((a: Post, b: Post) => {
+        const dateA = parseDateInput(a.frontmatter.date)
+        const dateB = parseDateInput(b.frontmatter.date)
+        return (dateB?.getTime() || 0) - (dateA?.getTime() || 0)
+      })
       .slice(0, maxPosts)
     
     isLoading.value = false
@@ -102,56 +109,9 @@ async function fetchPosts() {
   }
 }
 
-// 内联实现countWord函数
-function countWord(data: string): number {
-  const pattern = /[a-zA-Z0-9_\u0392-\u03C9\u00C0-\u00FF\u0600-\u06FF\u0400-\u04FF]+|[\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3040-\u309F\uAC00-\uD7AF]+/g
-  const m = data.match(pattern)
-  let count = 0
-  if (!m) {
-    return 0
-  }
-  for (let i = 0; i < m.length; i += 1) {
-    if (m[i].charCodeAt(0) >= 0x4E00) {
-      count += m[i].length
-    }
-    else {
-      count += 1
-    }
-  }
-  return count
-}
-
-// 格式化日期
-function formatDate(dateString: string): string {
-  if (!dateString) return ''
-  
-  // 处理可能带引号的日期字符串
-  const cleanDateString = String(dateString).replace(/^['"]|['"]$/g, '')
-  
-  // 直接从日期字符串中提取年月日
-  const match = cleanDateString.match(/(\d{4})-(\d{2})-(\d{2})/)
-  
-  if (match) {
-    const month = match[2]
-    const day = match[3]
-    
-    return `${month}月${day}日`
-  }
-  
-  // 如果无法提取，则回退到Date对象
-  const date = new Date(cleanDateString)
-  if (isNaN(date.getTime())) return ''
-  
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  
-  return `${month}月${day}日`
-}
-
 // 计算阅读时间
 function calculateReadTime(content: string): number {
-  const wordCount = countWord(content || '')
-  return Math.ceil(wordCount / 300)
+  return estimateReadMinutes(content || '')
 }
 
 // 获取文章摘要，优先使用description
@@ -198,7 +158,9 @@ function getPostExcerpt(post: Post): string {
             <p class="post-excerpt">{{ getPostExcerpt(post) }}</p>
             
             <div class="post-meta">
-              <span class="post-date">{{ formatDate(post.frontmatter.date) }}</span>
+              <span class="post-date">
+                {{ formatRecentPostTime(post.frontmatter.date) }}
+              </span>
               <span class="post-separator">/</span>
               <span class="post-read-time">约{{ calculateReadTime(post.content) }}分钟读完</span>
               <span class="post-separator">/</span>

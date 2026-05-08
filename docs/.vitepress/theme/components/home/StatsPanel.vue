@@ -4,11 +4,9 @@ import { withBase } from 'vitepress'
 import { 
   useLocalStorage, 
   useThrottleFn,
-  useBrowserLocation, 
   useWindowSize, 
   useIntersectionObserver,
-  useEventListener,
-  useMutationObserver
+  useEventListener
 } from '@vueuse/core'
 import EncourageWidget from './EncourageWidget.vue'
 

@@ -4,11 +4,10 @@ import PostTitle from './PostTitle.vue'
 import DataPanel from './DataPanel.vue'
 import GlobalMusicPlayer from './common/GlobalMusicPlayer.vue'
 import BackToTop from './common/BackToTop.vue'
-import { useRoute, useData } from 'vitepress'
+import { useData } from 'vitepress'
 import { defineAsyncComponent, computed } from 'vue'
 
 const { Layout } = DefaultTheme
-const route = useRoute()
 const { frontmatter, page } = useData()
 
 // 异步加载评论组件，提高页面加载性能
