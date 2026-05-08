@@ -3,8 +3,8 @@ import { ref, onMounted, computed } from 'vue'
 import { useData } from 'vitepress'
 import { withBase } from 'vitepress'
 import { useIntersectionObserver } from '@vueuse/core'
-import { estimateReadMinutes } from '../utils/contentMetrics.js'
-import { formatDateCn } from '../utils/time.js'
+import { estimateReadMinutes } from '../utils/contentMetrics'
+import { formatDateCn } from '../utils/time'
 
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'

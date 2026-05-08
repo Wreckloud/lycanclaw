@@ -1,16 +1,33 @@
-function pad2(value) {
+export interface RelativeTimeOptions {
+  now?: Date
+  relativeDays?: number
+  relativeMonths?: number | null
+  maxRelativeWeeks?: number | null
+  maxRelativeDays?: number | null
+  absoluteStyle?: 'auto' | 'ymd' | 'md'
+  futureAsNow?: boolean
+}
+
+export interface DateFormatOptions {
+  withYear?: boolean
+  withTime?: boolean
+}
+
+export type DateInput = Date | string | number | null | undefined
+
+function pad2(value: number): string {
   return String(value).padStart(2, '0')
 }
 
-function isValidDate(date) {
+function isValidDate(date: unknown): date is Date {
   return date instanceof Date && !Number.isNaN(date.getTime())
 }
 
-function cleanDateString(value) {
+function cleanDateString(value: string): string {
   return String(value).trim().replace(/^['"]|['"]$/g, '')
 }
 
-export function parseDateInput(input) {
+export function parseDateInput(input: DateInput): Date | null {
   if (!input) return null
 
   if (input instanceof Date) {
@@ -48,7 +65,7 @@ export function parseDateInput(input) {
   return isValidDate(fallback) ? fallback : null
 }
 
-export function formatDateCn(input, options = {}) {
+export function formatDateCn(input: DateInput, options: DateFormatOptions = {}): string {
   const { withYear = true, withTime = false } = options
   const date = parseDateInput(input)
   if (!date) return ''
@@ -65,11 +82,11 @@ export function formatDateCn(input, options = {}) {
   return `${datePart} ${HH}:${mm}:${ss}`
 }
 
-export function formatMonthDayCn(input) {
+export function formatMonthDayCn(input: DateInput): string {
   return formatDateCn(input, { withYear: false, withTime: false })
 }
 
-export function formatRelativeTimeCn(input, options = {}) {
+export function formatRelativeTimeCn(input: DateInput, options: RelativeTimeOptions = {}): string {
   const {
     now = new Date(),
     relativeDays = 7,
@@ -119,7 +136,11 @@ export function formatRelativeTimeCn(input, options = {}) {
   return formatAbsoluteDate(date, now, absoluteStyle)
 }
 
-function formatAbsoluteDate(date, now, absoluteStyle) {
+function formatAbsoluteDate(
+  date: Date,
+  now: Date,
+  absoluteStyle: NonNullable<RelativeTimeOptions['absoluteStyle']>
+): string {
   if (absoluteStyle === 'md') {
     return formatMonthDayCn(date)
   }

@@ -2,11 +2,11 @@
  * 评论API封装
  * 提供获取最新评论、评论数量与时间格式化能力。
  */
-import { formatRecentCommentTime } from './timeDisplayPolicy.js'
+import { formatRecentCommentTime } from './timeDisplayPolicy'
 import {
   parseWalineCommentCountResponse,
   parseWalineRecentCommentsResponse
-} from './apiResponseParsers.js'
+} from './apiResponseParsers'
 
 const WALINE_SERVER_URL = 'https://lycanclaw-comment.netlify.app/.netlify/functions/comment'
 const COMMENT_ENDPOINT = `${WALINE_SERVER_URL}/comment`
@@ -157,7 +157,7 @@ export async function getRecentComments(
   const fetchPromise = (async () => {
     try {
       const data = await requestJson<unknown>(buildRecentCommentsUrl(count))
-      const comments = parseWalineRecentCommentsResponse(data) as WalineComment[]
+      const comments = parseWalineRecentCommentsResponse<WalineComment>(data)
       if (comments.length > 0) {
         saveRecentCommentsToCache(comments)
       }

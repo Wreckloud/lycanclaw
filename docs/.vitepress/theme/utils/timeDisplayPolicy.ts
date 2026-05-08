@@ -1,4 +1,4 @@
-import { formatRelativeTimeCn } from './time.js'
+import { formatRelativeTimeCn, type DateInput, type RelativeTimeOptions } from './time'
 
 /**
  * 首页近期动态时间策略：
@@ -23,14 +23,14 @@ export const RECENT_COMMENT_TIME_OPTIONS = Object.freeze({
   absoluteStyle: 'auto'
 })
 
-export function formatRecentPostTime(input, overrides = {}) {
+export function formatRecentPostTime(input: DateInput, overrides: RelativeTimeOptions = {}): string {
   return formatRelativeTimeCn(input, {
     ...RECENT_POST_TIME_OPTIONS,
     ...overrides
   })
 }
 
-export function formatRecentCommentTime(input, overrides = {}) {
+export function formatRecentCommentTime(input: DateInput, overrides: RelativeTimeOptions = {}): string {
   return formatRelativeTimeCn(input, {
     ...RECENT_COMMENT_TIME_OPTIONS,
     ...overrides

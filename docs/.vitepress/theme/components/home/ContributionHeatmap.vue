@@ -12,11 +12,11 @@ import { CanvasRenderer } from 'echarts/renderers'
 import {
   fetchKnowledgeStats,
   fetchPublishedThoughtPosts
-} from '../../utils/contentData.js'
+} from '../../utils/contentData'
 import {
   buildDateWordCountMap,
   getOneYearDateRange
-} from '../../utils/homeAnalytics.js'
+} from '../../utils/homeAnalytics'
 
 // 按需注册组件
 echarts.use([

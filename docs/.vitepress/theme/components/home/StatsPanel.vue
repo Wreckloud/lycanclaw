@@ -9,8 +9,8 @@ import EncourageWidget from './EncourageWidget.vue'
 import {
   fetchKnowledgeStats,
   fetchPublishedThoughtPosts
-} from '../../utils/contentData.js'
-import { calculateHomeStats } from '../../utils/homeAnalytics.js'
+} from '../../utils/contentData'
+import { calculateHomeStats } from '../../utils/homeAnalytics'
 
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'

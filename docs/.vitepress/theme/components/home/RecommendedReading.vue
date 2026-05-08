@@ -9,7 +9,7 @@ import {
   useDebounceFn,
   useSwipe
 } from '@vueuse/core'
-import { formatMonthDayCn } from '../../utils/time.js'
+import { formatMonthDayCn } from '../../utils/time'
 // 导入推荐文章配置
 import { recommendedPosts as configuredPostsPaths } from '../../../config/recommended-posts.js'
 

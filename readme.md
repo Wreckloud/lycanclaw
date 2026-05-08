@@ -69,17 +69,45 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 - 网络请求统一放在 `utils/*Api.ts` 内封装
 - 动画和 DOM 生命周期逻辑放在组件内部 `onMounted/onBeforeUnmount`
 
+## 代码规范约定（已执行）
+
+### 文件与语言规范
+
+- `docs/.vitepress/theme/utils/*` 统一使用 TypeScript（`.ts`）
+- `docs/.vitepress/theme/components/*` 新增组件默认使用 `<script setup lang="ts">`
+- `docs/.vitepress/scripts/*` 保持 `.js`（直接由 Node 执行，避免额外编译链）
+- 配置文件保持 `.mjs`（如 `docs/.vitepress/config.mjs`）
+- 本地模块导入统一使用无后缀路径（例如 `../utils/time`），不写 `.js/.ts`
+
+### 注释规范
+
+- 只写“为什么”，不写“做了什么”
+- 必须注释的场景：
+  - 跨浏览器兼容分支（如旧版触摸能力判断）
+  - 业务阈值策略（如时间显示阈值、分页窗口规则）
+  - 副作用时序（如自动折叠、播放状态联动）
+- 禁止冗余注释（变量名已表达清楚时不再重复）
+
+### 风格规范
+
+- 命名：函数 `camelCase`，常量 `UPPER_SNAKE_CASE`，类型 `PascalCase`
+- 网络返回值先做 parser，再进入组件渲染
+- 组件层只保留展示与交互，数据聚合放 `utils/`，挂载副作用放 `setup/`
+- 时间逻辑只走 `time.ts + timeDisplayPolicy.ts`，禁止组件内重复手写日期解析
+
 ### 当前基线
 
 - 当前构建可通过（VitePress `1.6.3`）
 - 已清理一批失效脚本和未引用文件
-- 文章字数/阅读时长逻辑已收敛到 `utils/contentMetrics.js`
+- Theme `utils/` 已全部迁移到 `.ts`，并统一类型导出
+- 文章字数/阅读时长逻辑已收敛到 `utils/contentMetrics.ts`
 - 首页数据读取、筛选、统计已从组件内联逻辑收敛到 `contentData + homeAnalytics`
 - 音乐相关组件已改为统一调用 `musicApi`，便于后续切换到自建 API
 - `.gitignore` 已覆盖 Obsidian 元数据目录，避免误提交本地笔记配置
 
 ### 下一步清理方向
 
+- 将剩余 `11` 个 `<script setup>` 组件逐步迁移为 `lang="ts"`
 - 补充 ESLint 规则，优先拦截未使用导入和死代码
 - 统一音乐相关组件（`HomeMusicPlayer` / `SimpleMusicPlayer` / `GlobalMusicPlayer`）的共享播放控制逻辑
 - 将 `musicApi` 的接口地址切换为可配置项（环境变量或站点配置），为自建 API 做准备
@@ -87,7 +115,7 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 
 ## 时间显示规范
 
-为避免各组件重复手写日期解析，时间显示统一由 `docs/.vitepress/theme/utils/time.js` 负责。
+为避免各组件重复手写日期解析，时间显示统一由 `docs/.vitepress/theme/utils/time.ts` 负责。
 
 ### 场景规则
 
@@ -105,7 +133,7 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 - `formatMonthDayCn(input)`：简短日期格式化
 - `formatRelativeTimeCn(input, options)`：相对时间格式化
   - 支持 `maxRelativeWeeks`，用于限制最多显示到几周前（例如近期动态只显示 `1周前`）
-- `timeDisplayPolicy.js`：统一管理“近期动态/最新评论”等时间展示策略，组件只调用封装方法
+- `timeDisplayPolicy.ts`：统一管理“近期动态/最新评论”等时间展示策略，组件只调用封装方法
 
 ### 代码约束
 

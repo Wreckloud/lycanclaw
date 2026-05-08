@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, computed, watch, nextTick } from 'vue'
 import { useData } from 'vitepress'
-import { countWords, estimateReadMinutes } from '../utils/contentMetrics.js'
+import { countWords, estimateReadMinutes } from '../utils/contentMetrics'
 import { getAndUpdatePageView, getPageViewFromCache } from '../utils/pageViewApi'
-import { parseDateInput, formatDateCn } from '../utils/time.js'
+import { parseDateInput, formatDateCn } from '../utils/time'
 
 const isBrowser = typeof window !== 'undefined'
 const { frontmatter, page } = useData()

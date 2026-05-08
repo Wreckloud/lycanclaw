@@ -2,7 +2,7 @@
  * 页面浏览量 API 封装。
  * 负责浏览量获取、更新、防重计数与本地缓存。
  */
-import { parseWalinePageViewResponse } from './apiResponseParsers.js'
+import { parseWalinePageViewResponse } from './apiResponseParsers'
 
 const WALINE_SERVER_URL = 'https://lycanclaw-comment.netlify.app/.netlify/functions/comment'
 const ARTICLE_ENDPOINT = `${WALINE_SERVER_URL}/article`
