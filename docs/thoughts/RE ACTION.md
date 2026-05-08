@@ -1,10 +1,11 @@
 ---
-title: 'RE ACTION'
-date: '2026-02-21 16:25:50'
-description: '这是一篇新文章!'
+title: RE ACTION
+date: 2026-02-21 16:25:50
+description: 这是一篇新文章!
 order: 0
 publish: true
-tags: 
+tags:
+  - 反刍日志
 ---
 
 结局依然无法改变。

@@ -150,6 +150,7 @@
       "public/images/首页/default-cover.png"
     ],
     "public/images/文章资源": [
+      "public/images/文章资源/献给狼，献给你",
       "public/images/文章资源/第四部分-反射与注解",
       "public/images/文章资源/第一部分-面向对象基础",
       "public/images/文章资源/微服务基础",
@@ -334,6 +335,9 @@
     ],
     "public/images/文章资源/我从人间走过": [
       "public/images/文章资源/我从人间走过/file-20250623142321302.jpg"
+    ],
+    "public/images/文章资源/献给狼，献给你": [
+      "public/images/文章资源/献给狼，献给你/file-20260507195406516.jpg"
     ],
     "public/images/文章资源/支线部分-gui程序开发": [],
     "public/images/文章资源/axios-现代化的-ajax-请求工具": [

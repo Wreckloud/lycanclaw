@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "thoughts/献给狼，献给你.md",
+                "file": "thoughts/RE ACTION.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "献给狼，献给你"
+              "title": "RE ACTION"
             }
           }
         ],
@@ -55,13 +55,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "thoughts/献给狼，献给你.md",
+                "file": "thoughts/RE ACTION.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "献给狼，献给你 的大纲"
+              "title": "RE ACTION 的大纲"
             }
           },
           {
@@ -170,6 +170,7 @@
   },
   "active": "7b06271dd556ed6e",
   "lastOpenFiles": [
+    "thoughts/献给狼，献给你.md",
     "public/images/文章资源/献给狼，献给你/file-20260507195406516.jpg",
     "public/images/文章资源/献给狼，献给你",
     "thoughts/我从人间走过.md",
@@ -180,7 +181,6 @@
     "thoughts/獠牙下的野蔷薇.md",
     "thoughts/每个人都拥有的言灵.md",
     "thoughts/数字世界的构建手册.md",
-    "thoughts/献给狼，献给你.md",
     "knowledge/后端工具库/Maven 基础 - 项目构建工具.md",
     "knowledge/后端工具库/Docker.md",
     "knowledge/后端工具库/若依框架.md",
@@ -208,7 +208,6 @@
     "public/images/文章资源/四、代码填空题/file-20260121173219225.jpg",
     "public/images/文章资源/四、代码填空题/file-20260121162303842.jpg",
     "public/images/文章资源/四、代码填空题/file-20260121161927522.jpg",
-    "public/images/文章资源/四、代码填空题/file-20260121161042318.jpg",
     "public/images/文章资源/四、代码填空题",
     "public/images/文章资源/五、阅读程序",
     "public/images/文章资源/微服务基础",
