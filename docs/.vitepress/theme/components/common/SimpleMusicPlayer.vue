@@ -5,6 +5,7 @@ import { useIntersectionObserver } from '@vueuse/core'
 import audioManager from '../../utils/audioManager'
 import audioService from '../../utils/audioService'
 import { fetchTrackWithUrlById } from '../../utils/musicApi'
+import { calculateProgressPercent, formatAudioTime } from '../../utils/audioUi'
 
 // 组件属性定义
 interface Props {
@@ -40,6 +41,7 @@ const debounceTimer = ref<number | null>(null) // 用于防抖操作
 const useNetease = ref(false) // 是否使用网易云播放器
 const isInitialRender = ref(true) // 是否是初始渲染
 const playerRef = ref<HTMLElement | null>(null) // 播放器元素引用
+const progressBarRef = ref<HTMLElement | null>(null)
 const animationApplied = ref(false) // 标记动画是否已应用
 
 // 生成唯一的音频ID
@@ -177,14 +179,10 @@ function startDrag(e: MouseEvent | TouchEvent) {
 function updateProgressFromEvent(e: MouseEvent) {
   if (!isDragging.value) return
   
-  const progressBar = document.querySelector('.progress-bar') as HTMLElement
+  const progressBar = progressBarRef.value
   if (!progressBar) return
   
-  const rect = progressBar.getBoundingClientRect()
-  let percent = (e.clientX - rect.left) / rect.width
-  
-  // 限制百分比在0-1之间
-  percent = Math.max(0, Math.min(1, percent))
+  const percent = calculateProgressPercent(e, progressBar)
   
   progress.value = percent * 100
   currentTime.value = percent * duration.value
@@ -196,15 +194,10 @@ function updateProgressFromTouch(e: TouchEvent) {
   // 阻止触摸事件的默认行为（如滚动）
   e.preventDefault()
   
-  const progressBar = document.querySelector('.progress-bar') as HTMLElement
+  const progressBar = progressBarRef.value
   if (!progressBar) return
   
-  const touch = e.touches[0] || e.changedTouches[0]
-  const rect = progressBar.getBoundingClientRect()
-  let percent = (touch.clientX - rect.left) / rect.width
-  
-  // 限制百分比在0-1之间
-  percent = Math.max(0, Math.min(1, percent))
+  const percent = calculateProgressPercent(e, progressBar)
   
   progress.value = percent * 100
   currentTime.value = percent * duration.value
@@ -229,9 +222,8 @@ function setProgress(e: MouseEvent) {
   // 只要音频准备就绪就允许设置进度，不再要求必须正在播放
   if (!isAudioReady.value || isDragging.value) return
   
-  const progressBar = e.currentTarget as HTMLElement
-  const rect = progressBar.getBoundingClientRect()
-  const percent = (e.clientX - rect.left) / rect.width
+  const progressBar = progressBarRef.value || (e.currentTarget as HTMLElement)
+  const percent = calculateProgressPercent(e, progressBar)
   
   progress.value = percent * 100
   currentTime.value = percent * duration.value
@@ -247,11 +239,7 @@ function setVolume(e: Event) {
 }
 
 function formatTime(seconds: number): string {
-  if (isNaN(seconds) || !isFinite(seconds)) return '0:00'
-  
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  return `${mins}:${secs < 10 ? '0' : ''}${secs}`
+  return formatAudioTime(seconds)
 }
 
 // 重试加载音频
@@ -676,7 +664,7 @@ watch(() => songInfo.value.url, (newUrl) => {
           <div v-if="isLoading" class="skeleton-progress">
             <div class="skeleton-pulse"></div>
           </div>
-          <div v-else class="progress-bar">
+          <div v-else ref="progressBarRef" class="progress-bar">
             <div class="progress-current" :style="{ width: `${progress}%` }"></div>
           </div>
         </div>

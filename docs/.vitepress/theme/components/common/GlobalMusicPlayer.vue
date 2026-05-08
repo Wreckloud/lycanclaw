@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, onUnmounted, watch } from 'vue'
+import { ref, onMounted, computed, onUnmounted } from 'vue'
 import audioManager from '../../utils/audioManager'
 import audioService from '../../utils/audioService'
+import { calculateProgressPercent, formatAudioTime } from '../../utils/audioUi'
 
 // 当前播放歌曲的信息
 const currentSong = ref<{
@@ -40,6 +41,7 @@ const miniModeTimer = ref<number | null>(null)
 const isHovering = ref(false)
 // 是否是触摸设备
 const isTouchDevice = ref(false)
+const progressBarRef = ref<HTMLElement | null>(null)
 
 // 封面旋转角度
 const coverRotation = ref(0)
@@ -50,11 +52,7 @@ const lastPausedRotation = ref(0)
 
 // 格式化时间
 function formatTime(seconds: number): string {
-  if (isNaN(seconds) || !isFinite(seconds)) return '0:00'
-  
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  return `${mins}:${secs < 10 ? '0' : ''}${secs}`
+  return formatAudioTime(seconds)
 }
 
 // 计算属性：格式化的当前时间
@@ -409,14 +407,10 @@ function startDrag(e: MouseEvent | TouchEvent) {
 function updateProgressFromEvent(e: MouseEvent) {
   if (!isDragging.value || !currentSong.value.id) return
   
-  const progressBar = document.querySelector('.global-progress-bar') as HTMLElement
+  const progressBar = progressBarRef.value
   if (!progressBar) return
   
-  const rect = progressBar.getBoundingClientRect()
-  let percent = (e.clientX - rect.left) / rect.width
-  
-  // 限制百分比在0-1之间
-  percent = Math.max(0, Math.min(1, percent))
+  const percent = calculateProgressPercent(e, progressBar)
   
   currentSong.value.progress = percent * 100
 }
@@ -428,15 +422,10 @@ function updateProgressFromTouch(e: TouchEvent) {
   // 阻止触摸事件的默认行为（如滚动）
   e.preventDefault()
   
-  const progressBar = document.querySelector('.global-progress-bar') as HTMLElement
+  const progressBar = progressBarRef.value
   if (!progressBar) return
   
-  const touch = e.touches[0] || e.changedTouches[0]
-  const rect = progressBar.getBoundingClientRect()
-  let percent = (touch.clientX - rect.left) / rect.width
-  
-  // 限制百分比在0-1之间
-  percent = Math.max(0, Math.min(1, percent))
+  const percent = calculateProgressPercent(e, progressBar)
   
   currentSong.value.progress = percent * 100
 }
@@ -714,6 +703,7 @@ onMounted(() => {
           
           <!-- 进度条 -->
           <div 
+            ref="progressBarRef"
             class="global-progress-bar" 
             :class="{ 'disabled': !currentSong.isPlaying }"
             @click="setProgress"

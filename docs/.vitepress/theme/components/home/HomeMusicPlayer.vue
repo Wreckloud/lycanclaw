@@ -3,6 +3,7 @@ import { ref, onMounted, computed, onUnmounted } from 'vue'
 import audioManager from '../../utils/audioManager'
 import audioService from '../../utils/audioService'
 import { useIntersectionObserver } from '@vueuse/core'
+import { calculateProgressPercent, formatAudioTime } from '../../utils/audioUi'
 import {
   fetchTrackUrlById,
   fetchWeeklyTracks,
@@ -29,6 +30,7 @@ const currentSongIndex = ref(-1)
 const currentTime = ref(0)
 const duration = ref(0)
 const progress = ref(0)
+const progressBarRef = ref<HTMLElement | null>(null)
 const isDragging = ref(false)  // 新增：是否正在拖动进度条
 const isButtonDisabled = ref(false) // 添加按钮禁用状态
 const preloadedSongs = ref<Array<MusicTrack & { url: string }>>([]) // 预加载歌曲队列
@@ -53,11 +55,7 @@ const titleStyle = computed(() => {
 
 // 格式化时间显示
 function formatTime(seconds: number): string {
-  if (isNaN(seconds) || !isFinite(seconds)) return '0:00'
-  
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  return `${mins}:${secs < 10 ? '0' : ''}${secs}`
+  return formatAudioTime(seconds)
 }
 
 const formattedCurrentTime = computed(() => formatTime(currentTime.value))
@@ -444,14 +442,10 @@ function startDrag(e: MouseEvent | TouchEvent) {
 function updateProgressFromEvent(e: MouseEvent) {
   if (!isDragging.value) return
   
-  const progressBar = document.querySelector('.progress-bar') as HTMLElement
+  const progressBar = progressBarRef.value
   if (!progressBar) return
   
-  const rect = progressBar.getBoundingClientRect()
-  let percent = (e.clientX - rect.left) / rect.width
-  
-  // 限制百分比在0-1之间
-  percent = Math.max(0, Math.min(1, percent))
+  const percent = calculateProgressPercent(e, progressBar)
   
   progress.value = percent * 100
   currentTime.value = percent * duration.value
@@ -463,15 +457,10 @@ function updateProgressFromTouch(e: TouchEvent) {
   // 阻止触摸事件的默认行为（如滚动）
   e.preventDefault()
   
-  const progressBar = document.querySelector('.progress-bar') as HTMLElement
+  const progressBar = progressBarRef.value
   if (!progressBar) return
   
-  const touch = e.touches[0] || e.changedTouches[0]
-  const rect = progressBar.getBoundingClientRect()
-  let percent = (touch.clientX - rect.left) / rect.width
-  
-  // 限制百分比在0-1之间
-  percent = Math.max(0, Math.min(1, percent))
+  const percent = calculateProgressPercent(e, progressBar)
   
   progress.value = percent * 100
   currentTime.value = percent * duration.value
@@ -495,9 +484,8 @@ function stopDrag(e?: MouseEvent | TouchEvent) {
 function setProgress(e: MouseEvent) {
   if (!showTitle.value || isDragging.value) return
   
-  const progressBar = e.currentTarget as HTMLElement
-  const rect = progressBar.getBoundingClientRect()
-  const percent = (e.clientX - rect.left) / rect.width
+  const progressBar = progressBarRef.value || (e.currentTarget as HTMLElement)
+  const percent = calculateProgressPercent(e, progressBar)
   
   progress.value = percent * 100
   currentTime.value = percent * duration.value
@@ -712,7 +700,7 @@ onUnmounted(() => {
                @mousedown="startDrag"
                @touchstart="startDrag"
                :class="{ 'dragging': isDragging }">
-            <div class="progress-bar">
+            <div ref="progressBarRef" class="progress-bar">
               <div class="progress-current" :style="{ width: `${progress}%` }"></div>
             </div>
           </div>

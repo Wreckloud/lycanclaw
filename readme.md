@@ -48,6 +48,7 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 - `docs/.vitepress/theme/utils/`
   - 运行时服务：`audioService`、`audioManager`
   - 音乐数据服务：`musicApi`（网易云接口聚合与解析）
+  - 音乐 UI 工具：`audioUi`（时间格式化与进度计算）
   - API 封装：`commentApi`、`pageViewApi`
   - API 响应解析：`apiResponseParsers`
   - 内容数据层：`contentData`
