@@ -26,7 +26,6 @@ interface Post {
 const isBrowser = typeof window !== 'undefined'
 
 // 组件引用和状态
-const containerRef = ref<HTMLElement | null>(null)
 const postsRef = ref<HTMLElement | null>(null) // 专门用于动画触发的引用
 const isVisible = ref(false)
 const recentPosts = ref<Post[]>([])
@@ -113,7 +112,7 @@ function getPostExcerpt(post: Post): string {
 </script>
 
 <template>
-  <div class="recent-posts" ref="containerRef">
+  <div class="recent-posts">
     <h2 class="section-title" :class="{ 'animate-in': isVisible }">近期动态</h2>
     
     <!-- 加载中状态：只在组件可见时显示 -->

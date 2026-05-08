@@ -6,12 +6,11 @@ import {
   useEventListener
 } from '@vueuse/core'
 import EncourageWidget from './EncourageWidget.vue'
-import { countWords } from '../../utils/contentMetrics.js'
-import { parseDateInput } from '../../utils/time.js'
 import {
   fetchKnowledgeStats,
   fetchPublishedThoughtPosts
 } from '../../utils/contentData.js'
+import { calculateHomeStats } from '../../utils/homeAnalytics.js'
 
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
@@ -49,14 +48,6 @@ function formatNumber(num) {
   } else {
     return (num / 100000000).toFixed(1).replace(/\.0$/, '') + '亿'
   }
-}
-
-// 判断日期是否在当前月份
-function isCurrentMonth(date) {
-  if (!date) return false
-  const now = new Date()
-  return date.getMonth() === now.getMonth() && 
-         date.getFullYear() === now.getFullYear()
 }
 
 // 数字滚动动画
@@ -180,43 +171,13 @@ onMounted(async () => {
     
     const thoughtsPosts = await fetchPublishedThoughtPosts(withBase)
     
-    // 计算随想文章总字数和总数
-    let totalWords = 0
-    let totalPostsCount = thoughtsPosts.length
-    
-    thoughtsPosts.forEach(post => {
-      totalWords += countWords(post.content || '')
-    })
-    
-    // 初始化本月发布的文章数
-    let currentMonthCount = 0
-    
-    // 计算本月发布的随想文章数
-    thoughtsPosts.forEach(post => {
-      const parsedDate = parseDateInput(post.frontmatter.date)
-      if (parsedDate && isCurrentMonth(parsedDate)) {
-        currentMonthCount++
-      }
-    })
-    
     const knowledgeStats = await fetchKnowledgeStats(withBase)
-    totalPostsCount += knowledgeStats.length
-
-    knowledgeStats.forEach(item => {
-      if (item.wordCount) {
-        totalWords += item.wordCount
-      }
-
-      const parsedDate = parseDateInput(item.date)
-      if (parsedDate && isCurrentMonth(parsedDate)) {
-        currentMonthCount++
-      }
-    })
+    const summary = calculateHomeStats(thoughtsPosts, knowledgeStats)
     
     // 更新统计数据
-    stats.currentMonthPosts = currentMonthCount
-    stats.totalPostsCount = totalPostsCount
-    stats.thoughtsWords = totalWords
+    stats.currentMonthPosts = summary.currentMonthPosts
+    stats.totalPostsCount = summary.totalPostsCount
+    stats.thoughtsWords = summary.totalWords
     
     isLoading.value = false
     

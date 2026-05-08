@@ -50,6 +50,7 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
   - API 封装：`commentApi`、`pageViewApi`
   - API 响应解析：`apiResponseParsers`
   - 内容数据层：`contentData`
+  - 首页统计计算：`homeAnalytics`
   - 纯工具：`contentMetrics`
 - `docs/.vitepress/theme/setup/`
   - `registerGlobalComponents`：集中管理全局组件与运行时注入
@@ -71,11 +72,14 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 - 当前构建可通过（VitePress `1.6.3`）
 - 已清理一批失效脚本和未引用文件
 - 文章字数/阅读时长逻辑已收敛到 `utils/contentMetrics.js`
+- 首页数据读取、筛选、统计已从组件内联逻辑收敛到 `contentData + homeAnalytics`
+- `.gitignore` 已覆盖 Obsidian 元数据目录，避免误提交本地笔记配置
 
 ### 下一步清理方向
 
 - 补充 ESLint 规则，优先拦截未使用导入和死代码
-- 为 `commentApi/pageViewApi` 继续收敛重复逻辑与错误处理分支
+- 统一音乐相关组件（`HomeMusicPlayer` / `SimpleMusicPlayer` / `GlobalMusicPlayer`）的共享逻辑
+- 逐步收敛首页组件中的动画触发器与 `setTimeout` 调度逻辑
 
 ## 时间显示规范
 

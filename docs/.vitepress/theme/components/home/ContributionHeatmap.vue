@@ -9,12 +9,14 @@ import * as echarts from 'echarts/core'
 import { CalendarComponent, VisualMapComponent } from 'echarts/components'
 import { HeatmapChart } from 'echarts/charts'
 import { CanvasRenderer } from 'echarts/renderers'
-import { parseDateInput } from '../../utils/time.js'
-import { countWords } from '../../utils/contentMetrics.js'
 import {
   fetchKnowledgeStats,
   fetchPublishedThoughtPosts
 } from '../../utils/contentData.js'
+import {
+  buildDateWordCountMap,
+  getOneYearDateRange
+} from '../../utils/homeAnalytics.js'
 
 // 按需注册组件
 echarts.use([
@@ -62,28 +64,11 @@ function updateScrollPosition() {
   maxScroll.value = containerRef.value.scrollWidth - containerRef.value.clientWidth
 }
 
-// 日期格式化
 function formatDate(date) {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
-}
-
-// 获取过去一年的日期范围
-function getYearRange() {
-  const today = new Date()
-  const endDate = formatDate(today)
-  
-  // 计算一年前的日期
-  const startDate = new Date()
-  startDate.setFullYear(today.getFullYear() - 1)
-  startDate.setDate(startDate.getDate() + 1) // 加一天，确保是整整一年
-  
-  return {
-    start: formatDate(startDate),
-    end: endDate
-  }
 }
 
 // 获取当前主题的颜色列表
@@ -308,36 +293,11 @@ onMounted(async () => {
   try {
     const thoughtsPosts = await fetchPublishedThoughtPosts(withBase)
     
-    // 初始化按日期统计的字数映射
-    const dateWordCountMap = {}
-    
-    // 计算随想文章的字数并按日期统计
-    thoughtsPosts.forEach(post => {
-      if (post.frontmatter.date) {
-        // 使用增强的日期解析
-        const parsedDate = parseDateInput(post.frontmatter.date)
-        if (parsedDate) {
-          const dateStr = formatDate(parsedDate)
-          // 使用文章总字数作为数据点
-          const wordCount = countWords(post.content || '')
-          dateWordCountMap[dateStr] = (dateWordCountMap[dateStr] || 0) + wordCount
-        }
-      }
-    })
-    
     const knowledgeStats = await fetchKnowledgeStats(withBase)
-    knowledgeStats.forEach(item => {
-      if (item.date) {
-        const parsedDate = parseDateInput(item.date)
-        if (parsedDate) {
-          const dateStr = formatDate(parsedDate)
-          dateWordCountMap[dateStr] = (dateWordCountMap[dateStr] || 0) + item.wordCount
-        }
-      }
-    })
+    const dateWordCountMap = buildDateWordCountMap(thoughtsPosts, knowledgeStats)
     
     // 确定日期范围
-    yearRange.value = getYearRange()
+    yearRange.value = getOneYearDateRange()
     const startDate = new Date(yearRange.value.start)
     const endDate = new Date(yearRange.value.end)
     
