@@ -119,3 +119,13 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 
 - 已忽略 Obsidian 元数据目录：`.obsidian/`、`**/.obsidian/`、`.trash/`
 - 构建产物与缓存不入库：`docs/.vitepress/cache/`、`docs/.vitepress/dist/`
+
+## 音乐 API 配置
+
+- 默认音乐 API：`https://163api.qijieya.cn`
+- 可通过环境变量覆盖（构建时生效）：
+  - `VITE_MUSIC_API_BASE`
+  - `VITE_MUSIC_UID`
+- 也可通过运行时配置覆盖（页面注入 `window.__LYCAN_CONFIG`）：
+  - `musicApiBase`
+  - `musicUid`

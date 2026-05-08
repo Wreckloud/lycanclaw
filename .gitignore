@@ -8,6 +8,8 @@ docs/.vitepress/dist/
 update-blog.bat
 *.log
 *.tmp
+.env.local
+.env.*.local
 
 # OS / editor
 .DS_Store

@@ -1,6 +1,6 @@
 import { addCorsProxy } from './proxyConfig'
 
-const NETEASE_API_BASE = 'https://163api.qijieya.cn'
+const DEFAULT_MUSIC_API_BASE = 'https://163api.qijieya.cn'
 const DEFAULT_UID = '629126546'
 
 export interface MusicTrack {
@@ -33,6 +33,33 @@ interface RawWeekItem {
   song?: RawSong
 }
 
+function normalizeBaseUrl(url: string): string {
+  if (!url) return DEFAULT_MUSIC_API_BASE
+  return url.replace(/\/+$/, '')
+}
+
+function readRuntimeValue(key: string): string | undefined {
+  if (typeof window === 'undefined') return undefined
+  const value = (window as any)?.__LYCAN_CONFIG?.[key]
+  return typeof value === 'string' ? value : undefined
+}
+
+function getMusicApiBase(): string {
+  const runtimeValue = readRuntimeValue('musicApiBase')
+  if (runtimeValue) {
+    return normalizeBaseUrl(runtimeValue)
+  }
+
+  const envValue = import.meta.env?.VITE_MUSIC_API_BASE
+  return normalizeBaseUrl(envValue || DEFAULT_MUSIC_API_BASE)
+}
+
+function getMusicUid(): string {
+  const runtimeValue = readRuntimeValue('musicUid')
+  if (runtimeValue) return runtimeValue
+  return import.meta.env?.VITE_MUSIC_UID || DEFAULT_UID
+}
+
 function normalizeHttps(url: string): string {
   if (!url) return ''
   return url.startsWith('http:') ? url.replace('http:', 'https:') : url
@@ -49,7 +76,8 @@ async function requestJson(path: string, params: Record<string, string | number>
   const query = new URLSearchParams(
     Object.entries(params).map(([key, value]) => [key, String(value)])
   ).toString()
-  const url = addCorsProxy(`${NETEASE_API_BASE}${path}${query ? `?${query}` : ''}`)
+  const apiBase = getMusicApiBase()
+  const url = addCorsProxy(`${apiBase}${path}${query ? `?${query}` : ''}`)
   const response = await fetch(url)
   if (!response.ok) {
     throw new Error(`音乐接口请求失败: ${response.status}`)
@@ -78,7 +106,7 @@ export async function fetchWeeklyTracks(options: {
   withTimestamp?: boolean
 } = {}): Promise<MusicTrack[]> {
   const {
-    uid = DEFAULT_UID,
+    uid = getMusicUid(),
     limit,
     coverSize = '120y120',
     withTimestamp = true
