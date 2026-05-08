@@ -219,14 +219,6 @@ export async function getAndUpdatePageView(
   return getPageView(currentPath, fallbackValue)
 }
 
-export function __setTestPageView(count: number, path?: string): void {
-  if (typeof window === 'undefined') return
-  const currentPath = resolvePath(path)
-  if (!currentPath) return
-
-  savePageViewToCache(currentPath, count)
-}
-
 export async function getSiteUV(fallbackValue: number = 100): Promise<number> {
   return fallbackValue
 }

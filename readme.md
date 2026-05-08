@@ -73,9 +73,8 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 
 ### 下一步清理方向
 
-- 拆分 `theme/index.js` 的路由副作用逻辑为更小模块
 - 补充 ESLint 规则，优先拦截未使用导入和死代码
-- 为 `commentApi/pageViewApi` 增加更细粒度测试用例
+- 为 `commentApi/pageViewApi` 继续收敛重复逻辑与错误处理分支
 
 ## 时间显示规范
 
@@ -106,5 +105,4 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 
 ## 维护检查
 
-- `pnpm test`：运行时间格式与显示策略的最小回归测试
 - `pnpm run build`：验证数据生成 + VitePress 构建完整链路
