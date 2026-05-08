@@ -29,8 +29,8 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
 
 // 技术栈数据中心化管理
 const techStackData = [
@@ -100,22 +100,22 @@ const technologiesList = [
 ];
 
 // 打字机效果相关
-const dynamicText = ref(null);
-let currentTimeout = null;
-let currentText = '';
-let isDeleting = false;
-let typingSpeed = 150; // 打字速度(ms)
-let pauseTime = 3000; // 完成一个词后暂停时间(ms)
-let currentTech = ''; // 当前正在处理的技术名称
+const dynamicText = ref<HTMLElement | null>(null)
+let currentTimeout: number | null = null
+let currentText = ''
+let isDeleting = false
+const typingSpeed = 150 // 打字速度(ms)
+const pauseTime = 3000 // 完成一个词后暂停时间(ms)
+let currentTech = '' // 当前正在处理的技术名称
 
 // 技术图标滚动相关
-const iconsWrapper = ref(null);
-let animationId = null;
-const scrollSpeed = 0.1; // 滚动速度
+const iconsWrapper = ref<HTMLElement | null>(null)
+let animationId: number | null = null
+const scrollSpeed = 0.1 // 滚动速度
 
 // 随机获取一个技术
-function getRandomTech() {
-  return technologiesList[Math.floor(Math.random() * technologiesList.length)];
+function getRandomTech(): string {
+  return technologiesList[Math.floor(Math.random() * technologiesList.length)]
 }
 
 // 打字效果
@@ -157,7 +157,7 @@ function typeEffect() {
   }
   
   // 继续打字效果
-  currentTimeout = setTimeout(typeEffect, typeSpeed);
+  currentTimeout = window.setTimeout(typeEffect, typeSpeed)
 }
 
 // 技术图标滚动效果
@@ -165,9 +165,9 @@ function setupIconsScroll() {
   if (!iconsWrapper.value) return;
   
   // 复制足够多的图标，确保无缝滚动
-  const originalIcons = [...iconsWrapper.value.children];
+  const originalIcons = Array.from(iconsWrapper.value.children) as HTMLElement[]
   const totalWidth = originalIcons.reduce((sum, icon) => {
-    const style = window.getComputedStyle(icon);
+    const style = window.getComputedStyle(icon)
     const width = parseFloat(style.width) + parseFloat(style.marginLeft) + parseFloat(style.marginRight);
     return sum + width;
   }, 0);
@@ -177,8 +177,8 @@ function setupIconsScroll() {
   
   for (let i = 0; i < copies; i++) {
     originalIcons.forEach(icon => {
-      const clone = icon.cloneNode(true);
-      iconsWrapper.value.appendChild(clone);
+      const clone = icon.cloneNode(true)
+      iconsWrapper.value?.appendChild(clone)
     });
   }
   
@@ -193,37 +193,37 @@ function setupIconsScroll() {
     }
     
     if (iconsWrapper.value) {
-      iconsWrapper.value.style.transform = `translateX(-${position}px)`;
+      iconsWrapper.value.style.transform = `translateX(-${position}px)`
     }
     
-    animationId = requestAnimationFrame(scroll);
+    animationId = requestAnimationFrame(scroll)
   }
   
-  animationId = requestAnimationFrame(scroll);
+  animationId = requestAnimationFrame(scroll)
 }
 
 onMounted(() => {
   // 启动打字机效果
-  typeEffect();
+  typeEffect()
   
   // 给DOM元素一点时间加载
-  setTimeout(() => {
+  window.setTimeout(() => {
     // 启动技术图标滚动
     setupIconsScroll();
-  }, 100);
-});
+  }, 100)
+})
 
 onUnmounted(() => {
   // 清除定时器
   if (currentTimeout) {
-    clearTimeout(currentTimeout);
+    clearTimeout(currentTimeout)
   }
   
   // 清除动画
   if (animationId) {
-    cancelAnimationFrame(animationId);
+    cancelAnimationFrame(animationId)
   }
-});
+})
 </script>
 
 <style scoped>

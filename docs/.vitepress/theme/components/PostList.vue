@@ -8,6 +8,7 @@ import {
   fetchPublishedThoughtPosts,
   type ThoughtPost
 } from '../utils/contentData'
+import { logError } from '../utils/logger'
 
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
@@ -122,7 +123,7 @@ onMounted(async () => {
       )
     }
   } catch (error) {
-    console.error('Error loading posts:', error)
+    logError('PostList', '加载文章列表失败', error)
     hasError.value = true
     isLoading.value = false
   }

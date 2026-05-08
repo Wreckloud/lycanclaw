@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 
 // ===== 返回顶部按钮相关逻辑 =====
@@ -11,12 +11,12 @@ const isMobile = ref(false)
 const isAtBottom = ref(false)
 
 // 判断是否为移动设备
-const checkMobile = () => {
+const checkMobile = (): void => {
   isMobile.value = window.innerWidth <= 768
 }
 
 // 计算滚动进度
-const calculateScrollProgress = () => {
+const calculateScrollProgress = (): void => {
   const scrollHeight = document.documentElement.scrollHeight - window.innerHeight
   const progress = window.scrollY / scrollHeight * 100
   scrollProgress.value = Math.min(Math.max(progress, 0), 100)
@@ -48,7 +48,7 @@ const shouldShowBackToTop = computed(() => {
   }
 })
 
-const handleScroll = () => {
+const handleScroll = (): void => {
   // 判断滚动方向
   const currentScrollTop = window.scrollY
   isScrollingUp.value = currentScrollTop < lastScrollTop.value
@@ -61,14 +61,14 @@ const handleScroll = () => {
   calculateScrollProgress()
 }
 
-const scrollToTop = () => {
+const scrollToTop = (): void => {
   window.scrollTo({
     top: 0,
     behavior: 'smooth'
   })
 }
 
-const handleResize = () => {
+const handleResize = (): void => {
   checkMobile()
 }
 

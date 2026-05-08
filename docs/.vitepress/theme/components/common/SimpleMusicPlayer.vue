@@ -6,6 +6,7 @@ import audioManager from '../../utils/audioManager'
 import audioService from '../../utils/audioService'
 import { fetchTrackWithUrlById } from '../../utils/musicApi'
 import { calculateProgressPercent, formatAudioTime } from '../../utils/audioUi'
+import { logError } from '../../utils/logger'
 
 // 组件属性定义
 interface Props {
@@ -111,7 +112,7 @@ function togglePlay() {
             // 只有当错误不是AbortError时才显示错误
             // AbortError已经在audioService中处理了
             if (error && error.name !== 'AbortError') {
-              console.error('播放出错:', error);
+              logError('SimpleMusicPlayer', '播放出错', error)
               isPlaying.value = false;
               
               // 发送播放失败状态
@@ -123,7 +124,7 @@ function togglePlay() {
       // 发送播放状态更新事件给全局播放器
       audioManager.emit('play-state-change', `${audioId.value}:${isPlaying.value}`);
     } catch (error) {
-      console.error('播放器操作错误:', error);
+      logError('SimpleMusicPlayer', '播放器操作错误', error)
       isPlaying.value = false;
       
       // 发送播放失败状态
@@ -275,7 +276,7 @@ async function fetchNeteaseMusicInfo(id: string) {
     isLoading.value = false
     return true
   } catch (error) {
-    console.error('获取网易云音乐信息失败:', error)
+    logError('SimpleMusicPlayer', '获取网易云音乐信息失败', error)
     hasError.value = true
     isLoading.value = false
     return false
@@ -356,7 +357,7 @@ async function loadAudioSource() {
     }
     
   } catch (error) {
-    console.error('加载音频源失败:', error);
+    logError('SimpleMusicPlayer', '加载音频源失败', error)
     hasError.value = true;
     isLoading.value = false;
   }
@@ -457,7 +458,7 @@ onMounted(() => {
         progress.value = (time / duration.value) * 100;
       }
     } catch (e) {
-      console.error('解析跳转命令失败', e);
+      logError('SimpleMusicPlayer', '解析跳转命令失败', e)
     }
   }));
   
@@ -473,7 +474,7 @@ onMounted(() => {
         progress.value = (currentTime.value / duration.value) * 100 || 0;
       }
     } catch (e) {
-      console.error('解析进度更新失败', e);
+      logError('SimpleMusicPlayer', '解析进度更新失败', e)
     }
   }));
   
@@ -489,7 +490,7 @@ onMounted(() => {
         // }
       }
     } catch (e) {
-      console.error('解析播放状态变化失败', e);
+      logError('SimpleMusicPlayer', '解析播放状态变化失败', e)
     }
   }));
   

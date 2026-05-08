@@ -1,18 +1,34 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useDebounceFn, useThrottleFn } from '@vueuse/core'
+import { logError } from '../../utils/logger'
+
+type PointerEventLike = MouseEvent | TouchEvent
+type TimerHandle = ReturnType<typeof setTimeout>
+
+interface FloatingMessage {
+  id: number
+  x: number
+  y: number
+  message: string
+  angle: number
+  color: string
+  opacity: number
+  scale: number
+  fontSize: string
+}
 
 // 接收属性
-const props = defineProps({
-  postCount: {
-    type: Number,
-    default: 0
-  },
-  animatedCount: {
-    type: Number,
-    default: 0
+const props = withDefaults(
+  defineProps<{
+    postCount?: number
+    animatedCount?: number
+  }>(),
+  {
+    postCount: 0,
+    animatedCount: 0
   }
-})
+)
 
 // 添加内部动画状态
 const internalAnimatedCount = ref(0)
@@ -64,8 +80,8 @@ function startCountAnimation() {
 const encourageCount = ref(0)
 const isDrawerVisible = ref(false)
 const drawerMessage = ref('')
-let drawerTimer = null
-let comboResetTimer = null // 连击重置计时器
+let drawerTimer: TimerHandle | null = null
+let comboResetTimer: TimerHandle | null = null // 连击重置计时器
 let lastParticleTime = 0 // 上次创建粒子的时间
 let lastClickTime = 0 // 上次点击的时间
 const THROTTLE_INTERVAL = 200 // 粒子效果节流间隔（毫秒）
@@ -74,12 +90,12 @@ const THROTTLE_INTERVAL = 200 // 粒子效果节流间隔（毫秒）
 const createParticlesThrottled = useThrottleFn(createParticles, 200)
 
 // 点击提示相关
-const widgetRef = ref(null) // 组件引用
+const widgetRef = ref<HTMLElement | null>(null) // 组件引用
 const showClickHint = ref(false)
-let hintTimer = null
-let hintHideTimer = null
-let observerInstance = null
-let hintAutoCloseTimer = null // 提示自动关闭计时器
+let hintTimer: TimerHandle | null = null
+let hintHideTimer: TimerHandle | null = null
+let observerInstance: IntersectionObserver | null = null
+let hintAutoCloseTimer: TimerHandle | null = null // 提示自动关闭计时器
 
 // 交互状态跟踪（仅当前会话有效）
 const hasClickedInSession = ref(false)  // 是否点击过
@@ -93,7 +109,7 @@ const HINT_AUTO_CLOSE_TIME = 7 // 提示自动关闭时间
 const isHovered = ref(false)
 
 // 催更消息配置
-const encourageMessages = {
+const encourageMessages: Record<number, string> = {
   1: '收到催更了',
   5: '别戳啦！已经在动笔了',
   10: '嗷呜——深夜码字...',
@@ -110,11 +126,11 @@ const messageColors = [
   '#ec4899', '#ef4444', '#14b8a6', '#f97316'
 ]
 
-const activeMessages = ref([])
+const activeMessages = ref<FloatingMessage[]>([])
 let messageIdCounter = 0
 
 // 获取催更消息
-function getEncourageMessage(count) {
+function getEncourageMessage(count: number): string {
   // 区间显示，查找小于等于当前数值的最大级别
   const thresholds = Object.keys(encourageMessages)
     .map(Number)
@@ -136,14 +152,14 @@ function getEncourageMessage(count) {
 }
 
 // 显示浮动消息
-function showFloatingMessage(event, count) {
+function showFloatingMessage(event: PointerEventLike, count: number): void {
   // 防止在event缺失或event.currentTarget为null时出错
   if (!event || !event.currentTarget) return;
   
   // 通过事件相对于目标的位置计算，更可靠的方法获取实际点击位置
   const rect = event.currentTarget.getBoundingClientRect()
-  const x = (event.touches && event.touches[0] ? event.touches[0].clientX : event.clientX)
-  const y = (event.touches && event.touches[0] ? event.touches[0].clientY : event.clientY)
+  const x = 'touches' in event && event.touches[0] ? event.touches[0].clientX : event.clientX
+  const y = 'touches' in event && event.touches[0] ? event.touches[0].clientY : event.clientY
   
   // 随机参数 - 增加横向和垂直方向上的偏移
   const angle = Math.random() * 40 - 20  // 更夸张的角度范围，从 ±10 变为 ±20
@@ -176,7 +192,7 @@ function showFloatingMessage(event, count) {
   // 设置消失定时器
   setTimeout(() => {
     // 淡出动画
-    const msgIndex = activeMessages.value.findIndex(m => m.id === id)
+    const msgIndex = activeMessages.value.findIndex((m) => m.id === id)
     if (msgIndex !== -1) {
       activeMessages.value[msgIndex].opacity = 0
       activeMessages.value[msgIndex].scale = 1.2 * sizeVariation // 保持大小比例
@@ -184,13 +200,13 @@ function showFloatingMessage(event, count) {
     
     // 移除消息
     setTimeout(() => {
-      activeMessages.value = activeMessages.value.filter(m => m.id !== id)
+      activeMessages.value = activeMessages.value.filter((m) => m.id !== id)
     }, 500)
   }, 1500)
 }
 
 // 创建粒子效果（Canvas优化版）
-function createParticles(event) {
+function createParticles(event: PointerEventLike): void {
   // 防止在event缺失时出错
   if (!event) return;
   
@@ -215,7 +231,7 @@ function createParticles(event) {
   const ctx = canvas.getContext('2d')
   
   if (!ctx) {
-    console.error('无法创建Canvas上下文')
+    logError('EncourageWidget', '无法创建 Canvas 上下文')
     return
   }
   
@@ -238,14 +254,30 @@ function createParticles(event) {
   document.body.appendChild(canvas)
   
   // 获取点击位置，同时处理触摸事件
-  const x = (event.touches && event.touches[0] ? event.touches[0].clientX : event.clientX)
-  const y = (event.touches && event.touches[0] ? event.touches[0].clientY : event.clientY)
+  const x = 'touches' in event && event.touches[0] ? event.touches[0].clientX : event.clientX
+  const y = 'touches' in event && event.touches[0] ? event.touches[0].clientY : event.clientY
   
   // 创建粒子数组
-  const particlesArray = []
+  const particlesArray: Array<{
+    x: number
+    y: number
+    vx: number
+    vy: number
+    size: number
+    color: string
+    alpha: number
+    rotation: number
+    rotationSpeed: number
+  }> = []
   
   // 创建星星路径（一次性定义，重复使用）
-  function drawStar(ctx, x, y, size, color) {
+  function drawStar(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    size: number,
+    color: string
+  ): void {
     ctx.save()
     ctx.beginPath()
     ctx.fillStyle = color
@@ -367,7 +399,7 @@ function resetComboTimer() {
 }
 
 // 催更功能（使用VueUse的useThrottleFn实现节流）
-const encourageUpdateThrottled = useThrottleFn((event) => {
+const encourageUpdateThrottled = useThrottleFn((event: PointerEventLike) => {
   // 增加计数
   encourageCount.value++
   
@@ -406,12 +438,12 @@ const encourageUpdateThrottled = useThrottleFn((event) => {
 }, 80)
 
 // 将原始函数更新为调用节流版本
-function encourageUpdate(event) {
+function encourageUpdate(event: PointerEventLike): void {
   encourageUpdateThrottled(event)
 }
 
 // 设置交叉观察器，检测组件何时进入视口
-function setupIntersectionObserver() {
+function setupIntersectionObserver(): void {
   if (typeof IntersectionObserver === 'undefined' || !widgetRef.value) return;
   
   observerInstance = new IntersectionObserver((entries) => {
@@ -446,7 +478,7 @@ function setupIntersectionObserver() {
 }
 
 // 隐藏点击提示
-function hideClickHint() {
+function hideClickHint(): void {
   showClickHint.value = false;
   
   // 清除相关计时器
@@ -467,7 +499,7 @@ function hideClickHint() {
 }
 
 // 格式化数字
-function formatNumber(num) {
+function formatNumber(num: number | null | undefined): string {
   if (num === undefined || num === null) return '0'
   
   if (num < 10000) {

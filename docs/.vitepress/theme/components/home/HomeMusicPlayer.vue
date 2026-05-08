@@ -9,6 +9,7 @@ import {
   fetchWeeklyTracks,
   type MusicTrack
 } from '../../utils/musicApi'
+import { logError } from '../../utils/logger'
 
 // 默认封面图片路径
 const defaultCoverUrl = '/images/首页/default-cover.png'
@@ -228,7 +229,7 @@ async function preloadNextSong() {
       schedule(() => preloadNextSong(), 300)
     }
   } catch (error) {
-    console.error('预加载歌曲失败:', error)
+    logError('HomeMusicPlayer', '预加载歌曲失败', error)
   } finally {
     isFetchingNext.value = false
   }

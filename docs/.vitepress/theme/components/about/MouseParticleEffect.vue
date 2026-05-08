@@ -5,19 +5,40 @@
   ></canvas>
 </template>
 
-<script setup>
-import { ref, onMounted, onUnmounted, nextTick } from "vue";
-import anime from "animejs";
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import anime from 'animejs'
 
-const canvas = ref(null);
-let handleTap = null;
-let setCanvasSize = null;
-let resizeObserver = null;
-let animateParticulesFn = null;
-let createRandomCircleAnimationFn = null;
+interface LegacyNavigator extends Navigator {
+  msMaxTouchPoints?: number
+}
+
+type PointerEventLike = MouseEvent | TouchEvent
+type CanvasParticle = {
+  x: number
+  y: number
+  vx?: number
+  vy?: number
+  size?: number
+  color: string
+  alpha: number
+  rotation?: number
+  rotationSpeed?: number
+  radius: number
+  lineWidth?: number
+  endPos?: { x: number; y: number }
+  draw: () => void
+}
+
+const canvas = ref<HTMLCanvasElement | null>(null)
+let handleTap: ((e: PointerEventLike) => void) | null = null
+let setCanvasSize: (() => void) | null = null
+let resizeObserver: ResizeObserver | null = null
+let animateParticulesFn: ((x: number, y: number) => void) | null = null
+let createRandomCircleAnimationFn: ((x: number, y: number) => void) | null = null
 
 // 暴露方法给父组件
-const triggerEffect = (x, y) => {
+const triggerEffect = (x: number, y: number): void => {
   if (!canvas.value || !animateParticulesFn || !createRandomCircleAnimationFn) return;
   
   const rect = canvas.value.getBoundingClientRect();
@@ -36,18 +57,20 @@ defineExpose({
 
 onMounted(() => {
   const canvasEl = canvas.value;
+  if (!canvasEl) return
   const ctx = canvasEl.getContext("2d");
+  if (!ctx) return
   let numberOfParticules = 20;
   let pointerX = 0;
   let pointerY = 0;
-  const tap = "ontouchstart" in window || navigator.msMaxTouchPoints
+  const tap = "ontouchstart" in window || (navigator as LegacyNavigator).msMaxTouchPoints
     ? "touchstart"
     : "mousedown";
   const colors = ["#FF1461", "#18FF92", "#5A87FF", "#FBF38C"];
   
   // 存储所有活跃的粒子
-  const activeParticles = [];
-  const activeCircles = [];
+  const activeParticles: CanvasParticle[] = [];
+  const activeCircles: CanvasParticle[] = [];
 
   // 设置画布大小以适应容器
   setCanvasSize = function() {
@@ -64,14 +87,16 @@ onMounted(() => {
   };
 
   // 更新鼠标或触摸点的坐标
-  function updateCoords(e) {
+  function updateCoords(e: PointerEventLike) {
     const rect = canvasEl.getBoundingClientRect();
-    pointerX = e.clientX - rect.left || (e.touches && e.touches[0].clientX - rect.left);
-    pointerY = e.clientY - rect.top || (e.touches && e.touches[0].clientY - rect.top);
+    const touchX = 'touches' in e && e.touches[0] ? e.touches[0].clientX : 0
+    const touchY = 'touches' in e && e.touches[0] ? e.touches[0].clientY : 0
+    pointerX = ('clientX' in e ? e.clientX : 0) - rect.left || (touchX - rect.left);
+    pointerY = ('clientY' in e ? e.clientY : 0) - rect.top || (touchY - rect.top);
   }
 
   // 设置粒子的运动方向
-  function setParticuleDirection(p) {
+  function setParticuleDirection(p: { x: number; y: number }) {
     const angle = (anime.random(0, 360) * Math.PI) / 180;
     const value = anime.random(20, 90);
     const radius = [-1, 1][anime.random(0, 1)] * value;
@@ -82,8 +107,8 @@ onMounted(() => {
   }
 
   // 创建粒子对象
-  function createParticule(x, y) {
-    const p = {};
+  function createParticule(x: number, y: number): CanvasParticle {
+    const p = {} as CanvasParticle;
     p.x = x;
     p.y = y;
     p.color = colors[anime.random(0, colors.length - 1)];
@@ -105,8 +130,8 @@ onMounted(() => {
   }
 
   // 创建圆形对象
-  function createCircle(x, y) {
-    const p = {};
+  function createCircle(x: number, y: number): CanvasParticle {
+    const p = {} as CanvasParticle;
     p.x = x;
     p.y = y;
     p.color = "#FFF";
@@ -126,14 +151,14 @@ onMounted(() => {
   }
 
   // 渲染粒子
-  function renderParticule(anim) {
+  function renderParticule(anim: { animatables: Array<{ target: CanvasParticle }> }) {
     for (let i = 0; i < anim.animatables.length; i++) {
       anim.animatables[i].target.draw();
     }
   }
 
   // 动画粒子
-  animateParticulesFn = function(x, y) {
+  animateParticulesFn = function(x: number, y: number) {
     const circle = createCircle(x, y);
     activeCircles.push(circle);
     
@@ -187,7 +212,7 @@ onMounted(() => {
       const disappearDelay = anime.random(5000, 15000); // 5-15秒的随机延迟
       const fadeOutDuration = anime.random(2000, 4000); // 2-4秒的随机消失时长
       
-      setTimeout(() => {
+      window.setTimeout(() => {
         anime({
           targets: particle,
           alpha: 0, // 透明度降为0
@@ -208,7 +233,7 @@ onMounted(() => {
   };
 
   // 创建随机圆形动画
-  createRandomCircleAnimationFn = function(x, y) {
+  createRandomCircleAnimationFn = function(x: number, y: number) {
     const randomSize = anime.random(50, 90);
     const randomColor = colors[anime.random(0, colors.length - 1)];
 
@@ -270,7 +295,7 @@ onMounted(() => {
   renderLoop();
 
   // 处理点击事件
-  handleTap = function(e) {
+  handleTap = function(e: PointerEventLike) {
     updateCoords(e);
     animateParticulesFn(pointerX, pointerY);
     createRandomCircleAnimationFn(pointerX, pointerY);
@@ -310,10 +335,12 @@ onUnmounted(() => {
   }
   
   if (canvas.value) {
-    const tap = "ontouchstart" in window || navigator.msMaxTouchPoints
+    const tap = "ontouchstart" in window || (navigator as LegacyNavigator).msMaxTouchPoints
       ? "touchstart"
       : "mousedown";
-    canvas.value.removeEventListener(tap, handleTap);
+    if (handleTap) {
+      canvas.value.removeEventListener(tap, handleTap as EventListener)
+    }
   }
 });
 </script>

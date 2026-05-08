@@ -1,14 +1,21 @@
-<script setup>
-import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
+<script setup lang="ts">
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRoute, useData } from 'vitepress'
+import { logError } from '../utils/logger'
 
 // 获取当前路由和主题模式
 const route = useRoute()
 const { isDark } = useData()
 
 // Waline实例引用
-const walineRef = ref(null)
-let walineInstance = null
+interface WalineInstanceLike {
+  destroy: () => void
+  update: (options: { dark: string | false }) => void
+}
+
+const walineRef = ref<HTMLElement | null>(null)
+let walineInstance: WalineInstanceLike | null = null
+let cleanupThemeWatcher: (() => void) | null = null
 
 // 计算当前路径作为评论标识
 const commentPath = computed(() => route.path)
@@ -99,12 +106,12 @@ const initWaline = async () => {
       },
       login: 'enable',
       // 错误处理
-      errorHandler: (err) => {
-        console.error('[Waline]', err);
+      errorHandler: (err: unknown) => {
+        logError('Comment', 'Waline 运行错误', err)
       }
-    })
+    }) as WalineInstanceLike
   } catch (err) {
-    console.error('Waline初始化失败:', err)
+    logError('Comment', 'Waline 初始化失败', err)
   }
 }
 
@@ -112,7 +119,7 @@ const initWaline = async () => {
  * 设置主题变化监听器
  * @returns {Function} 清理函数
  */
-const setupThemeWatcher = () => {
+const setupThemeWatcher = (): (() => void) => {
   // 创建一个观察器来监听文档根元素上的数据主题属性变化
   const observer = new MutationObserver(() => {
     if (walineInstance) {
@@ -137,14 +144,13 @@ onMounted(() => {
     // 延迟执行以确保DOM更新完成
     setTimeout(() => {
       initWaline()
-      // 存储清理函数，用于卸载时调用
-      window.__walineCleanup = setupThemeWatcher()
+      cleanupThemeWatcher = setupThemeWatcher()
       
       // 手动设置输入框占位符
       setTimeout(() => {
-        const nickInput = document.querySelector('.wl-header .wl-nick')
-        const mailInput = document.querySelector('.wl-header .wl-mail')
-        const linkInput = document.querySelector('.wl-header .wl-link')
+        const nickInput = document.querySelector<HTMLInputElement>('.wl-header .wl-nick')
+        const mailInput = document.querySelector<HTMLInputElement>('.wl-header .wl-mail')
+        const linkInput = document.querySelector<HTMLInputElement>('.wl-header .wl-link')
         
         if (nickInput) nickInput.setAttribute('placeholder', '愿世人以何之称')
         if (mailInput) mailInput.setAttribute('placeholder', '传信之途用于回应')
@@ -157,9 +163,9 @@ onMounted(() => {
 // 组件卸载时的清理函数
 onBeforeUnmount(() => {
   // 清理主题观察器
-  if (typeof window !== 'undefined' && window.__walineCleanup) {
-    window.__walineCleanup()
-    window.__walineCleanup = null
+  if (cleanupThemeWatcher) {
+    cleanupThemeWatcher()
+    cleanupThemeWatcher = null
   }
   
   // 销毁Waline实例

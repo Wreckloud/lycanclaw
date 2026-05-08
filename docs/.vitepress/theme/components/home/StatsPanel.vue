@@ -11,6 +11,7 @@ import {
   fetchPublishedThoughtPosts
 } from '../../utils/contentData'
 import { calculateHomeStats } from '../../utils/homeAnalytics'
+import { logError } from '../../utils/logger'
 
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
@@ -200,7 +201,7 @@ onMounted(async () => {
       }
     })
   } catch (error) {
-    console.error('Error loading stats data:', error)
+    logError('StatsPanel', '加载统计数据失败', error)
     hasError.value = true
     isLoading.value = false
   }

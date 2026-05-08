@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
 const props = defineProps({
@@ -25,7 +25,7 @@ const props = defineProps({
 })
 
 const videoLoaded = ref(false)
-const containerRef = ref(null)
+const containerRef = ref<HTMLElement | null>(null)
 
 // 使用Intersection Observer进行懒加载
 onMounted(() => {
@@ -49,7 +49,7 @@ onMounted(() => {
 })
 
 // 构建播放器URL
-const getPlayerUrl = () => {
+const getPlayerUrl = (): string => {
   let url = 'https://player.bilibili.com/player.html?'
   if (props.bvid) url += `bvid=${props.bvid}&`
   if (props.aid) url += `aid=${props.aid}&`

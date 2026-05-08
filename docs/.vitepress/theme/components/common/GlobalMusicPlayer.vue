@@ -3,6 +3,7 @@ import { ref, onMounted, computed, onUnmounted } from 'vue'
 import audioManager from '../../utils/audioManager'
 import audioService from '../../utils/audioService'
 import { calculateProgressPercent, formatAudioTime } from '../../utils/audioUi'
+import { logError } from '../../utils/logger'
 
 // 当前播放歌曲的信息
 const currentSong = ref<{
@@ -180,7 +181,7 @@ function togglePlay(event?: Event) {
     
     audioService.play(currentSong.value.id, songInfo, currentSong.value.currentTime)
       .catch(error => {
-        console.error('播放失败:', error)
+        logError('GlobalMusicPlayer', '播放失败', error)
       })
     
     // 开始封面旋转
@@ -521,7 +522,7 @@ onMounted(() => {
           }
         }
       } catch (e) {
-        console.error('解析歌曲信息失败', e)
+        logError('GlobalMusicPlayer', '解析歌曲信息失败', e)
       }
     })
   )
@@ -541,7 +542,7 @@ onMounted(() => {
           currentSong.value.progress = (currentSong.value.currentTime / currentSong.value.duration) * 100 || 0
         }
       } catch (e) {
-        console.error('解析进度信息失败', e)
+        logError('GlobalMusicPlayer', '解析进度信息失败', e)
       }
     })
   )
@@ -575,7 +576,7 @@ onMounted(() => {
           }
         }
       } catch (e) {
-        console.error('解析播放状态信息失败', e)
+        logError('GlobalMusicPlayer', '解析播放状态信息失败', e)
       }
     })
   )

@@ -6,6 +6,7 @@ import { estimateReadMinutes } from '../../utils/contentMetrics'
 import { parseDateInput } from '../../utils/time'
 import { formatRecentPostTime } from '../../utils/timeDisplayPolicy'
 import { fetchPublishedThoughtPosts } from '../../utils/contentData'
+import { logError } from '../../utils/logger'
 
 // 类型定义
 interface Post {
@@ -34,7 +35,7 @@ const hasError = ref(false)
 const maxPosts = 5 // 显示最多6篇最新文章
 
 // 保存观察器停止函数
-let stopObserver: Function | null = null;
+let stopObserver: (() => void) | null = null
 
 // 使用VueUse的useIntersectionObserver来检测元素是否进入视口
 onMounted(() => {
@@ -89,7 +90,7 @@ async function fetchPosts() {
     
     isLoading.value = false
   } catch (error) {
-    console.error('Error loading posts:', error)
+    logError('RecentPosts', '加载近期动态失败', error)
     hasError.value = true
     isLoading.value = false
   }

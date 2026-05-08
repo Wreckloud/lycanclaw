@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import DefaultTheme from 'vitepress/theme'
 import PostTitle from './PostTitle.vue'
 import DataPanel from './DataPanel.vue'
@@ -59,7 +59,3 @@ const shouldShowComment = computed(() => {
   <!-- 返回顶部按钮 -->
   <BackToTop />
 </template>
-
-<style scoped>
-/* 样式已移至BackToTop.vue组件中 */
-</style> 

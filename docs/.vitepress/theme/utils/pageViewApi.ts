@@ -3,6 +3,7 @@
  * 负责浏览量获取、更新、防重计数与本地缓存。
  */
 import { parseWalinePageViewResponse } from './apiResponseParsers'
+import { logError } from './logger'
 
 const WALINE_SERVER_URL = 'https://lycanclaw-comment.netlify.app/.netlify/functions/comment'
 const ARTICLE_ENDPOINT = `${WALINE_SERVER_URL}/article`
@@ -161,7 +162,7 @@ export async function getPageView(path?: string, fallbackValue: number = 1): Pro
 
     return fallbackValue
   } catch (error) {
-    console.error('获取页面浏览量失败:', error)
+    logError('pageViewApi', '获取页面浏览量失败', error)
 
     if (isLocalhost()) {
       const mockCount = createMockPageView()
@@ -201,7 +202,7 @@ export async function updatePageView(path?: string): Promise<boolean> {
 
     return false
   } catch (error) {
-    console.error('更新页面浏览量失败:', error)
+    logError('pageViewApi', '更新页面浏览量失败', error)
     return false
   } finally {
     updatingPaths.delete(currentPath)

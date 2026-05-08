@@ -7,6 +7,7 @@ import {
   parseWalineCommentCountResponse,
   parseWalineRecentCommentsResponse
 } from './apiResponseParsers'
+import { logError } from './logger'
 
 const WALINE_SERVER_URL = 'https://lycanclaw-comment.netlify.app/.netlify/functions/comment'
 const COMMENT_ENDPOINT = `${WALINE_SERVER_URL}/comment`
@@ -163,7 +164,7 @@ export async function getRecentComments(
       }
       return comments
     } catch (error) {
-      console.error('[CommentAPI] 获取最新评论失败:', error)
+      logError('commentApi', '获取最新评论失败', error)
       return []
     }
   })()
@@ -185,7 +186,7 @@ export async function getCommentCount(path: string): Promise<number> {
     const data = await requestJson<unknown>(buildCommentCountUrl(path))
     return parseWalineCommentCountResponse(data, path)
   } catch (error) {
-    console.error('[CommentAPI] 获取评论数失败:', error)
+    logError('commentApi', '获取评论数失败', error)
     return 0
   }
 }

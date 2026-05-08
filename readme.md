@@ -102,7 +102,7 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 - 当前构建可通过（VitePress `1.6.3`）
 - 已清理一批失效脚本和未引用文件
 - Theme `utils/` 已全部迁移到 `.ts`，并统一类型导出
-- 组件脚本已迁移到 `14/22` 为 TypeScript，剩余组件按影响面分批迁移
+- 组件脚本已迁移到 `22/22` 为 TypeScript
 - 首页推荐与页脚文案请求已下沉到 `utils/recommendedApi.ts` 与 `utils/siteApi.ts`
 - 文章字数/阅读时长逻辑已收敛到 `utils/contentMetrics.ts`
 - 首页数据读取、筛选、统计已从组件内联逻辑收敛到 `contentData + homeAnalytics`
@@ -112,7 +112,7 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 ### 下一步清理方向
 
 - 将剩余 `11` 个 `<script setup>` 组件逐步迁移为 `lang="ts"`
-- 补充 ESLint 规则，优先拦截未使用导入和死代码
+- 持续补充 ESLint 规则，当前已启用：组件层禁 `fetch`、限制 `console`、禁止 `any`
 - 统一音乐相关组件（`HomeMusicPlayer` / `SimpleMusicPlayer` / `GlobalMusicPlayer`）的共享播放控制逻辑
 - 将 `musicApi` 的接口地址切换为可配置项（环境变量或站点配置），为自建 API 做准备
 - 逐步收敛首页组件中的动画触发器与 `setTimeout` 调度逻辑
@@ -147,6 +147,7 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 ## 维护检查
 
 - `pnpm run build`：验证数据生成 + VitePress 构建完整链路
+- `pnpm run lint`：验证主题层代码规范（禁组件直连 fetch / 禁新增 any / 限制 console）
 
 ## Git 忽略约定
 

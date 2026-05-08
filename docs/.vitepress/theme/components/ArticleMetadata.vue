@@ -4,6 +4,7 @@ import { useData } from 'vitepress'
 import { countWords, estimateReadMinutes } from '../utils/contentMetrics'
 import { getAndUpdatePageView, getPageViewFromCache } from '../utils/pageViewApi'
 import { parseDateInput, formatDateCn } from '../utils/time'
+import { logError } from '../utils/logger'
 
 const isBrowser = typeof window !== 'undefined'
 const { frontmatter, page } = useData()
@@ -47,7 +48,7 @@ const fetchPageViewCount = async () => {
       pageviewCount.value = '1'
     }
   } catch (error) {
-    console.error('获取页面浏览量失败:', error)
+    logError('ArticleMetadata', '获取页面浏览量失败', error)
     if (pageviewCount.value === '--') {
       pageviewCount.value = '1'
     }

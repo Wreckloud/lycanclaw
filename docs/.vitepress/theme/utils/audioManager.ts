@@ -2,6 +2,7 @@
  * 音频管理器 - 确保同一时间只有一个音频在播放
  * 使用简单的发布-订阅模式实现组件间通信和状态管理
  */
+import { logError } from './logger'
 
 // 定义歌曲信息接口
 interface SongInfo {
@@ -74,7 +75,7 @@ class AudioEventBus {
           this.lastPlayedId = songInfo.id;
         }
       } catch (e) {
-        console.error('解析歌曲信息失败', e);
+        logError('audioManager', '解析歌曲信息失败', e);
       }
     } else if (event === 'play-state-change') {
       try {
@@ -91,7 +92,7 @@ class AudioEventBus {
           }
         }
       } catch (e) {
-        console.error('解析播放状态失败', e);
+        logError('audioManager', '解析播放状态失败', e);
       }
     } else if (event === 'audio-error') {
       // 处理音频错误事件
@@ -107,7 +108,7 @@ class AudioEventBus {
           }
         }
       } catch (e) {
-        console.error('处理音频错误失败', e);
+        logError('audioManager', '处理音频错误失败', e);
       }
     } else if (event === 'progress-update') {
       try {
@@ -120,7 +121,7 @@ class AudioEventBus {
           this.currentSongInfo.progress = (this.currentSongInfo.currentTime / this.currentSongInfo.duration) * 100 || 0;
         }
       } catch (e) {
-        console.error('解析进度信息失败', e);
+        logError('audioManager', '解析进度信息失败', e);
       }
     } else if (event === 'global-play') {
       // 全局播放命令，需要确保只有一个音频在播放

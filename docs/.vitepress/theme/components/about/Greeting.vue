@@ -10,17 +10,21 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import MouseParticleEffect from './MouseParticleEffect.vue'
 
-const particleEffect = ref(null);
+interface ParticleEffectExposed {
+  triggerEffect: (x: number, y: number) => void
+}
+
+const particleEffect = ref<ParticleEffectExposed | null>(null)
 
 // 处理点击事件，手动触发粒子效果
-const handleClick = (e) => {
+const handleClick = (e: MouseEvent): void => {
   // 使用暴露的方法直接触发效果
   if (particleEffect.value) {
-    particleEffect.value.triggerEffect(e.clientX, e.clientY);
+    particleEffect.value.triggerEffect(e.clientX, e.clientY)
   }
 }
 </script>
