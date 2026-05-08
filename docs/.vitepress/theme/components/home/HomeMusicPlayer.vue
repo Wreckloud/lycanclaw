@@ -1,17 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, onUnmounted, watch } from 'vue'
+import { ref, onMounted, computed, onUnmounted } from 'vue'
 import audioManager from '../../utils/audioManager'
 import audioService from '../../utils/audioService'
 import { useIntersectionObserver } from '@vueuse/core'
-import { useData } from 'vitepress'
 import {
   fetchTrackUrlById,
   fetchWeeklyTracks,
   type MusicTrack
 } from '../../utils/musicApi'
-
-// 获取主题模式
-const { isDark } = useData()
 
 // 默认封面图片路径
 const defaultCoverUrl = '/images/首页/default-cover.png'
@@ -20,7 +16,6 @@ const defaultCoverUrl = '/images/首页/default-cover.png'
 const containerRef = ref<HTMLElement | null>(null)
 const isPlaying = ref(false)
 const isLoading = ref(false)
-const hasError = ref(false)
 const showTitle = ref(false)
 const favoritePlaylist = ref<MusicTrack[]>([])
 const currentSongInfo = ref({
@@ -31,7 +26,6 @@ const currentSongInfo = ref({
 })
 const isVisible = ref(false)
 const currentSongIndex = ref(-1)
-const isHovering = ref(false)
 const currentTime = ref(0)
 const duration = ref(0)
 const progress = ref(0)
@@ -124,7 +118,6 @@ async function fetchMusicRanking() {
   if (typeof window === 'undefined') return
   
   isLoading.value = true
-  hasError.value = false
   
   try {
     const songs = await fetchWeeklyTracks({ withTimestamp: true, coverSize: '120y120' })
@@ -134,8 +127,6 @@ async function fetchMusicRanking() {
     // 获取歌单后再次尝试同步播放状态
     syncWithCurrentPlayback()
   } catch (error) {
-    hasError.value = true
-    
     if (favoritePlaylist.value.length === 0) {
       favoritePlaylist.value = [{
         id: '1824020871',
@@ -158,6 +149,38 @@ function shuffleArray<T>(array: T[]): T[] {
   return array;
 }
 
+function schedule(task: () => void, delay = 100) {
+  setTimeout(task, delay)
+}
+
+function normalizeCoverUrl(coverUrl: string): string {
+  if (!coverUrl) return coverUrl
+  let normalized = coverUrl
+  if (normalized.startsWith('http:')) {
+    normalized = normalized.replace('http:', 'https:')
+  }
+  if (normalized.includes('music.126.net') && !normalized.includes('param=')) {
+    normalized += '?param=80y80'
+  }
+  return normalized
+}
+
+function pickQueuedOrRandomSong() {
+  if (preloadedSongs.value.length > 0) {
+    const song = preloadedSongs.value[0]
+    currentSongIndex.value = favoritePlaylist.value.findIndex((item) => item.id === song.id)
+    return song
+  }
+
+  if (favoritePlaylist.value.length === 0) {
+    return null
+  }
+
+  const randomIndex = Math.floor(Math.random() * favoritePlaylist.value.length)
+  currentSongIndex.value = randomIndex
+  return favoritePlaylist.value[randomIndex]
+}
+
 // 预加载下一首歌曲
 async function preloadNextSong() {
   // 如果正在获取歌曲或歌单为空，则返回
@@ -170,7 +193,7 @@ async function preloadNextSong() {
   
   try {
     // 随机选择歌曲，避免选择当前播放的歌曲和已预加载的歌曲
-    let randomIndex, nextSong;
+    let nextSong: MusicTrack | null = null
     const existingIds = new Set([
       ...preloadedSongs.value.map(s => s.id),
       currentSongInfo.value.id?.replace('netease-', '')
@@ -180,42 +203,31 @@ async function preloadNextSong() {
     const maxAttempts = Math.min(10, favoritePlaylist.value.length);
     
     do {
-      randomIndex = Math.floor(Math.random() * favoritePlaylist.value.length);
+      const randomIndex = Math.floor(Math.random() * favoritePlaylist.value.length);
       nextSong = favoritePlaylist.value[randomIndex];
       attempts++;
     } while (existingIds.has(nextSong.id) && attempts < maxAttempts);
+
+    if (!nextSong) return
     
     const musicUrl = await fetchTrackUrlById(nextSong.id)
     if (!musicUrl) {
       // 如果获取失败，尝试另一首歌
       isFetchingNext.value = false
-      setTimeout(() => preloadNextSong(), 500);
+      schedule(() => preloadNextSong(), 500)
       return
-    }
-
-    // 简化封面处理，只添加大小参数
-    let coverUrl = nextSong.cover
-    if (coverUrl && coverUrl.includes('music.126.net')) {
-      // 确保使用HTTPS
-      if (coverUrl.startsWith('http:')) {
-        coverUrl = coverUrl.replace('http:', 'https:')
-      }
-      // 添加尺寸参数
-      if (!coverUrl.includes('param=')) {
-        coverUrl += '?param=80y80'
-      }
     }
     
     // 添加到预加载队列
     preloadedSongs.value.push({
       ...nextSong,
       url: musicUrl,
-      cover: coverUrl
+      cover: normalizeCoverUrl(nextSong.cover)
     })
     
     // 如果预加载队列中的歌曲数量仍然少于2首，继续预加载
     if (preloadedSongs.value.length < 2) {
-      setTimeout(() => preloadNextSong(), 300);
+      schedule(() => preloadNextSong(), 300)
     }
   } catch (error) {
     console.error('预加载歌曲失败:', error)
@@ -245,7 +257,7 @@ async function fetchSongDetailAndPlay(song: MusicTrack | (MusicTrack & { url?: s
       preloadedSongs.value = preloadedSongs.value.filter(s => s.id !== song.id)
       
       // 立即开始预加载下一首
-      setTimeout(() => preloadNextSong(), 100)
+      schedule(() => preloadNextSong(), 100)
     } else {
       const resolvedUrl = await fetchTrackUrlById(song.id)
       if (!resolvedUrl) {
@@ -254,21 +266,10 @@ async function fetchSongDetailAndPlay(song: MusicTrack | (MusicTrack & { url?: s
         return
       }
       musicUrl = resolvedUrl
-      
-      // 简化封面处理，只添加大小参数
-      if (coverUrl && coverUrl.includes('music.126.net')) {
-        // 确保使用HTTPS
-        if (coverUrl.startsWith('http:')) {
-          coverUrl = coverUrl.replace('http:', 'https:')
-        }
-        // 添加尺寸参数
-        if (!coverUrl.includes('param=')) {
-          coverUrl += '?param=80y80'
-        }
-      }
+      coverUrl = normalizeCoverUrl(coverUrl)
       
       // 开始预加载下一首
-      setTimeout(() => preloadNextSong(), 100)
+      schedule(() => preloadNextSong(), 100)
     }
     
     // 创建完整的歌曲信息对象
@@ -307,7 +308,7 @@ async function fetchSongDetailAndPlay(song: MusicTrack | (MusicTrack & { url?: s
         showTitle.value = false
         
         // 自动尝试播放下一首
-        setTimeout(() => playNextSong(), 1000)
+        schedule(() => playNextSong(), 1000)
       })
   } catch (error) {
     // 移除调试信息，保留错误处理逻辑
@@ -315,7 +316,7 @@ async function fetchSongDetailAndPlay(song: MusicTrack | (MusicTrack & { url?: s
     showTitle.value = false
     
     // 自动尝试播放下一首
-    setTimeout(() => playNextSong(), 1000)
+    schedule(() => playNextSong(), 1000)
   } finally {
     isLoading.value = false
   }
@@ -331,42 +332,18 @@ function playRandomSong() {
     return
   }
   
-  // 优先使用预加载的歌曲
-  if (preloadedSongs.value.length > 0) {
-    const song = preloadedSongs.value[0];
-    currentSongIndex.value = favoritePlaylist.value.findIndex(s => s.id === song.id);
-    fetchSongDetailAndPlay(song);
-    return;
-  }
-  
-  // 没有预加载歌曲时随机选择
-  const randomIndex = Math.floor(Math.random() * favoritePlaylist.value.length)
-  currentSongIndex.value = randomIndex
-  const randomSong = favoritePlaylist.value[randomIndex]
-  
-  // 获取详细信息并播放
-  fetchSongDetailAndPlay(randomSong)
+  const song = pickQueuedOrRandomSong()
+  if (!song) return
+  fetchSongDetailAndPlay(song)
 }
 
 // 播放下一首歌
 function playNextSong() {
   if (isLoading.value || favoritePlaylist.value.length === 0) return
   
-  // 优先使用预加载的歌曲
-  if (preloadedSongs.value.length > 0) {
-    const song = preloadedSongs.value[0];
-    currentSongIndex.value = favoritePlaylist.value.findIndex(s => s.id === song.id);
-    fetchSongDetailAndPlay(song);
-    return;
-  }
-  
-  // 没有预加载歌曲时随机选择
-  const nextIndex = Math.floor(Math.random() * favoritePlaylist.value.length)
-  currentSongIndex.value = nextIndex
-  const nextSong = favoritePlaylist.value[nextIndex]
-  
-  // 获取详细信息并播放
-  fetchSongDetailAndPlay(nextSong)
+  const song = pickQueuedOrRandomSong()
+  if (!song) return
+  fetchSongDetailAndPlay(song)
 }
 
 // 停止播放并恢复按钮状态
@@ -391,7 +368,7 @@ function handleNextSong(e) {
   
   // 禁用按钮1秒
   isButtonDisabled.value = true
-  setTimeout(() => {
+  schedule(() => {
     isButtonDisabled.value = false
   }, 1000)
   
@@ -529,16 +506,6 @@ function setProgress(e: MouseEvent) {
   audioService.seek(currentTime.value)
 }
 
-// 鼠标进入封面区域
-function handleMouseEnter() {
-  isHovering.value = true
-}
-
-// 鼠标离开封面区域
-function handleMouseLeave() {
-  isHovering.value = false
-}
-
 // 计算网易云音乐链接
 const neteaseLink = computed(() => {
   if (currentSongInfo.value.id && currentSongInfo.value.id.startsWith('netease-')) {
@@ -558,9 +525,7 @@ function setupEventListeners() {
     audioManager.on('song-ended', (id) => {
       if (id && id === currentSongInfo.value.id) {
         // 歌曲结束后自动播放下一首
-        setTimeout(() => {
-          playNextSong()
-        }, 1000) // 延迟1秒播放下一首
+        schedule(() => playNextSong(), 1000) // 延迟1秒播放下一首
       }
     })
   )
@@ -588,9 +553,7 @@ function setupEventListeners() {
     audioManager.on('audio-error', (id) => {
       if (id === currentSongInfo.value.id) {
         // 出错时尝试播放下一首
-        setTimeout(() => {
-          playNextSong()
-        }, 1000)
+        schedule(() => playNextSong(), 1000)
       }
     })
   )
@@ -646,7 +609,7 @@ onMounted(() => {
     .then(() => {
       // 歌单加载后预加载一首歌曲
       if (favoritePlaylist.value.length > 0) {
-        setTimeout(() => preloadNextSong(), 1000)
+        schedule(() => preloadNextSong(), 1000)
       }
     })
   
@@ -687,7 +650,7 @@ onUnmounted(() => {
     <div class="music-content" :class="{ 'animate-in': isVisible }" style="--anim-delay: 0.2s">
       <div class="player-container">
         <!-- 封面区域 -->
-        <div class="cover-container" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
+        <div class="cover-container">
           <div class="cover-image-container">
             <!-- 封面图片 -->
             <img v-if="currentSongInfo.cover && showTitle" 

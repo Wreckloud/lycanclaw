@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import SimpleMusicPlayer from '../common/SimpleMusicPlayer.vue'
 import { fetchWeeklyTracks, type MusicTrack } from '../../utils/musicApi'
 
@@ -40,9 +40,9 @@ async function fetchMusicRanking() {
     isLoading.value = false
     
     // 在数据加载完成后初始化滚动状态
-    setTimeout(() => {
+    nextTick(() => {
       updateScrollPosition()
-    }, 100)
+    })
   }
 }
 

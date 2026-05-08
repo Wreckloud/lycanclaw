@@ -80,7 +80,8 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 ### 下一步清理方向
 
 - 补充 ESLint 规则，优先拦截未使用导入和死代码
-- 统一音乐相关组件（`HomeMusicPlayer` / `SimpleMusicPlayer` / `GlobalMusicPlayer`）的共享逻辑
+- 统一音乐相关组件（`HomeMusicPlayer` / `SimpleMusicPlayer` / `GlobalMusicPlayer`）的共享播放控制逻辑
+- 将 `musicApi` 的接口地址切换为可配置项（环境变量或站点配置），为自建 API 做准备
 - 逐步收敛首页组件中的动画触发器与 `setTimeout` 调度逻辑
 
 ## 时间显示规范
