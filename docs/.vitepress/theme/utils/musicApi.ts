@@ -33,14 +33,25 @@ interface RawWeekItem {
   song?: RawSong
 }
 
+interface LycanRuntimeConfig {
+  musicApiBase?: string
+  musicUid?: string
+}
+
+declare global {
+  interface Window {
+    __LYCAN_CONFIG?: LycanRuntimeConfig
+  }
+}
+
 function normalizeBaseUrl(url: string): string {
   if (!url) return DEFAULT_MUSIC_API_BASE
   return url.replace(/\/+$/, '')
 }
 
-function readRuntimeValue(key: string): string | undefined {
+function readRuntimeValue(key: keyof LycanRuntimeConfig): string | undefined {
   if (typeof window === 'undefined') return undefined
-  const value = (window as any)?.__LYCAN_CONFIG?.[key]
+  const value = window.__LYCAN_CONFIG?.[key]
   return typeof value === 'string' ? value : undefined
 }
 

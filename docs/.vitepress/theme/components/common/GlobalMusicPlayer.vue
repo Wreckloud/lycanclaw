@@ -43,6 +43,10 @@ const isHovering = ref(false)
 const isTouchDevice = ref(false)
 const progressBarRef = ref<HTMLElement | null>(null)
 
+interface LegacyNavigator extends Navigator {
+  msMaxTouchPoints?: number
+}
+
 // 封面旋转角度
 const coverRotation = ref(0)
 // 封面旋转动画ID
@@ -220,8 +224,9 @@ function scheduleAutoCollapse() {
 
 // 切换展开/收起状态
 function toggleExpand(event?: Event) {
+  const pointerType = event instanceof PointerEvent ? event.pointerType : undefined
   // 检查是否是触摸事件
-  const isTouchEvent = event && (event.type === 'touchend' || (event as any).pointerType === 'touch')
+  const isTouchEvent = event && (event.type === 'touchend' || pointerType === 'touch')
   
   // 如果是触摸设备或触摸事件
   if (isTouchDevice.value || isTouchEvent) {
@@ -451,9 +456,10 @@ function stopDrag() {
 
 // 检测是否是触摸设备
 function detectTouchDevice() {
+  const legacyNavigator = navigator as LegacyNavigator
   isTouchDevice.value = 'ontouchstart' in window || 
     navigator.maxTouchPoints > 0 ||
-    (navigator as any).msMaxTouchPoints > 0
+    (legacyNavigator.msMaxTouchPoints ?? 0) > 0
 }
 
 // 组件挂载时

@@ -14,11 +14,27 @@ enum AudioOperationState {
   ERROR = 'error'
 }
 
+export interface AudioSongInfo {
+  name: string
+  artist: string
+  cover: string
+  url: string
+}
+
+interface AudioPlayStatus {
+  isPlaying: boolean
+  currentTime: number
+  duration: number
+  audioId: string
+  songInfo: AudioSongInfo | null
+  operationState: AudioOperationState
+}
+
 class AudioService {
   private static instance: AudioService;
   private audioElement: HTMLAudioElement | null = null;
   private currentAudioId: string = '';
-  private currentSongInfo: any = null;
+  private currentSongInfo: AudioSongInfo | null = null;
   private isPlaying: boolean = false;
   private currentTime: number = 0;
   private duration: number = 0;
@@ -159,7 +175,7 @@ class AudioService {
   }
   
   // 播放音频
-  public play(audioId: string, songInfo: any, startTime: number = 0): Promise<void> {
+  public play(audioId: string, songInfo: AudioSongInfo, startTime: number = 0): Promise<void> {
     if (!this.audioElement) return Promise.reject('音频元素未初始化');
     
     // 如果正在进行操作，避免重复操作
@@ -332,14 +348,7 @@ class AudioService {
   }
   
   // 获取当前播放状态
-  public getPlayingStatus(): { 
-    isPlaying: boolean, 
-    currentTime: number, 
-    duration: number,
-    audioId: string,
-    songInfo: any,
-    operationState: AudioOperationState
-  } {
+  public getPlayingStatus(): AudioPlayStatus {
     return {
       isPlaying: this.isPlaying,
       currentTime: this.currentTime,

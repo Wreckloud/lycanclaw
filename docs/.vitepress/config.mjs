@@ -62,7 +62,18 @@ export default defineConfig({
     
     // 改进构建配置
     build: {
-      chunkSizeWarningLimit: 1000 // 增加块大小警告限制
+      // 文档内容页体积较大，适当放宽提示阈值，避免噪音告警影响日常构建
+      chunkSizeWarningLimit: 2000,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return
+            if (id.includes('@waline')) return 'vendor-comment'
+            if (id.includes('/vue/') || id.includes('/@vue/')) return 'vendor-vue'
+            return 'vendor'
+          }
+        }
+      }
     }
   },
 

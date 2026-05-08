@@ -38,7 +38,7 @@ export interface WalineComment {
   user_id?: string
   createdAt?: string
   updatedAt?: string
-  ACL?: any
+  ACL?: unknown
 }
 
 let isPreloading = false
@@ -127,8 +127,8 @@ export function preloadRecentComments(count: number = 5): void {
   isPreloading = true
 
   const requestIdle =
-    (window as any).requestIdleCallback ||
-    ((callback: Function) => setTimeout(() => callback(), 1000))
+    window.requestIdleCallback ||
+    ((callback: () => void) => setTimeout(() => callback(), 1000))
 
   requestIdle(() => {
     getRecentComments(count).finally(() => {
