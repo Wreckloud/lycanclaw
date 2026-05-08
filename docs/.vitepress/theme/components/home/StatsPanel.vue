@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, onMounted, nextTick, watch } from 'vue'
 import { withBase } from 'vitepress'
 import {
@@ -15,8 +15,17 @@ import { calculateHomeStats } from '../../utils/homeAnalytics'
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
 
+interface StatsState {
+  currentMonthPosts: number
+  totalPostsCount: number
+  thoughtsWords: number
+  animatedCurrentMonthPosts: number
+  animatedTotalPostsCount: number
+  animatedThoughtsWords: number
+}
+
 // 统计数据
-const stats = reactive({
+const stats = reactive<StatsState>({
   currentMonthPosts: 0,  // 本月更新的文章数
   totalPostsCount: 0,    // 文章总数（原随想文章数）
   thoughtsWords: 0,      // 文章总字数
@@ -28,15 +37,15 @@ const stats = reactive({
 
 // 添加可视性状态追踪
 const isVisible = ref(false)
-const animationTriggerRef = ref(null) // 专门用于动画触发的引用
-const statsValueRefs = ref([]) // 存储统计数值元素的引用
+const animationTriggerRef = ref<HTMLElement | null>(null) // 专门用于动画触发的引用
+const statsValueRefs = ref<HTMLElement[]>([]) // 存储统计数值元素的引用
 
 // 加载与动画状态
 const isLoading = ref(true)
 const hasError = ref(false)
 const animationStarted = ref(false)
 // 格式化数字 - 智能单位显示
-function formatNumber(num) {
+function formatNumber(num: number | null | undefined): string {
   if (num === undefined || num === null) return '0'
   
   if (num < 10000) {
@@ -128,7 +137,7 @@ function adjustFontSizes() {
   if (!isBrowser || !statsValueRefs.value.length) return
   
   // 获取每个数值元素
-  statsValueRefs.value.forEach(el => {
+  statsValueRefs.value.forEach((el) => {
     if (!el) return
     
     const container = el.parentElement
@@ -144,7 +153,7 @@ function adjustFontSizes() {
     // 如果元素宽度超过容器宽度，计算并应用缩放比例
     if (elWidth > containerWidth && containerWidth > 0) {
       const scale = Math.min(0.95, containerWidth / elWidth)
-      el.style.setProperty('--scale', scale.toString())
+      el.style.setProperty('--scale', String(scale))
     } else {
       el.style.setProperty('--scale', '1')
     }

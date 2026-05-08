@@ -4,6 +4,7 @@
  */
 import audioManager from './audioManager';
 import { addCorsProxy } from './proxyConfig';
+import { logDebug, logError } from './logger';
 
 // 音频操作状态枚举
 enum AudioOperationState {
@@ -108,7 +109,7 @@ class AudioService {
     
     // 错误事件
     this.audioElement.addEventListener('error', (e) => {
-      console.error('全局音频加载错误:', e);
+      logError('audioService', '全局音频加载错误', e);
       this.isPlaying = false;
       this.operationState = AudioOperationState.ERROR;
       this.operationInProgress = false;
@@ -163,13 +164,13 @@ class AudioService {
     
     // 播放中断事件
     this.audioElement.addEventListener('abort', () => {
-      console.log('音频播放被中断');
+      logDebug('audioService', '音频播放被中断');
       this.operationInProgress = false;
     });
     
     // 网络状态变化事件
     this.audioElement.addEventListener('stalled', () => {
-      console.log('音频加载停滞');
+      logDebug('audioService', '音频加载停滞');
       this.operationState = AudioOperationState.LOADING;
     });
   }
@@ -180,7 +181,7 @@ class AudioService {
     
     // 如果正在进行操作，避免重复操作
     if (this.operationInProgress) {
-      console.log('操作正在进行中，请稍候再试');
+      logDebug('audioService', '操作正在进行中，请稍候再试');
       return Promise.resolve();
     }
     
@@ -222,7 +223,7 @@ class AudioService {
         // 处理AbortError - 这是由于play()请求被pause()中断导致的
         // 这种情况通常发生在快速切换播放/暂停时
         if (error.name === 'AbortError') {
-          console.log('播放被中断，可能是由于快速切换播放状态');
+          logDebug('audioService', '播放被中断，可能是由于快速切换播放状态');
           // 不需要向用户显示这个错误，它是正常的交互行为
           // 但我们需要确保状态是正确的
           this.isPlaying = false;
@@ -240,7 +241,10 @@ class AudioService {
         if (error.name === 'NotAllowedError' || error.name === 'NotSupportedError') {
           if (this.retryCount < this.maxRetries) {
             this.retryCount++;
-            console.log(`播放失败，正在重试(${this.retryCount}/${this.maxRetries})...`);
+            logDebug(
+              'audioService',
+              `播放失败，正在重试(${this.retryCount}/${this.maxRetries})...`
+            );
             
             // 短暂延迟后重试
             return new Promise<void>((resolve, reject) => {
@@ -292,7 +296,7 @@ class AudioService {
     
     // 如果正在进行操作，避免重复操作
     if (this.operationInProgress) {
-      console.log('操作正在进行中，请稍候再试');
+      logDebug('audioService', '操作正在进行中，请稍候再试');
       return;
     }
     
@@ -309,7 +313,7 @@ class AudioService {
         audioManager.pauseCurrent(this.currentAudioId);
       }
     } catch (error) {
-      console.error('暂停音频时出错:', error);
+      logError('audioService', '暂停音频时出错', error);
     } finally {
       this.operationInProgress = false;
     }
@@ -321,7 +325,7 @@ class AudioService {
     
     // 如果正在进行操作，避免重复操作
     if (this.operationInProgress) {
-      console.log('操作正在进行中，请稍候再试');
+      logDebug('audioService', '操作正在进行中，请稍候再试');
       return;
     }
     
@@ -331,7 +335,7 @@ class AudioService {
       this.audioElement.currentTime = validTime;
       this.currentTime = validTime;
     } catch (error) {
-      console.error('设置播放位置时出错:', error);
+      logError('audioService', '设置播放位置时出错', error);
     }
   }
   
@@ -343,7 +347,7 @@ class AudioService {
       this.volume = Math.max(0, Math.min(volume, 100));
       this.audioElement.volume = this.volume / 100;
     } catch (error) {
-      console.error('设置音量时出错:', error);
+      logError('audioService', '设置音量时出错', error);
     }
   }
   
@@ -383,7 +387,7 @@ class AudioService {
       this.operationInProgress = false;
       this.retryCount = 0;
     } catch (error) {
-      console.error('重置音频服务时出错:', error);
+      logError('audioService', '重置音频服务时出错', error);
     }
   }
 }

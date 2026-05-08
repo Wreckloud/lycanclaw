@@ -1,21 +1,23 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { useData } from 'vitepress'
 import { withBase } from 'vitepress'
 import { useIntersectionObserver } from '@vueuse/core'
 import { estimateReadMinutes } from '../utils/contentMetrics'
 import { formatDateCn } from '../utils/time'
+import {
+  fetchPublishedThoughtPosts,
+  type ThoughtPost
+} from '../utils/contentData'
 
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
 
 // 添加动画相关状态
-const sectionRef = ref(null)
-const animationTriggerRef = ref(null) // 添加专门的动画触发引用
+const animationTriggerRef = ref<HTMLElement | null>(null)
 const isVisible = ref(false)
 
 // 过滤出thoughts目录下的文章，且publish为true的文章
-const thoughtsPosts = ref([])
+const thoughtsPosts = ref<ThoughtPost[]>([])
 const isLoading = ref(true)
 const hasError = ref(false)
 
@@ -31,7 +33,7 @@ const paginatedPosts = computed(() => {
 
 // 页码导航
 const pageNumbers = computed(() => {
-  const pages = []
+  const pages: Array<number | '...'> = []
   const maxVisiblePages = 5 // 最多显示5个页码
   
   if (totalPages.value <= maxVisiblePages) {
@@ -78,7 +80,7 @@ const pageNumbers = computed(() => {
 })
 
 // 页面导航函数
-function goToPage(page) {
+function goToPage(page: number | '...') {
   if (typeof page === 'number' && page >= 1 && page <= totalPages.value) {
     currentPage.value = page
     // 滚动到页面顶部
@@ -99,33 +101,7 @@ onMounted(async () => {
   if (!isBrowser) return
   
   try {
-    // 从生成的JSON文件获取数据，使用绝对路径
-    const response = await fetch(withBase('/posts.json'))
-    if (!response.ok) {
-      throw new Error('Failed to fetch posts data')
-    }
-    
-    const posts = await response.json()
-    
-    // 严格过滤，只显示publish为true的随想文章，排除草稿文件
-    thoughtsPosts.value = posts.filter(post => 
-      post.frontmatter.publish === true && 
-      post.relativePath.startsWith('thoughts/') &&
-      post.relativePath !== 'thoughts/index.md' &&
-      post.relativePath !== 'thoughts/tags.md'
-    )
-    
-    // 验证文章URL是否有效 - 仅对非目录路径进行检查
-    if (isBrowser && 
-        window.location.pathname.includes('/thoughts/') && 
-        window.location.pathname !== '/thoughts/' && // 排除根目录
-        !window.location.pathname.endsWith('/index.html') && // 排除索引页
-        !thoughtsPosts.value.some(post => post.url === window.location.pathname)) {
-      // 只在开发环境下显示警告
-      if (process.env.NODE_ENV === 'development') {
-        console.debug('文章未在列表中找到:', window.location.pathname)
-      }
-    }
+    thoughtsPosts.value = await fetchPublishedThoughtPosts(withBase)
     
     isLoading.value = false
     
@@ -153,26 +129,24 @@ onMounted(async () => {
 })
 
 // 计算阅读时间
-function calculateReadTime(content) {
+function calculateReadTime(content: string | undefined): number {
   return estimateReadMinutes(content || '')
 }
 
-// 获取当前主题模式
-const { isDark } = useData()
-
 // 获取文章摘要，优先使用description
-function getPostExcerpt(post) {
+function getPostExcerpt(post: ThoughtPost): string {
   // 优先使用frontmatter中的description
-  if (post.frontmatter.description) {
-    return post.frontmatter.description
+  const description = post.frontmatter?.description
+  if (typeof description === 'string' && description.trim()) {
+    return description
   }
   // 其次使用通过<!-- more -->分隔的摘要
-  return post.excerpt || ''
+  return typeof post.excerpt === 'string' ? post.excerpt : ''
 }
 </script>
 
 <template>
-  <div class="post-list" ref="sectionRef">
+  <div class="post-list">
     <!-- 添加专门用于动画触发的元素 -->
     <div ref="animationTriggerRef" class="animation-trigger"></div>
     

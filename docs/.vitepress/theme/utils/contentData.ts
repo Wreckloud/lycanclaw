@@ -5,10 +5,14 @@ const THOUGHTS_TAGS_PATH = 'thoughts/tags.md'
 export interface ThoughtPost {
   relativePath?: string
   content?: string
+  url?: string
+  excerpt?: string
   frontmatter?: {
     publish?: boolean
     date?: string
     title?: string
+    description?: string
+    tags?: string[]
     [key: string]: unknown
   }
   [key: string]: unknown

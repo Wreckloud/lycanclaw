@@ -94,12 +94,14 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 - 网络返回值先做 parser，再进入组件渲染
 - 组件层只保留展示与交互，数据聚合放 `utils/`，挂载副作用放 `setup/`
 - 时间逻辑只走 `time.ts + timeDisplayPolicy.ts`，禁止组件内重复手写日期解析
+- 调试日志统一走 `utils/logger.ts`，避免业务代码直接散落 `console.log`
 
 ### 当前基线
 
 - 当前构建可通过（VitePress `1.6.3`）
 - 已清理一批失效脚本和未引用文件
 - Theme `utils/` 已全部迁移到 `.ts`，并统一类型导出
+- 组件脚本已迁移到 `13/22` 为 TypeScript，剩余组件按影响面分批迁移
 - 文章字数/阅读时长逻辑已收敛到 `utils/contentMetrics.ts`
 - 首页数据读取、筛选、统计已从组件内联逻辑收敛到 `contentData + homeAnalytics`
 - 音乐相关组件已改为统一调用 `musicApi`，便于后续切换到自建 API
