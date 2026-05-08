@@ -1,0 +1,140 @@
+import { addCorsProxy } from './proxyConfig'
+
+const NETEASE_API_BASE = 'https://163api.qijieya.cn'
+const DEFAULT_UID = '629126546'
+
+export interface MusicTrack {
+  id: string
+  name: string
+  artist: string
+  cover: string
+}
+
+export interface MusicTrackWithUrl extends MusicTrack {
+  url: string
+}
+
+interface RawArtist {
+  name?: string
+}
+
+interface RawAlbum {
+  picUrl?: string
+}
+
+interface RawSong {
+  id?: string | number
+  name?: string
+  ar?: RawArtist[]
+  al?: RawAlbum
+}
+
+interface RawWeekItem {
+  song?: RawSong
+}
+
+function normalizeHttps(url: string): string {
+  if (!url) return ''
+  return url.startsWith('http:') ? url.replace('http:', 'https:') : url
+}
+
+function withCoverSize(url: string, size = '120y120'): string {
+  if (!url) return ''
+  const normalized = normalizeHttps(url)
+  if (!normalized.includes('music.126.net')) return normalized
+  return normalized.includes('param=') ? normalized : `${normalized}?param=${size}`
+}
+
+async function requestJson(path: string, params: Record<string, string | number> = {}) {
+  const query = new URLSearchParams(
+    Object.entries(params).map(([key, value]) => [key, String(value)])
+  ).toString()
+  const url = addCorsProxy(`${NETEASE_API_BASE}${path}${query ? `?${query}` : ''}`)
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error(`音乐接口请求失败: ${response.status}`)
+  }
+  return response.json()
+}
+
+function parseArtistNames(artists: RawArtist[] = []): string {
+  return artists.map((artist) => artist?.name).filter(Boolean).join('/')
+}
+
+function parseTrack(item: RawWeekItem | RawSong, coverSize: string): MusicTrack {
+  const song = item?.song || item
+  return {
+    id: String(song?.id || ''),
+    name: song?.name || '',
+    artist: parseArtistNames(song?.ar),
+    cover: withCoverSize(song?.al?.picUrl || '', coverSize)
+  }
+}
+
+export async function fetchWeeklyTracks(options: {
+  uid?: string
+  limit?: number
+  coverSize?: string
+  withTimestamp?: boolean
+} = {}): Promise<MusicTrack[]> {
+  const {
+    uid = DEFAULT_UID,
+    limit,
+    coverSize = '120y120',
+    withTimestamp = true
+  } = options
+
+  const payload = await requestJson('/user/record', {
+    uid,
+    type: 1,
+    ...(withTimestamp ? { timestamp: Date.now() } : {})
+  })
+
+  if (payload?.code !== 200 || !Array.isArray(payload?.weekData)) {
+    throw new Error('音乐排行榜数据不可用')
+  }
+
+  const tracks = payload.weekData.map((item: RawWeekItem) => parseTrack(item, coverSize))
+  return typeof limit === 'number' ? tracks.slice(0, limit) : tracks
+}
+
+export async function fetchTrackWithUrlById(
+  id: string,
+  coverSize = '120y120'
+): Promise<MusicTrackWithUrl | null> {
+  if (!id) return null
+
+  const [detailPayload, urlPayload] = await Promise.all([
+    requestJson('/song/detail', { ids: id }),
+    requestJson('/song/url', { id })
+  ])
+
+  if (detailPayload?.code !== 200 || !Array.isArray(detailPayload?.songs) || detailPayload.songs.length === 0) {
+    return null
+  }
+
+  const url = urlPayload?.data?.[0]?.url
+  if (urlPayload?.code !== 200 || !url) {
+    return null
+  }
+
+  const song = detailPayload.songs[0]
+  return {
+    id: String(song.id),
+    name: song.name || '',
+    artist: parseArtistNames(song.ar || []),
+    cover: withCoverSize(song?.al?.picUrl || '', coverSize),
+    url: normalizeHttps(url)
+  }
+}
+
+export async function fetchTrackUrlById(id: string): Promise<string | null> {
+  if (!id) return null
+
+  const payload = await requestJson('/song/url', { id, timestamp: Date.now() })
+  const url = payload?.data?.[0]?.url
+  if (payload?.code !== 200 || !url) {
+    return null
+  }
+  return normalizeHttps(url)
+}

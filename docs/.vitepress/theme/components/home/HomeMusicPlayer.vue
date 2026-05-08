@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, onUnmounted, watch } from 'vue'
-import { addCorsProxy } from '../../utils/proxyConfig'
 import audioManager from '../../utils/audioManager'
 import audioService from '../../utils/audioService'
 import { useIntersectionObserver } from '@vueuse/core'
 import { useData } from 'vitepress'
+import {
+  fetchTrackUrlById,
+  fetchWeeklyTracks,
+  type MusicTrack
+} from '../../utils/musicApi'
 
 // 获取主题模式
 const { isDark } = useData()
@@ -18,7 +22,7 @@ const isPlaying = ref(false)
 const isLoading = ref(false)
 const hasError = ref(false)
 const showTitle = ref(false)
-const favoritePlaylist = ref<any[]>([])
+const favoritePlaylist = ref<MusicTrack[]>([])
 const currentSongInfo = ref({
   id: '',
   name: '',
@@ -33,7 +37,7 @@ const duration = ref(0)
 const progress = ref(0)
 const isDragging = ref(false)  // 新增：是否正在拖动进度条
 const isButtonDisabled = ref(false) // 添加按钮禁用状态
-const preloadedSongs = ref<any[]>([]) // 预加载歌曲队列
+const preloadedSongs = ref<Array<MusicTrack & { url: string }>>([]) // 预加载歌曲队列
 const isFetchingNext = ref(false) // 是否正在获取下一首歌曲
 
 // 计算属性：按钮显示的文本，随机听或当前歌曲标题
@@ -123,40 +127,21 @@ async function fetchMusicRanking() {
   hasError.value = false
   
   try {
-    // 添加时间戳避免缓存问题
-    const response = await fetch(addCorsProxy('https://163api.qijieya.cn/user/record?uid=629126546&type=1&timestamp=' + new Date().getTime()))
-    const data = await response.json()
-    
-    if (data.code !== 200 || !data.weekData || data.weekData.length === 0) {
-      throw new Error('获取音乐排行榜失败')
-    }
-    
-    // 处理所有的歌曲数据
-    const songs = data.weekData.map((item: any) => ({
-      id: String(item.song.id),
-      name: item.song.name,
-      artist: item.song.ar.map((a: any) => a.name).join('/'),
-      cover: item.song.al.picUrl.replace('http://', 'https://') + '?param=120y120'
-    }))
-    
-    // 打乱歌曲顺序以增强随机性
+    const songs = await fetchWeeklyTracks({ withTimestamp: true, coverSize: '120y120' })
     const shuffledSongs = shuffleArray([...songs])
     favoritePlaylist.value = shuffledSongs
     
     // 获取歌单后再次尝试同步播放状态
     syncWithCurrentPlayback()
   } catch (error) {
-    // 移除调试信息，但保留错误处理逻辑
     hasError.value = true
     
-    // 如果之前已经有数据，保留现有数据
     if (favoritePlaylist.value.length === 0) {
-      // 如果没有数据，添加一个默认歌曲以防止页面崩溃
       favoritePlaylist.value = [{
         id: '1824020871',
-        name: '默认歌曲 - 获取排行榜失败',
+        name: '音乐服务暂不可用',
         artist: '未知艺术家',
-        cover: 'https://p2.music.126.net/6y-UleORITEDbvrOLV0Q8A==/5639395138885805.jpg?param=120y120'
+        cover: defaultCoverUrl
       }]
     }
   } finally {
@@ -200,23 +185,14 @@ async function preloadNextSong() {
       attempts++;
     } while (existingIds.has(nextSong.id) && attempts < maxAttempts);
     
-    // 获取音乐URL
-    const musicResponse = await fetch(addCorsProxy(`https://163api.qijieya.cn/song/url?id=${nextSong.id}&timestamp=${new Date().getTime()}`))
-    const musicData = await musicResponse.json()
-    
-    if (musicData.code !== 200 || !musicData.data || musicData.data.length === 0 || !musicData.data[0]?.url) {
+    const musicUrl = await fetchTrackUrlById(nextSong.id)
+    if (!musicUrl) {
       // 如果获取失败，尝试另一首歌
       isFetchingNext.value = false
       setTimeout(() => preloadNextSong(), 500);
       return
     }
-    
-    // 确保音乐URL使用HTTPS
-    let musicUrl = musicData.data[0].url
-    if (musicUrl && musicUrl.startsWith('http:')) {
-      musicUrl = musicUrl.replace('http:', 'https:')
-    }
-    
+
     // 简化封面处理，只添加大小参数
     let coverUrl = nextSong.cover
     if (coverUrl && coverUrl.includes('music.126.net')) {
@@ -249,7 +225,7 @@ async function preloadNextSong() {
 }
 
 // 获取歌曲详细信息并播放（包括音频URL）
-async function fetchSongDetailAndPlay(song: any) {
+async function fetchSongDetailAndPlay(song: MusicTrack | (MusicTrack & { url?: string })) {
   if (typeof window === 'undefined' || !song.id) return
   
   isLoading.value = true
@@ -271,29 +247,13 @@ async function fetchSongDetailAndPlay(song: any) {
       // 立即开始预加载下一首
       setTimeout(() => preloadNextSong(), 100)
     } else {
-      // 获取音乐URL，添加时间戳避免缓存
-      const musicResponse = await fetch(addCorsProxy(`https://163api.qijieya.cn/song/url?id=${song.id}&timestamp=${new Date().getTime()}`))
-      const musicData = await musicResponse.json()
-      
-      if (musicData.code !== 200) {
-        throw new Error(`获取音乐URL失败: 错误代码 ${musicData.code}`)
-      }
-      
-      if (!musicData.data || musicData.data.length === 0) {
-        throw new Error('获取音乐URL失败: 返回数据为空')
-      }
-      
-      if (!musicData.data[0]?.url) {
+      const resolvedUrl = await fetchTrackUrlById(song.id)
+      if (!resolvedUrl) {
         // 如果URL为空，可能是因为版权限制
         playNextSong()
         return
       }
-      
-      // 确保音乐URL使用HTTPS
-      musicUrl = musicData.data[0].url
-      if (musicUrl && musicUrl.startsWith('http:')) {
-        musicUrl = musicUrl.replace('http:', 'https:')
-      }
+      musicUrl = resolvedUrl
       
       // 简化封面处理，只添加大小参数
       if (coverUrl && coverUrl.includes('music.126.net')) {

@@ -1,16 +1,16 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { addCorsProxy } from '../../utils/proxyConfig'
 import SimpleMusicPlayer from '../common/SimpleMusicPlayer.vue'
+import { fetchWeeklyTracks, type MusicTrack } from '../../utils/musicApi'
 
 // 简化的状态
 const isLoading = ref(true)
 const hasError = ref(false)
-const containerRef = ref(null)
+const containerRef = ref<HTMLElement | null>(null)
 const isAtTop = ref(true)
 const isAtBottom = ref(false)
 
-const musicRanking = ref([])
+const musicRanking = ref<MusicTrack[]>([])
 
 // 更新滚动位置和状态
 function updateScrollPosition() {
@@ -29,22 +29,11 @@ async function fetchMusicRanking() {
   hasError.value = false
   
   try {
-    const response = await fetch(addCorsProxy('https://163api.qijieya.cn/user/record?uid=629126546&type=1'))
-    const data = await response.json()
-    
-    if (data.code !== 200 || !data.weekData || data.weekData.length === 0) {
-      throw new Error('获取音乐排行榜失败')
-    }
-    
-    // 只取前5首歌，并优化图片尺寸（添加参数?param=120y120）
-    const topFive = data.weekData.slice(0, 5).map((item) => ({
-      id: String(item.song.id),
-      name: item.song.name,
-      artist: item.song.ar.map((a) => a.name).join('/'),
-      cover: item.song.al.picUrl.replace('http://', 'https://') + '?param=120y120'
-    }))
-    
-    musicRanking.value = topFive
+    musicRanking.value = await fetchWeeklyTracks({
+      limit: 5,
+      withTimestamp: false,
+      coverSize: '120y120'
+    })
   } catch (error) {
     hasError.value = true
   } finally {

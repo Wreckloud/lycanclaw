@@ -4,7 +4,7 @@ import { useData } from 'vitepress'
 import { useIntersectionObserver } from '@vueuse/core'
 import audioManager from '../../utils/audioManager'
 import audioService from '../../utils/audioService'
-import { addCorsProxy } from '../../utils/proxyConfig'
+import { fetchTrackWithUrlById } from '../../utils/musicApi'
 
 // 组件属性定义
 interface Props {
@@ -269,39 +269,19 @@ async function fetchNeteaseMusicInfo(id: string) {
   
   try {
     isLoading.value = true
-    
-    // 获取歌曲详情 - 使用代理处理CORS
-    const detailUrl = addCorsProxy(`https://163api.qijieya.cn/song/detail?ids=${id}`);
-    const detailResponse = await fetch(detailUrl);
-    const detailData = await detailResponse.json()
-    
-    if (detailData.code !== 200 || !detailData.songs || detailData.songs.length === 0) {
-      console.error('获取网易云音乐详情失败', detailData)
+
+    const track = await fetchTrackWithUrlById(id)
+    if (!track?.url) {
       hasError.value = true
       isLoading.value = false
       return false
     }
-    
-    const song = detailData.songs[0]
-    
-    // 获取歌曲URL - 使用代理处理CORS
-    const urlUrl = addCorsProxy(`https://163api.qijieya.cn/song/url?id=${id}`);
-    const urlResponse = await fetch(urlUrl);
-    const urlData = await urlResponse.json()
-    
-    if (urlData.code !== 200 || !urlData.data || urlData.data.length === 0 || !urlData.data[0].url) {
-      console.error('获取网易云音乐URL失败', urlData)
-      hasError.value = true
-      isLoading.value = false
-      return false
-    }
-    
-    // 更新歌曲信息
+
     songInfo.value = {
-      name: song.name,
-      artist: song.ar.map((a: any) => a.name).join('/'),
-      cover: song.al.picUrl,
-      url: urlData.data[0].url.replace('http:', 'https:')
+      name: track.name,
+      artist: track.artist || '未知艺术家',
+      cover: track.cover,
+      url: track.url
     }
     
     isLoading.value = false

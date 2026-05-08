@@ -47,6 +47,7 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
   - `common/`：跨页面复用组件
 - `docs/.vitepress/theme/utils/`
   - 运行时服务：`audioService`、`audioManager`
+  - 音乐数据服务：`musicApi`（网易云接口聚合与解析）
   - API 封装：`commentApi`、`pageViewApi`
   - API 响应解析：`apiResponseParsers`
   - 内容数据层：`contentData`
@@ -73,6 +74,7 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 - 已清理一批失效脚本和未引用文件
 - 文章字数/阅读时长逻辑已收敛到 `utils/contentMetrics.js`
 - 首页数据读取、筛选、统计已从组件内联逻辑收敛到 `contentData + homeAnalytics`
+- 音乐相关组件已改为统一调用 `musicApi`，便于后续切换到自建 API
 - `.gitignore` 已覆盖 Obsidian 元数据目录，避免误提交本地笔记配置
 
 ### 下一步清理方向
