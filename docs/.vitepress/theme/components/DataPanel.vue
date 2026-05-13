@@ -168,18 +168,18 @@ onBeforeUnmount(() => {
           </p>
           <p class="credits">
             <span>Powered by <a href="https://www.netlify.com/" target="_blank">netlify</a> | </span>
-            <span>Theme by <a href="https://vitepress.dev/" target="_blank">vitepress</a></span>
+            <span>Theme by <a href="https://vitepress.dev/" target="_blank">vitepress</a> | </span>
+            <span>
+              <a href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer noopener">
+                蜀ICP备2026024065号
+              </a>
+            </span>
           </p>
         </div>
         
         <!-- 右侧内容 -->
         <div class="right-content">
           <p class="copyright">© {{ yearString }} <a href="/about">Wreckloud</a>.</p>
-          <p class="icp">
-            <a href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer noopener">
-              蜀ICP备2026024065号
-            </a>
-          </p>
           <p class="motto">{{ hitokoto }}</p>
         </div>
       </div>
