@@ -10,13 +10,11 @@ const SECTION_SYNC_SCROLL_DELAY_MS = 1800
 
 type Task = () => void
 
-interface RouteLike {
-  path: string
-}
-
 interface VitePressRouterLike {
-  route: RouteLike
-  onAfterRouteChanged?: (to: RouteLike) => void
+  route: {
+    path: string
+  }
+  onAfterRouteChanged?: (to: string) => void
 }
 
 function runWhenIdle(task: Task, delay = 0): void {
@@ -107,7 +105,7 @@ export function setupRouteSideEffects(router: VitePressRouterLike): void {
   if (typeof window === 'undefined') return
 
   router.onAfterRouteChanged = (to) => {
-    if (to.path === '/') {
+    if (to === '/') {
       setTimeout(syncSectionHeights, HOME_SYNC_DELAY_MS)
       bindResize()
     } else {

@@ -31,6 +31,10 @@ interface RawWeekItem {
   song?: RawSong
 }
 
+function isWeekItem(item: RawWeekItem | RawSong): item is RawWeekItem {
+  return 'song' in item
+}
+
 function normalizeHttps(url: string): string {
   if (!url) return ''
   return url.startsWith('http:') ? url.replace('http:', 'https:') : url
@@ -61,7 +65,7 @@ function parseArtistNames(artists: RawArtist[] = []): string {
 }
 
 function parseTrack(item: RawWeekItem | RawSong, coverSize: string): MusicTrack {
-  const song = item?.song || item
+  const song = isWeekItem(item) ? item.song : item
   return {
     id: String(song?.id || ''),
     name: song?.name || '',

@@ -9,14 +9,3 @@ sidebar: false
 这里收录我向月吐露的低语，不为喧嚣，只为心中不灭的微光。
 
 <PostList />
-
-<script setup>
-import { useData } from 'vitepress'
-import PostList from '../.vitepress/theme/components/PostList.vue'
-
-const { isDark } = useData()
-</script>
-
-<style scoped>
-/* 移除了页面操作按钮相关样式 */
-</style>

@@ -55,8 +55,8 @@ onMounted(() => {
       }
     },
     { 
-      threshold: 0.005, // 降低阈值至1%，几乎一出现就触发
-      rootMargin: '0px 0px -1% 0px' // 增大底部边距，更早触发
+      threshold: 0.2,
+      rootMargin: '0px 0px -8% 0px'
     }
   )
   
@@ -110,6 +110,10 @@ function getPostExcerpt(post: Post): string {
   // 其次使用通过<!-- more -->分隔的摘要
   return post.excerpt || ''
 }
+
+function buildThoughtsTagUrl(tag: string): string {
+  return withBase(`/thoughts/?tag=${encodeURIComponent(tag.trim())}`)
+}
 </script>
 
 <template>
@@ -134,7 +138,7 @@ function getPostExcerpt(post: Post): string {
           :key="post.url" 
           class="post-item"
           :class="{ 'animate-in': isVisible }"
-          :style="{ '--anim-delay': `${index * 0.1 + 0.1}s` }"
+          :style="{ '--anim-delay': `${index * 0.07 + 0.06}s` }"
         >
           <div class="post-content">
             <h3 class="post-item-title">
@@ -153,13 +157,14 @@ function getPostExcerpt(post: Post): string {
               <span class="post-separator">/</span>
               <span class="post-category">随想</span>
               <span v-if="post.frontmatter.tags?.length" class="post-tags">
-                <span 
+                <a 
                   v-for="(tag, index) in post.frontmatter.tags" 
                   :key="index"
                   class="post-tag"
+                  :href="buildThoughtsTagUrl(tag)"
                 >
                   #{{ tag }}
-                </span>
+                </a>
               </span>
             </div>
           </div>
@@ -297,6 +302,13 @@ function getPostExcerpt(post: Post): string {
 .post-tag {
   margin-right: 8px;
   color: var(--vp-c-brand-1);
+  text-decoration: none;
+  transition: color var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
+}
+
+.post-tag:hover {
+  color: var(--vp-c-brand-2);
+  text-decoration: underline;
 }
 
 .loading, .error, .no-posts {

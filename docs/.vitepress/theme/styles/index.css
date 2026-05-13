@@ -58,11 +58,12 @@ input[type='reset'] {
   background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: gradient-move 8s linear infinite;
-  transition: transform var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
 }
 
-.VPHero .name:hover {
-  transform: scale(1.01);
+.VPHero .name,
+.VPHero .text,
+.VPHero .tagline {
+  cursor: default;
 }
 
 .VPDocOutlineItem,

@@ -145,8 +145,14 @@ export default defineConfig({
     lastUpdated: {
       text: '最后更新于',
       formatOptions: {
-        dateStyle: 'full',
-        timeStyle: 'medium'
+        forceLocale: true,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
       }
     },
 

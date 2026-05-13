@@ -13,6 +13,17 @@ import { logError } from '../../utils/logger'
 
 // 默认封面图片路径
 const defaultCoverUrl = '/images/首页/default-cover.png'
+const UI_SYNC_DELAY_MS = 50
+const NEXT_SONG_DELAY_MS = 1000
+const PRELOAD_DELAY_MS = 100
+const MAX_PRELOAD_QUEUE = 2
+
+interface CurrentSongInfo {
+  id: string
+  name: string
+  artist: string
+  cover: string
+}
 
 // 组件状态
 const containerRef = ref<HTMLElement | null>(null)
@@ -20,7 +31,7 @@ const isPlaying = ref(false)
 const isLoading = ref(false)
 const showTitle = ref(false)
 const favoritePlaylist = ref<MusicTrack[]>([])
-const currentSongInfo = ref({
+const currentSongInfo = ref<CurrentSongInfo>({
   id: '',
   name: '',
   artist: '',
@@ -36,6 +47,7 @@ const isDragging = ref(false)  // 新增：是否正在拖动进度条
 const isButtonDisabled = ref(false) // 添加按钮禁用状态
 const preloadedSongs = ref<Array<MusicTrack & { url: string }>>([]) // 预加载歌曲队列
 const isFetchingNext = ref(false) // 是否正在获取下一首歌曲
+const pendingTimers = new Set<ReturnType<typeof setTimeout>>()
 
 // 计算属性：按钮显示的文本，随机听或当前歌曲标题
 const buttonText = computed(() => {
@@ -84,7 +96,7 @@ function syncWithCurrentPlayback() {
         showTitle.value = false
         
         // 短暂延迟后设置新状态，让DOM有时间更新
-        setTimeout(() => {
+        schedule(() => {
           // 1. 设置歌曲信息
           currentSongInfo.value = {
             id: currentPlayingId,
@@ -102,11 +114,11 @@ function syncWithCurrentPlayback() {
           showTitle.value = true
           
           // 4. 再次短暂延迟后更新播放状态，以确保UI完全更新
-          setTimeout(() => {
+          schedule(() => {
             isPlaying.value = savedSongInfo.isPlaying
-          }, 50)
+          }, UI_SYNC_DELAY_MS)
           
-        }, 50)
+        }, UI_SYNC_DELAY_MS)
       }
     }
   }
@@ -126,6 +138,7 @@ async function fetchMusicRanking() {
     // 获取歌单后再次尝试同步播放状态
     syncWithCurrentPlayback()
   } catch (error) {
+    logError('HomeMusicPlayer', '加载音乐排行榜失败，已降级到占位歌曲', error)
     if (favoritePlaylist.value.length === 0) {
       favoritePlaylist.value = [{
         id: '1824020871',
@@ -149,7 +162,24 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 function schedule(task: () => void, delay = 100) {
-  setTimeout(task, delay)
+  const timer = setTimeout(() => {
+    pendingTimers.delete(timer)
+    task()
+  }, delay)
+  pendingTimers.add(timer)
+}
+
+function clearPendingTimers(): void {
+  for (const timer of pendingTimers) {
+    clearTimeout(timer)
+  }
+  pendingTimers.clear()
+}
+
+function stopCurrentSongPlayback(): void {
+  if (!currentSongInfo.value.id) return
+  audioService.pause()
+  audioManager.pauseCurrent(currentSongInfo.value.id)
 }
 
 function normalizeCoverUrl(coverUrl: string): string {
@@ -186,7 +216,7 @@ async function preloadNextSong() {
   if (isFetchingNext.value || favoritePlaylist.value.length === 0) return
   
   // 如果预加载队列已有两首歌曲，不再重复加载
-  if (preloadedSongs.value.length >= 2) return
+  if (preloadedSongs.value.length >= MAX_PRELOAD_QUEUE) return
   
   isFetchingNext.value = true
   
@@ -225,7 +255,7 @@ async function preloadNextSong() {
     })
     
     // 如果预加载队列中的歌曲数量仍然少于2首，继续预加载
-    if (preloadedSongs.value.length < 2) {
+    if (preloadedSongs.value.length < MAX_PRELOAD_QUEUE) {
       schedule(() => preloadNextSong(), 300)
     }
   } catch (error) {
@@ -256,7 +286,7 @@ async function fetchSongDetailAndPlay(song: MusicTrack | (MusicTrack & { url?: s
       preloadedSongs.value = preloadedSongs.value.filter(s => s.id !== song.id)
       
       // 立即开始预加载下一首
-      schedule(() => preloadNextSong(), 100)
+      schedule(() => preloadNextSong(), PRELOAD_DELAY_MS)
     } else {
       const resolvedUrl = await fetchTrackUrlById(song.id)
       if (!resolvedUrl) {
@@ -268,7 +298,7 @@ async function fetchSongDetailAndPlay(song: MusicTrack | (MusicTrack & { url?: s
       coverUrl = normalizeCoverUrl(coverUrl)
       
       // 开始预加载下一首
-      schedule(() => preloadNextSong(), 100)
+      schedule(() => preloadNextSong(), PRELOAD_DELAY_MS)
     }
     
     // 创建完整的歌曲信息对象
@@ -305,17 +335,18 @@ async function fetchSongDetailAndPlay(song: MusicTrack | (MusicTrack & { url?: s
         // 恢复播放失败，移除调试信息
         isPlaying.value = false
         showTitle.value = false
+        logError('HomeMusicPlayer', '播放失败，准备切换下一首', { songId: song.id })
         
         // 自动尝试播放下一首
-        schedule(() => playNextSong(), 1000)
+        schedule(() => playNextSong(), NEXT_SONG_DELAY_MS)
       })
   } catch (error) {
-    // 移除调试信息，保留错误处理逻辑
+    logError('HomeMusicPlayer', '获取歌曲并播放失败，准备切换下一首', error)
     isPlaying.value = false
     showTitle.value = false
     
     // 自动尝试播放下一首
-    schedule(() => playNextSong(), 1000)
+    schedule(() => playNextSong(), NEXT_SONG_DELAY_MS)
   } finally {
     isLoading.value = false
   }
@@ -348,8 +379,7 @@ function playNextSong() {
 // 停止播放并恢复按钮状态
 function stopPlayAndReset() {
   if (currentSongInfo.value.id) {
-    audioService.pause()
-    audioManager.pauseCurrent(currentSongInfo.value.id)
+    stopCurrentSongPlayback()
     audioManager.emit('play-state-change', `${currentSongInfo.value.id}:false`)
   }
   
@@ -359,7 +389,7 @@ function stopPlayAndReset() {
 }
 
 // 处理下一首按钮点击事件
-function handleNextSong(e) {
+function handleNextSong(e: MouseEvent) {
   e.stopPropagation() // 防止事件冒泡到父元素
   
   // 如果按钮已禁用，不执行操作
@@ -373,8 +403,7 @@ function handleNextSong(e) {
   
   // 如果当前正在播放，先停止
   if (isPlaying.value && currentSongInfo.value.id) {
-    audioService.pause()
-    audioManager.pauseCurrent(currentSongInfo.value.id)
+    stopCurrentSongPlayback()
   }
   
   // 播放下一首歌曲
@@ -392,8 +421,7 @@ function handleButtonClick() {
     // 如果已经有歌曲，只切换播放状态，不切换歌曲
     if (isPlaying.value) {
       // 如果正在播放，暂停
-      audioService.pause()
-      audioManager.pauseCurrent(currentSongInfo.value.id)
+      stopCurrentSongPlayback()
       isPlaying.value = false
     } else {
       // 如果已暂停，继续播放当前歌曲
@@ -409,6 +437,7 @@ function handleButtonClick() {
       .catch(() => {
         // 恢复播放失败，移除调试信息
         isPlaying.value = false
+        logError('HomeMusicPlayer', '恢复播放失败', { songId: currentSongInfo.value.id })
       })
     }
     
@@ -468,18 +497,18 @@ function updateProgressFromTouch(e: TouchEvent) {
 }
 
 function stopDrag(e?: MouseEvent | TouchEvent) {
+  // 移除全局事件监听
+  document.removeEventListener('mousemove', updateProgressFromEvent)
+  document.removeEventListener('mouseup', stopDrag)
+  document.removeEventListener('touchmove', updateProgressFromTouch)
+  document.removeEventListener('touchend', stopDrag)
+
   if (!isDragging.value) return
   
   isDragging.value = false
   
   // 设置音频播放位置
   audioService.seek(currentTime.value)
-  
-  // 移除全局事件监听
-  document.removeEventListener('mousemove', updateProgressFromEvent)
-  document.removeEventListener('mouseup', stopDrag)
-  document.removeEventListener('touchmove', updateProgressFromTouch)
-  document.removeEventListener('touchend', stopDrag)
 }
 
 function setProgress(e: MouseEvent) {
@@ -514,7 +543,7 @@ function setupEventListeners() {
     audioManager.on('song-ended', (id) => {
       if (id && id === currentSongInfo.value.id) {
         // 歌曲结束后自动播放下一首
-        schedule(() => playNextSong(), 1000) // 延迟1秒播放下一首
+        schedule(() => playNextSong(), NEXT_SONG_DELAY_MS)
       }
     })
   )
@@ -532,7 +561,7 @@ function setupEventListeners() {
           isPlaying.value = newPlayingState
         }
       } catch (e) {
-        // 移除调试信息
+        logError('HomeMusicPlayer', '解析播放状态事件失败', e)
       }
     })
   )
@@ -542,7 +571,7 @@ function setupEventListeners() {
     audioManager.on('audio-error', (id) => {
       if (id === currentSongInfo.value.id) {
         // 出错时尝试播放下一首
-        schedule(() => playNextSong(), 1000)
+        schedule(() => playNextSong(), NEXT_SONG_DELAY_MS)
       }
     })
   )
@@ -580,10 +609,10 @@ function setupEventListeners() {
           if (dur && parseFloat(dur) > 0) {
             duration.value = parseFloat(dur);
           }
-          progress.value = (currentTime.value / duration.value) * 100 || 0;
+          progress.value = duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0;
         }
       } catch (e) {
-        // 移除调试信息
+        logError('HomeMusicPlayer', '解析进度事件失败', e)
       }
     })
   )
@@ -598,7 +627,7 @@ onMounted(() => {
     .then(() => {
       // 歌单加载后预加载一首歌曲
       if (favoritePlaylist.value.length > 0) {
-        schedule(() => preloadNextSong(), 1000)
+        schedule(() => preloadNextSong(), NEXT_SONG_DELAY_MS)
       }
     })
   
@@ -629,6 +658,8 @@ onMounted(() => {
 onUnmounted(() => {
   // 清理事件监听
   unsubscribers.forEach(unsub => unsub())
+  clearPendingTimers()
+  stopDrag()
 })
 </script>
 

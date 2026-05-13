@@ -1,45 +1,65 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
 // 滚动提示状态管理
 const scrollPromptVisible = ref(false) // 初始设为false，避免闪现
 const hasScrolled = ref(false)
 const isInitialized = ref(false) // 追踪初始化状态
+let initTimer: number | null = null
+let scrollHandler: (() => void) | null = null
+
+function isHomeFirstSectionVisible(): boolean {
+  if (typeof window === 'undefined') return false
+
+  const targets = [
+    document.querySelector<HTMLElement>('.recommended-reading-section'),
+    document.querySelector<HTMLElement>('.stats-section')
+  ].filter((item): item is HTMLElement => !!item)
+
+  if (!targets.length) return false
+
+  return targets.some((target) => {
+    const rect = target.getBoundingClientRect()
+    return rect.top < window.innerHeight && rect.bottom > 0
+  })
+}
 
 // 监听滚动事件
 onMounted(() => {
-  if (typeof window !== 'undefined') {
-    // 延迟初始化动画，确保页面已完全渲染
-    setTimeout(() => {
-      isInitialized.value = true
-      
-      // 在动画初始化之后，才开始正常的滚动检测
-      nextTick(() => {
-        // 首次检查滚动位置
-        if (window.scrollY > 0) {
-          hasScrolled.value = true
-        } else {
-          scrollPromptVisible.value = true // 只有在顶部才显示提示
-        }
-        
-        // 添加滚动监听
-        const handleScroll = () => {
-          if (window.scrollY > 0) {
-            hasScrolled.value = true
-            scrollPromptVisible.value = false
-          } else {
-            // 只有在用户从未滚动过的情况下才显示提示
-            scrollPromptVisible.value = !hasScrolled.value
-          }
-        }
-        
-        window.addEventListener('scroll', handleScroll)
-        
-        return () => {
-          window.removeEventListener('scroll', handleScroll)
-        }
-      })
-    }, 800) // 延迟800毫秒初始化
+  if (typeof window === 'undefined') return
+
+  const handleScroll = () => {
+    if (window.scrollY > 0 || isHomeFirstSectionVisible()) {
+      hasScrolled.value = true
+      scrollPromptVisible.value = false
+      return
+    }
+    // 只有在顶部、用户未滚动且首页首屏组件未出现时显示
+    scrollPromptVisible.value = !hasScrolled.value
+  }
+
+  // 延迟初始化动画，确保页面已完全渲染并延后1秒出现时机
+  initTimer = window.setTimeout(() => {
+    isInitialized.value = true
+
+    // 在动画初始化之后，才开始正常的滚动检测
+    nextTick(() => {
+      handleScroll()
+      window.addEventListener('scroll', handleScroll, { passive: true })
+    })
+  }, 1800)
+  scrollHandler = handleScroll
+})
+
+onBeforeUnmount(() => {
+  if (typeof window !== 'undefined' && scrollHandler) {
+    window.removeEventListener('scroll', scrollHandler)
+  }
+  scrollHandler = null
+
+  if (typeof window !== 'undefined' && initTimer !== null) {
+    window.clearTimeout(initTimer)
+    initTimer = null
   }
 })
 </script>

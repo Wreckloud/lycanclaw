@@ -22,6 +22,11 @@ interface FloatingMessage {
   fontSize: string
 }
 
+interface ClientPoint {
+  x: number
+  y: number
+}
+
 // 接收属性
 const props = withDefaults(
   defineProps<{
@@ -149,15 +154,30 @@ function getEncourageMessage(count: number): string {
   return encourageMessages[selectedThreshold]
 }
 
+function getClientPoint(event: PointerEventLike): ClientPoint | null {
+  if ('touches' in event) {
+    const touch = event.touches[0]
+    if (!touch) return null
+    return { x: touch.clientX, y: touch.clientY }
+  }
+  return { x: event.clientX, y: event.clientY }
+}
+
+function getEventTargetElement(event: PointerEventLike): HTMLElement | null {
+  const target = event.currentTarget
+  return target instanceof HTMLElement ? target : null
+}
+
 // 显示浮动消息
 function showFloatingMessage(event: PointerEventLike, count: number): void {
   // 防止在event缺失或event.currentTarget为null时出错
   if (!event || !event.currentTarget) return;
+  const targetElement = getEventTargetElement(event)
+  const point = getClientPoint(event)
+  if (!targetElement || !point) return
   
-  // 通过事件相对于目标的位置计算，更可靠的方法获取实际点击位置
-  const rect = event.currentTarget.getBoundingClientRect()
-  const x = 'touches' in event && event.touches[0] ? event.touches[0].clientX : event.clientX
-  const y = 'touches' in event && event.touches[0] ? event.touches[0].clientY : event.clientY
+  const x = point.x
+  const y = point.y
   
   // 随机参数 - 增加横向和垂直方向上的偏移
   const angle = Math.random() * 40 - 20  // 更夸张的角度范围，从 ±10 变为 ±20
@@ -224,12 +244,13 @@ function createParticles(event: PointerEventLike): void {
   
   // 创建Canvas元素
   const canvas = document.createElement('canvas')
-  const ctx = canvas.getContext('2d')
+  const maybeCtx = canvas.getContext('2d')
   
-  if (!ctx) {
+  if (!maybeCtx) {
     logError('EncourageWidget', '无法创建 Canvas 上下文')
     return
   }
+  const ctx = maybeCtx
   
   // 重要：实时获取视窗大小，而不是依赖event时的窗口大小
   const viewportWidth = window.innerWidth
@@ -250,8 +271,10 @@ function createParticles(event: PointerEventLike): void {
   document.body.appendChild(canvas)
   
   // 获取点击位置，同时处理触摸事件
-  const x = 'touches' in event && event.touches[0] ? event.touches[0].clientX : event.clientX
-  const y = 'touches' in event && event.touches[0] ? event.touches[0].clientY : event.clientY
+  const point = getClientPoint(event)
+  if (!point) return
+  const x = point.x
+  const y = point.y
   
   // 创建粒子数组
   const particlesArray: Array<{

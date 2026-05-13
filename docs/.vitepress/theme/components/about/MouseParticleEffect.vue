@@ -31,15 +31,24 @@ type CanvasParticle = {
 }
 
 const canvas = ref<HTMLCanvasElement | null>(null)
-let handleTap: ((e: PointerEventLike) => void) | null = null
-let setCanvasSize: (() => void) | null = null
+let handleTap: (e: PointerEventLike) => void = () => {}
+let setCanvasSize: () => void = () => {}
 let resizeObserver: ResizeObserver | null = null
-let animateParticulesFn: ((x: number, y: number) => void) | null = null
-let createRandomCircleAnimationFn: ((x: number, y: number) => void) | null = null
+let animateParticulesFn: (x: number, y: number) => void = () => {}
+let createRandomCircleAnimationFn: (x: number, y: number) => void = () => {}
+
+function getClientPoint(event: PointerEventLike): { x: number; y: number } | null {
+  if ('touches' in event) {
+    const touch = event.touches[0]
+    if (!touch) return null
+    return { x: touch.clientX, y: touch.clientY }
+  }
+  return { x: event.clientX, y: event.clientY }
+}
 
 // 暴露方法给父组件
 const triggerEffect = (x: number, y: number): void => {
-  if (!canvas.value || !animateParticulesFn || !createRandomCircleAnimationFn) return;
+  if (!canvas.value) return
   
   const rect = canvas.value.getBoundingClientRect();
   const pointerX = x - rect.left;
@@ -58,8 +67,10 @@ defineExpose({
 onMounted(() => {
   const canvasEl = canvas.value;
   if (!canvasEl) return
-  const ctx = canvasEl.getContext("2d");
-  if (!ctx) return
+  const canvasNode: HTMLCanvasElement = canvasEl
+  const context = canvasNode.getContext("2d");
+  if (!context) return
+  const ctx = context
   let numberOfParticules = 20;
   let pointerX = 0;
   let pointerY = 0;
@@ -74,25 +85,25 @@ onMounted(() => {
 
   // 设置画布大小以适应容器
   setCanvasSize = function() {
-    const container = canvasEl.parentElement;
+    const container = canvasNode.parentElement;
     if (!container) return;
     
     // 设置canvas尺寸为容器的实际尺寸
-    canvasEl.width = container.offsetWidth;
-    canvasEl.height = container.offsetHeight;
+    canvasNode.width = container.offsetWidth;
+    canvasNode.height = container.offsetHeight;
     
     // 设置canvas样式尺寸
-    canvasEl.style.width = container.offsetWidth + "px";
-    canvasEl.style.height = container.offsetHeight + "px";
+    canvasNode.style.width = container.offsetWidth + "px";
+    canvasNode.style.height = container.offsetHeight + "px";
   };
 
   // 更新鼠标或触摸点的坐标
   function updateCoords(e: PointerEventLike) {
-    const rect = canvasEl.getBoundingClientRect();
-    const touchX = 'touches' in e && e.touches[0] ? e.touches[0].clientX : 0
-    const touchY = 'touches' in e && e.touches[0] ? e.touches[0].clientY : 0
-    pointerX = ('clientX' in e ? e.clientX : 0) - rect.left || (touchX - rect.left);
-    pointerY = ('clientY' in e ? e.clientY : 0) - rect.top || (touchY - rect.top);
+    const rect = canvasNode.getBoundingClientRect();
+    const point = getClientPoint(e)
+    if (!point) return
+    pointerX = point.x - rect.left
+    pointerY = point.y - rect.top
   }
 
   // 设置粒子的运动方向
@@ -142,7 +153,7 @@ onMounted(() => {
       ctx.globalAlpha = p.alpha;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.radius, 0, 2 * Math.PI, true);
-      ctx.lineWidth = p.lineWidth;
+      ctx.lineWidth = p.lineWidth ?? 0;
       ctx.strokeStyle = p.color;
       ctx.stroke();
       ctx.globalAlpha = 1;
@@ -151,9 +162,13 @@ onMounted(() => {
   }
 
   // 渲染粒子
-  function renderParticule(anim: { animatables: Array<{ target: CanvasParticle }> }) {
+  function renderParticule(anim: { animatables: ReadonlyArray<{ target: unknown }> }) {
     for (let i = 0; i < anim.animatables.length; i++) {
-      anim.animatables[i].target.draw();
+      const target = anim.animatables[i].target
+      if (target && typeof target === 'object' && 'draw' in target) {
+        const drawable = target as CanvasParticle
+        drawable.draw()
+      }
     }
   }
 
@@ -173,11 +188,11 @@ onMounted(() => {
       .timeline()
       .add({
         targets: particules,
-        x: function (p) {
-          return p.endPos.x;
+        x: function (p: CanvasParticle) {
+          return p.endPos?.x ?? p.x;
         },
-        y: function (p) {
-          return p.endPos.y;
+        y: function (p: CanvasParticle) {
+          return p.endPos?.y ?? p.y;
         },
         radius: 2, // 设置为较小的固定值
         duration: anime.random(1200, 1800),
@@ -276,7 +291,7 @@ onMounted(() => {
 
   // 渲染动画
   function renderLoop() {
-    ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+    ctx.clearRect(0, 0, canvasNode.width, canvasNode.height);
     
     // 绘制所有活跃的粒子
     for (let i = 0; i < activeParticles.length; i++) {
@@ -302,7 +317,7 @@ onMounted(() => {
   };
 
   // 添加事件监听
-  canvasEl.addEventListener(tap, handleTap, false);
+  canvasNode.addEventListener(tap, handleTap, false);
 
   // 初始化尺寸
   setCanvasSize();
@@ -313,8 +328,8 @@ onMounted(() => {
       setCanvasSize();
     });
     
-    if (canvasEl.parentElement) {
-      resizeObserver.observe(canvasEl.parentElement);
+    if (canvasNode.parentElement) {
+      resizeObserver.observe(canvasNode.parentElement);
     }
   } else {
     // 回退到window resize事件
@@ -330,7 +345,7 @@ onMounted(() => {
 onUnmounted(() => {
   if (resizeObserver) {
     resizeObserver.disconnect();
-  } else if (window) {
+  } else if (typeof window !== 'undefined') {
     window.removeEventListener("resize", setCanvasSize);
   }
   
@@ -338,9 +353,7 @@ onUnmounted(() => {
     const tap = "ontouchstart" in window || (navigator as LegacyNavigator).msMaxTouchPoints
       ? "touchstart"
       : "mousedown";
-    if (handleTap) {
-      canvas.value.removeEventListener(tap, handleTap as EventListener)
-    }
+    canvas.value.removeEventListener(tap, handleTap as EventListener)
   }
 });
 </script>

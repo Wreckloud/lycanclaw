@@ -36,6 +36,7 @@ const maxScroll = ref(0)
 const isUserInteracting = ref(false) // 跟踪用户是否正在交互
 const shouldDisableAutoplay = computed(() => recommendedPosts.value.length <= 1)
 const scrollResetTimer = ref<number | null>(null) // 存储定时器ID
+const hasTriggeredVisibleOnce = ref(false)
 
 // 组件属性
 const props = defineProps({
@@ -106,7 +107,7 @@ const updateCurrentIndex = useDebounceFn(() => {
 }, 50) // 减少防抖时间以获得更快的响应
 
 // 根据进度比例滚动到指定位置
-function scrollToCardByProgress(progress, smooth = true) {
+function scrollToCardByProgress(progress: number, smooth = true) {
   if (!carouselRef.value || !recommendedPosts.value.length) return
   
   const scrollableWidth = carouselRef.value.scrollWidth - carouselRef.value.clientWidth
@@ -266,6 +267,24 @@ watch(() => recommendedPosts.value.length, (newCount) => {
   }
 })
 
+watch(isVisible, async (visible) => {
+  if (!visible) {
+    pauseAutoplay()
+    return
+  }
+
+  if (!hasTriggeredVisibleOnce.value) {
+    hasTriggeredVisibleOnce.value = true
+    await nextTick()
+    scrollToCard(0, false)
+    updateCurrentIndex()
+  }
+
+  if (!isHovered.value && !isUserInteracting.value && props.autoplaySpeed > 0 && !shouldDisableAutoplay.value) {
+    resumeAutoplay()
+  }
+})
+
 // 事件监听设置
 onMounted(async () => {
   if (!isBrowser) return
@@ -280,8 +299,8 @@ onMounted(async () => {
       }
     },
     {
-      threshold: 0.5,  // 降低阈值，与StatsPanel保持一致
-      rootMargin: '0px 0px -20% 0px'  // 调整边距，使其在双列布局时与数据统计组件同步触发
+      threshold: 0.6,
+      rootMargin: '0px 0px -10% 0px'
     }
   )
   
@@ -301,10 +320,7 @@ onMounted(async () => {
       // 初始化轮播位置和状态
       updateCurrentIndex()
       
-      // 如果设置了自动轮播且有多个文章，启动自动轮播
-      if (props.autoplaySpeed > 0 && !shouldDisableAutoplay.value) {
-        resumeAutoplay()
-      }
+      // 自动轮播改为组件进入视口后再启动，避免用户看到“半截状态”
     }
   })
 })

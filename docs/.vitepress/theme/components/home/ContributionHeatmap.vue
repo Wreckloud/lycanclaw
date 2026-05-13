@@ -147,15 +147,18 @@ function setupHorizontalScroll() {
 
 // 执行滚动动画 - 从左到右的滚动效果
 function performScrollAnimation() {
-  if (!containerRef.value) return
+  const container = containerRef.value
+  if (!container) return
   
   // 先滚动到最左侧
-  containerRef.value.scrollLeft = 0
+  container.scrollLeft = 0
   
   // 稍微延迟后滚动到最右侧，产生动画效果
   setTimeout(() => {
-    const targetScroll = containerRef.value.scrollWidth - containerRef.value.clientWidth
-    containerRef.value.scrollTo({
+    const latestContainer = containerRef.value
+    if (!latestContainer) return
+    const targetScroll = latestContainer.scrollWidth - latestContainer.clientWidth
+    latestContainer.scrollTo({
       left: targetScroll,
       behavior: 'smooth'
     })
@@ -163,8 +166,8 @@ function performScrollAnimation() {
 }
 
 // 观察元素是否进入视口
-function setupIntersectionObserver() {
-  if (!isBrowser || !window.IntersectionObserver) return
+function setupIntersectionObserver(): (() => void) | null {
+  if (!isBrowser || !window.IntersectionObserver) return null
   
   const observer = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {

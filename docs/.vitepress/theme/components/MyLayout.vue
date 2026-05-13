@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import DefaultTheme from 'vitepress/theme'
 import PostTitle from './PostTitle.vue'
+import ArticleTagsFooter from './ArticleTagsFooter.vue'
 import DataPanel from './DataPanel.vue'
 import GlobalMusicPlayer from './common/GlobalMusicPlayer.vue'
 import BackToTop from './common/BackToTop.vue'
@@ -40,6 +41,10 @@ const shouldShowComment = computed(() => {
     <!-- 文章标题区域 -->
     <template #doc-before>
       <PostTitle />
+    </template>
+
+    <template #doc-footer-before>
+      <ArticleTagsFooter />
     </template>
     
     <!-- 评论区域 -->
