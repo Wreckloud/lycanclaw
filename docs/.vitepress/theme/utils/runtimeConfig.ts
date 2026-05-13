@@ -1,5 +1,7 @@
 const DEFAULT_WALINE_SERVER_URL = 'https://lycanclaw-comment.netlify.app/.netlify/functions/comment'
 const DEFAULT_HITOKOTO_API = 'https://v1.hitokoto.cn'
+const DEFAULT_MUSIC_API_BASE = 'https://163api.qijieya.cn'
+const DEFAULT_MUSIC_UID = '629126546'
 
 export interface LycanRuntimeConfig {
   musicApiBase?: string
@@ -74,5 +76,21 @@ export function getHitokotoApiUrl(): string {
     runtimeKey: 'hitokotoApi',
     envKey: 'VITE_HITOKOTO_API',
     defaultValue: DEFAULT_HITOKOTO_API
+  })
+}
+
+export function getMusicApiBase(): string {
+  return resolveRuntimeBaseUrl({
+    runtimeKey: 'musicApiBase',
+    envKey: 'VITE_MUSIC_API_BASE',
+    defaultValue: DEFAULT_MUSIC_API_BASE
+  })
+}
+
+export function getMusicUid(): string {
+  return resolveRuntimeValue({
+    runtimeKey: 'musicUid',
+    envKey: 'VITE_MUSIC_UID',
+    defaultValue: DEFAULT_MUSIC_UID
   })
 }

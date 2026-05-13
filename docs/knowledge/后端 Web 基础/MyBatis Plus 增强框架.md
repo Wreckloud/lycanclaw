@@ -1558,3 +1558,213 @@ ORDER BY update_time DESC
 ```
 
 这类列表查询通常要有一个稳定排序字段，否则不同页之间的数据顺序可能不稳定。
+
+我看了你的原文，整体风格是“先说它解决什么问题，再给标准写法，最后补几个实际开发会踩的坑”。你前面已经写到分页插件，后面接“自动填充字段”正好很顺。下面这版可以直接接在你文章的 `# 自动填充字段` 后面用。你的笔记本身就是围绕 MP 的基本使用、注解、Wrapper、IService、分页插件一路往下展开的，所以这一节我也按同样的节奏写。
+
+# 自动填充字段
+
+在实际项目中，很多表都会有一些公共字段。比如：新增用户时，要记录这条数据是什么时候创建的；修改用户信息时，要记录最后一次修改时间。如果每次新增、修改都在业务代码里手动写：
+
+```java
+user.setCreateTime(LocalDateTime.now());
+user.setUpdateTime(LocalDateTime.now());
+```
+
+代码就会变得很啰嗦，而且容易漏。
+
+MyBatis-Plus 提供的自动填充字段功能，就是为了解决这类重复赋值问题。
+
+它可以在执行插入或更新操作时，自动给指定字段设置值，比如自动填充创建时间、更新时间、创建人、修改人等。官方说明中也明确提到，自动填充功能主要就是用于插入或更新数据时自动填充某些字段。
+
+[MyBatis-Plus 官方文档](https://baomidou.com/guides/auto-fill-field/)
+
+它的使用分为两步：
+
+1. 在实体类字段上声明这个字段需要自动填充
+2. 编写一个填充处理器，告诉 MP 具体填什么值
+
+## 在实体类中声明填充策略
+
+自动填充字段是通过 `@TableField` 完成的，只不过这次用的是它的 `fill` 属性。
+
+例如一个用户实体类中有创建时间和更新时间：
+
+```java
+import com.baomidou.mybatisplus.annotation.FieldFill;
+import com.baomidou.mybatisplus.annotation.TableField;
+import lombok.Data;
+
+import java.time.LocalDateTime;
+
+@Data
+public class User {
+
+    private Long id;
+
+    private String username;
+
+    @TableField(fill = FieldFill.INSERT)
+    private LocalDateTime createTime;
+
+    @TableField(fill = FieldFill.INSERT_UPDATE)
+    private LocalDateTime updateTime;
+}
+```
+
+这里有两个字段需要重点看：
+
+```java
+@TableField(fill = FieldFill.INSERT)
+private LocalDateTime createTime;
+```
+
+表示 `createTime` 只在新增数据时自动填充。
+
+```java
+@TableField(fill = FieldFill.INSERT_UPDATE)
+private LocalDateTime updateTime;
+```
+
+表示 `updateTime` 在新增和修改时都会自动填充。
+
+也就是说：
+
+- 第一次插入数据时，创建时间和更新时间都应该有值
+- 后续修改数据时，只需要更新更新时间
+
+这个逻辑很符合真实业务。创建时间代表这条数据“什么时候出生”，一般不应该随着修改而变化；更新时间代表这条数据“什么时候最后变动”，每次修改都应该刷新。
+
+`FieldFill` 常用枚举大概有这几个：
+
+| 枚举值          | 含义               |
+| --------------- | ------------------ |
+| `DEFAULT`       | 默认不处理         |
+| `INSERT`        | 插入时填充         |
+| `UPDATE`        | 更新时填充         |
+| `INSERT_UPDATE` | 插入和更新时都填充 |
+
+官方文档中也说明，字段必须声明 `@TableField`，并设置对应的 `fill` 属性，MP 才知道这个字段需要参与自动填充。
+
+## 编写自动填充处理器
+
+只在实体类上写 `@TableField(fill = ...)` 还不够。
+
+这个注解只是告诉 MP：这个字段需要自动填充。
+
+但它并不知道具体要填什么值。所以还需要写一个处理器，实现 `MetaObjectHandler` 接口。
+
+可以新建一个类：
+
+```java
+com.wreckloud.config.MyMetaObjectHandler
+```
+
+代码如下：
+
+```java
+package com.wreckloud.config;
+
+import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
+import org.apache.ibatis.reflection.MetaObject;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
+
+@Component
+public class MyMetaObjectHandler implements MetaObjectHandler {
+
+    @Override
+    public void insertFill(MetaObject metaObject) {
+        LocalDateTime now = LocalDateTime.now();
+
+        this.strictInsertFill(metaObject, "createTime", LocalDateTime.class, now);
+        this.strictInsertFill(metaObject, "updateTime", LocalDateTime.class, now);
+    }
+
+    @Override
+    public void updateFill(MetaObject metaObject) {
+        this.strictUpdateFill(metaObject, "updateTime", LocalDateTime.class, LocalDateTime.now());
+    }
+}
+```
+
+这段代码里，真正要理解的是两个方法：
+
+```java
+insertFill(MetaObject metaObject)
+```
+
+它会在插入数据时执行。
+
+```java
+updateFill(MetaObject metaObject)
+```
+
+它会在更新数据时执行。
+
+所以新增数据时，会执行：
+
+```java
+this.strictInsertFill(metaObject, "createTime", LocalDateTime.class, now);
+this.strictInsertFill(metaObject, "updateTime", LocalDateTime.class, now);
+```
+
+修改数据时，会执行：
+
+```java
+this.strictUpdateFill(metaObject, "updateTime", LocalDateTime.class, LocalDateTime.now());
+```
+
+这里的 `"createTime"` 和 `"updateTime"` 写的是实体类属性名，不是数据库字段名。
+
+比如数据库字段叫：
+
+```text
+create_time
+update_time
+```
+
+实体类字段叫：
+
+```java
+private LocalDateTime createTime;
+private LocalDateTime updateTime;
+```
+
+那么自动填充处理器里就应该写实体类字段名：
+
+```java
+"createTime"
+"updateTime"
+```
+
+因为自动填充的本质，是给实体对象的属性赋值，而不是直接操作数据库列名。
+
+假设现在新增一个用户：
+
+```java
+User user = new User();
+user.setUsername("wreckloud");
+
+userService.save(user);
+```
+
+业务代码里没有手动设置：
+
+```java
+user.setCreateTime(...)
+user.setUpdateTime(...)
+```
+
+但因为实体字段配置了自动填充，执行插入时 MP 会自动给这两个字段赋值。
+
+最终插入的 SQL 大致相当于：
+
+```sql
+INSERT INTO user (username, create_time, update_time)
+VALUES ('wreckloud', 当前时间, 当前时间);
+```
+
+这样业务层代码就干净很多。
+
+业务层只管真正的业务字段，例如用户名、昵称、状态；创建时间、更新时间这种公共字段交给自动填充统一处理。

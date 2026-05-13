@@ -1,8 +1,5 @@
 import { addCorsProxy } from './proxyConfig'
-import { resolveRuntimeBaseUrl, resolveRuntimeValue } from './runtimeConfig'
-
-const DEFAULT_MUSIC_API_BASE = 'https://163api.qijieya.cn'
-const DEFAULT_UID = '629126546'
+import { getMusicApiBase, getMusicUid } from './runtimeConfig'
 
 export interface MusicTrack {
   id: string
@@ -32,22 +29,6 @@ interface RawSong {
 
 interface RawWeekItem {
   song?: RawSong
-}
-
-function getMusicApiBase(): string {
-  return resolveRuntimeBaseUrl({
-    runtimeKey: 'musicApiBase',
-    envKey: 'VITE_MUSIC_API_BASE',
-    defaultValue: DEFAULT_MUSIC_API_BASE
-  })
-}
-
-function getMusicUid(): string {
-  return resolveRuntimeValue({
-    runtimeKey: 'musicUid',
-    envKey: 'VITE_MUSIC_UID',
-    defaultValue: DEFAULT_UID
-  })
 }
 
 function normalizeHttps(url: string): string {

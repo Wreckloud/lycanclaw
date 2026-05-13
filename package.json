@@ -18,6 +18,7 @@
     "dev": "pnpm run generate-data && vitepress dev docs",
     "build": "pnpm run generate-data && vitepress build docs",
     "lint": "eslint \"docs/.vitepress/theme/**/*.{ts,vue}\"",
+    "check:theme": "node docs/.vitepress/scripts/check-theme-constraints.js",
     "preview": "vitepress preview docs",
     "generate-site-data": "node docs/.vitepress/scripts/generate-site-data.js",
     "generate-recommended": "node docs/.vitepress/scripts/generate-recommended-data.js",

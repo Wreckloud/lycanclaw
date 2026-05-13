@@ -1,4 +1,5 @@
 import DefaultTheme from 'vitepress/theme'
+import type { Theme } from 'vitepress'
 import { onMounted } from 'vue'
 import { useRoute } from 'vitepress'
 
@@ -14,7 +15,7 @@ import { useImageZoom } from './setup/useImageZoom'
 import './styles/index.css'
 import './styles/codeblock-fix.css'
 
-export default {
+const theme: Theme = {
   extends: DefaultTheme,
 
   enhanceApp({ app, router }) {
@@ -36,3 +37,5 @@ export default {
     })
   }
 }
+
+export default theme

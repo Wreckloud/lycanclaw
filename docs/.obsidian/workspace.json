@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端工具库/若依框架.md",
+                "file": "knowledge/后端 Web 基础/MyBatis Plus 增强框架.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "若依框架"
+              "title": "MyBatis Plus 增强框架"
             }
           },
           {
@@ -50,7 +50,7 @@
             }
           }
         ],
-        "currentTab": 2
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -69,13 +69,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/后端工具库/Docker.md",
+                "file": "knowledge/后端 Web 基础/MyBatis Plus 增强框架.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Docker 的大纲"
+              "title": "MyBatis Plus 增强框架 的大纲"
             }
           },
           {
@@ -182,12 +182,14 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "47f9cd018b59cbab",
+  "active": "7b06271dd556ed6e",
   "lastOpenFiles": [
+    "MyBatis-Plus][1.md",
+    "knowledge/后端 Web 基础/MyBatis Plus 增强框架.md",
+    "knowledge/后端 Java 基础/第二部分-异常处理.md",
     "knowledge/后端工具库/若依框架.md",
     "knowledge/后端工具库/Docker.md",
     "knowledge/后端工具库/Swagger 与 Knife4j 接口文档.md",
-    "knowledge/后端 Web 基础/MyBatis Plus 增强框架.md",
     "public/images/文章资源/swagger-与-knife4j-接口文档/file-20260511174025107.jpg",
     "public/images/文章资源/swagger-与-knife4j-接口文档/file-20260511173837333.jpg",
     "public/images/文章资源/swagger-与-knife4j-接口文档",
@@ -215,7 +217,6 @@
     "knowledge/后端 Java 基础/第四部分-多线程.md",
     "knowledge/后端 Java 基础/第三部分-IO 流.md",
     "knowledge/前端工具库/Axios-现代化的 Ajax 请求工具.md",
-    "knowledge/后端 Java 基础/第三部分-File 类.md",
     "public/images/文章资源/第二部分-常用-api/file-20250627102749604.jpg",
     "public/images/文章资源/第一部分-面向对象基础/file-20250626172112970.jpg",
     "public/images/文章资源/第一部分-面向对象基础",
