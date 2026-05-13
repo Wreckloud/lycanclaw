@@ -69,7 +69,7 @@
       "knowledge/后端工具库/若依框架.md",
       "knowledge/后端工具库/Docker.md",
       "knowledge/后端工具库/HttpClient.md",
-      "knowledge/后端工具库/Swagger-生成接口文档.md",
+      "knowledge/后端工具库/Swagger 与 Knife4j 接口文档.md",
       "knowledge/后端工具库/nginx-反向代理与负载均衡.md",
       "knowledge/后端工具库/Maven 基础 - 项目构建工具.md",
       "knowledge/后端工具库/Maven 进阶 - 分模块设计.md",
@@ -150,6 +150,7 @@
       "public/images/首页/default-cover.png"
     ],
     "public/images/文章资源": [
+      "public/images/文章资源/swagger-与-knife4j-接口文档",
       "public/images/文章资源/献给狼，献给你",
       "public/images/文章资源/第四部分-反射与注解",
       "public/images/文章资源/第一部分-面向对象基础",
@@ -471,6 +472,10 @@
       "public/images/文章资源/spring入门/file-20250904110814643.jpg",
       "public/images/文章资源/spring入门/file-20250904112205376.jpg",
       "public/images/文章资源/spring入门/file-20250904143703503.jpg"
+    ],
+    "public/images/文章资源/swagger-与-knife4j-接口文档": [
+      "public/images/文章资源/swagger-与-knife4j-接口文档/file-20260511173837333.jpg",
+      "public/images/文章资源/swagger-与-knife4j-接口文档/file-20260511174025107.jpg"
     ],
     "public/images/文章资源/tomcat-web-servlet容器": [
       "public/images/文章资源/tomcat-web-servlet容器/file-20250830125426982.jpg"

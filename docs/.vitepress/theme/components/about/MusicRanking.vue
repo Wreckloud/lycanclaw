@@ -135,7 +135,7 @@ onMounted(() => {
   right: 0;
   height: 35px;
   pointer-events: none; /* 允许点击穿透 */
-  transition: opacity 0.3s ease;
+  transition: opacity var(--lc-motion-duration-normal) var(--lc-motion-ease-standard);
   z-index: 10;
 }
 

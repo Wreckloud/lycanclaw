@@ -129,7 +129,7 @@ onUnmounted(() => {
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   z-index: 100;
-  transition: box-shadow 0.3s;
+  transition: box-shadow var(--lc-motion-duration-normal) var(--lc-motion-ease-standard);
   padding: 0;
   -webkit-tap-highlight-color: transparent;
 }
@@ -154,7 +154,7 @@ onUnmounted(() => {
 
 .vp-scroll-progress circle {
   stroke: var(--vp-c-brand-1);
-  transition: stroke-dasharray 0.2s ease;
+  transition: stroke-dasharray var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
 }
 
 .back-to-top-icon {
@@ -170,11 +170,11 @@ onUnmounted(() => {
 
 /* 向上滑动淡入动画 */
 .slide-fade-enter-active {
-  transition: all 0.3s ease;
+  transition: all var(--lc-motion-duration-normal) var(--lc-motion-ease-standard);
 }
 
 .slide-fade-leave-active {
-  transition: all 0.3s cubic-bezier(1, 0.5, 0.8, 1);
+  transition: all var(--lc-motion-duration-normal) var(--lc-motion-ease-back);
 }
 
 .slide-fade-enter-from {

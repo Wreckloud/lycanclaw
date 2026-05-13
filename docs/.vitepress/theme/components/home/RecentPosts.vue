@@ -200,7 +200,7 @@ function getPostExcerpt(post: Post): string {
 
 /* 当元素可见时应用动画 */
 .animate-in {
-  animation: fadeInUp 0.6s ease forwards;
+  animation: fadeInUp var(--lc-motion-duration-slower) var(--lc-motion-ease-standard) forwards;
   animation-delay: var(--anim-delay, 0s);
 }
 
@@ -243,7 +243,7 @@ function getPostExcerpt(post: Post): string {
   display: inline-block;
   text-decoration: none;
   color: var(--vp-c-text-1);
-  transition: color 0.2s;
+  transition: color var(--lc-motion-duration-fast);
   font-weight: 700;
 }
 
@@ -321,7 +321,7 @@ function getPostExcerpt(post: Post): string {
   text-decoration: none;
   font-size: 0.95rem;
   font-weight: 500;
-  transition: color 0.2s;
+  transition: color var(--lc-motion-duration-fast);
 }
 
 .view-more-link:hover {

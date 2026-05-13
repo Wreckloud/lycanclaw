@@ -54,6 +54,7 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
   - 内容数据层：`contentData`
   - 首页统计计算：`homeAnalytics`
   - 纯工具：`contentMetrics`
+  - 主题令牌：`themePalette`（热力图、互动组件配色常量）
 - `docs/.vitepress/theme/setup/`
   - `registerGlobalComponents`：集中管理全局组件与运行时注入
   - `runtimeEffects`：路由副作用、预加载与首页高度同步
@@ -97,6 +98,15 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 - 时间逻辑只走 `time.ts + timeDisplayPolicy.ts`，禁止组件内重复手写日期解析
 - 调试日志统一走 `utils/logger.ts`，避免业务代码直接散落 `console.log`
 
+### CSS 规范（新增）
+
+- 全局设计令牌统一维护在 `docs/.vitepress/theme/styles/var.css`（颜色、动效、数字字体、宽度）
+- 全局行为层样式统一维护在 `docs/.vitepress/theme/styles/index.css`（页面级布局、动画、可交互行为）
+- 组件内只保留“局部结构样式”，避免写全局 reset 和重复动画
+- 涉及数字跳动或计时显示，统一使用 `tabular-nums + 固定宽度（ch）`，避免位移抖动
+- `transition` 统一改为动效令牌（`--lc-motion-*`），不再在组件里散写 `0.2s/0.3s/ease`
+- 常用中性色与强调色改为语义变量（`--lc-c-*`），减少硬编码颜色
+
 ### 当前基线
 
 - 当前构建可通过（VitePress `1.6.3`）
@@ -108,10 +118,10 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 - 首页数据读取、筛选、统计已从组件内联逻辑收敛到 `contentData + homeAnalytics`
 - 音乐相关组件已改为统一调用 `musicApi`，便于后续切换到自建 API
 - `.gitignore` 已覆盖 Obsidian 元数据目录，避免误提交本地笔记配置
+- 页脚计时器秒数显示已改为两位数滚动并固定宽度，消除 `08 -> 09` 等位移抖动
 
 ### 下一步清理方向
 
-- 将剩余 `11` 个 `<script setup>` 组件逐步迁移为 `lang="ts"`
 - 持续补充 ESLint 规则，当前已启用：组件层禁 `fetch`、限制 `console`、禁止 `any`
 - 统一音乐相关组件（`HomeMusicPlayer` / `SimpleMusicPlayer` / `GlobalMusicPlayer`）的共享播放控制逻辑
 - 将 `musicApi` 的接口地址切换为可配置项（环境变量或站点配置），为自建 API 做准备

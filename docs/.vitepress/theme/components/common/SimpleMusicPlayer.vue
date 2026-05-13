@@ -618,7 +618,7 @@ watch(() => songInfo.value.url, (newUrl) => {
       </div>
       
       <!-- 播放器控制区 -->
-      <div class="controls-container" :class="{ 'animate-in': isVisible && !isInitialRender }" style="--anim-delay: 0.2s">
+      <div class="controls-container" :class="{ 'animate-in': isVisible && !isInitialRender }" style="--anim-delay: var(--lc-motion-duration-fast)">
         <div class="player-top">
           <!-- 歌曲信息 -->
           <div class="song-info">
@@ -737,7 +737,7 @@ watch(() => songInfo.value.url, (newUrl) => {
 }
 
 .animate-in {
-  animation: fadeInUp 0.5s ease forwards;
+  animation: fadeInUp var(--lc-motion-duration-slow) var(--lc-motion-ease-standard) forwards;
   animation-delay: var(--anim-delay, 0s);
 }
 
@@ -904,7 +904,7 @@ watch(() => songInfo.value.url, (newUrl) => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  animation: fadeIn 0.3s ease;
+  animation: fadeIn var(--lc-motion-duration-normal) var(--lc-motion-ease-standard);
   touch-action: manipulation; /* 优化触摸行为 */
   -webkit-tap-highlight-color: transparent; /* 移除iOS触摸高亮 */
 }
@@ -933,7 +933,7 @@ watch(() => songInfo.value.url, (newUrl) => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  animation: fadeIn 0.2s ease;
+  animation: fadeIn var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
   touch-action: manipulation; /* 优化触摸行为 */
   -webkit-tap-highlight-color: transparent; /* 移除iOS触摸高亮 */
 }
@@ -968,7 +968,7 @@ watch(() => songInfo.value.url, (newUrl) => {
   color: white;
   font-size: 9px; /* 略微增大字体 */
   cursor: pointer;
-  animation: fadeIn 0.2s ease;
+  animation: fadeIn var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
   touch-action: manipulation; /* 优化触摸行为 */
   -webkit-tap-highlight-color: transparent; /* 移除iOS触摸高亮 */
   z-index: 2; /* 确保叠放顺序正确 */
@@ -1106,7 +1106,7 @@ watch(() => songInfo.value.url, (newUrl) => {
   height: 100%;
   background-color: var(--vp-c-brand);
   border-radius: 2px;
-  transition: width 0.1s linear;
+  transition: width var(--lc-motion-duration-instant) linear;
 }
 
 /* 拖动时禁用过渡效果 */
@@ -1127,7 +1127,7 @@ watch(() => songInfo.value.url, (newUrl) => {
   background-color: var(--vp-c-brand);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
 }
 
 .progress-container:not(.disabled):hover .progress-current::after,
@@ -1185,7 +1185,7 @@ watch(() => songInfo.value.url, (newUrl) => {
 .song-title-link {
   color: inherit;
   text-decoration: none;
-  transition: color 0.2s ease;
+  transition: color var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
 }
 
 .song-title-link:hover {

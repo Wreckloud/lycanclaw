@@ -38,7 +38,11 @@ const shouldShowWordStats = computed(() => {
   font-weight: 600;
   line-height: 1.25;
   /* 使用渐变色 */
-  background: -webkit-linear-gradient(10deg, #34a965 5%, #424987);
+  background: -webkit-linear-gradient(
+    10deg,
+    var(--lc-c-title-gradient-from) 5%,
+    var(--lc-c-title-gradient-to)
+  );
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;

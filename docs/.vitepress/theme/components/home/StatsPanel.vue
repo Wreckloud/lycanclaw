@@ -236,7 +236,7 @@ onMounted(async () => {
           />
         </div>
         
-        <div class="stats-card" :class="{ 'animate-in': isVisible }" style="--anim-delay: 0.2s">
+        <div class="stats-card" :class="{ 'animate-in': isVisible }" style="--anim-delay: var(--lc-motion-duration-fast)">
           <div class="stats-value" ref="statsValueRefs">{{ formatNumber(stats.animatedTotalPostsCount) }}</div>
           <div class="stats-label">文章总数</div>
         </div>
@@ -279,8 +279,8 @@ onMounted(async () => {
 .encourage-widget-container {
   opacity: 0; /* 初始设置为不可见 */
   transform: translateY(20px); /* 与其他元素保持一致的初始位置 */
-  transition: opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1),
-              transform 0.8s cubic-bezier(0.22, 1, 0.36, 1); /* 使用与fadeInUp相同的动画曲线 */
+  transition: opacity var(--lc-motion-duration-slower) var(--lc-motion-ease-emphasis),
+              transform var(--lc-motion-duration-slower) var(--lc-motion-ease-emphasis); /* 使用与fadeInUp相同的动画曲线 */
   transition-delay: var(--anim-delay, 0s); /* 添加延迟支持 */
 }
 
@@ -293,7 +293,7 @@ onMounted(async () => {
 
 /* 当元素可见时应用动画 */
 .animate-in {
-  animation: fadeInUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: fadeInUp var(--lc-motion-duration-slower) var(--lc-motion-ease-emphasis) forwards;
   animation-delay: var(--anim-delay, 0s);
 }
 
@@ -472,7 +472,7 @@ onMounted(async () => {
   .stats-value {
     transform-origin: center;
     transform: scale(var(--scale, 1));
-    transition: transform 0.2s ease;
+    transition: transform var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
   }
 }
 </style> 

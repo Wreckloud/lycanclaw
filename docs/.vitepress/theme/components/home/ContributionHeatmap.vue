@@ -19,6 +19,7 @@ import {
   getOneYearDateRange
 } from '../../utils/homeAnalytics'
 import { logError } from '../../utils/logger'
+import { HEATMAP_CELL_BORDER, HEATMAP_PALETTE } from '../../utils/themePalette'
 
 // 按需注册组件
 echarts.use([
@@ -66,38 +67,25 @@ function updateScrollPosition() {
   maxScroll.value = containerRef.value.scrollWidth - containerRef.value.clientWidth
 }
 
-function formatDate(date) {
+function formatDate(date: Date): string {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
 }
 
-// 获取当前主题的颜色列表
-function getThemeColors() {
-  if (!isBrowser) return []
-  
-  if (isDark.value) {
-    return [
-      '#2d333b', // --heatmap-color-0
-      '#0e4429', // --heatmap-color-1
-      '#006d32', // --heatmap-color-2
-      '#26a641', // --heatmap-color-3
-      '#39d353'  // --heatmap-color-4
-    ]
-  } else {
-    return [
-      '#ebedf0', // --heatmap-color-0
-      '#c6e48b', // --heatmap-color-1
-      '#7bc96f', // --heatmap-color-2
-      '#239a3b', // --heatmap-color-3
-      '#196127'  // --heatmap-color-4
-    ]
-  }
+function getRootCssVar(name: string, fallback: string): string {
+  if (!isBrowser) return fallback
+
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  return value || fallback
 }
 
 // 热力图实例
 const chartInstance = ref<EChartsType | null>(null)
+const heatmapColors = computed(() => (isDark.value ? HEATMAP_PALETTE.dark : HEATMAP_PALETTE.light))
+const heatmapCellBorderColor = computed(() => (isDark.value ? HEATMAP_CELL_BORDER.dark : HEATMAP_CELL_BORDER.light))
+const heatmapMonthLabelColor = computed(() => getRootCssVar('--vp-c-text-3', '#999'))
 
 // 获取图表配置
 function getChartOption() {
@@ -112,7 +100,7 @@ function getChartOption() {
       max: visualMapMax.value,
       calculable: true,
       inRange: {
-        color: getThemeColors()
+        color: heatmapColors.value
       }
     },
     calendar: {
@@ -123,7 +111,7 @@ function getChartOption() {
       range: [yearRange.value.start, yearRange.value.end],
       itemStyle: {
         borderWidth: 2,
-        borderColor: isDark.value ? '#1B1B1F' : '#FFFFFF'
+        borderColor: heatmapCellBorderColor.value
       },
       splitLine: {
         show: false
@@ -134,7 +122,7 @@ function getChartOption() {
       monthLabel: {
         nameMap: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
         fontSize: 12,
-        color: '#999'
+        color: heatmapMonthLabelColor.value
       },
       yearLabel: {
         show: false
@@ -400,11 +388,12 @@ onBeforeUnmount(() => {
       <div class="legend">
         <span class="legend-text">字数贡献</span>
         <div class="legend-squares">
-          <span class="legend-square" :style="{ backgroundColor: isDark ? '#2d333b' : '#ebedf0' }"></span>
-          <span class="legend-square" :style="{ backgroundColor: isDark ? '#0e4429' : '#c6e48b' }"></span>
-          <span class="legend-square" :style="{ backgroundColor: isDark ? '#006d32' : '#7bc96f' }"></span>
-          <span class="legend-square" :style="{ backgroundColor: isDark ? '#26a641' : '#239a3b' }"></span>
-          <span class="legend-square" :style="{ backgroundColor: isDark ? '#39d353' : '#196127' }"></span>
+          <span
+            v-for="(heatColor, index) in heatmapColors"
+            :key="`legend-${index}`"
+            class="legend-square"
+            :style="{ backgroundColor: heatColor }"
+          ></span>
         </div>
         <span class="legend-text">更多</span>
       </div>
@@ -471,7 +460,7 @@ onBeforeUnmount(() => {
   width: 60px;
   z-index: 10;
   pointer-events: none;
-  transition: opacity 0.3s ease;
+  transition: opacity var(--lc-motion-duration-normal) var(--lc-motion-ease-standard);
 }
 
 .fade-mask.left {

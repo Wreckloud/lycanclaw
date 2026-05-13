@@ -43,7 +43,7 @@ const handleClick = (e: MouseEvent): void => {
   padding: 0 2rem;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
   transform: perspective(800px) rotateX(2deg);
-  transition: all 0.3s ease;
+  transition: all var(--lc-motion-duration-normal) var(--lc-motion-ease-standard);
   position: relative;
   overflow: hidden;
   user-select: none; /* 防止文字被选中 */

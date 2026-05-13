@@ -217,7 +217,7 @@ onBeforeUnmount(() => {
 
 /* 适配暗黑模式 */
 html.dark .waline-container {
-  --waline-border-color: #30363d;
+  --waline-border-color: var(--vp-c-divider);
 }
 
 /* 评论区卡片 */

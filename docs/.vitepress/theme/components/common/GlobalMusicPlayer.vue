@@ -753,7 +753,7 @@ onMounted(() => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   z-index: 100;
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1); /* 使用更平滑的过渡曲线 */
+  transition: all var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis); /* 使用更平滑的过渡曲线 */
   display: flex;
   flex-direction: row;
   height: 60px; /* 固定高度 */
@@ -828,7 +828,7 @@ onMounted(() => {
   height: 100%;
   position: relative;
   /* 使用更平滑的过渡效果 */
-  transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: transform var(--lc-motion-duration-slower) var(--lc-motion-ease-spring);
   will-change: transform; /* 提示浏览器优化变换 */
 }
 
@@ -874,7 +874,7 @@ onMounted(() => {
   justify-content: center;
   color: white;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
 }
 
 .cover-section:hover .pause-overlay {
@@ -933,7 +933,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  transition: all var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
   width: 20px; /* 缩小按钮尺寸 */
   height: 20px; /* 缩小按钮尺寸 */
   padding: 0;
@@ -959,7 +959,7 @@ onMounted(() => {
   display: flex;
   flex-direction: row;
   align-items: center;
-  animation: slide-in-right 0.3s ease-out;
+  animation: slide-in-right var(--lc-motion-duration-normal) var(--lc-motion-ease-out);
   height: 100%;
   position: relative;
   min-width: 0; /* 允许内容收缩 */
@@ -1062,7 +1062,7 @@ onMounted(() => {
   height: 3px; /* 明确设置高度 */
   background-color: var(--vp-c-brand);
   border-radius: 2px;
-  transition: width 0.1s linear;
+  transition: width var(--lc-motion-duration-instant) linear;
 }
 
 
@@ -1088,11 +1088,11 @@ onMounted(() => {
 
 /* 动画 */
 .slide-fade-enter-active {
-  transition: all 0.3s ease-out;
+  transition: all var(--lc-motion-duration-normal) var(--lc-motion-ease-out);
 }
 
 .slide-fade-leave-active {
-  transition: all 0.3s cubic-bezier(1, 0.5, 0.8, 1);
+  transition: all var(--lc-motion-duration-normal) var(--lc-motion-ease-back);
 }
 
 .slide-fade-enter-from,

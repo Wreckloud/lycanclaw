@@ -27,16 +27,30 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "thoughts/RE ACTION.md",
+                "file": "knowledge/后端工具库/若依框架.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "RE ACTION"
+              "title": "若依框架"
+            }
+          },
+          {
+            "id": "47f9cd018b59cbab",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "knowledge/后端工具库/Docker.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Docker"
             }
           }
         ],
-        "currentTab": 1
+        "currentTab": 2
       }
     ],
     "direction": "vertical"
@@ -55,13 +69,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "thoughts/RE ACTION.md",
+                "file": "knowledge/后端工具库/Docker.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "RE ACTION 的大纲"
+              "title": "Docker 的大纲"
             }
           },
           {
@@ -168,8 +182,20 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "7b06271dd556ed6e",
+  "active": "47f9cd018b59cbab",
   "lastOpenFiles": [
+    "knowledge/后端工具库/若依框架.md",
+    "knowledge/后端工具库/Docker.md",
+    "knowledge/后端工具库/Swagger 与 Knife4j 接口文档.md",
+    "knowledge/后端 Web 基础/MyBatis Plus 增强框架.md",
+    "public/images/文章资源/swagger-与-knife4j-接口文档/file-20260511174025107.jpg",
+    "public/images/文章资源/swagger-与-knife4j-接口文档/file-20260511173837333.jpg",
+    "public/images/文章资源/swagger-与-knife4j-接口文档",
+    "knowledge/后端 Web 基础/分页查询.md",
+    "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md",
+    "knowledge/后端 Web 基础/Spring入门.md",
+    "knowledge/后端 Web 基础/spring boot原理.md",
+    "thoughts/RE ACTION.md",
     "thoughts/献给狼，献给你.md",
     "public/images/文章资源/献给狼，献给你/file-20260507195406516.jpg",
     "public/images/文章资源/献给狼，献给你",
@@ -182,9 +208,6 @@
     "thoughts/每个人都拥有的言灵.md",
     "thoughts/数字世界的构建手册.md",
     "knowledge/后端工具库/Maven 基础 - 项目构建工具.md",
-    "knowledge/后端工具库/Docker.md",
-    "knowledge/后端工具库/若依框架.md",
-    "knowledge/后端 Web 基础/MyBatis Plus 增强框架.md",
     "knowledge/后端 Java 基础/第四部分-反射与注解.md",
     "public/images/文章资源/第四部分-反射与注解/file-20260429150451231.jpg",
     "public/images/文章资源/第四部分-反射与注解",
@@ -193,12 +216,6 @@
     "knowledge/后端 Java 基础/第三部分-IO 流.md",
     "knowledge/前端工具库/Axios-现代化的 Ajax 请求工具.md",
     "knowledge/后端 Java 基础/第三部分-File 类.md",
-    "knowledge/后端 Java 基础/第三部分-Stream 流.md",
-    "knowledge/后端 Java 基础/第一部分-面向对象高级.md",
-    "knowledge/后端 Java 基础/第二部分-常用 API.md",
-    "knowledge/后端 Java 基础/第二部分-异常处理.md",
-    "knowledge/后端 Java 基础/第二部分-现代日期时间 API.md",
-    "knowledge/后端 Java 基础/第三部分-集合.md",
     "public/images/文章资源/第二部分-常用-api/file-20250627102749604.jpg",
     "public/images/文章资源/第一部分-面向对象基础/file-20250626172112970.jpg",
     "public/images/文章资源/第一部分-面向对象基础",
@@ -206,15 +223,12 @@
     "public/images/文章资源/mybatis-plus-增强框架/file-20260304101642267.jpg",
     "public/images/文章资源/四、代码填空题/file-20260121174008569.jpg",
     "public/images/文章资源/四、代码填空题/file-20260121173219225.jpg",
-    "public/images/文章资源/四、代码填空题/file-20260121162303842.jpg",
-    "public/images/文章资源/四、代码填空题/file-20260121161927522.jpg",
     "public/images/文章资源/四、代码填空题",
     "public/images/文章资源/五、阅读程序",
     "public/images/文章资源/微服务基础",
     "knowledge/后端 微服务基础",
     "public/images/文章资源/mybatis-plus-增强框架",
     "public/images/文章资源/mybatis-plus",
-    "public/images/文章资源/httpclient",
     "点子合集.canvas"
   ]
 }

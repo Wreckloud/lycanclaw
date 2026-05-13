@@ -636,7 +636,7 @@ onUnmounted(() => {
   <div class="home-music-player" ref="containerRef" :class="{ 'animate-in': isVisible }">
     <h3 class="section-title" :class="{ 'animate-in': isVisible }">随机音乐</h3>
     <p class="section-description" :class="{ 'animate-in': isVisible }" style="--anim-delay: 0.1s">歌曲随机来自我的听歌记录，接口可按后端方案切换。</p>
-    <div class="music-content" :class="{ 'animate-in': isVisible }" style="--anim-delay: 0.2s">
+    <div class="music-content" :class="{ 'animate-in': isVisible }" style="--anim-delay: var(--lc-motion-duration-fast)">
       <div class="player-container">
         <!-- 封面区域 -->
         <div class="cover-container">
@@ -762,7 +762,7 @@ onUnmounted(() => {
 }
 
 .animate-in.music-tip {
-  animation: fadeInUp 0.6s ease forwards;
+  animation: fadeInUp var(--lc-motion-duration-slower) var(--lc-motion-ease-standard) forwards;
   animation-delay: var(--anim-delay, 0s);
   animation-fill-mode: both; /* 确保保持最终状态 */
   transform: translateY(0); /* 动画结束时的状态 */
@@ -777,7 +777,7 @@ onUnmounted(() => {
 }
 
 .animate-in {
-  animation: fadeInUp 0.6s ease forwards;
+  animation: fadeInUp var(--lc-motion-duration-slower) var(--lc-motion-ease-standard) forwards;
   animation-delay: var(--anim-delay, 0s);
   animation-fill-mode: forwards; /* 确保保持动画最终状态 */
 }
@@ -865,7 +865,7 @@ onUnmounted(() => {
 .default-cover {
   object-fit: cover;
   filter: brightness(0.95);
-  transition: filter 0.3s ease;
+  transition: filter var(--lc-motion-duration-normal) var(--lc-motion-ease-standard);
 }
 
 .default-cover:hover {
@@ -884,7 +884,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  animation: fadeIn 0.2s ease;
+  animation: fadeIn var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   pointer-events: auto; /* 确保点击事件正常工作 */
@@ -922,7 +922,7 @@ onUnmounted(() => {
   color: white;
   font-size: 9px;
   cursor: pointer;
-  animation: fadeIn 0.2s ease;
+  animation: fadeIn var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
   z-index: 2;
 }
 
@@ -1065,7 +1065,7 @@ onUnmounted(() => {
   height: 100%;
   background-color: var(--vp-c-brand);
   border-radius: 2px;
-  transition: width 0.1s linear;
+  transition: width var(--lc-motion-duration-instant) linear;
 }
 
 /* 拖动时禁用过渡效果 */
@@ -1086,7 +1086,7 @@ onUnmounted(() => {
   background-color: var(--vp-c-brand);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
 }
 
 .progress-container:hover .progress-current::after,
@@ -1106,7 +1106,7 @@ onUnmounted(() => {
   flex-shrink: 0; /* 防止被挤压 */
   border-left: 1px solid var(--vp-c-divider);
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
 }
 
 .controls-panel:hover {
@@ -1185,7 +1185,7 @@ onUnmounted(() => {
 .song-title-link {
   color: inherit;
   text-decoration: none;
-  transition: color 0.2s ease;
+  transition: color var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
 }
 
 .song-title-link:hover {

@@ -1,186 +1,41 @@
-/* 导入变量样式 */
 @import './var.css';
 
-/* 全局平滑滚动 - 使页面内锚点导航更加丝滑 */
+:root {
+  --gradient-brand: linear-gradient(
+    90deg,
+    var(--vp-c-brand-1) 0%,
+    var(--vp-c-brand-2) 50%,
+    var(--vp-c-brand-3) 100%
+  );
+  --gradient-animated: linear-gradient(
+    90deg,
+    var(--vp-c-brand-1) 0%,
+    var(--vp-c-brand-2) 33%,
+    var(--vp-c-brand-3) 67%,
+    var(--vp-c-brand-1) 100%
+  );
+}
+
 html {
   scroll-behavior: smooth;
 }
 
-/* 首页LycanClaw标题渐变效果 */
-:root {
-  --gradient-brand: linear-gradient(90deg,
-      var(--vp-c-brand-1) 0%,
-      var(--vp-c-brand-2) 50%,
-      var(--vp-c-brand-3) 100%);
-  --gradient-animated: linear-gradient(90deg,
-      var(--vp-c-brand-1) 0%,
-      var(--vp-c-brand-2) 33%,
-      var(--vp-c-brand-3) 67%,
-      var(--vp-c-brand-1) 100%);
-}
-
-/* 路由过渡动画 - 淡入上浮效果 */
-.vp-doc {
-  animation: fade-slide-y 0.6s ease-out;
-}
-
-@keyframes fade-slide-y {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* 页面切换过渡效果 - 适用于容器 */
-.VPContent {
-  transition: opacity 0.3s ease;
-}
-
-.VPContent .container {
-  animation: content-fade-in 0.8s ease-out;
-}
-
-@keyframes content-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-
-
-@keyframes fade-only {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* 移除移动设备点击时的蓝色高亮 */
 * {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* 可点击元素增强触摸体验 */
-a, button, 
-[role="button"], 
+a,
+button,
+[role='button'],
 .clickable,
-[class*="clickable"],
-[class*="selectable"],
-input[type="button"], 
-input[type="submit"],
-input[type="reset"] {
+[class*='clickable'],
+[class*='selectable'],
+input[type='button'],
+input[type='submit'],
+input[type='reset'] {
   touch-action: manipulation;
 }
 
-/* 页面内容淡入上浮动画效果 */
-.VPContent {
-  animation: fade-in-up 0.8s ease-out;
-}
-
-@keyframes fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* 内容元素渐进式显示 */
-.VPDoc .container {
-  animation: content-appear 0.8s ease-out;
-}
-
-.VPDoc .content p,
-.VPDoc .content h1,
-.VPDoc .content h2,
-.VPDoc .content h3,
-.VPDoc .content h4,
-.VPDoc .content h5,
-.VPDoc .content h6,
-.VPDoc .content ul,
-.VPDoc .content ol,
-.VPDoc .content blockquote,
-.VPDoc .content pre,
-.VPDoc .content table {
-  animation: content-stagger 0.5s ease-out backwards;
-}
-
-@keyframes content-appear {
-  from {
-    opacity: 0.8;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes content-stagger {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* 动画延迟，使元素错落有致地显示 */
-.VPDoc .content h1 { animation-delay: 0.1s; }
-.VPDoc .content h2 { animation-delay: 0.15s; }
-.VPDoc .content h3 { animation-delay: 0.2s; }
-.VPDoc .content p:nth-child(1) { animation-delay: 0.25s; }
-.VPDoc .content p:nth-child(2) { animation-delay: 0.3s; }
-.VPDoc .content p:nth-child(3) { animation-delay: 0.35s; }
-.VPDoc .content p:nth-child(4) { animation-delay: 0.4s; }
-.VPDoc .content p:nth-child(5) { animation-delay: 0.45s; }
-.VPDoc .content ul, 
-.VPDoc .content ol { animation-delay: 0.5s; }
-.VPDoc .content blockquote { animation-delay: 0.55s; }
-.VPDoc .content pre { animation-delay: 0.6s; }
-.VPDoc .content table { animation-delay: 0.65s; }
-
-/* 渐变动画效果 */
-.VPHero .name {
-  background: var(--gradient-animated);
-  background-size: 200% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: gradientMove 8s linear infinite;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  position: relative;
-  transition: all 0.3s ease;
-}
-
-.VPHero .name:hover {
-  transform: scale(1.01);
-}
-
-@keyframes gradientMove {
-  0% {
-    background-position: 0% 50%;
-  }
-  100% {
-    background-position: 200% 50%;
-  }
-}
-
-/* 页脚布局 */
 #app {
   min-height: 100vh;
   display: flex;
@@ -189,34 +44,30 @@ input[type="reset"] {
 
 .VPContent {
   flex: 1;
+  animation: fade-in-up 0.6s var(--lc-motion-ease-emphasis);
 }
 
-.VPFooter {
-  margin-top: auto;
-  position: relative;
-  z-index: 1;
-  border-top: 1px solid var(--vp-c-gutter);
-  padding: 32px 24px;
-  background-color: var(--vp-c-bg);
+.VPDoc .container {
+  animation: content-fade-in 0.5s var(--lc-motion-ease-standard);
 }
 
-@media (max-width: 640px) {
-  .VPFooter {
-    padding: 24px 24px;
-  }
+.VPHero .name {
+  background: var(--gradient-animated);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradient-move 8s linear infinite;
+  transition: transform var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
 }
 
-/* 猎识印记页面大纲目录文字不可选中 */
+.VPHero .name:hover {
+  transform: scale(1.01);
+}
+
 .VPDocOutlineItem,
 .VPDocOutlineItem .outline-link,
-.VPDocOutlineItem .outline-title {
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-}
-
-/* 侧边栏导航文字不可选中 */
+.VPDocOutlineItem .outline-title,
 .VPSidebar,
 .VPSidebarItem,
 .VPSidebarItem .text,
@@ -224,49 +75,59 @@ input[type="reset"] {
 .VPSidebarItem h2 {
   user-select: none;
   -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
 }
 
-.dark {
-  --gradient-brand: linear-gradient(90deg,
-      var(--vp-c-brand-1) 0%,
-      var(--vp-c-brand-2) 50%,
-      var(--vp-c-brand-3) 100%);
-  --gradient-animated: linear-gradient(90deg,
-      var(--vp-c-brand-1) 0%,
-      var(--vp-c-brand-2) 33%,
-      var(--vp-c-brand-3) 67%,
-      var(--vp-c-brand-1) 100%);
-}
-
-/* 修复动画元素滚动条问题 */
-.animate-in,
-.fadeInUp,
-[class*="animate"],
-[class*="animation"],
-[class*="fade"] {
-  overflow-x: visible;
-  overflow-y: visible;
-}
-
-/* 优化大纲链接悬停效果与动画 */
 .VPDocOutlineItem .outline-link {
-  transition: color 0.2s, transform 0.2s;
+  transition:
+    color var(--lc-motion-duration-fast) var(--lc-motion-ease-standard),
+    transform var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
 }
 
 .VPDocOutlineItem .outline-link:hover {
   transform: translateX(3px);
 }
 
-.VPDocOutlineItem .outline-link.active {
-  transition: color 0.3s, transform 0.3s;
+.VPFooter {
+  margin-top: auto;
+  border-top: 1px solid var(--vp-c-gutter);
+  padding: 24px;
+  background-color: var(--vp-c-bg);
 }
 
-/* 为移动端设备增强平滑滚动体验 */
-@media (max-width: 768px) {
-  html {
-    scroll-padding-top: 70px; /* 为固定的导航栏预留空间 */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
+@keyframes content-fade-in {
+  from {
+    opacity: 0.92;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes gradient-move {
+  from {
+    background-position: 0 50%;
+  }
+
+  to {
+    background-position: 200% 50%;
+  }
+}
+
+@media (max-width: 768px) {
+  html {
+    scroll-padding-top: 70px;
+  }
+}

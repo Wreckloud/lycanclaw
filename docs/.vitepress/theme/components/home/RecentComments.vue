@@ -146,7 +146,7 @@ function getArticleLink(url: string): string {
       v-if="!isLoading && !hasError && comments.length > 0" 
       class="comments-content-area"
       :class="{ 'animate-in': isVisible }"
-      style="--anim-delay: 0.2s"
+      style="--anim-delay: var(--lc-motion-duration-fast)"
     >
       <!-- 顶部渐变遮罩 -->
       <div class="fade-mask top" :style="{ opacity: isAtTop ? 0 : 1 }"></div>
@@ -182,7 +182,7 @@ function getArticleLink(url: string): string {
       v-else-if="isLoading && isVisible" 
       class="comments-content-area"
       :class="{ 'animate-in': isVisible }"
-      style="--anim-delay: 0.2s"
+      style="--anim-delay: var(--lc-motion-duration-fast)"
     >
       <!-- 顶部渐变遮罩 -->
       <div class="fade-mask top" style="opacity: 0"></div>
@@ -257,12 +257,12 @@ function getArticleLink(url: string): string {
 
 /* 当元素可见时应用动画 */
 .animate-in {
-  animation: fadeInUp 0.6s ease forwards;
+  animation: fadeInUp var(--lc-motion-duration-slower) var(--lc-motion-ease-standard) forwards;
   animation-delay: var(--anim-delay, 0s);
 }
 
 .animate-item {
-  animation: fadeInUp 0.5s ease forwards;
+  animation: fadeInUp var(--lc-motion-duration-slow) var(--lc-motion-ease-standard) forwards;
   animation-delay: var(--item-delay, 0s);
 }
 
@@ -314,7 +314,7 @@ function getArticleLink(url: string): string {
   position: absolute;
   z-index: 10;
   pointer-events: none; /* 允许点击穿透 */
-  transition: opacity 0.3s ease;
+  transition: opacity var(--lc-motion-duration-normal) var(--lc-motion-ease-standard);
 }
 
 .fade-mask.top {
@@ -373,7 +373,7 @@ function getArticleLink(url: string): string {
 .article-link {
   color: var(--vp-c-text-3);
   text-decoration: none;
-  transition: color 0.2s ease;
+  transition: color var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -501,7 +501,7 @@ function getArticleLink(url: string): string {
   color: white;
   font-size: 0.8rem;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
 }
 
 .retry-button:hover {

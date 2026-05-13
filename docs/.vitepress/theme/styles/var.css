@@ -1,36 +1,59 @@
-/* 主题颜色变量 */
+/* 主题设计令牌 */
 :root {
-  /* 品牌颜色 */
-  --vp-c-brand-1: #12500b; /* 主色调：深绿色 */
-  --vp-c-brand-2: #186812; /* 次要色调：稍亮的绿色 */
-  --vp-c-brand-3: #13851d; /* 强调色调：更亮的绿色 */
+  /* 品牌色 */
+  --vp-c-brand-1: #12500b;
+  --vp-c-brand-2: #186812;
+  --vp-c-brand-3: #13851d;
+
+  /* 博客语义色 */
+  --blog-post-title-color: var(--vp-c-text-1);
+  --blog-post-meta-color: var(--vp-c-text-2);
+  --blog-post-tag-color: var(--vp-c-brand-1);
+
+  /* 字体与数字 */
+  --lc-font-numeric: 'JetBrains Mono', 'Cascadia Mono', 'Fira Code',
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    'Liberation Mono', 'Courier New', monospace;
+  --lc-time-2digit-width: 2.1ch;
+
+  /* 动效 */
+  --lc-motion-duration-instant: 100ms;
+  --lc-motion-duration-fast: 180ms;
+  --lc-motion-duration-mid: 240ms;
+  --lc-motion-duration-normal: 300ms;
+  --lc-motion-duration-slow: 500ms;
+  --lc-motion-duration-slower: 800ms;
+  --lc-motion-ease-standard: ease;
+  --lc-motion-ease-out: ease-out;
+  --lc-motion-ease-emphasis: cubic-bezier(0.2, 0.7, 0, 1);
+  --lc-motion-ease-back: cubic-bezier(1, 0.5, 0.8, 1);
+  --lc-motion-ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+  /* 补充语义色 */
+  --lc-c-accent: var(--vp-c-brand-1);
+  --lc-c-surface-muted: var(--vp-c-bg-soft);
+  --lc-c-surface-contrast: var(--vp-c-bg-elv);
+  --lc-c-text-muted: var(--vp-c-text-3);
+  --lc-c-text-soft: var(--vp-c-text-2);
+  --lc-c-title-gradient-from: #34a965;
+  --lc-c-title-gradient-to: #424987;
 }
 
-/* 深色模式 */
 .dark {
-  --vp-c-brand-1: #16A346; /* 深色模式主色：鲜亮绿色 */
-  --vp-c-brand-2: #0E8535; /* 深色模式次要色：中等绿色 */
-  --vp-c-brand-3: #0A6828; /* 深色模式强调色：稍暗绿色 */
+  --vp-c-brand-1: #16a346;
+  --vp-c-brand-2: #0e8535;
+  --vp-c-brand-3: #0a6828;
 }
 
-/* 链接样式 */
 .vp-doc a {
   text-decoration: none;
 }
 
-/* 博客相关样式 */
-:root {
-  --blog-post-title-color: var(--vp-c-text-1);
-  --blog-post-meta-color: var(--vp-c-text-2);
-  --blog-post-tag-color: var(--vp-c-brand-1);
-}
-
-/* 图片缩放相关样式 - 路径：.vitepress/theme/styles/var.css */
 .medium-zoom-overlay {
   z-index: 30 !important;
   background: var(--vp-c-bg) !important;
 }
 
 .medium-zoom-image {
-  z-index: 9999 !important;/* 给的值是21，但是实测盖不住，直接999 */
+  z-index: 9999 !important;
 }

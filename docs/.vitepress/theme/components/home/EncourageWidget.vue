@@ -2,6 +2,10 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useDebounceFn, useThrottleFn } from '@vueuse/core'
 import { logError } from '../../utils/logger'
+import {
+  ENCOURAGE_MESSAGE_COLORS,
+  ENCOURAGE_PARTICLE_COLORS
+} from '../../utils/themePalette'
 
 type PointerEventLike = MouseEvent | TouchEvent
 type TimerHandle = ReturnType<typeof setTimeout>
@@ -120,12 +124,6 @@ const encourageMessages: Record<number, string> = {
   200: '真有耐心...但没用!',
 }
 
-// 消息颜色列表
-const messageColors = [
-  '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', 
-  '#ec4899', '#ef4444', '#14b8a6', '#f97316'
-]
-
 const activeMessages = ref<FloatingMessage[]>([])
 let messageIdCounter = 0
 
@@ -165,7 +163,7 @@ function showFloatingMessage(event: PointerEventLike, count: number): void {
   const angle = Math.random() * 40 - 20  // 更夸张的角度范围，从 ±10 变为 ±20
   const offsetX = Math.random() * 80 - 40  // 横向偏移增加一倍，从 ±20 变为 ±40
   const offsetY = Math.random() * 60 - 120  // 更强的向上偏移
-  const color = messageColors[Math.floor(Math.random() * messageColors.length)]
+  const color = ENCOURAGE_MESSAGE_COLORS[Math.floor(Math.random() * ENCOURAGE_MESSAGE_COLORS.length)]
   const id = messageIdCounter++
   
   // 添加随机大小变化
@@ -215,8 +213,6 @@ function createParticles(event: PointerEventLike): void {
   // 节流控制 - 如果距离上次粒子效果不到200ms，跳过创建新粒子
   if (now - lastParticleTime < THROTTLE_INTERVAL) return
   lastParticleTime = now
-  
-  const colors = ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899']
   
   // 根据设备性能动态调整粒子数量
   let particles = 36 // 增加粒子数量到24个
@@ -308,7 +304,7 @@ function createParticles(event: PointerEventLike): void {
   // 生成粒子
   for (let i = 0; i < particles; i++) {
     const size = Math.random() * 6 + 4
-    const color = colors[Math.floor(Math.random() * colors.length)]
+    const color = ENCOURAGE_PARTICLE_COLORS[Math.floor(Math.random() * ENCOURAGE_PARTICLE_COLORS.length)]
     const angle = Math.random() * Math.PI * 2
     const velocity = Math.random() * 2.5 + 1.8 // 增加初始速度范围
     
@@ -783,7 +779,7 @@ onUnmounted(() => {
 /* 抽屉滑动动画 */
 .drawer-slide-enter-active,
 .drawer-slide-leave-active {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis);
 }
 
 .drawer-slide-enter-from,
@@ -794,7 +790,7 @@ onUnmounted(() => {
 /* 点击提示滑动动画 */
 .hint-slide-enter-active,
 .hint-slide-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis);
 }
 
 .hint-slide-enter-from,
@@ -805,7 +801,7 @@ onUnmounted(() => {
 
 /* 确保遮罩也有动画效果 */
 .click-hint-container .gradient-mask {
-  transition: opacity 0.3s ease;
+  transition: opacity var(--lc-motion-duration-normal) var(--lc-motion-ease-standard);
 }
 
 .hint-slide-leave-active .gradient-mask {
@@ -834,7 +830,7 @@ onUnmounted(() => {
   pointer-events: none;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); /* 增强文字阴影 */
   white-space: nowrap;
-  transition: opacity 0.5s ease, transform 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* 使用更有弹性的贝塞尔曲线 */
+  transition: opacity var(--lc-motion-duration-slow) var(--lc-motion-ease-standard), transform var(--lc-motion-duration-slow) var(--lc-motion-ease-spring); /* 使用更有弹性的贝塞尔曲线 */
   filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.4)); /* 增强阴影效果 */
   will-change: transform, opacity; /* 告知浏览器哪些属性会变化 */
   left: 0;

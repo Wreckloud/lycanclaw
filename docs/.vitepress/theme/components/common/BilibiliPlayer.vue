@@ -86,7 +86,7 @@ const getPlayerUrl = (): string => {
   position: relative;
   width: 100%;
   padding-bottom: 56.25%; /* 16:9比例 */
-  background-color: #f4f4f4;
+  background-color: var(--lc-c-surface-muted);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -109,8 +109,8 @@ const getPlayerUrl = (): string => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f4f4f4;
-  color: #888;
+  background-color: var(--lc-c-surface-muted);
+  color: var(--lc-c-text-muted);
 }
 
 .loading-text {
@@ -120,8 +120,8 @@ const getPlayerUrl = (): string => {
 /* 深色模式适配 */
 @media (prefers-color-scheme: dark) {
   .video-placeholder {
-    background-color: #2a2a2a;
-    color: #aaa;
+    background-color: var(--lc-c-surface-contrast);
+    color: var(--lc-c-text-soft);
   }
 }
 </style> 

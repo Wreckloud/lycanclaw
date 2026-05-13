@@ -84,13 +84,15 @@ onMounted(() => {
 .scroll-prompt.visible {
   transform: translateY(0); /* 显示状态：完全显示 */
   opacity: 1;
-  transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.8s ease;
+  transition:
+    transform var(--lc-motion-duration-slower) var(--lc-motion-ease-emphasis),
+    opacity var(--lc-motion-duration-slower) var(--lc-motion-ease-standard);
 }
 
 .scroll-prompt.hidden {
   transform: translateY(30px); /* 隐藏状态：略微下移并淡出 */
   opacity: 0;
-  transition: transform 0.4s ease, opacity 0.4s ease;
+  transition: transform var(--lc-motion-duration-mid) var(--lc-motion-ease-standard), opacity var(--lc-motion-duration-mid) var(--lc-motion-ease-standard);
 }
 
 .scroll-prompt-content {

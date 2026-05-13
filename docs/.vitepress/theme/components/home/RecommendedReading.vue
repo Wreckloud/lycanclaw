@@ -506,7 +506,7 @@ async function fetchPosts() {
   width: 80px;
   z-index: 10;
   pointer-events: none;
-  transition: opacity 0.3s ease;
+  transition: opacity var(--lc-motion-duration-normal) var(--lc-motion-ease-standard);
 }
 
 .fade-mask.left {
@@ -561,7 +561,7 @@ async function fetchPosts() {
   cursor: pointer;
   border: none;
   padding: 0;
-  transition: all 0.3s ease;
+  transition: all var(--lc-motion-duration-normal) var(--lc-motion-ease-standard);
 }
 
 .indicator-dot.active {
@@ -579,7 +579,7 @@ async function fetchPosts() {
 }
 
 .animate-in {
-  animation: fadeInUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: fadeInUp var(--lc-motion-duration-slower) var(--lc-motion-ease-emphasis) forwards;
   animation-delay: var(--anim-delay, 0s);
 }
 
@@ -613,7 +613,7 @@ async function fetchPosts() {
   display: inline-block;
   text-decoration: none;
   color: var(--vp-c-text-1);
-  transition: color 0.2s;
+  transition: color var(--lc-motion-duration-fast);
   font-weight: 700;
 }
 

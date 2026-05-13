@@ -3,7 +3,7 @@
  * 网站页脚数据面板组件
  * 显示网站运行时间、版权信息和一言API
  */
-import { onMounted, ref, onBeforeUnmount } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useSidebar } from 'vitepress/theme'
 import { fetchHitokoto } from '../utils/siteApi'
 
@@ -31,6 +31,21 @@ const hours = ref(0)
 const minutes = ref(0)
 const seconds = ref(0)
 let timer: number | null = null
+
+function formatTwoDigits(value: number): string {
+  return String(Math.max(0, Math.trunc(value))).padStart(2, '0')
+}
+
+const hourText = computed(() => formatTwoDigits(hours.value))
+const minuteText = computed(() => formatTwoDigits(minutes.value))
+const secondText = computed(() => formatTwoDigits(seconds.value))
+const secondTensText = computed(() => secondText.value[0] ?? '0')
+const secondUnitsText = computed(() => secondText.value[1] ?? '0')
+
+const secondTensAnim = ref<'idle' | 'step' | 'wrap'>('idle')
+const secondUnitsAnim = ref<'idle' | 'step' | 'wrap'>('idle')
+const secondTensKey = ref(0)
+const secondUnitsKey = ref(0)
 
 // ===== 一言API相关 =====
 const DEFAULT_HITOKOTO = '死亡是涅灭，亦或是永恒？'
@@ -61,6 +76,38 @@ const updateTimer = () => {
   seconds.value = Math.floor((remainingAfterYears % (1000 * 60)) / 1000)
 }
 
+function getDigitAnimationType(previousDigit: string, nextDigit: string): 'idle' | 'step' | 'wrap' {
+  if (previousDigit === nextDigit) {
+    return 'idle'
+  }
+
+  if (previousDigit === '9' && nextDigit === '0') {
+    return 'wrap'
+  }
+
+  return 'step'
+}
+
+watch(secondText, (nextSecond, previousSecond) => {
+  if (!previousSecond) {
+    return
+  }
+
+  const [previousTens = '0', previousUnits = '0'] = previousSecond.split('')
+  const [nextTens = '0', nextUnits = '0'] = nextSecond.split('')
+
+  secondTensAnim.value = getDigitAnimationType(previousTens, nextTens)
+  secondUnitsAnim.value = getDigitAnimationType(previousUnits, nextUnits)
+
+  if (secondTensAnim.value !== 'idle') {
+    secondTensKey.value += 1
+  }
+
+  if (secondUnitsAnim.value !== 'idle') {
+    secondUnitsKey.value += 1
+  }
+})
+
 onMounted(() => {
   // 确保只在浏览器环境中执行
   if (!isBrowser) return
@@ -75,7 +122,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   // 清除计时器
-  if (timer && isBrowser) {
+  if (timer !== null && isBrowser) {
     clearInterval(timer)
     timer = null
   }
@@ -95,9 +142,28 @@ onBeforeUnmount(() => {
             <span class="timer-count">第
               <span v-if="years > 0" class="time-unit">{{ years }} 年 </span>&nbsp;
               <span class="time-unit">{{ days }}</span> 天 
-              <span class="time-unit">{{ hours }}</span> 时 
-              <span class="time-unit">{{ minutes }}</span> 分 
-              <span class="time-value">{{ seconds }}</span> 秒
+              <span class="time-unit time-unit-fixed">{{ hourText }}</span> 时 
+              <span class="time-unit time-unit-fixed">{{ minuteText }}</span> 分 
+              <span class="time-value time-unit-fixed" aria-label="秒">
+                <span class="time-roll-window">
+                  <span
+                    :key="`second-tens-${secondTensKey}-${secondTensText}`"
+                    class="time-roll-value"
+                    :class="`is-${secondTensAnim}`"
+                  >
+                    {{ secondTensText }}
+                  </span>
+                </span>
+                <span class="time-roll-window">
+                  <span
+                    :key="`second-units-${secondUnitsKey}-${secondUnitsText}`"
+                    class="time-roll-value"
+                    :class="`is-${secondUnitsAnim}`"
+                  >
+                    {{ secondUnitsText }}
+                  </span>
+                </span>
+              </span> 秒
             </span>
           </p>
           <p class="credits">
@@ -180,20 +246,90 @@ onBeforeUnmount(() => {
 
 .time-unit {
   display: inline-block;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+}
+
+.time-unit-fixed {
+  width: var(--lc-time-2digit-width);
+  min-width: var(--lc-time-2digit-width);
+  max-width: var(--lc-time-2digit-width);
+  text-align: center;
 }
 
 .time-value {
   display: inline-block;
-  min-width: 2em;
+  min-width: var(--lc-time-2digit-width);
+  white-space: nowrap;
   text-align: center;
-  font-variant-numeric: tabular-nums;
-  color: var(--vp-c-brand-1);
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+  color: var(--lc-c-accent);
+}
+
+.time-roll-window {
+  display: inline-flex;
+  width: calc(var(--lc-time-2digit-width) / 2);
+  overflow: hidden;
+  line-height: 1;
+}
+
+.time-roll-value {
+  display: inline-block;
+  min-width: calc(var(--lc-time-2digit-width) / 2);
+  text-align: center;
+  will-change: transform, opacity;
+}
+
+.time-roll-value.is-step {
+  animation: timer-roll-step var(--lc-motion-duration-fast) var(--lc-motion-ease-emphasis) both;
+}
+
+.time-roll-value.is-wrap {
+  animation: timer-roll-wrap 260ms cubic-bezier(0.2, 0.72, 0, 1) both;
+}
+
+@keyframes timer-roll-step {
+  from {
+    opacity: 0;
+    transform: translateY(-0.35em);
+    filter: blur(0.4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes timer-roll-wrap {
+  0% {
+    opacity: 0.75;
+    transform: translateY(-0.65em) scale(1.02);
+    filter: blur(0.6px);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(0.08em) scale(0.98);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
 }
 
 .VPFooter a {
   color: var(--vp-c-text-2);
   text-decoration: none;
-  transition: color 0.25s;
+  transition: color var(--lc-motion-duration-normal) var(--lc-motion-ease-standard);
 }
 
 .VPFooter a:hover {

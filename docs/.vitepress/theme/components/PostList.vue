@@ -262,7 +262,9 @@ function getPostExcerpt(post: ThoughtPost): string {
   padding-bottom: 1rem;
   opacity: 0;
   transform: translateY(40px);
-  transition: opacity 0.6s ease, transform 0.6s ease;
+  transition:
+    opacity var(--lc-motion-duration-slower) var(--lc-motion-ease-standard),
+    transform var(--lc-motion-duration-slower) var(--lc-motion-ease-standard);
 }
 
 .post-item-animate {
@@ -284,7 +286,9 @@ function getPostExcerpt(post: ThoughtPost): string {
   gap: 0.5rem;
   opacity: 0;
   transform: translateY(30px);
-  transition: opacity 0.6s ease, transform 0.6s ease;
+  transition:
+    opacity var(--lc-motion-duration-slower) var(--lc-motion-ease-standard),
+    transform var(--lc-motion-duration-slower) var(--lc-motion-ease-standard);
 }
 
 .pagination-animate {
@@ -302,7 +306,7 @@ function getPostExcerpt(post: ThoughtPost): string {
   display: inline-block;
   text-decoration: none;
   color: var(--vp-c-text-1);
-  transition: color 0.2s;
+  transition: color var(--lc-motion-duration-fast);
   font-weight: 700;
 }
 
@@ -379,7 +383,7 @@ function getPostExcerpt(post: ThoughtPost): string {
   color: var(--vp-c-text-1);
   border: 1px solid var(--vp-c-divider);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--lc-motion-duration-fast);
 }
 
 .pagination-button:hover:not(.disabled):not(.active):not(.ellipsis) {
