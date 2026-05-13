@@ -10,14 +10,8 @@ import { CalendarComponent, VisualMapComponent } from 'echarts/components'
 import { HeatmapChart } from 'echarts/charts'
 import { CanvasRenderer } from 'echarts/renderers'
 import type { EChartsType } from 'echarts/core'
-import {
-  fetchKnowledgeStats,
-  fetchPublishedThoughtPosts
-} from '../../utils/contentData'
-import {
-  buildDateWordCountMap,
-  getOneYearDateRange
-} from '../../utils/homeAnalytics'
+import { fetchDailyContributions } from '../../utils/contentData'
+import { getOneYearDateRange } from '../../utils/homeAnalytics'
 import { logError } from '../../utils/logger'
 import { HEATMAP_CELL_BORDER, HEATMAP_PALETTE } from '../../utils/themePalette'
 
@@ -281,24 +275,24 @@ onMounted(async () => {
   if (!isBrowser) return
   
   try {
-    const thoughtsPosts = await fetchPublishedThoughtPosts(withBase)
-    
-    const knowledgeStats = await fetchKnowledgeStats(withBase)
-    const dateWordCountMap = buildDateWordCountMap(thoughtsPosts, knowledgeStats)
+    const dailyContributions = await fetchDailyContributions(withBase)
+    const contributionMap = new Map(
+      dailyContributions.map((item) => [item.date, item.total])
+    )
     
     // 确定日期范围
     yearRange.value = getOneYearDateRange()
     const startDate = new Date(yearRange.value.start)
     const endDate = new Date(yearRange.value.end)
     
-    // 转换为热力图需要的数据格式 [日期, 字数]
+    // 转换为热力图需要的数据格式 [日期, 日贡献值]
     const tempData: Array<[string, number]> = []
     
     // 遍历日期范围内的每一天
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
       const dateStr = formatDate(d)
-      const wordCount = dateWordCountMap[dateStr] || 0
-      tempData.push([dateStr, wordCount])
+      const contribution = contributionMap.get(dateStr) || 0
+      tempData.push([dateStr, contribution])
     }
     
     // 计算颜色范围
@@ -386,7 +380,7 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="legend">
-        <span class="legend-text">字数贡献</span>
+        <span class="legend-text">日贡献</span>
         <div class="legend-squares">
           <span
             v-for="(heatColor, index) in heatmapColors"

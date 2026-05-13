@@ -2,8 +2,6 @@ import { parseDateInput } from './time'
 import { countWords } from './contentMetrics'
 import type { KnowledgeStatRecord, ThoughtPost } from './contentData'
 
-type DateWordCountMap = Record<string, number>
-
 function formatDateKey(date: Date): string {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -49,34 +47,6 @@ export function calculateHomeStats(
     totalPostsCount: thoughtsPosts.length + knowledgeStats.length,
     currentMonthPosts
   }
-}
-
-export function buildDateWordCountMap(
-  thoughtsPosts: ThoughtPost[] = [],
-  knowledgeStats: KnowledgeStatRecord[] = []
-): DateWordCountMap {
-  const dateWordCountMap: DateWordCountMap = {}
-
-  for (const post of thoughtsPosts) {
-    const parsedDate = parseDateInput(post?.frontmatter?.date)
-    if (!parsedDate) continue
-
-    const dateKey = formatDateKey(parsedDate)
-    const content = typeof post?.content === 'string' ? post.content : ''
-    const words = countWords(content)
-    dateWordCountMap[dateKey] = (dateWordCountMap[dateKey] || 0) + words
-  }
-
-  for (const item of knowledgeStats) {
-    const parsedDate = parseDateInput(item?.date)
-    if (!parsedDate) continue
-
-    const dateKey = formatDateKey(parsedDate)
-    const words = Number(item?.wordCount || 0)
-    dateWordCountMap[dateKey] = (dateWordCountMap[dateKey] || 0) + words
-  }
-
-  return dateWordCountMap
 }
 
 export function getOneYearDateRange(): { start: string; end: string } {

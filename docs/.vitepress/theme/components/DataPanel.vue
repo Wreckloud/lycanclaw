@@ -175,6 +175,11 @@ onBeforeUnmount(() => {
         <!-- 右侧内容 -->
         <div class="right-content">
           <p class="copyright">© {{ yearString }} <a href="/about">Wreckloud</a>.</p>
+          <p class="icp">
+            <a href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer noopener">
+              蜀ICP备2026024065号
+            </a>
+          </p>
           <p class="motto">{{ hitokoto }}</p>
         </div>
       </div>
@@ -214,11 +219,15 @@ onBeforeUnmount(() => {
   text-align: right;
 }
 
-.copyright, .timer, .motto, .credits {
+.copyright, .timer, .motto, .credits, .icp {
   margin: 4px 0;
   line-height: 1.6;
   font-size: 14px;
   font-weight: 500;
+  color: var(--vp-c-text-3);
+}
+
+.icp a {
   color: var(--vp-c-text-3);
 }
 

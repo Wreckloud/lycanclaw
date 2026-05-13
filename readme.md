@@ -188,6 +188,7 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 - `pnpm run build`：验证数据生成 + VitePress 构建完整链路
 - `pnpm run lint`：验证主题层代码规范（禁组件直连 fetch / 禁新增 any / 限制 console）
 - `pnpm run check:theme`：验证主题架构约束（theme 不新增 JS、组件强制 TS、组件禁直连 fetch）
+- `pnpm run generate-contributions`：生成热力图日贡献数据（Git 历史 `add + del`）
 
 ## Git 忽略约定
 
@@ -207,3 +208,7 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
   - `musicUid`
   - `walineServerUrl`
   - `hitokotoApi`
+
+## 前后端接口草案
+
+- 见根目录 `BACKEND_API_DESIGN.md`

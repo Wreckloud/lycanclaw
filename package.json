@@ -22,7 +22,8 @@
     "preview": "vitepress preview docs",
     "generate-site-data": "node docs/.vitepress/scripts/generate-site-data.js",
     "generate-recommended": "node docs/.vitepress/scripts/generate-recommended-data.js",
-    "generate-data": "pnpm run generate-site-data && pnpm run generate-recommended"
+    "generate-contributions": "node docs/.vitepress/scripts/generate-daily-contributions.js",
+    "generate-data": "pnpm run generate-site-data && pnpm run generate-recommended && pnpm run generate-contributions"
   },
   "dependencies": {
     "@vueuse/core": "^13.3.0",
