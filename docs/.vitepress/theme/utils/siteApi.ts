@@ -1,14 +1,13 @@
 import { logError } from './logger'
+import { getHitokotoApiUrl } from './runtimeConfig'
 
 interface HitokotoResponse {
   hitokoto?: string
 }
 
-const HITOKOTO_API = 'https://v1.hitokoto.cn'
-
 export async function fetchHitokoto(defaultText: string): Promise<string> {
   try {
-    const response = await fetch(HITOKOTO_API)
+    const response = await fetch(getHitokotoApiUrl())
     if (!response.ok) return defaultText
 
     const payload = (await response.json()) as HitokotoResponse

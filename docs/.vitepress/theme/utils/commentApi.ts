@@ -8,9 +8,11 @@ import {
   parseWalineRecentCommentsResponse
 } from './apiResponseParsers'
 import { logError } from './logger'
+import { getWalineServerUrl } from './runtimeConfig'
 
-const WALINE_SERVER_URL = 'https://lycanclaw-comment.netlify.app/.netlify/functions/comment'
-const COMMENT_ENDPOINT = `${WALINE_SERVER_URL}/comment`
+function getCommentEndpoint(): string {
+  return `${getWalineServerUrl()}/comment`
+}
 
 const RECENT_COMMENTS_CACHE_KEY = 'lycan_recent_comments'
 const RECENT_COMMENTS_CACHE_TIME_KEY = 'lycan_recent_comments_time'
@@ -115,11 +117,11 @@ async function requestJson<T>(url: string): Promise<T> {
 }
 
 function buildRecentCommentsUrl(count: number): string {
-  return `${COMMENT_ENDPOINT}?type=recent&count=${count}&_t=${Date.now()}`
+  return `${getCommentEndpoint()}?type=recent&count=${count}&_t=${Date.now()}`
 }
 
 function buildCommentCountUrl(path: string): string {
-  return `${COMMENT_ENDPOINT}?type=count&url=${encodeURIComponent(path)}`
+  return `${getCommentEndpoint()}?type=count&url=${encodeURIComponent(path)}`
 }
 
 export function preloadRecentComments(count: number = 5): void {

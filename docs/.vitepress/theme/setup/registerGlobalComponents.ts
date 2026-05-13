@@ -1,4 +1,5 @@
 import { defineAsyncComponent } from 'vue'
+import type { App } from 'vue'
 import * as echarts from 'echarts'
 
 import GlobalMusicPlayer from '../components/common/GlobalMusicPlayer.vue'
@@ -15,7 +16,7 @@ const AsyncRecentComments = defineAsyncComponent(() =>
   import('../components/home/RecentComments.vue')
 )
 
-export function registerGlobalComponents(app) {
+export function registerGlobalComponents(app: App): void {
   app.component('ArticleMetadata', AsyncArticleMetadata)
   app.component('PostList', AsyncPostList)
   app.component('Comment', AsyncComment)
@@ -27,6 +28,6 @@ export function registerGlobalComponents(app) {
   app.component('BilibiliPlayer', BilibiliPlayer)
 }
 
-export function registerGlobalRuntime(app) {
+export function registerGlobalRuntime(app: App): void {
   app.config.globalProperties.$echarts = echarts
 }

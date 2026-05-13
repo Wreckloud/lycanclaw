@@ -48,6 +48,7 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 - `docs/.vitepress/theme/utils/`
   - 运行时服务：`audioService`、`audioManager`
   - 音乐数据服务：`musicApi`（网易云接口聚合与解析）
+  - 运行时配置：`runtimeConfig`（环境变量与 `window.__LYCAN_CONFIG` 统一读取）
   - 音乐 UI 工具：`audioUi`（时间格式化与进度计算）
   - API 封装：`commentApi`、`pageViewApi`
   - API 响应解析：`apiResponseParsers`
@@ -117,6 +118,7 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 - 文章字数/阅读时长逻辑已收敛到 `utils/contentMetrics.ts`
 - 首页数据读取、筛选、统计已从组件内联逻辑收敛到 `contentData + homeAnalytics`
 - 音乐相关组件已改为统一调用 `musicApi`，便于后续切换到自建 API
+- 评论、阅读量、一言接口地址已统一走 `runtimeConfig`，便于后续替换为自建后端
 - `.gitignore` 已覆盖 Obsidian 元数据目录，避免误提交本地笔记配置
 - 页脚计时器秒数显示已改为两位数滚动并固定宽度，消除 `08 -> 09` 等位移抖动
 
@@ -124,8 +126,35 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 
 - 持续补充 ESLint 规则，当前已启用：组件层禁 `fetch`、限制 `console`、禁止 `any`
 - 统一音乐相关组件（`HomeMusicPlayer` / `SimpleMusicPlayer` / `GlobalMusicPlayer`）的共享播放控制逻辑
-- 将 `musicApi` 的接口地址切换为可配置项（环境变量或站点配置），为自建 API 做准备
+- 将 `commentApi / pageViewApi / siteApi / musicApi` 逐步切换到同一后端网关
 - 逐步收敛首页组件中的动画触发器与 `setTimeout` 调度逻辑
+
+## 后端接入准备（本次整理）
+
+### 接口分层约定
+
+- 组件层：只调用 `utils/*Api.ts`，不直接请求网络
+- API 层：只处理请求参数、响应解析、缓存策略
+- 配置层：统一通过 `runtimeConfig.ts` 读取环境变量/运行时配置
+- 解析层：`apiResponseParsers.ts` 负责兼容第三方与自建返回结构差异
+
+### 可替换配置入口
+
+- `VITE_MUSIC_API_BASE` / `VITE_MUSIC_UID`
+- `VITE_WALINE_SERVER_URL`
+- `VITE_HITOKOTO_API`
+- `window.__LYCAN_CONFIG`（运行时注入）
+  - `musicApiBase`
+  - `musicUid`
+  - `walineServerUrl`
+  - `hitokotoApi`
+  - `backendApiBase`（预留）
+
+### 后端迁移建议顺序
+
+1. 先做统一网关：后端提供 `/api/content`、`/api/comment`、`/api/stats`、`/api/music`
+2. 前端仅修改 `runtimeConfig` 与各 `*Api` 文件，不动组件
+3. 保留 `public/*.json` 作为降级兜底，确保部署稳定
 
 ## 时间显示规范
 
@@ -170,6 +199,10 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 - 可通过环境变量覆盖（构建时生效）：
   - `VITE_MUSIC_API_BASE`
   - `VITE_MUSIC_UID`
+  - `VITE_WALINE_SERVER_URL`
+  - `VITE_HITOKOTO_API`
 - 也可通过运行时配置覆盖（页面注入 `window.__LYCAN_CONFIG`）：
   - `musicApiBase`
   - `musicUid`
+  - `walineServerUrl`
+  - `hitokotoApi`

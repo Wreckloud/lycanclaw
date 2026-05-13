@@ -1,4 +1,5 @@
 import { addCorsProxy } from './proxyConfig'
+import { resolveRuntimeBaseUrl, resolveRuntimeValue } from './runtimeConfig'
 
 const DEFAULT_MUSIC_API_BASE = 'https://163api.qijieya.cn'
 const DEFAULT_UID = '629126546'
@@ -33,42 +34,20 @@ interface RawWeekItem {
   song?: RawSong
 }
 
-interface LycanRuntimeConfig {
-  musicApiBase?: string
-  musicUid?: string
-}
-
-declare global {
-  interface Window {
-    __LYCAN_CONFIG?: LycanRuntimeConfig
-  }
-}
-
-function normalizeBaseUrl(url: string): string {
-  if (!url) return DEFAULT_MUSIC_API_BASE
-  return url.replace(/\/+$/, '')
-}
-
-function readRuntimeValue(key: keyof LycanRuntimeConfig): string | undefined {
-  if (typeof window === 'undefined') return undefined
-  const value = window.__LYCAN_CONFIG?.[key]
-  return typeof value === 'string' ? value : undefined
-}
-
 function getMusicApiBase(): string {
-  const runtimeValue = readRuntimeValue('musicApiBase')
-  if (runtimeValue) {
-    return normalizeBaseUrl(runtimeValue)
-  }
-
-  const envValue = import.meta.env?.VITE_MUSIC_API_BASE
-  return normalizeBaseUrl(envValue || DEFAULT_MUSIC_API_BASE)
+  return resolveRuntimeBaseUrl({
+    runtimeKey: 'musicApiBase',
+    envKey: 'VITE_MUSIC_API_BASE',
+    defaultValue: DEFAULT_MUSIC_API_BASE
+  })
 }
 
 function getMusicUid(): string {
-  const runtimeValue = readRuntimeValue('musicUid')
-  if (runtimeValue) return runtimeValue
-  return import.meta.env?.VITE_MUSIC_UID || DEFAULT_UID
+  return resolveRuntimeValue({
+    runtimeKey: 'musicUid',
+    envKey: 'VITE_MUSIC_UID',
+    defaultValue: DEFAULT_UID
+  })
 }
 
 function normalizeHttps(url: string): string {

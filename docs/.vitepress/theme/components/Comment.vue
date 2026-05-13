@@ -2,6 +2,7 @@
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRoute, useData } from 'vitepress'
 import { logError } from '../utils/logger'
+import { getWalineServerUrl } from '../utils/runtimeConfig'
 
 // 获取当前路由和主题模式
 const route = useRoute()
@@ -46,7 +47,7 @@ const initWaline = async () => {
     // 创建新实例
     walineInstance = init({
       el: walineRef.value,
-      serverURL: 'https://lycanclaw-comment.netlify.app/.netlify/functions/comment',
+      serverURL: getWalineServerUrl(),
       path: commentPath.value,
       dark: isDark.value ? 'html.dark' : false,
       meta: ['nick', 'mail', 'link'],

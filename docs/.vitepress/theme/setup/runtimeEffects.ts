@@ -2,7 +2,24 @@ import { nextTick } from 'vue'
 import audioManager from '../utils/audioManager'
 import { preloadRecentComments } from '../utils/commentApi'
 
-function runWhenIdle(task, delay = 0) {
+const PRELOAD_DELAY_MS = 1500
+const AUDIO_SYNC_DELAY_MS = 100
+const HOME_SYNC_DELAY_MS = 300
+const SECTION_SYNC_DELAY_MS = 800
+const SECTION_SYNC_SCROLL_DELAY_MS = 1800
+
+type Task = () => void
+
+interface RouteLike {
+  path: string
+}
+
+interface VitePressRouterLike {
+  route: RouteLike
+  onAfterRouteChanged?: (to: RouteLike) => void
+}
+
+function runWhenIdle(task: Task, delay = 0): void {
   if (typeof window === 'undefined') return
 
   if ('requestIdleCallback' in window) {
@@ -13,10 +30,10 @@ function runWhenIdle(task, delay = 0) {
   setTimeout(task, delay)
 }
 
-export function preloadSiteData() {
+export function preloadSiteData(): void {
   if (typeof window === 'undefined') return
 
-  const preload = () => runWhenIdle(() => preloadRecentComments(), 1500)
+  const preload = () => runWhenIdle(() => preloadRecentComments(), PRELOAD_DELAY_MS)
 
   if (document.readyState === 'complete') {
     preload()
@@ -26,19 +43,19 @@ export function preloadSiteData() {
   window.addEventListener('load', preload, { once: true })
 }
 
-function syncAudioState() {
+function syncAudioState(): void {
   nextTick(() => {
     setTimeout(() => {
       audioManager.syncCurrentSongInfo()
-    }, 100)
+    }, AUDIO_SYNC_DELAY_MS)
   })
 }
 
-function getSyncContainers() {
-  return Array.from(document.querySelectorAll('.sync-height-container'))
+function getSyncContainers(): HTMLElement[] {
+  return Array.from(document.querySelectorAll<HTMLElement>('.sync-height-container'))
 }
 
-function applyUniformHeight(containers, useScrollHeight = false) {
+function applyUniformHeight(containers: HTMLElement[], useScrollHeight = false): void {
   let maxHeight = 0
 
   for (const container of containers) {
@@ -53,13 +70,13 @@ function applyUniformHeight(containers, useScrollHeight = false) {
   }
 }
 
-function resetHeight(containers) {
+function resetHeight(containers: HTMLElement[]): void {
   for (const container of containers) {
     container.style.minHeight = 'auto'
   }
 }
 
-export function syncSectionHeights() {
+export function syncSectionHeights(): void {
   if (typeof window === 'undefined' || window.innerWidth < 960) return
 
   const containers = getSyncContainers()
@@ -68,30 +85,30 @@ export function syncSectionHeights() {
   resetHeight(containers)
 
   requestAnimationFrame(() => applyUniformHeight(containers))
-  setTimeout(() => applyUniformHeight(containers), 800)
-  setTimeout(() => applyUniformHeight(containers, true), 1800)
+  setTimeout(() => applyUniformHeight(containers), SECTION_SYNC_DELAY_MS)
+  setTimeout(() => applyUniformHeight(containers, true), SECTION_SYNC_SCROLL_DELAY_MS)
 }
 
 let hasBoundResize = false
 
-function bindResize() {
+function bindResize(): void {
   if (hasBoundResize) return
   window.addEventListener('resize', syncSectionHeights)
   hasBoundResize = true
 }
 
-function unbindResize() {
+function unbindResize(): void {
   if (!hasBoundResize) return
   window.removeEventListener('resize', syncSectionHeights)
   hasBoundResize = false
 }
 
-export function setupRouteSideEffects(router) {
+export function setupRouteSideEffects(router: VitePressRouterLike): void {
   if (typeof window === 'undefined') return
 
   router.onAfterRouteChanged = (to) => {
     if (to.path === '/') {
-      setTimeout(syncSectionHeights, 300)
+      setTimeout(syncSectionHeights, HOME_SYNC_DELAY_MS)
       bindResize()
     } else {
       unbindResize()
@@ -101,12 +118,12 @@ export function setupRouteSideEffects(router) {
   }
 
   if (router.route.path === '/') {
-    setTimeout(syncSectionHeights, 300)
+    setTimeout(syncSectionHeights, HOME_SYNC_DELAY_MS)
     bindResize()
   }
 }
 
-export function syncAudioOnMounted() {
+export function syncAudioOnMounted(): void {
   if (typeof window === 'undefined') return
   syncAudioState()
 }

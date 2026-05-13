@@ -25,7 +25,7 @@ Docker 主要解决的就是这类环境问题。它可以把程序运行需要�
 在开始操作之前，有一点需要先强调：学习 Docker 部署，最好直接使用 Linux 环境。
 Docker 本身是更偏向 Linux 下的容器化技术。在 Windows 或 macOS 上使用 Docker 时，底层通常也要借助 Linux 虚拟化环境来运行。为了减少这些额外干扰，后面的示例统一以 Linux 虚拟机 为环境进行演示。
 
-Docker 的安装方式可以参考官方文档。学习阶段也可以使用 [get.docker.com](get.docker.com) 提供的安装脚本快速安装：
+Docker 的安装方式可以参考官方文档。学习阶段也可以使用 [get.docker.com](https://get.docker.com) 提供的安装脚本快速安装：
 
 ```bash
 curl -fsSL https://get.docker.com | bash

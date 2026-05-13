@@ -1,9 +1,14 @@
 import mediumZoom from 'medium-zoom'
+import type { Zoom } from 'medium-zoom'
 import { nextTick, onMounted, watch } from 'vue'
 
-let zoomInstance = null
+interface RouteLike {
+  path: string
+}
 
-function mountZoom() {
+let zoomInstance: Zoom | null = null
+
+function mountZoom(): void {
   if (zoomInstance) {
     zoomInstance.detach()
   }
@@ -13,7 +18,7 @@ function mountZoom() {
   })
 }
 
-export function useImageZoom(route) {
+export function useImageZoom(route: RouteLike): void {
   onMounted(() => {
     mountZoom()
   })

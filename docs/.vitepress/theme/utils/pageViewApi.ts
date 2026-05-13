@@ -4,9 +4,11 @@
  */
 import { parseWalinePageViewResponse } from './apiResponseParsers'
 import { logError } from './logger'
+import { getWalineServerUrl } from './runtimeConfig'
 
-const WALINE_SERVER_URL = 'https://lycanclaw-comment.netlify.app/.netlify/functions/comment'
-const ARTICLE_ENDPOINT = `${WALINE_SERVER_URL}/article`
+function getArticleEndpoint(): string {
+  return `${getWalineServerUrl()}/article`
+}
 
 const PAGEVIEW_CACHE_PREFIX = 'lycan_pageview_'
 const PAGEVIEW_CACHE_TIME_SUFFIX = '_time'
@@ -58,7 +60,7 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 function buildGetPageViewUrl(path: string): string {
-  return `${ARTICLE_ENDPOINT}?path=${encodeURIComponent(path)}`
+  return `${getArticleEndpoint()}?path=${encodeURIComponent(path)}`
 }
 
 function isLocalhost(): boolean {
@@ -189,7 +191,7 @@ export async function updatePageView(path?: string): Promise<boolean> {
   try {
     updatingPaths.add(currentPath)
 
-    const data = await requestJson<unknown>(ARTICLE_ENDPOINT, {
+    const data = await requestJson<unknown>(getArticleEndpoint(), {
       method: 'POST',
       body: JSON.stringify({ path: currentPath })
     })
