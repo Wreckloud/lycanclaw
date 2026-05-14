@@ -4,5 +4,20 @@ export type { SongInfo, PlaybackRequestContext } from './audioManager'
 export { default as audioService } from './audioService'
 export type { AudioSongInfo } from './audioService'
 export { calculateProgressPercent, formatAudioTime } from './audioUi'
-export { fetchWeeklyTracks, fetchTrackUrlById, fetchTrackWithUrlById } from './musicApi'
-export type { MusicTrack, MusicTrackWithUrl } from './musicApi'
+export {
+  fetchWeeklyTracks,
+  fetchTrackUrlById,
+  fetchTrackWithUrlById,
+  fetchMusicQueue,
+  enqueueMusicQueueItem,
+  setMusicQueueCurrent,
+  removeMusicQueueItem,
+  playNextFromMusicQueue,
+  clearMusicQueue
+} from './musicApi'
+export type {
+  MusicTrack,
+  MusicTrackWithUrl,
+  MusicQueueItem,
+  MusicQueueSnapshot
+} from './musicApi'

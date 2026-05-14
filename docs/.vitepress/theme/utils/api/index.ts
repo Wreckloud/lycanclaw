@@ -2,6 +2,7 @@
 export * from './apiProxyPolicy'
 export * from './apiResponseParser'
 export * from './commentApi'
+export * from './contributionApi'
 export * from './pageViewApi'
 export * from './recommendedApi'
 export * from './siteApi'

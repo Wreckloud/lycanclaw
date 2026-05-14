@@ -30,22 +30,6 @@ export interface KnowledgeStatRecord {
   [key: string]: unknown
 }
 
-export interface DailyContributionRecord {
-  date: string
-  additions: number
-  deletions: number
-  total: number
-}
-
-export interface DailyContributionPayload {
-  generatedAt: string
-  timezone: string
-  metric: string
-  days: number
-  scope: string[]
-  data: DailyContributionRecord[]
-}
-
 export type BasePathResolver = (path: string) => string
 
 function isPublishedThoughtPost(post: ThoughtPost): boolean {
@@ -79,20 +63,6 @@ export async function fetchPublishedThoughtPosts(withBase: BasePathResolver): Pr
 export async function fetchKnowledgeStats(withBase: BasePathResolver): Promise<KnowledgeStatRecord[]> {
   try {
     return await fetchJson<KnowledgeStatRecord[]>(withBase, '/knowledge-stats.json')
-  } catch {
-    return []
-  }
-}
-
-export async function fetchDailyContributions(
-  withBase: BasePathResolver
-): Promise<DailyContributionRecord[]> {
-  try {
-    const payload = await fetchJson<DailyContributionPayload>(
-      withBase,
-      '/daily-contributions.json'
-    )
-    return Array.isArray(payload?.data) ? payload.data : []
   } catch {
     return []
   }

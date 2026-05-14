@@ -4,7 +4,11 @@ import { audioManager, audioService } from '../../utils/music'
 import { useIntersectionObserver } from '@vueuse/core'
 import { calculateProgressPercent, formatAudioTime } from '../../utils/music'
 import {
+  enqueueMusicQueueItem,
+  playNextFromMusicQueue,
   fetchTrackUrlById,
+  type MusicQueueItem,
+  type MusicQueueSnapshot,
   fetchWeeklyTracks,
   type MusicTrack
 } from '../../utils/music'
@@ -15,6 +19,7 @@ const defaultCoverUrl = '/images/首页/default-cover.png'
 const UI_SYNC_DELAY_MS = 50
 const NEXT_SONG_DELAY_MS = 1000
 const MAX_NEXT_ATTEMPTS = 6
+const QUEUE_PREFETCH_SIZE = 4
 const PLAYLIST_CACHE_KEY = 'lycan:music:weekly-ranking'
 const HOME_PLAYBACK_REQUEST = {
   source: 'home-random',
@@ -22,6 +27,7 @@ const HOME_PLAYBACK_REQUEST = {
   allowInterrupt: true,
   resumeInterrupted: true
 } as const
+const HOME_QUEUE_SOURCE = 'home-random'
 
 interface CurrentSongInfo {
   id: string
@@ -38,7 +44,6 @@ const isPlaying = ref(false)
 const isLoading = ref(false)
 const showTitle = ref(false)
 const favoritePlaylist = ref<MusicTrack[]>([])
-const playbackQueue = ref<MusicTrack[]>([])
 const currentSongInfo = ref<CurrentSongInfo>({
   id: '',
   name: '',
@@ -46,7 +51,6 @@ const currentSongInfo = ref<CurrentSongInfo>({
   cover: ''
 })
 const isVisible = ref(false)
-const currentSongIndex = ref(-1)
 const currentTime = ref(0)
 const duration = ref(0)
 const progress = ref(0)
@@ -54,6 +58,8 @@ const progressBarRef = ref<HTMLElement | null>(null)
 const isDragging = ref(false)  // 新增：是否正在拖动进度条
 const isButtonDisabled = ref(false) // 添加按钮禁用状态
 const pendingTimers = new Set<ReturnType<typeof setTimeout>>()
+const isQueuePrefilling = ref(false)
+let songPool: MusicTrack[] = []
 
 // 计算属性：按钮显示的文本，随机听或当前歌曲标题
 const buttonText = computed(() => {
@@ -95,12 +101,10 @@ function syncWithCurrentPlayback() {
       const neteaseId = match[1]
       
       // 查找我们的歌单中是否有这首歌
-      const songIndex = favoritePlaylist.value.findIndex(song => String(song.id) === neteaseId)
-      
-      if (songIndex !== -1) {
+      const matchedSong = favoritePlaylist.value.find(song => String(song.id) === neteaseId)
+
+      if (matchedSong) {
         // 找到了歌曲，更新状态
-        currentSongIndex.value = songIndex
-        
         // 两步处理来确保动画正常：先重置状态
         showTitle.value = false
         
@@ -162,10 +166,10 @@ function readCachedPlaylist(): MusicTrack[] {
   }
 }
 
-function rebuildPlaybackQueue(excludeSongId = ''): void {
+function resetSongPool(excludeSongId = ''): void {
   const normalizedExcludeId = excludeSongId.replace('netease-', '')
   const candidates = favoritePlaylist.value.filter((song) => song.id !== normalizedExcludeId)
-  playbackQueue.value = shuffleArray([...candidates])
+  songPool = shuffleArray([...candidates])
 }
 
 // 获取网易云音乐排行榜数据
@@ -177,7 +181,7 @@ async function fetchMusicRanking() {
   try {
     const songs = await fetchWeeklyTracks({ withTimestamp: true, coverSize: '120y120' })
     favoritePlaylist.value = songs
-    rebuildPlaybackQueue()
+    resetSongPool()
     cachePlaylist(songs)
     syncWithCurrentPlayback()
   } catch (error) {
@@ -185,7 +189,7 @@ async function fetchMusicRanking() {
     if (favoritePlaylist.value.length === 0) {
       const cached = readCachedPlaylist()
       favoritePlaylist.value = cached
-      rebuildPlaybackQueue()
+      resetSongPool()
     }
   } finally {
     isLoading.value = false
@@ -234,50 +238,142 @@ function normalizeCoverUrl(coverUrl: string): string {
   return normalized
 }
 
-function drawNextSongFromQueue(): MusicTrack | null {
+function drawSongCandidate(excludeSongIds: Set<string>): MusicTrack | null {
   if (favoritePlaylist.value.length === 0) return null
 
-  if (playbackQueue.value.length === 0) {
-    rebuildPlaybackQueue(currentSongInfo.value.id)
+  const maxAttempts = favoritePlaylist.value.length * 2
+  let attempts = 0
+
+  while (attempts < maxAttempts) {
+    if (songPool.length === 0) {
+      resetSongPool(currentSongInfo.value.id)
+      if (songPool.length === 0) return null
+    }
+
+    const nextSong = songPool.shift()
+    if (!nextSong) {
+      attempts += 1
+      continue
+    }
+
+    if (excludeSongIds.has(nextSong.id) && favoritePlaylist.value.length > 1) {
+      attempts += 1
+      continue
+    }
+
+    return nextSong
   }
 
-  const nextSong = playbackQueue.value.shift()
-  if (!nextSong) return null
-
-  currentSongIndex.value = favoritePlaylist.value.findIndex((item) => item.id === nextSong.id)
-  return nextSong
+  return null
 }
 
-async function fetchSongDetailAndPlay(song: MusicTrack): Promise<boolean> {
-  if (typeof window === 'undefined' || !song.id) return false
+function collectQueuedSongIds(snapshot: MusicQueueSnapshot): Set<string> {
+  const ids = new Set<string>()
+  if (snapshot.current?.id) ids.add(snapshot.current.id)
+  for (const item of snapshot.queue) {
+    if (item.id) ids.add(item.id)
+  }
+  return ids
+}
+
+async function ensureQueuePrefetch(snapshot: MusicQueueSnapshot): Promise<void> {
+  if (isQueuePrefilling.value) return
+  if (favoritePlaylist.value.length === 0) return
+  if (snapshot.queueSize >= QUEUE_PREFETCH_SIZE) return
+
+  isQueuePrefilling.value = true
+  try {
+    let workingSnapshot = snapshot
+    const excludedSongIds = collectQueuedSongIds(snapshot)
+    const maxAttempts = favoritePlaylist.value.length * 2
+    let attempts = 0
+
+    while (workingSnapshot.queueSize < QUEUE_PREFETCH_SIZE && attempts < maxAttempts) {
+      const candidate = drawSongCandidate(excludedSongIds)
+      if (!candidate) break
+      excludedSongIds.add(candidate.id)
+
+      const enqueueResult = await enqueueMusicQueueItem({
+        id: candidate.id,
+        source: HOME_QUEUE_SOURCE,
+        insertFront: false,
+        interruptCurrent: false,
+        resumeCurrent: true,
+        priority: 1,
+        dedupeMode: 'skip'
+      })
+
+      workingSnapshot = enqueueResult.snapshot
+      attempts += 1
+    }
+  } catch (error) {
+    logError('HomeMusicPlayer', '预填充播放队列失败', error)
+  } finally {
+    isQueuePrefilling.value = false
+  }
+}
+
+async function enqueueRandomSongAsCurrent(): Promise<MusicQueueSnapshot | null> {
+  const excludedSongIds = new Set<string>()
+  if (currentSongInfo.value.id.startsWith('netease-')) {
+    excludedSongIds.add(currentSongInfo.value.id.replace('netease-', ''))
+  }
+
+  const candidate = drawSongCandidate(excludedSongIds)
+  if (!candidate) return null
+
+  const result = await enqueueMusicQueueItem({
+    id: candidate.id,
+    source: HOME_QUEUE_SOURCE,
+    insertFront: true,
+    interruptCurrent: true,
+    resumeCurrent: true,
+    priority: 1,
+    dedupeMode: 'replace'
+  })
+  return result.snapshot
+}
+
+async function resolveTrackUrl(item: MusicQueueItem): Promise<string> {
+  if (item.url) return item.url
+  const fallbackUrl = await fetchTrackUrlById(item.id)
+  return fallbackUrl || ''
+}
+
+async function playQueueItem(item: MusicQueueItem): Promise<boolean> {
+  if (typeof window === 'undefined' || !item.id) return false
 
   isLoading.value = true
 
   try {
-    const resolvedUrl = await fetchTrackUrlById(song.id)
+    const resolvedUrl = await resolveTrackUrl(item)
     if (!resolvedUrl) {
       return false
     }
 
-    const coverUrl = normalizeCoverUrl(song.cover)
-    const songInfo = {
-      name: song.name,
-      artist: song.artist,
-      cover: coverUrl,
-      url: resolvedUrl
+    const coverUrl = normalizeCoverUrl(item.cover)
+    const audioId = `netease-${item.id}`
+    currentSongInfo.value = {
+      id: audioId,
+      name: item.name,
+      artist: item.artist,
+      cover: coverUrl
     }
 
-    const audioId = `netease-${song.id}`
-    currentSongInfo.value = { ...song, id: audioId, cover: coverUrl }
+    await audioService.play(audioId, {
+      name: item.name,
+      artist: item.artist,
+      cover: coverUrl,
+      url: resolvedUrl
+    }, 0, HOME_PLAYBACK_REQUEST)
 
-    await audioService.play(audioId, songInfo, 0, HOME_PLAYBACK_REQUEST)
     isPlaying.value = true
     showTitle.value = true
 
     audioManager.emit('song-info-update', JSON.stringify({
       id: audioId,
-      name: song.name,
-      artist: song.artist,
+      name: item.name,
+      artist: item.artist,
       cover: coverUrl,
       isPlaying: true,
       progress: 0,
@@ -288,11 +384,21 @@ async function fetchSongDetailAndPlay(song: MusicTrack): Promise<boolean> {
   } catch (error) {
     isPlaying.value = false
     showTitle.value = false
-    logError('HomeMusicPlayer', '获取歌曲并播放失败', { songId: song.id, error })
+    logError('HomeMusicPlayer', '播放队列歌曲失败', { songId: item.id, error })
     return false
   } finally {
     isLoading.value = false
   }
+}
+
+async function resolveNextSnapshot(): Promise<MusicQueueSnapshot | null> {
+  if (currentSongInfo.value.id) {
+    const result = await playNextFromMusicQueue()
+    if (result.snapshot.current) {
+      return result.snapshot
+    }
+  }
+  return enqueueRandomSongAsCurrent()
 }
 
 // 随机播放一首歌
@@ -307,10 +413,29 @@ async function playNextSong(attempt = 0): Promise<void> {
     return
   }
 
-  const song = drawNextSongFromQueue()
-  if (!song) return
-  const played = await fetchSongDetailAndPlay(song)
-  if (!played) {
+  try {
+    const snapshot = await resolveNextSnapshot()
+    const nextItem = snapshot?.current ?? null
+    if (!nextItem) {
+      schedule(() => {
+        void playNextSong(attempt + 1)
+      }, NEXT_SONG_DELAY_MS)
+      return
+    }
+
+    const played = await playQueueItem(nextItem)
+    if (!played) {
+      schedule(() => {
+        void playNextSong(attempt + 1)
+      }, NEXT_SONG_DELAY_MS)
+      return
+    }
+
+    if (snapshot) {
+      void ensureQueuePrefetch(snapshot)
+    }
+  } catch (error) {
+    logError('HomeMusicPlayer', '队列切歌失败', error)
     schedule(() => {
       void playNextSong(attempt + 1)
     }, NEXT_SONG_DELAY_MS)

@@ -4,13 +4,13 @@
  * 基于ECharts实现，显示文章发布的热力分布
  */
 import { ref, onMounted, onBeforeUnmount, nextTick, computed, watch } from 'vue'
-import { withBase, useData } from 'vitepress'
+import { useData } from 'vitepress'
 import * as echarts from 'echarts/core'
 import { CalendarComponent, VisualMapComponent } from 'echarts/components'
 import { HeatmapChart } from 'echarts/charts'
 import { CanvasRenderer } from 'echarts/renderers'
 import type { EChartsType } from 'echarts/core'
-import { fetchDailyContributions } from '../../utils/content'
+import { fetchDailyContributions } from '../../utils/api'
 import { getOneYearDateRange } from '../../utils/home'
 import { logError } from '../../utils/logger'
 import { HEATMAP_CELL_BORDER, HEATMAP_PALETTE } from '../../utils/theme'
@@ -278,7 +278,7 @@ onMounted(async () => {
   if (!isBrowser) return
   
   try {
-    const dailyContributions = await fetchDailyContributions(withBase)
+    const dailyContributions = await fetchDailyContributions()
     const contributionMap = new Map(
       dailyContributions.map((item) => [item.date, item.total])
     )

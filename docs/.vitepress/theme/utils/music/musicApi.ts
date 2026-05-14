@@ -1,11 +1,8 @@
 /**
- * 网易云 API 适配层：
- * - 拉取周听歌榜
- * - 拉取歌曲详情与播放地址
- * - 统一 HTTPS 与封面参数
+ * 音乐后端接口适配层：
+ * 所有音乐数据统一走 LycanClawBackend，前端不再直连第三方接口。
  */
-import { addCorsProxy } from '../api/apiProxyPolicy'
-import { getMusicApiBase, getMusicUid } from '../runtimePolicy'
+import { getBackendApiBase } from '../runtimePolicy'
 
 export interface MusicTrack {
   id: string
@@ -18,38 +15,59 @@ export interface MusicTrackWithUrl extends MusicTrack {
   url: string
 }
 
-interface RawArtist {
-  name?: string
+export interface MusicQueueItem {
+  queueId: string
+  id: string
+  name: string
+  artist: string
+  cover: string
+  url: string
+  source: string
+  priority: number
+  enqueuedAt: string
 }
 
-interface RawAlbum {
-  picUrl?: string
+export interface MusicQueueSnapshot {
+  current: MusicQueueItem | null
+  queueSize: number
+  queue: MusicQueueItem[]
 }
 
-interface RawSong {
-  id?: string | number
-  name?: string
-  ar?: RawArtist[]
-  al?: RawAlbum
+interface ApiError {
+  code: string
+  message: string
 }
 
-interface RawWeekItem {
-  song?: RawSong
+interface ApiResponse<T> {
+  success: boolean
+  data: T | null
+  error?: ApiError | null
 }
 
-interface SongUrlArrayItem {
-  url?: string | null
+interface WeeklyRankingResponse {
+  limit: number
+  uid: string
+  tracks: MusicTrack[]
 }
 
-interface SongUrlPayload {
-  code?: number
-  data?: SongUrlArrayItem[] | {
-    url?: string | null
-  } | null
+interface TrackUrlResponse {
+  id: string
+  url: string
+  level: string
 }
 
-function isWeekItem(item: RawWeekItem | RawSong): item is RawWeekItem {
-  return 'song' in item
+interface TrackDetailWithUrlResponse extends MusicTrackWithUrl {
+  level: string
+}
+
+interface QueueEnqueueResponse {
+  action: string
+  item: MusicQueueItem
+  snapshot: MusicQueueSnapshot
+}
+
+interface QueueGenericResponse {
+  snapshot: MusicQueueSnapshot
 }
 
 function normalizeHttps(url: string): string {
@@ -64,60 +82,32 @@ function withCoverSize(url: string, size = '120y120'): string {
   return normalized.includes('param=') ? normalized : `${normalized}?param=${size}`
 }
 
-async function requestJson(path: string, params: Record<string, string | number> = {}) {
+function buildUrl(path: string, params: Record<string, string | number> = {}): string {
+  const base = getBackendApiBase()
   const query = new URLSearchParams(
     Object.entries(params).map(([key, value]) => [key, String(value)])
   ).toString()
-  const apiBase = getMusicApiBase()
-  const url = addCorsProxy(`${apiBase}${path}${query ? `?${query}` : ''}`)
-  const response = await fetch(url)
+  return `${base}${path}${query ? `?${query}` : ''}`
+}
+
+async function requestJson<T>(path: string, params: Record<string, string | number> = {}): Promise<T> {
+  const response = await fetch(buildUrl(path, params), {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
+
   if (!response.ok) {
-    throw new Error(`音乐接口请求失败: ${response.status}`)
-  }
-  return response.json()
-}
-
-function extractPlayableUrl(payload: SongUrlPayload): string | null {
-  const data = payload?.data
-  if (Array.isArray(data)) {
-    const url = data[0]?.url
-    return typeof url === 'string' && url ? normalizeHttps(url) : null
+    throw new Error(`音乐后端请求失败: ${response.status}`)
   }
 
-  const url = data && typeof data === 'object' ? data.url : null
-  return typeof url === 'string' && url ? normalizeHttps(url) : null
-}
-
-// 优先 /song/url，失败时回退 /song/download/url。
-async function fetchTrackUrlPayload(id: string): Promise<SongUrlPayload> {
-  const primaryPayload = await requestJson('/song/url', {
-    id,
-    timestamp: Date.now()
-  }).catch(() => null)
-
-  const primaryUrl = primaryPayload ? extractPlayableUrl(primaryPayload as SongUrlPayload) : null
-  if (primaryUrl) {
-    return primaryPayload as SongUrlPayload
+  const payload = (await response.json()) as ApiResponse<T>
+  if (!payload?.success || !payload.data) {
+    throw new Error(payload?.error?.message || '音乐后端返回数据异常')
   }
 
-  return requestJson('/song/download/url', {
-    id,
-    timestamp: Date.now()
-  }) as Promise<SongUrlPayload>
-}
-
-function parseArtistNames(artists: RawArtist[] = []): string {
-  return artists.map((artist) => artist?.name).filter(Boolean).join('/')
-}
-
-function parseTrack(item: RawWeekItem | RawSong, coverSize: string): MusicTrack {
-  const song = isWeekItem(item) ? item.song : item
-  return {
-    id: String(song?.id || ''),
-    name: song?.name || '',
-    artist: parseArtistNames(song?.ar),
-    cover: withCoverSize(song?.al?.picUrl || '', coverSize)
-  }
+  return payload.data
 }
 
 export async function fetchWeeklyTracks(options: {
@@ -126,25 +116,17 @@ export async function fetchWeeklyTracks(options: {
   coverSize?: string
   withTimestamp?: boolean
 } = {}): Promise<MusicTrack[]> {
-  const {
-    uid = getMusicUid(),
-    limit,
-    coverSize = '120y120',
-    withTimestamp = true
-  } = options
-
-  const payload = await requestJson('/user/record', {
-    uid,
-    type: 1,
-    ...(withTimestamp ? { timestamp: Date.now() } : {})
-  })
-
-  if (payload?.code !== 200 || !Array.isArray(payload?.weekData)) {
-    throw new Error('音乐排行榜数据不可用')
+  const { limit = 20, coverSize = '120y120' } = options
+  const payload = await requestJson<WeeklyRankingResponse>('/api/music/ranking/weekly', { limit })
+  if (!Array.isArray(payload.tracks)) {
+    return []
   }
-
-  const tracks = payload.weekData.map((item: RawWeekItem) => parseTrack(item, coverSize))
-  return typeof limit === 'number' ? tracks.slice(0, limit) : tracks
+  return payload.tracks.map((track) => ({
+    id: String(track.id || ''),
+    name: track.name || '',
+    artist: track.artist || '',
+    cover: withCoverSize(track.cover || '', coverSize)
+  }))
 }
 
 export async function fetchTrackWithUrlById(
@@ -153,33 +135,129 @@ export async function fetchTrackWithUrlById(
 ): Promise<MusicTrackWithUrl | null> {
   if (!id) return null
 
-  const [detailPayload, urlPayload] = await Promise.all([
-    requestJson('/song/detail', { ids: id }),
-    fetchTrackUrlPayload(id)
-  ])
-
-  if (detailPayload?.code !== 200 || !Array.isArray(detailPayload?.songs) || detailPayload.songs.length === 0) {
+  const payload = await requestJson<TrackDetailWithUrlResponse>('/api/music/track/detail-with-url', { id })
+  if (!payload?.url) {
     return null
   }
 
-  const url = extractPlayableUrl(urlPayload)
-  if (!url) {
-    return null
-  }
-
-  const song = detailPayload.songs[0]
   return {
-    id: String(song.id),
-    name: song.name || '',
-    artist: parseArtistNames(song.ar || []),
-    cover: withCoverSize(song?.al?.picUrl || '', coverSize),
-    url
+    id: String(payload.id || ''),
+    name: payload.name || '',
+    artist: payload.artist || '',
+    cover: withCoverSize(payload.cover || '', coverSize),
+    url: normalizeHttps(payload.url || '')
   }
 }
 
 export async function fetchTrackUrlById(id: string): Promise<string | null> {
   if (!id) return null
+  const payload = await requestJson<TrackUrlResponse>('/api/music/track/url', { id })
+  if (!payload?.url) return null
+  return normalizeHttps(payload.url)
+}
 
-  const payload = await fetchTrackUrlPayload(id)
-  return extractPlayableUrl(payload)
+export async function fetchMusicQueue(limit = 30): Promise<MusicQueueSnapshot> {
+  return requestJson<MusicQueueSnapshot>('/api/music/queue', { limit })
+}
+
+export async function enqueueMusicQueueItem(payload: {
+  id: string
+  source?: string
+  insertFront?: boolean
+  interruptCurrent?: boolean
+  resumeCurrent?: boolean
+  priority?: number
+  level?: string
+  dedupeMode?: 'replace' | 'skip' | 'allow'
+}): Promise<QueueEnqueueResponse> {
+  const response = await fetch(buildUrl('/api/music/queue/enqueue'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  })
+  if (!response.ok) {
+    throw new Error(`音乐队列入队失败: ${response.status}`)
+  }
+  const data = (await response.json()) as ApiResponse<QueueEnqueueResponse>
+  if (!data.success || !data.data) {
+    throw new Error(data?.error?.message || '音乐队列入队失败')
+  }
+  return data.data
+}
+
+export async function setMusicQueueCurrent(payload: {
+  queueId: string
+  resumeCurrent?: boolean
+}): Promise<QueueGenericResponse> {
+  const response = await fetch(buildUrl('/api/music/queue/current'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  })
+  if (!response.ok) {
+    throw new Error(`音乐队列切换失败: ${response.status}`)
+  }
+  const data = (await response.json()) as ApiResponse<QueueGenericResponse>
+  if (!data.success || !data.data) {
+    throw new Error(data?.error?.message || '音乐队列切换失败')
+  }
+  return data.data
+}
+
+export async function removeMusicQueueItem(payload: {
+  queueId: string
+}): Promise<QueueGenericResponse> {
+  const response = await fetch(buildUrl('/api/music/queue/remove'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  })
+  if (!response.ok) {
+    throw new Error(`音乐队列移除失败: ${response.status}`)
+  }
+  const data = (await response.json()) as ApiResponse<QueueGenericResponse>
+  if (!data.success || !data.data) {
+    throw new Error(data?.error?.message || '音乐队列移除失败')
+  }
+  return data.data
+}
+
+export async function playNextFromMusicQueue(): Promise<QueueGenericResponse> {
+  const response = await fetch(buildUrl('/api/music/queue/next'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
+  if (!response.ok) {
+    throw new Error(`音乐队列切歌失败: ${response.status}`)
+  }
+  const data = (await response.json()) as ApiResponse<QueueGenericResponse>
+  if (!data.success || !data.data) {
+    throw new Error(data?.error?.message || '音乐队列切歌失败')
+  }
+  return data.data
+}
+
+export async function clearMusicQueue(keepCurrent = true): Promise<QueueGenericResponse> {
+  const response = await fetch(buildUrl('/api/music/queue/clear', { keepCurrent: keepCurrent ? 'true' : 'false' }), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
+  if (!response.ok) {
+    throw new Error(`清空音乐队列失败: ${response.status}`)
+  }
+  const data = (await response.json()) as ApiResponse<QueueGenericResponse>
+  if (!data.success || !data.data) {
+    throw new Error(data?.error?.message || '清空音乐队列失败')
+  }
+  return data.data
 }
