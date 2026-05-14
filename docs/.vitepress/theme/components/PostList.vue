@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onBeforeUnmount, onMounted, computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { withBase } from 'vitepress'
 import { useIntersectionObserver } from '@vueuse/core'
 import { estimateReadMinutes } from '../utils/contentMetrics'
@@ -10,16 +10,21 @@ import {
 } from '../utils/contentData'
 import { logError } from '../utils/logger'
 
-// 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
+const POSTS_PER_PAGE = 7
+const MAX_VISIBLE_PAGES = 5
+const ANIMATION_RESET_DELAY_MS = 16
+const VISIBILITY_THRESHOLD = 0.1
+const VISIBILITY_ROOT_MARGIN = '0px 0px -10% 0px'
+type PageNumber = number | '...'
 
-// 添加动画相关状态
 const animationTriggerRef = ref<HTMLElement | null>(null)
 const isVisible = ref(false)
 const listVisible = ref(false)
 const listRenderKey = ref(0)
 let animationResetTimer: number | null = null
 let animationRafId: number | null = null
+let stopObserver: (() => void) | null = null
 
 interface NormalizedFrontmatter {
   title: string
@@ -27,15 +32,12 @@ interface NormalizedFrontmatter {
   tags: string[]
 }
 
-// 过滤出thoughts目录下的文章，且publish为true的文章
 const thoughtsPosts = ref<ThoughtPost[]>([])
 const isLoading = ref(true)
 const hasError = ref(false)
 const selectedTag = ref('')
 
-// 分页相关
 const currentPage = ref(1)
-const postsPerPage = 7 // 每页显示7篇文章
 const normalizedSelectedTag = computed(() => selectedTag.value.trim())
 const availableTags = computed(() => {
   const counter = new Map<string, number>()
@@ -60,10 +62,10 @@ const filteredPosts = computed(() => {
     return tags.some((item) => typeof item === 'string' && item.trim() === tag)
   })
 })
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredPosts.value.length / postsPerPage)))
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredPosts.value.length / POSTS_PER_PAGE)))
 const paginatedPosts = computed(() => {
-  const startIndex = (currentPage.value - 1) * postsPerPage
-  const endIndex = startIndex + postsPerPage
+  const startIndex = (currentPage.value - 1) * POSTS_PER_PAGE
+  const endIndex = startIndex + POSTS_PER_PAGE
   return filteredPosts.value.slice(startIndex, endIndex)
 })
 const paginatedViewPosts = computed(() =>
@@ -73,63 +75,58 @@ const paginatedViewPosts = computed(() =>
   }))
 )
 
-// 页码导航
 const pageNumbers = computed(() => {
-  const pages: Array<number | '...'> = []
-  const maxVisiblePages = 5 // 最多显示5个页码
-  
-  if (totalPages.value <= maxVisiblePages) {
-    // 如果总页数少于最大显示页码，则显示所有页码
+  const pages: PageNumber[] = []
+  if (totalPages.value <= MAX_VISIBLE_PAGES) {
     return Array.from({ length: totalPages.value }, (_, i) => i + 1)
   }
-  
-  // 总是显示第一页
+
   pages.push(1)
-  
-  // 计算中间页码的起始和结束
   let start = Math.max(2, currentPage.value - 1)
   let end = Math.min(totalPages.value - 1, currentPage.value + 1)
-  
-  // 如果当前页靠近开始，多显示几个后面的页码
+
   if (currentPage.value <= 3) {
     end = Math.min(totalPages.value - 1, 4)
   }
-  
-  // 如果当前页靠近结束，多显示几个前面的页码
+
   if (currentPage.value >= totalPages.value - 2) {
     start = Math.max(2, totalPages.value - 3)
   }
-  
-  // 如果第一页和起始页之间有间隔，添加省略号
+
   if (start > 2) {
     pages.push('...')
   }
-  
-  // 添加中间页码
+
   for (let i = start; i <= end; i++) {
     pages.push(i)
   }
-  
-  // 如果结束页和最后一页之间有间隔，添加省略号
+
   if (end < totalPages.value - 1) {
     pages.push('...')
   }
-  
-  // 总是显示最后一页
+
   pages.push(totalPages.value)
-  
   return pages
 })
 
-// 页面导航函数
-function goToPage(page: number | '...') {
+function cleanupAnimationTimers(): void {
+  if (!isBrowser) return
+  if (animationResetTimer !== null) {
+    window.clearTimeout(animationResetTimer)
+    animationResetTimer = null
+  }
+  if (animationRafId !== null) {
+    window.cancelAnimationFrame(animationRafId)
+    animationRafId = null
+  }
+}
+
+function goToPage(page: PageNumber): void {
   if (typeof page === 'number' && page >= 1 && page <= totalPages.value) {
     currentPage.value = page
-    // 滚动到页面顶部
     if (isBrowser) {
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
-    
     replayListAnimation()
   }
 }
@@ -171,16 +168,8 @@ function setSelectedTag(tag: string): void {
 
 function replayListAnimation(): void {
   if (!isBrowser || !isVisible.value) return
-  if (animationResetTimer !== null) {
-    window.clearTimeout(animationResetTimer)
-    animationResetTimer = null
-  }
-  if (animationRafId !== null) {
-    window.cancelAnimationFrame(animationRafId)
-    animationRafId = null
-  }
+  cleanupAnimationTimers()
 
-  // 强制重建列表节点，避免“同一篇文章复用 DOM”导致的过渡卡顿
   listRenderKey.value += 1
   listVisible.value = false
 
@@ -189,37 +178,39 @@ function replayListAnimation(): void {
     animationResetTimer = window.setTimeout(() => {
       listVisible.value = true
       animationResetTimer = null
-    }, 16)
+    }, ANIMATION_RESET_DELAY_MS)
   })
 }
 
+async function loadPosts(): Promise<void> {
+  thoughtsPosts.value = await fetchPublishedThoughtPosts(withBase)
+}
+
 onMounted(async () => {
-  // 确保只在浏览器环境中执行
   if (!isBrowser) return
-  
+
   try {
-    thoughtsPosts.value = await fetchPublishedThoughtPosts(withBase)
+    await loadPosts()
     syncTagFromUrl()
     window.addEventListener('popstate', syncTagFromUrl)
-    
     isLoading.value = false
-    
-    // 使用useIntersectionObserver来触发动画
+
     if (animationTriggerRef.value) {
-      const { stop } = useIntersectionObserver(
+      const observer = useIntersectionObserver(
         animationTriggerRef,
-        ([{ isIntersecting }]) => {
-          if (isIntersecting) {
+        ([entry]) => {
+          if (entry?.isIntersecting) {
             isVisible.value = true
             replayListAnimation()
-            stop()  // 只触发一次
+            observer.stop()
           }
-        }, 
-        { 
-          threshold: 0.1,  // 降低阈值，让元素更早触发
-          rootMargin: '0px 0px -10% 0px'  // 增大底部边距，提前触发
+        },
+        {
+          threshold: VISIBILITY_THRESHOLD,
+          rootMargin: VISIBILITY_ROOT_MARGIN
         }
       )
+      stopObserver = observer.stop
     }
   } catch (error) {
     logError('PostList', '加载文章列表失败', error)
@@ -231,29 +222,20 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   if (!isBrowser) return
   window.removeEventListener('popstate', syncTagFromUrl)
-  if (animationRafId !== null) {
-    window.cancelAnimationFrame(animationRafId)
-    animationRafId = null
-  }
-  if (animationResetTimer !== null) {
-    window.clearTimeout(animationResetTimer)
-    animationResetTimer = null
-  }
+  cleanupAnimationTimers()
+  stopObserver?.()
+  stopObserver = null
 })
 
-// 计算阅读时间
 function calculateReadTime(content: string | undefined): number {
   return estimateReadMinutes(content || '')
 }
 
-// 获取文章摘要，优先使用description
 function getPostExcerpt(post: ThoughtPost): string {
-  // 优先使用frontmatter中的description
   const description = post.frontmatter?.description
   if (typeof description === 'string' && description.trim()) {
     return description
   }
-  // 其次使用通过<!-- more -->分隔的摘要
   return typeof post.excerpt === 'string' ? post.excerpt : ''
 }
 
@@ -272,6 +254,12 @@ function normalizeFrontmatter(post: ThoughtPost): NormalizedFrontmatter {
 function onTagClick(tag: string): void {
   setSelectedTag(tag)
 }
+
+watch(totalPages, (pageCount) => {
+  if (currentPage.value > pageCount) {
+    currentPage.value = pageCount
+  }
+})
 </script>
 
 <template>
@@ -335,7 +323,7 @@ function onTagClick(tag: string): void {
               <span class="post-separator">/</span>
               <span class="post-category">随想</span>
               <span v-if="item.meta.tags.length" class="post-tags">
-                <template v-for="(tag, index) in item.meta.tags" :key="index">
+                <template v-for="tag in item.meta.tags" :key="`${item.post.url}-${tag}`">
                   <a
                     class="post-tag"
                     :href="buildThoughtsTagUrl(tag)"

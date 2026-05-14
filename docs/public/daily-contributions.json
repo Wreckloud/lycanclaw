@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-13T15:22:47.088Z",
+  "generatedAt": "2026-05-14T06:19:37.950Z",
   "timezone": "Asia/Shanghai",
   "metric": "additions_plus_deletions",
   "days": 365,
@@ -11,12 +11,6 @@
     "docs/.vitepress/scripts"
   ],
   "data": [
-    {
-      "date": "2025-05-14",
-      "additions": 0,
-      "deletions": 0,
-      "total": 0
-    },
     {
       "date": "2025-05-15",
       "additions": 0,
@@ -2197,9 +2191,15 @@
     },
     {
       "date": "2026-05-13",
-      "additions": 2652,
-      "deletions": 741,
-      "total": 3393
+      "additions": 3295,
+      "deletions": 939,
+      "total": 4234
+    },
+    {
+      "date": "2026-05-14",
+      "additions": 0,
+      "deletions": 0,
+      "total": 0
     }
   ]
 }

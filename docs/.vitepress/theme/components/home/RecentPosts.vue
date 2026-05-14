@@ -23,70 +23,60 @@ interface Post {
   excerpt?: string
 }
 
-// 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
 
-// 组件引用和状态
-const postsRef = ref<HTMLElement | null>(null) // 专门用于动画触发的引用
+const MAX_RECENT_POSTS = 5
+
+const postsRef = ref<HTMLElement | null>(null)
 const isVisible = ref(false)
 const recentPosts = ref<Post[]>([])
 const isLoading = ref(true)
 const hasError = ref(false)
-const maxPosts = 5 // 显示最多6篇最新文章
 
-// 保存观察器停止函数
 let stopObserver: (() => void) | null = null
 
-// 使用VueUse的useIntersectionObserver来检测元素是否进入视口
 onMounted(() => {
   if (!isBrowser) return
 
-  // 加载文章数据
-  fetchPosts()
+  void fetchPosts()
   
-  // 设置滚动动画 - 使用专门的postsRef元素确保独立触发
   const { stop } = useIntersectionObserver(
     postsRef,
     ([{ isIntersecting }]) => {
       if (isIntersecting) {
-        // 直接触发动画，不再检查元素位置
         isVisible.value = true
-        stop() // 只触发一次动画
+        stop()
       }
     },
     { 
-      threshold: 0.2,
-      rootMargin: '0px 0px -8% 0px'
+      threshold: 0.05,
+      rootMargin: '0px 0px 18% 0px'
     }
   )
   
-  // 保存stop函数以便在组件卸载时调用
   stopObserver = stop
 })
 
-// 组件卸载时清理资源
 onBeforeUnmount(() => {
-  // 停止观察器，防止内存泄漏
   if (stopObserver) {
     stopObserver()
+    stopObserver = null
   }
 })
 
-// 加载文章数据
 async function fetchPosts() {
   if (!isBrowser) return
   
   try {
     const filteredPosts = (await fetchPublishedThoughtPosts(withBase)) as Post[]
     
-    // 按日期排序，取最新的几篇
     recentPosts.value = filteredPosts
       .sort((a: Post, b: Post) => {
         const dateA = parseDateInput(a.frontmatter.date)
         const dateB = parseDateInput(b.frontmatter.date)
         return (dateB?.getTime() || 0) - (dateA?.getTime() || 0)
       })
-      .slice(0, maxPosts)
+      .slice(0, MAX_RECENT_POSTS)
     
     isLoading.value = false
   } catch (error) {
@@ -96,18 +86,14 @@ async function fetchPosts() {
   }
 }
 
-// 计算阅读时间
 function calculateReadTime(content: string): number {
   return estimateReadMinutes(content || '')
 }
 
-// 获取文章摘要，优先使用description
 function getPostExcerpt(post: Post): string {
-  // 优先使用frontmatter中的description
   if (post.frontmatter.description) {
     return post.frontmatter.description
   }
-  // 其次使用通过<!-- more -->分隔的摘要
   return post.excerpt || ''
 }
 
@@ -186,16 +172,14 @@ function buildThoughtsTagUrl(tag: string): string {
 
 <style scoped>
 .recent-posts {
-  overflow: hidden !important;
+  overflow: hidden;
 }
 
-/* 文章列表容器 - 用于交叉观察 */
 .posts-container {
   position: relative;
   width: 100%;
 }
 
-/* 添加动画样式 - 默认设置为不可见 */
 .section-title,
 .post-item,
 .view-more {
@@ -203,7 +187,6 @@ function buildThoughtsTagUrl(tag: string): string {
   transform: translateY(20px);
 }
 
-/* 当元素可见时应用动画 */
 .animate-in {
   animation: fadeInUp var(--lc-motion-duration-slower) var(--lc-motion-ease-standard) forwards;
   animation-delay: var(--anim-delay, 0s);
@@ -340,7 +323,6 @@ function buildThoughtsTagUrl(tag: string): string {
   color: var(--vp-c-brand-2);
 }
 
-/* 移动端适配 */
 @media (max-width: 959px) {
   
   .section-title {

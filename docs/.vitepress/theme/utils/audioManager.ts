@@ -5,7 +5,7 @@
 import { logError } from './logger'
 
 // 定义歌曲信息接口
-interface SongInfo {
+export interface SongInfo {
   id: string;
   name: string;
   artist: string;

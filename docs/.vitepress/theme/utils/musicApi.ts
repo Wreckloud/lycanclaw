@@ -31,6 +31,17 @@ interface RawWeekItem {
   song?: RawSong
 }
 
+interface SongUrlArrayItem {
+  url?: string | null
+}
+
+interface SongUrlPayload {
+  code?: number
+  data?: SongUrlArrayItem[] | {
+    url?: string | null
+  } | null
+}
+
 function isWeekItem(item: RawWeekItem | RawSong): item is RawWeekItem {
   return 'song' in item
 }
@@ -58,6 +69,34 @@ async function requestJson(path: string, params: Record<string, string | number>
     throw new Error(`音乐接口请求失败: ${response.status}`)
   }
   return response.json()
+}
+
+function extractPlayableUrl(payload: SongUrlPayload): string | null {
+  const data = payload?.data
+  if (Array.isArray(data)) {
+    const url = data[0]?.url
+    return typeof url === 'string' && url ? normalizeHttps(url) : null
+  }
+
+  const url = data && typeof data === 'object' ? data.url : null
+  return typeof url === 'string' && url ? normalizeHttps(url) : null
+}
+
+async function fetchTrackUrlPayload(id: string): Promise<SongUrlPayload> {
+  const primaryPayload = await requestJson('/song/url', {
+    id,
+    timestamp: Date.now()
+  }).catch(() => null)
+
+  const primaryUrl = primaryPayload ? extractPlayableUrl(primaryPayload as SongUrlPayload) : null
+  if (primaryUrl) {
+    return primaryPayload as SongUrlPayload
+  }
+
+  return requestJson('/song/download/url', {
+    id,
+    timestamp: Date.now()
+  }) as Promise<SongUrlPayload>
 }
 
 function parseArtistNames(artists: RawArtist[] = []): string {
@@ -109,15 +148,15 @@ export async function fetchTrackWithUrlById(
 
   const [detailPayload, urlPayload] = await Promise.all([
     requestJson('/song/detail', { ids: id }),
-    requestJson('/song/url', { id })
+    fetchTrackUrlPayload(id)
   ])
 
   if (detailPayload?.code !== 200 || !Array.isArray(detailPayload?.songs) || detailPayload.songs.length === 0) {
     return null
   }
 
-  const url = urlPayload?.data?.[0]?.url
-  if (urlPayload?.code !== 200 || !url) {
+  const url = extractPlayableUrl(urlPayload)
+  if (!url) {
     return null
   }
 
@@ -127,17 +166,13 @@ export async function fetchTrackWithUrlById(
     name: song.name || '',
     artist: parseArtistNames(song.ar || []),
     cover: withCoverSize(song?.al?.picUrl || '', coverSize),
-    url: normalizeHttps(url)
+    url
   }
 }
 
 export async function fetchTrackUrlById(id: string): Promise<string | null> {
   if (!id) return null
 
-  const payload = await requestJson('/song/url', { id, timestamp: Date.now() })
-  const url = payload?.data?.[0]?.url
-  if (payload?.code !== 200 || !url) {
-    return null
-  }
-  return normalizeHttps(url)
+  const payload = await fetchTrackUrlPayload(id)
+  return extractPlayableUrl(payload)
 }

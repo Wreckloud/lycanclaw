@@ -1,6 +1,6 @@
 const DEFAULT_WALINE_SERVER_URL = 'https://lycanclaw-comment.netlify.app/.netlify/functions/comment'
 const DEFAULT_HITOKOTO_API = 'https://v1.hitokoto.cn'
-const DEFAULT_MUSIC_API_BASE = 'https://163api.qijieya.cn'
+const DEFAULT_MUSIC_API_BASE = 'https://apis.netstart.cn/music'
 const DEFAULT_MUSIC_UID = '629126546'
 
 export interface LycanRuntimeConfig {

@@ -1,239 +1,192 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { withBase } from 'vitepress'
-import { 
-  useIntersectionObserver, 
-  useEventListener, 
-  useWindowSize, 
+import {
+  useDebounceFn,
+  useEventListener,
+  useIntersectionObserver,
   useIntervalFn,
-  useDebounceFn
+  useWindowSize
 } from '@vueuse/core'
 import { formatMonthDayCn } from '../../utils/time'
+import { logError } from '../../utils/logger'
 import { fetchRecommendedPosts, type RecommendedPost } from '../../utils/recommendedApi'
-// 导入推荐文章配置
+import {
+  isHomeTwoColumnLayout,
+  markHomeTopSectionsVisible,
+  onHomeTopSectionsVisible
+} from '../../utils/homeTopSectionSync'
 import { recommendedPosts as configuredPostsPaths } from '../../../config/recommended-posts.js'
 
-// 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
+const INTERACTION_COOLDOWN_MS = 3000
+const NEXT_PREV_COOLDOWN_MS = 1000
+const INDEX_UPDATE_DEBOUNCE_MS = 50
+const VISIBILITY_THRESHOLD = 0.6
+const VISIBILITY_ROOT_MARGIN = '0px 0px -10% 0px'
 
-// 组件引用和状态
-const sectionRef = ref<HTMLElement | null>(null)
-const carouselRef = ref<HTMLElement | null>(null)
-const animationTriggerRef = ref<HTMLElement | null>(null) // 专门用于动画触发
-const isVisible = ref(false)
-const recommendedPosts = ref<RecommendedPost[]>([])
-const isLoading = ref(true)
-const hasError = ref(false)
-
-// 使用VueUse的useWindowSize获取窗口尺寸
-const { width } = useWindowSize()
-const isPcLayout = computed(() => width.value >= 960)
-
-// 轮播状态
-const currentIndex = ref(0)
-const scrollPosition = ref(0)
-const maxScroll = ref(0)
-const isUserInteracting = ref(false) // 跟踪用户是否正在交互
-const shouldDisableAutoplay = computed(() => recommendedPosts.value.length <= 1)
-const scrollResetTimer = ref<number | null>(null) // 存储定时器ID
-const hasTriggeredVisibleOnce = ref(false)
-
-// 组件属性
 const props = defineProps({
-  // 最大显示文章数量
   maxPosts: {
     type: Number,
     default: 5
   },
-  // 自动轮播间隔（毫秒），0表示不自动轮播
   autoplaySpeed: {
     type: Number,
     default: 6000
   }
 })
 
-// 为cards和spacers计算最佳宽度
+const sectionRef = ref<HTMLElement | null>(null)
+const carouselRef = ref<HTMLElement | null>(null)
+const animationTriggerRef = ref<HTMLElement | null>(null)
+const isVisible = ref(false)
+const recommendedPosts = ref<RecommendedPost[]>([])
+const isLoading = ref(true)
+const hasError = ref(false)
+const currentIndex = ref(0)
+const scrollPosition = ref(0)
+const maxScroll = ref(0)
+const isUserInteracting = ref(false)
+const isHovered = ref(false)
+const hasTriggeredVisibleOnce = ref(false)
+
+const { width } = useWindowSize()
+const isPcLayout = computed(() => width.value >= 960)
+const shouldDisableAutoplay = computed(() => recommendedPosts.value.length <= 1)
+const canAutoplay = computed(() =>
+  props.autoplaySpeed > 0 &&
+  !shouldDisableAutoplay.value &&
+  !isHovered.value &&
+  !isUserInteracting.value
+)
+
+let scrollResetTimer: number | null = null
+let stopVisibilityObserver: (() => void) | null = null
+let stopTopSectionSync: (() => void) | null = null
+
 const cardWidth = computed(() => {
-  // 当只有1篇文章时，显示宽度为100%
   if (recommendedPosts.value.length === 1) return '100%'
-  
-  // 当文章少于3篇时，显示宽度为80%，让轮播效果更明显
   if (recommendedPosts.value.length < 3) return '80%'
-  
-  // 随着文章数量增加，适当减少单个文章显示宽度
-  return isPcLayout.value 
+
+  return isPcLayout.value
     ? `${Math.min(85 - (recommendedPosts.value.length * 5), 70)}%`
     : `${Math.min(90 - (recommendedPosts.value.length * 3), 80)}%`
 })
 
-// 计算spacer宽度
 const spacerWidth = computed(() => {
   const cardWidthPercent = parseFloat(cardWidth.value)
   return `calc((100% - ${cardWidthPercent}%) / 2)`
 })
 
-// 更新当前卡片索引（防抖处理）
 const updateCurrentIndex = useDebounceFn(() => {
   if (!carouselRef.value || recommendedPosts.value.length <= 1) return
-  
+
   const scrollLeft = carouselRef.value.scrollLeft
   const containerWidth = carouselRef.value.clientWidth
   const totalWidth = carouselRef.value.scrollWidth
-  
-  // 考虑padding-spacer的宽度，更精确地计算实际卡片位置
-  // 获取实际可滚动距离(总宽度减去容器宽度)
   const scrollableWidth = totalWidth - containerWidth
-  
-  if (scrollableWidth <= 0) return // 防止除以零
-  
-  // 计算当前滚动进度比例
+  if (scrollableWidth <= 0) return
+
   const scrollProgress = scrollLeft / scrollableWidth
-  
-  // 根据滚动进度计算索引 - 考虑到卡片数量
   const maxIndex = recommendedPosts.value.length - 1
-  const rawIndex = scrollProgress * maxIndex
-  
-  // 四舍五入到最接近的整数
-  const newIndex = Math.round(Math.max(0, Math.min(maxIndex, rawIndex)))
-  
-  // 只有当索引真正改变时才更新，减少不必要的重新渲染
+  const newIndex = Math.round(Math.max(0, Math.min(maxIndex, scrollProgress * maxIndex)))
+
   if (currentIndex.value !== newIndex) {
     currentIndex.value = newIndex
   }
-  
-  // 更新滚动位置状态（用于渐变遮罩显示）
+
   scrollPosition.value = scrollLeft
   maxScroll.value = scrollableWidth
-}, 50) // 减少防抖时间以获得更快的响应
+}, INDEX_UPDATE_DEBOUNCE_MS)
 
-// 根据进度比例滚动到指定位置
-function scrollToCardByProgress(progress: number, smooth = true) {
+function scrollToCardByProgress(progress: number, smooth = true): void {
   if (!carouselRef.value || !recommendedPosts.value.length) return
-  
   const scrollableWidth = carouselRef.value.scrollWidth - carouselRef.value.clientWidth
-  const targetScroll = progress * scrollableWidth
-  
   carouselRef.value.scrollTo({
-    left: targetScroll,
+    left: progress * scrollableWidth,
     behavior: smooth ? 'smooth' : 'auto'
   })
 }
 
-// 滚动到指定卡片，添加平滑选项
-function scrollToCard(index: number, smooth = true) {
+function scrollToCard(index: number, smooth = true): void {
   if (!carouselRef.value || !recommendedPosts.value.length) return
-  
-  // 确保索引在有效范围内
   const safeIndex = Math.max(0, Math.min(index, recommendedPosts.value.length - 1))
-  
-  // 更新当前索引状态
   currentIndex.value = safeIndex
-  
-  // 根据索引位置计算进度
   const maxIndex = Math.max(1, recommendedPosts.value.length - 1)
-  const progress = safeIndex / maxIndex
-  
-  // 使用进度比例滚动
-  scrollToCardByProgress(progress, smooth)
+  scrollToCardByProgress(safeIndex / maxIndex, smooth)
 }
 
-// 切换到前一个或后一个卡片
-function prevCard() {
-  if (shouldDisableAutoplay.value) return
-  isUserInteracting.value = true
-  
-  // 防止越界，确保循环
-  const prevIndex = currentIndex.value <= 0 
-    ? recommendedPosts.value.length - 1 
-    : currentIndex.value - 1
-  
-  scrollToCard(prevIndex)
-  
-  // 短暂延迟后重置用户交互标志
-  setTimeout(() => {
+function clearInteractionResetTimer(): void {
+  if (scrollResetTimer === null) return
+  clearTimeout(scrollResetTimer)
+  scrollResetTimer = null
+}
+
+function scheduleInteractionReset(delayMs = INTERACTION_COOLDOWN_MS): void {
+  clearInteractionResetTimer()
+  scrollResetTimer = window.setTimeout(() => {
+    scrollResetTimer = null
     isUserInteracting.value = false
-  }, 1000)
+    if (canAutoplay.value) {
+      resumeAutoplay()
+    }
+  }, delayMs)
 }
 
-function nextCard() {
+function prevCard(): void {
   if (shouldDisableAutoplay.value) return
   isUserInteracting.value = true
-  
-  // 防止越界，确保循环
+  const prevIndex = currentIndex.value <= 0
+    ? recommendedPosts.value.length - 1
+    : currentIndex.value - 1
+  scrollToCard(prevIndex)
+  scheduleInteractionReset(NEXT_PREV_COOLDOWN_MS)
+}
+
+function nextCard(): void {
+  if (shouldDisableAutoplay.value) return
+  isUserInteracting.value = true
   const nextIndex = currentIndex.value >= recommendedPosts.value.length - 1
     ? 0
     : currentIndex.value + 1
-    
   scrollToCard(nextIndex)
-  
-  // 短暂延迟后重置用户交互标志
-  setTimeout(() => {
-    isUserInteracting.value = false
-  }, 1000)
+  scheduleInteractionReset(NEXT_PREV_COOLDOWN_MS)
 }
 
-// 监听滚动事件
-function handleScroll() {
+function handleScroll(): void {
   updateCurrentIndex()
-  
-  // 当用户滚动时，暂停自动轮播
   if (!isUserInteracting.value) {
     isUserInteracting.value = true
     pauseAutoplay()
   }
-  
-  // 清除之前的定时器
-  if (scrollResetTimer.value) {
-    clearTimeout(scrollResetTimer.value)
-  }
-  
-  // 设置新的定时器，在滚动停止后恢复自动轮播
-  scrollResetTimer.value = window.setTimeout(() => {
-    isUserInteracting.value = false
-    if (!isHovered.value && props.autoplaySpeed > 0 && !shouldDisableAutoplay.value) {
-      resumeAutoplay()
-    }
-  }, 3000) // 滚动后3秒恢复自动轮播
+  scheduleInteractionReset()
 }
 
-// 处理触摸开始事件
-function handleTouchStart() {
+function handleTouchStart(): void {
   isUserInteracting.value = true
   pauseAutoplay()
+  clearInteractionResetTimer()
 }
 
-// 处理触摸结束事件
-function handleTouchEnd() {
-  // 延迟重置用户交互状态，给用户一些时间查看当前卡片
-  setTimeout(() => {
-    isUserInteracting.value = false
-    if (!isHovered.value && props.autoplaySpeed > 0 && !shouldDisableAutoplay.value) {
-      resumeAutoplay()
-    }
-  }, 3000) // 触摸结束后3秒恢复自动轮播
+function handleTouchEnd(): void {
+  scheduleInteractionReset()
 }
 
-// 鼠标悬停处理
-function handleMouseEnter() {
+function handleMouseEnter(): void {
   isHovered.value = true
   pauseAutoplay()
 }
 
-function handleMouseLeave() {
+function handleMouseLeave(): void {
   isHovered.value = false
-  if (!isUserInteracting.value && props.autoplaySpeed > 0 && !shouldDisableAutoplay.value) {
+  if (canAutoplay.value) {
     resumeAutoplay()
   }
 }
 
-// 处理键盘导航
-function handleKeyDown(e: KeyboardEvent) {
-  // 只有当轮播图可见且有多篇文章时，才响应键盘事件
-  if (!isVisible.value || shouldDisableAutoplay.value) return
-  
-  // 只有当鼠标悬停在轮播区域时，才响应键盘事件
-  if (!isHovered.value) return
-  
+function handleKeyDown(e: KeyboardEvent): void {
+  if (!isVisible.value || shouldDisableAutoplay.value || !isHovered.value) return
+
   if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
     prevCard()
     e.preventDefault()
@@ -243,22 +196,13 @@ function handleKeyDown(e: KeyboardEvent) {
   }
 }
 
-// 使用VueUse的useIntervalFn实现自动轮播
 const { pause: pauseAutoplay, resume: resumeAutoplay } = useIntervalFn(() => {
-  // 如果只有一篇文章或用户正在交互，不进行自动轮播
   if (shouldDisableAutoplay.value || isUserInteracting.value) return
-  
-  // 轮播到下一个索引
   const nextIndex = (currentIndex.value + 1) % recommendedPosts.value.length
   scrollToCard(nextIndex)
 }, props.autoplaySpeed, { immediate: false })
 
-// 鼠标悬停状态
-const isHovered = ref(false)
-
-// 监听文章数量变化，调整当前索引
 watch(() => recommendedPosts.value.length, (newCount) => {
-  // 确保当前索引不超过文章数量
   if (currentIndex.value >= newCount) {
     currentIndex.value = Math.max(0, newCount - 1)
     nextTick(() => {
@@ -280,76 +224,83 @@ watch(isVisible, async (visible) => {
     updateCurrentIndex()
   }
 
-  if (!isHovered.value && !isUserInteracting.value && props.autoplaySpeed > 0 && !shouldDisableAutoplay.value) {
+  if (canAutoplay.value) {
     resumeAutoplay()
   }
 })
 
-// 事件监听设置
 onMounted(async () => {
   if (!isBrowser) return
-  
-  // 使用VueUse的useIntersectionObserver监测元素可见性
-  const { stop } = useIntersectionObserver(
+
+  stopTopSectionSync = onHomeTopSectionsVisible(() => {
+    isVisible.value = true
+  })
+
+  const observer = useIntersectionObserver(
     animationTriggerRef,
-    ([{ isIntersecting }]) => {
-      if (isIntersecting && !isVisible.value) {
+    ([entry]) => {
+      if (entry?.isIntersecting && !isVisible.value) {
         isVisible.value = true
-        stop()
+        markHomeTopSectionsVisible()
+        observer.stop()
+        stopVisibilityObserver = null
+        return
+      }
+
+      if (entry?.isIntersecting && isHomeTwoColumnLayout()) {
+        markHomeTopSectionsVisible()
       }
     },
     {
-      threshold: 0.6,
-      rootMargin: '0px 0px -10% 0px'
+      threshold: VISIBILITY_THRESHOLD,
+      rootMargin: VISIBILITY_ROOT_MARGIN
     }
   )
-  
-  // 加载文章数据
+  stopVisibilityObserver = observer.stop
+
   await fetchPosts()
-  
+
   nextTick(() => {
-    if (carouselRef.value) {
-      // 监听事件
-      useEventListener(carouselRef.value, 'scroll', handleScroll)
-      useEventListener(carouselRef.value, 'touchstart', handleTouchStart)
-      useEventListener(carouselRef.value, 'touchend', handleTouchEnd)
-      useEventListener(carouselRef.value, 'mouseenter', handleMouseEnter)
-      useEventListener(carouselRef.value, 'mouseleave', handleMouseLeave)
-      useEventListener(window, 'keydown', handleKeyDown)
-      
-      // 初始化轮播位置和状态
-      updateCurrentIndex()
-      
-      // 自动轮播改为组件进入视口后再启动，避免用户看到“半截状态”
-    }
+    if (!carouselRef.value) return
+    useEventListener(carouselRef.value, 'scroll', handleScroll)
+    useEventListener(carouselRef.value, 'touchstart', handleTouchStart)
+    useEventListener(carouselRef.value, 'touchend', handleTouchEnd)
+    useEventListener(carouselRef.value, 'mouseenter', handleMouseEnter)
+    useEventListener(carouselRef.value, 'mouseleave', handleMouseLeave)
+    useEventListener(window, 'keydown', handleKeyDown)
+    updateCurrentIndex()
   })
 })
 
-// 组件卸载前清理
 onBeforeUnmount(() => {
   pauseAutoplay()
-  
-  // 清除可能存在的定时器
-  if (scrollResetTimer.value) {
-    clearTimeout(scrollResetTimer.value)
-  }
+  clearInteractionResetTimer()
+  stopVisibilityObserver?.()
+  stopVisibilityObserver = null
+  stopTopSectionSync?.()
+  stopTopSectionSync = null
 })
 
-// 获取推荐文章数据
-async function fetchPosts() {
+async function fetchPosts(): Promise<void> {
   if (!isBrowser) return
-  
   isLoading.value = true
   hasError.value = false
-  recommendedPosts.value = await fetchRecommendedPosts(
-    withBase,
-    configuredPostsPaths,
-    props.maxPosts
-  )
-  hasError.value = recommendedPosts.value.length === 0
-  isLoading.value = false
-}
 
+  try {
+    recommendedPosts.value = await fetchRecommendedPosts(
+      withBase,
+      configuredPostsPaths,
+      props.maxPosts
+    )
+    hasError.value = recommendedPosts.value.length === 0
+  } catch (error) {
+    logError('RecommendedReading', '加载推荐阅读失败', error)
+    recommendedPosts.value = []
+    hasError.value = true
+  } finally {
+    isLoading.value = false
+  }
+}
 </script>
 
 <template>

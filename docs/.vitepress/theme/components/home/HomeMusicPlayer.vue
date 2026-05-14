@@ -666,7 +666,7 @@ onUnmounted(() => {
 <template>
   <div class="home-music-player" ref="containerRef" :class="{ 'animate-in': isVisible }">
     <h3 class="section-title" :class="{ 'animate-in': isVisible }">随机音乐</h3>
-    <p class="section-description" :class="{ 'animate-in': isVisible }" style="--anim-delay: 0.1s">歌曲随机来自我的听歌记录，接口可按后端方案切换。</p>
+    <p class="section-description" :class="{ 'animate-in': isVisible }" style="--anim-delay: 0.1s">随机播放来自我听歌排行榜的曲目，陪你一起继续阅读。</p>
     <div class="music-content" :class="{ 'animate-in': isVisible }" style="--anim-delay: var(--lc-motion-duration-fast)">
       <div class="player-container">
         <!-- 封面区域 -->

@@ -1,137 +1,116 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
-import { withBase, useData } from 'vitepress'
-import { getRecentComments, formatCommentDate, type WalineComment } from '../../utils/commentApi'
-import { useIntersectionObserver, useAsyncState } from '@vueuse/core'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { withBase } from 'vitepress'
+import { useIntersectionObserver } from '@vueuse/core'
+import { formatCommentDate, getRecentComments, type WalineComment } from '../../utils/commentApi'
+import { logError } from '../../utils/logger'
 
-// 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
+const COMMENT_LIMIT = 7
+const INITIAL_SCROLL_SYNC_DELAY_MS = 100
+const VISIBILITY_THRESHOLD = 0.5
+const VISIBILITY_ROOT_MARGIN = '0px 0px -5% 0px'
 
-// 组件引用和状态
 const sectionRef = ref<HTMLElement | null>(null)
 const containerRef = ref<HTMLElement | null>(null)
 const animationTriggerRef = ref<HTMLElement | null>(null)
 const isVisible = ref(false)
 
-// 使用VueUse useAsyncState来管理评论加载
-const { 
-  state: comments, 
-  isLoading, 
-  error, 
-  execute: refreshComments 
-} = useAsyncState(
-  () => isBrowser ? getRecentComments(7, true) : Promise.resolve([]), 
-  [] as WalineComment[],
-  { immediate: false, resetOnExecute: true }
-)
-
-// 加载状态和错误状态
+const comments = ref<WalineComment[]>([])
+const isLoading = ref(true)
 const hasError = ref(false)
 const errorMessage = ref('')
 const isRefreshing = ref(false)
-
-// 滚动状态
 const isAtTop = ref(true)
 const isAtBottom = ref(false)
 
-// 从VitePress获取文章信息
-const { theme } = useData()
+let stopObserver: (() => void) | null = null
+let scrollSyncTimer: number | null = null
 
-// 保存观察器停止函数
-let stopObserver: Function | null = null;
-
-// 更新滚动位置和状态
-function updateScrollPosition() {
+function updateScrollPosition(): void {
   if (!containerRef.value) return
-  
   const container = containerRef.value
   isAtTop.value = container.scrollTop <= 0
   isAtBottom.value = container.scrollTop + container.clientHeight >= container.scrollHeight
 }
 
-// 组件挂载
-onMounted(() => {
-  if (!isBrowser) return
+function cleanupScrollSyncTimer(): void {
+  if (scrollSyncTimer === null) return
+  window.clearTimeout(scrollSyncTimer)
+  scrollSyncTimer = null
+}
 
-  // 设置滚动动画
-  const { stop } = useIntersectionObserver(
-    animationTriggerRef,
-    ([{ isIntersecting }]) => {
-      if (isIntersecting) {
-        isVisible.value = true
-        stop() // 只触发一次
-      }
-    },
-    { 
-      threshold: 0.5,
-      rootMargin: '0px 0px -5% 0px'
-    }
-  )
-  
-  // 保存stop函数以便在组件卸载时调用
-  stopObserver = stop
-
-  // 加载最新评论
-  loadComments()
-  
-  // 初始化滚动状态
-  setTimeout(() => {
-    updateScrollPosition()
-  }, 100)
-})
-
-// 组件卸载时清理资源
-onBeforeUnmount(() => {
-  // 停止观察器，防止内存泄漏
-  if (stopObserver) {
-    stopObserver()
-  }
-})
-
-// 获取最新评论
-async function loadComments(forceRefresh = false) {
-  if (!isBrowser) return
-  
-  isRefreshing.value = forceRefresh
-  hasError.value = false
-  
+function decodePathSegment(value: string): string {
   try {
-    await refreshComments()
-  } catch (e) {
-    hasError.value = true
-    errorMessage.value = e instanceof Error ? e.message : '未知错误'
-  } finally {
-    isRefreshing.value = false
+    return decodeURIComponent(value)
+  } catch {
+    return value
   }
 }
 
-/**
- * 获取文章标题
- */
 function getArticleTitle(url: string): string {
-  // 从文章URL中提取路径
   const path = url.replace(/^\//, '')
-  
-  // 特殊处理 about 页面
-  if (path === 'about.html') {
-    return '留痕之地-关于'
-  }
-  
-  // 尝试在主题配置中找到文章
-  if (theme.value && theme.value.sidebar) {
-    // 这里需要根据实际项目结构调整查找文章标题的逻辑
-    return path ? path.split('/').pop()?.replace('.html', '').replace(/%\w+/g, ' ') || '未知文章' : '首页'
-  }
-  
-  return path ? path.split('/').pop()?.replace('.html', '').replace(/%\w+/g, ' ') || '未知文章' : '首页'
+  if (!path || path === 'index.html') return '首页'
+  if (path === 'about.html') return '留痕之地-关于'
+
+  const slug = path.split('/').pop()?.replace(/\.html$/, '') || '未知文章'
+  return decodePathSegment(slug).replace(/[-_]/g, ' ')
 }
 
-/**
- * 生成文章链接
- */
 function getArticleLink(url: string): string {
   return withBase(url)
 }
+
+async function loadComments(forceRefresh = false): Promise<void> {
+  if (!isBrowser) return
+
+  hasError.value = false
+  errorMessage.value = ''
+  if (forceRefresh) {
+    isRefreshing.value = true
+  } else {
+    isLoading.value = true
+  }
+
+  try {
+    comments.value = await getRecentComments(COMMENT_LIMIT, true)
+  } catch (error) {
+    hasError.value = true
+    errorMessage.value = error instanceof Error ? error.message : '未知错误'
+    logError('RecentComments', '加载最新评论失败', error)
+  } finally {
+    isLoading.value = false
+    isRefreshing.value = false
+    cleanupScrollSyncTimer()
+    scrollSyncTimer = window.setTimeout(updateScrollPosition, INITIAL_SCROLL_SYNC_DELAY_MS)
+  }
+}
+
+onMounted(() => {
+  if (!isBrowser) return
+
+  const observer = useIntersectionObserver(
+    animationTriggerRef,
+    ([entry]) => {
+      if (!entry?.isIntersecting) return
+      isVisible.value = true
+      observer.stop()
+    },
+    {
+      threshold: VISIBILITY_THRESHOLD,
+      rootMargin: VISIBILITY_ROOT_MARGIN
+    }
+  )
+  stopObserver = observer.stop
+
+  void loadComments()
+})
+
+onBeforeUnmount(() => {
+  stopObserver?.()
+  stopObserver = null
+  cleanupScrollSyncTimer()
+})
 </script>
 
 <template>

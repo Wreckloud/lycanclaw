@@ -1,30 +1,22 @@
 <script setup lang="ts">
-/**
- * 网站页脚数据面板组件
- * 显示网站运行时间、版权信息和一言API
- */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useSidebar } from 'vitepress/theme'
 import { fetchHitokoto } from '../utils/siteApi'
 
-// 获取页面数据和侧边栏状态
 const { hasSidebar } = useSidebar()
-
-// 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
-
-// ===== 版权年份相关 =====
-// 当前年份
 const currentYear = new Date().getFullYear()
-// 网站创建年份
 const startYear = 2023
-// 格式化年份显示
 const yearString = startYear === currentYear 
   ? currentYear.toString() 
   : `${startYear}-${currentYear}`
 
-// ===== 计时器相关 =====
-const startDate = new Date('2023-09-17T14:00:00')
+const SITE_START_AT = new Date('2023-09-17T14:00:00')
+const MILLISECOND_PER_SECOND = 1000
+const SECOND_PER_MINUTE = 60
+const MINUTE_PER_HOUR = 60
+const HOUR_PER_DAY = 24
+const DAY_PER_YEAR = 365.25
 const years = ref(0)
 const days = ref(0)
 const hours = ref(0)
@@ -47,33 +39,30 @@ const secondUnitsAnim = ref<'idle' | 'step' | 'wrap'>('idle')
 const secondTensKey = ref(0)
 const secondUnitsKey = ref(0)
 
-// ===== 一言API相关 =====
 const DEFAULT_HITOKOTO = '死亡是涅灭，亦或是永恒？'
 const hitokoto = ref(DEFAULT_HITOKOTO)
 
-/**
- * 获取一言内容
- */
 const updateHitokoto = async () => {
   hitokoto.value = await fetchHitokoto(DEFAULT_HITOKOTO)
 }
 
-/**
- * 更新计时器函数
- */
 const updateTimer = () => {
   const now = new Date()
-  const diff = now.getTime() - startDate.getTime()
-  
-  // 计算年、天、时、分、秒
-  const millisecondsPerYear = 1000 * 60 * 60 * 24 * 365.25 // 考虑闰年
+  const diff = now.getTime() - SITE_START_AT.getTime()
+
+  const millisecondsPerYear =
+    MILLISECOND_PER_SECOND * SECOND_PER_MINUTE * MINUTE_PER_HOUR * HOUR_PER_DAY * DAY_PER_YEAR
+  const millisecondsPerDay =
+    MILLISECOND_PER_SECOND * SECOND_PER_MINUTE * MINUTE_PER_HOUR * HOUR_PER_DAY
+  const millisecondsPerHour = MILLISECOND_PER_SECOND * SECOND_PER_MINUTE * MINUTE_PER_HOUR
+  const millisecondsPerMinute = MILLISECOND_PER_SECOND * SECOND_PER_MINUTE
   years.value = Math.floor(diff / millisecondsPerYear)
   const remainingAfterYears = diff % millisecondsPerYear
   
-  days.value = Math.floor(remainingAfterYears / (1000 * 60 * 60 * 24))
-  hours.value = Math.floor((remainingAfterYears % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-  minutes.value = Math.floor((remainingAfterYears % (1000 * 60 * 60)) / (1000 * 60))
-  seconds.value = Math.floor((remainingAfterYears % (1000 * 60)) / 1000)
+  days.value = Math.floor(remainingAfterYears / millisecondsPerDay)
+  hours.value = Math.floor((remainingAfterYears % millisecondsPerDay) / millisecondsPerHour)
+  minutes.value = Math.floor((remainingAfterYears % millisecondsPerHour) / millisecondsPerMinute)
+  seconds.value = Math.floor((remainingAfterYears % millisecondsPerMinute) / MILLISECOND_PER_SECOND)
 }
 
 function getDigitAnimationType(previousDigit: string, nextDigit: string): 'idle' | 'step' | 'wrap' {
@@ -109,19 +98,15 @@ watch(secondText, (nextSecond, previousSecond) => {
 })
 
 onMounted(() => {
-  // 确保只在浏览器环境中执行
   if (!isBrowser) return
-  
-  // 初始化计时器
+
   updateTimer()
   timer = window.setInterval(updateTimer, 1000)
-  
-  // 加载一言
-  updateHitokoto()
+
+  void updateHitokoto()
 })
 
 onBeforeUnmount(() => {
-  // 清除计时器
   if (timer !== null && isBrowser) {
     clearInterval(timer)
     timer = null
@@ -130,12 +115,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <!-- 只在没有侧边栏时显示页脚 -->
   <footer v-if="!hasSidebar" class="VPFooter">
     <div class="container">
-      <!-- 页脚内容 -->
       <div class="footer-content">
-        <!-- 左侧内容 -->
         <div class="left-content">
           <p class="timer">
             <span class="timer-prefix">孤狼踏雪，已行于世间</span><br class="timer-break">
@@ -167,8 +149,8 @@ onBeforeUnmount(() => {
             </span>
           </p>
           <p class="credits">
-            <span>Powered by <a href="https://www.netlify.com/" target="_blank">netlify</a> | </span>
-            <span>Theme by <a href="https://vitepress.dev/" target="_blank">vitepress</a> | </span>
+            <span>Powered by <a href="https://www.netlify.com/" target="_blank" rel="noreferrer noopener">netlify</a> | </span>
+            <span>Theme by <a href="https://vitepress.dev/" target="_blank" rel="noreferrer noopener">vitepress</a> | </span>
             <span>
               <a href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer noopener">
                 蜀ICP备2026024065号
@@ -177,7 +159,6 @@ onBeforeUnmount(() => {
           </p>
         </div>
         
-        <!-- 右侧内容 -->
         <div class="right-content">
           <p class="copyright">© {{ yearString }} <a href="/about">Wreckloud</a>.</p>
           <p class="motto">{{ hitokoto }}</p>
@@ -193,8 +174,6 @@ onBeforeUnmount(() => {
   padding: 24px 24px;
   background-color: var(--vp-c-bg);
 }
-
-/* 删除动画样式 */
 
 .container {
   margin: 0 auto;
@@ -219,15 +198,11 @@ onBeforeUnmount(() => {
   text-align: right;
 }
 
-.copyright, .timer, .motto, .credits, .icp {
+.copyright, .timer, .motto, .credits {
   margin: 4px 0;
   line-height: 1.6;
   font-size: 14px;
   font-weight: 500;
-  color: var(--vp-c-text-3);
-}
-
-.icp a {
   color: var(--vp-c-text-3);
 }
 
@@ -239,14 +214,12 @@ onBeforeUnmount(() => {
   display: inline-block;
 }
 
-/* 在桌面设备上隐藏换行符 */
 @media (min-width: 769px) {
   .timer-break {
     display: none;
   }
 }
 
-/* 在移动设备上显示换行符 */
 @media (max-width: 768px) {
   .timer-break {
     display: block;
@@ -345,7 +318,6 @@ onBeforeUnmount(() => {
   color: var(--vp-c-text-1);
 }
 
-/* 响应式样式调整 */
 @media (max-width: 768px) {
   .footer-content {
     flex-direction: column;

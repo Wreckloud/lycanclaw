@@ -1,21 +1,16 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, onUnmounted } from 'vue'
-import audioManager from '../../utils/audioManager'
-import audioService from '../../utils/audioService'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import audioManager, { type SongInfo } from '../../utils/audioManager'
+import audioService, { type AudioSongInfo } from '../../utils/audioService'
 import { calculateProgressPercent, formatAudioTime } from '../../utils/audioUi'
 import { logError } from '../../utils/logger'
 
-// 当前播放歌曲的信息
-const currentSong = ref<{
-  id: string,
-  name: string,
-  artist: string,
-  cover: string,
-  isPlaying: boolean,
-  progress: number,
-  duration: number,
-  currentTime: number
-}>({
+const AUTO_COLLAPSE_MS = 3000
+const HOVER_COLLAPSE_MS = 2000
+const RESET_ROTATION_MS = 800
+const ROTATION_SPEED_DEG_PER_MS = 0.03
+
+const currentSong = ref<SongInfo>({
   id: '',
   name: '',
   artist: '',
@@ -26,631 +21,401 @@ const currentSong = ref<{
   currentTime: 0
 })
 
-// 是否显示播放器
 const isVisible = ref(false)
-// 是否显示详细信息（展开状态）
 const isExpanded = ref(true)
-// 是否显示封面（二级折叠状态）
 const showCover = ref(true)
-// 是否正在拖动进度条
 const isDragging = ref(false)
-// 自动收起定时器
-const autoCollapseTimer = ref<number | null>(null)
-// 三级折叠定时器
-const miniModeTimer = ref<number | null>(null)
-// 鼠标是否悬停在封面上
 const isHovering = ref(false)
-// 是否是触摸设备
 const isTouchDevice = ref(false)
 const progressBarRef = ref<HTMLElement | null>(null)
+const coverRotation = ref(0)
+const rotationAnimationId = ref<number | null>(null)
+const lastPausedRotation = ref(0)
+
+const unsubscribers: Array<() => void> = []
+let collapseTimer: ReturnType<typeof setTimeout> | null = null
 
 interface LegacyNavigator extends Navigator {
   msMaxTouchPoints?: number
 }
 
-// 封面旋转角度
-const coverRotation = ref(0)
-// 封面旋转动画ID
-const rotationAnimationId = ref<number | null>(null)
-// 上次暂停时的角度
-const lastPausedRotation = ref(0)
+const formattedCurrentTime = computed(() => formatAudioTime(currentSong.value.currentTime))
+const formattedDuration = computed(() => formatAudioTime(currentSong.value.duration))
+const coverRotationStyle = computed(() => ({ transform: `rotate(${coverRotation.value}deg)` }))
+const isMiniMode = computed(() => !showCover.value)
 
-// 格式化时间
-function formatTime(seconds: number): string {
-  return formatAudioTime(seconds)
+function clearCollapseTimer(): void {
+  if (!collapseTimer) return
+  clearTimeout(collapseTimer)
+  collapseTimer = null
 }
 
-// 计算属性：格式化的当前时间
-const formattedCurrentTime = computed(() => formatTime(currentSong.value.currentTime))
-// 计算属性：格式化的总时长
-const formattedDuration = computed(() => formatTime(currentSong.value.duration))
-// 计算属性：封面旋转样式
-const coverRotationStyle = computed(() => {
-  return {
-    transform: `rotate(${coverRotation.value}deg)`
-  }
-})
-
-// 开始封面旋转动画
-function startRotation() {
-  if (rotationAnimationId.value) return
-  
-  const startTime = performance.now()
-  // 从上次暂停的角度开始旋转
-  const startRotation = lastPausedRotation.value
-  coverRotation.value = startRotation
-  
-  // 每秒旋转30度（缓慢旋转）
-  const rotationSpeed = 30 / 1000
-  
-  const animate = (currentTime: number) => {
-    const elapsedTime = currentTime - startTime
-    coverRotation.value = startRotation + (elapsedTime * rotationSpeed)
-    
-    // 保持在0-360度范围内
-    if (coverRotation.value >= 360) {
-      coverRotation.value -= 360
-    }
-    
-    rotationAnimationId.value = requestAnimationFrame(animate)
-  }
-  
-  rotationAnimationId.value = requestAnimationFrame(animate)
-}
-
-// 停止封面旋转动画
-function stopRotation() {
-  if (rotationAnimationId.value) {
-    cancelAnimationFrame(rotationAnimationId.value)
-    rotationAnimationId.value = null
-    // 保存当前角度
-    lastPausedRotation.value = coverRotation.value
-  }
-}
-
-// 重置封面旋转角度
-function resetRotation() {
-  // 如果正在旋转，先停止
-  stopRotation()
-  
-  // 动画过渡到0度
-  const startRotation = coverRotation.value
-  const startTime = performance.now()
-  const duration = 800 // 过渡时间，毫秒
-  
-  const animateReset = (currentTime: number) => {
-    const elapsedTime = currentTime - startTime
-    const progress = Math.min(elapsedTime / duration, 1)
-    
-    // 使用缓动函数使动画更自然
-    const easeOutProgress = 1 - Math.pow(1 - progress, 3)
-    coverRotation.value = startRotation * (1 - easeOutProgress)
-    
-    if (progress < 1) {
-      requestAnimationFrame(animateReset)
-    } else {
-      coverRotation.value = 0
-      lastPausedRotation.value = 0 // 重置暂停角度
-    }
-  }
-  
-  requestAnimationFrame(animateReset)
-}
-
-// 切换播放/暂停
-function togglePlay(event?: Event) {
-  // 如果是三级折叠状态，禁用播放/暂停功能
-  if (!showCover.value) {
-    return
-  }
-  
-  if (!currentSong.value.id) return
-  
-  if (currentSong.value.isPlaying) {
-    // 如果正在播放，则暂停
-    audioService.pause()
-    audioManager.pauseCurrent(currentSong.value.id)
-    
-    // 停止封面旋转
-    stopRotation()
-    
-    // 清除自动收起定时器
-    if (autoCollapseTimer.value) {
-      clearTimeout(autoCollapseTimer.value)
-      autoCollapseTimer.value = null
-    }
-    
-    // 清除三级折叠定时器
-    if (miniModeTimer.value) {
-      clearTimeout(miniModeTimer.value)
-      miniModeTimer.value = null
-    }
-    
-    // 如果是三级折叠状态，恢复封面显示
-    if (!showCover.value) {
-      showCover.value = true
-    }
-  } else {
-    // 如果已暂停，则播放
-    const songInfo = {
-      name: currentSong.value.name,
-      artist: currentSong.value.artist,
-      cover: currentSong.value.cover,
-      url: ''  // 这里URL可能为空，但audioService会从缓存中恢复
-    }
-    
-    audioService.play(currentSong.value.id, songInfo, currentSong.value.currentTime)
-      .catch(error => {
-        logError('GlobalMusicPlayer', '播放失败', error)
-      })
-    
-    // 开始封面旋转
-    startRotation()
-      
-    // 设置自动收起定时器
-    scheduleAutoCollapse()
-  }
-}
-
-// 设置自动收起定时器
-function scheduleAutoCollapse() {
-  // 清除现有定时器
-  if (autoCollapseTimer.value) {
-    clearTimeout(autoCollapseTimer.value)
-  }
-  
-  // 3秒后直接进入三级折叠（只显示控制按钮）
-  autoCollapseTimer.value = window.setTimeout(() => {
-    if (currentSong.value.isPlaying) {
-      isExpanded.value = false
-      showCover.value = false // 直接进入三级折叠
-    }
-    autoCollapseTimer.value = null
-  }, 3000) // 从5秒改为3秒
-}
-
-// 不再需要单独的三级折叠定时器
-// function scheduleMiniMode() {
-//   if (miniModeTimer.value) {
-//     clearTimeout(miniModeTimer.value)
-//   }
-//   
-//   miniModeTimer.value = window.setTimeout(() => {
-//     if (currentSong.value.isPlaying && !isExpanded.value) {
-//       showCover.value = false
-//     }
-//     miniModeTimer.value = null
-//   }, 10000)
-// }
-
-// 切换展开/收起状态
-function toggleExpand(event?: Event) {
-  const pointerType = event instanceof PointerEvent ? event.pointerType : undefined
-  // 检查是否是触摸事件
-  const isTouchEvent = event && (event.type === 'touchend' || pointerType === 'touch')
-  
-  // 如果是触摸设备或触摸事件
-  if (isTouchDevice.value || isTouchEvent) {
-    // 触摸设备上，直接展开到完整状态
-    if (!isExpanded.value || !showCover.value) {
-      isExpanded.value = true
-      showCover.value = true
-      
-      // 如果正在播放，设置自动收起定时器
-      if (currentSong.value.isPlaying) {
-        scheduleAutoCollapse()
-      }
-      return
-    }
-    
-    // 如果已经是完全展开状态，则收起到三级折叠
-    isExpanded.value = false
-    showCover.value = false
-    return
-  }
-  
-  // 以下是鼠标设备的逻辑
-  // 如果当前是三级折叠状态，先恢复到完全展开
-  if (!showCover.value) {
-    showCover.value = true
-    isExpanded.value = true
-    
-    // 如果正在播放，设置自动收起定时器
-    if (currentSong.value.isPlaying) {
-      scheduleAutoCollapse()
-    }
-    return
-  }
-  
-  // 如果当前是二级折叠状态，恢复到完全展开
-  if (!isExpanded.value && showCover.value) {
-    isExpanded.value = true
-    
-    // 如果正在播放，设置自动收起定时器
-    if (currentSong.value.isPlaying) {
-      scheduleAutoCollapse()
-    }
-    return
-  }
-  
-  // 如果当前是完全展开状态，直接进入三级折叠
-  if (isExpanded.value) {
-    isExpanded.value = false
-    showCover.value = false
-  }
-}
-
-// 鼠标进入播放器
-function handlePlayerMouseEnter() {
-  // 清除所有自动收起定时器
-  if (autoCollapseTimer.value) {
-    clearTimeout(autoCollapseTimer.value)
-    autoCollapseTimer.value = null
-  }
-  
-  if (miniModeTimer.value) {
-    clearTimeout(miniModeTimer.value)
-    miniModeTimer.value = null
-  }
-  
-  // 如果是三级折叠状态，恢复到二级折叠
-  if (!showCover.value) {
-    showCover.value = true
-    isExpanded.value = false // 确保只显示到二级折叠
-  }
-}
-
-// 鼠标离开播放器
-function handlePlayerMouseLeave() {
-  // 只有在播放状态下才设置自动收起定时器
-  if (currentSong.value.isPlaying) {
-    // 清除现有定时器
-    if (autoCollapseTimer.value) {
-      clearTimeout(autoCollapseTimer.value)
-    }
-    
-    // 设置新的定时器，2秒后收起
-    autoCollapseTimer.value = window.setTimeout(() => {
-      // 如果是完全展开状态，直接收起到三级折叠
-      if (isExpanded.value) {
-        isExpanded.value = false
-        showCover.value = false
-      } 
-      // 如果是二级折叠状态，收起到三级折叠
-      else if (showCover.value) {
-        showCover.value = false
-      }
-      
-      autoCollapseTimer.value = null
-    }, 2000)
-  }
-}
-
-// 鼠标进入封面区域
-function handleMouseEnter() {
-  isHovering.value = true
-}
-
-// 鼠标离开封面区域
-function handleMouseLeave() {
-  isHovering.value = false
-}
-
-// 关闭播放器
-function closePlayer() {
-  isVisible.value = false
-  
-  // 如果正在播放，先暂停
-  if (currentSong.value.isPlaying) {
-    audioService.pause()
-    audioManager.pauseCurrent(currentSong.value.id)
-  }
-  
-  // 发送播放器关闭事件，通知其他组件
-  audioManager.emit('player-closed', currentSong.value.id)
-  
-  // 清除自动收起定时器
-  if (autoCollapseTimer.value) {
-    clearTimeout(autoCollapseTimer.value)
-    autoCollapseTimer.value = null
-  }
-  
-  // 清除三级折叠定时器
-  if (miniModeTimer.value) {
-    clearTimeout(miniModeTimer.value)
-    miniModeTimer.value = null
-  }
-  
-  // 重置状态
-  isExpanded.value = true
-  showCover.value = true
-  
-  // 停止封面旋转
-  stopRotation()
-  
-  // 重置旋转角度
-  resetRotation()
-}
-
-// 设置进度
-function setProgress(e: MouseEvent) {
-  if (!currentSong.value.id || !currentSong.value.isPlaying || isDragging.value) return
-  
-  const progressBar = e.currentTarget as HTMLElement
-  const rect = progressBar.getBoundingClientRect()
-  const percent = (e.clientX - rect.left) / rect.width
-  
-  // 限制百分比在0-1之间
-  const boundedPercent = Math.max(0, Math.min(1, percent))
-  const newTime = boundedPercent * currentSong.value.duration
-  
-  // 直接使用audioService设置进度
-  audioService.seek(newTime)
-}
-
-// 开始拖动进度条
-function startDrag(e: MouseEvent | TouchEvent) {
-  if (!currentSong.value.id || !currentSong.value.isPlaying) return
-  
-  isDragging.value = true
-  
-  if (e.type === 'touchstart') {
-    updateProgressFromTouch(e as TouchEvent)
-    
-    // 添加触摸事件监听
-    document.addEventListener('touchmove', updateProgressFromTouch, { passive: false })
-    document.addEventListener('touchend', stopDrag)
-  } else {
-    updateProgressFromEvent(e as MouseEvent)
-    
-    // 添加鼠标事件监听
-    document.addEventListener('mousemove', updateProgressFromEvent)
-    document.addEventListener('mouseup', stopDrag)
-  }
-}
-
-// 从鼠标事件更新进度
-function updateProgressFromEvent(e: MouseEvent) {
-  if (!isDragging.value || !currentSong.value.id) return
-  
-  const progressBar = progressBarRef.value
-  if (!progressBar) return
-  
-  const percent = calculateProgressPercent(e, progressBar)
-  
-  currentSong.value.progress = percent * 100
-}
-
-// 从触摸事件更新进度
-function updateProgressFromTouch(e: TouchEvent) {
-  if (!isDragging.value || !currentSong.value.id) return
-  
-  // 阻止触摸事件的默认行为（如滚动）
-  e.preventDefault()
-  
-  const progressBar = progressBarRef.value
-  if (!progressBar) return
-  
-  const percent = calculateProgressPercent(e, progressBar)
-  
-  currentSong.value.progress = percent * 100
-}
-
-// 停止拖动进度条
-function stopDrag() {
-  if (!isDragging.value || !currentSong.value.id) return
-  
-  isDragging.value = false
-  
-  // 计算新的播放位置
-  const newTime = (currentSong.value.progress / 100) * currentSong.value.duration
-  
-  // 直接使用audioService设置进度
-  audioService.seek(newTime)
-  
-  // 移除全局事件监听
+function clearDragListeners(): void {
   document.removeEventListener('mousemove', updateProgressFromEvent)
   document.removeEventListener('mouseup', stopDrag)
   document.removeEventListener('touchmove', updateProgressFromTouch)
   document.removeEventListener('touchend', stopDrag)
 }
 
-// 检测是否是触摸设备
-function detectTouchDevice() {
+function setExpandedMode(): void {
+  isExpanded.value = true
+  showCover.value = true
+}
+
+function setCollapsedMode(): void {
+  isExpanded.value = false
+  showCover.value = true
+}
+
+function setMiniMode(): void {
+  isExpanded.value = false
+  showCover.value = false
+}
+
+function scheduleCollapse(delayMs: number): void {
+  clearCollapseTimer()
+  collapseTimer = setTimeout(() => {
+    collapseTimer = null
+    if (!currentSong.value.isPlaying) return
+    setMiniMode()
+  }, delayMs)
+}
+
+function pauseCurrentSong(): void {
+  audioService.pause()
+  audioManager.pauseCurrent(currentSong.value.id)
+}
+
+function startRotation(): void {
+  if (rotationAnimationId.value) return
+
+  const startTime = performance.now()
+  const baseRotation = lastPausedRotation.value
+  coverRotation.value = baseRotation
+
+  const animate = (now: number) => {
+    const elapsed = now - startTime
+    coverRotation.value = (baseRotation + elapsed * ROTATION_SPEED_DEG_PER_MS) % 360
+    rotationAnimationId.value = requestAnimationFrame(animate)
+  }
+
+  rotationAnimationId.value = requestAnimationFrame(animate)
+}
+
+function stopRotation(): void {
+  if (!rotationAnimationId.value) return
+  cancelAnimationFrame(rotationAnimationId.value)
+  rotationAnimationId.value = null
+  lastPausedRotation.value = coverRotation.value
+}
+
+function resetRotation(): void {
+  stopRotation()
+  const startRotation = coverRotation.value
+  const startTime = performance.now()
+
+  const animateReset = (now: number) => {
+    const progress = Math.min((now - startTime) / RESET_ROTATION_MS, 1)
+    const easedProgress = 1 - Math.pow(1 - progress, 3)
+    coverRotation.value = startRotation * (1 - easedProgress)
+    if (progress < 1) {
+      requestAnimationFrame(animateReset)
+      return
+    }
+    coverRotation.value = 0
+    lastPausedRotation.value = 0
+  }
+
+  requestAnimationFrame(animateReset)
+}
+
+function buildPlayableSongInfo(): AudioSongInfo {
+  return {
+    name: currentSong.value.name,
+    artist: currentSong.value.artist,
+    cover: currentSong.value.cover,
+    url: ''
+  }
+}
+
+function togglePlay(): void {
+  if (isMiniMode.value || !currentSong.value.id) return
+
+  if (currentSong.value.isPlaying) {
+    pauseCurrentSong()
+    stopRotation()
+    clearCollapseTimer()
+    return
+  }
+
+  void audioService.play(currentSong.value.id, buildPlayableSongInfo(), currentSong.value.currentTime)
+    .then(() => {
+      startRotation()
+      scheduleCollapse(AUTO_COLLAPSE_MS)
+    })
+    .catch(error => {
+      logError('GlobalMusicPlayer', '播放失败', error)
+    })
+}
+
+function isTouchInteraction(event?: Event): boolean {
+  if (!event) return isTouchDevice.value
+  const pointerType = event instanceof PointerEvent ? event.pointerType : undefined
+  return event.type === 'touchend' || pointerType === 'touch'
+}
+
+function toggleExpand(event?: Event): void {
+  if (isTouchInteraction(event)) {
+    if (!isExpanded.value || isMiniMode.value) {
+      setExpandedMode()
+      if (currentSong.value.isPlaying) scheduleCollapse(AUTO_COLLAPSE_MS)
+      return
+    }
+    setMiniMode()
+    return
+  }
+
+  if (isMiniMode.value || !isExpanded.value) {
+    setExpandedMode()
+    if (currentSong.value.isPlaying) scheduleCollapse(AUTO_COLLAPSE_MS)
+    return
+  }
+
+  setMiniMode()
+}
+
+function handlePlayerMouseEnter(): void {
+  clearCollapseTimer()
+  if (isMiniMode.value) {
+    setCollapsedMode()
+  }
+}
+
+function handlePlayerMouseLeave(): void {
+  if (currentSong.value.isPlaying) {
+    scheduleCollapse(HOVER_COLLAPSE_MS)
+  }
+}
+
+function handleMouseEnter(): void {
+  isHovering.value = true
+}
+
+function handleMouseLeave(): void {
+  isHovering.value = false
+}
+
+function closePlayer(): void {
+  isVisible.value = false
+  clearCollapseTimer()
+
+  if (currentSong.value.isPlaying) {
+    pauseCurrentSong()
+  }
+
+  audioManager.emit('player-closed', currentSong.value.id)
+  setExpandedMode()
+  resetRotation()
+}
+
+function setProgress(event: MouseEvent): void {
+  if (!currentSong.value.id || !currentSong.value.isPlaying || isDragging.value) return
+  const progressBar = progressBarRef.value ?? (event.currentTarget as HTMLElement | null)
+  if (!progressBar) return
+  const percent = calculateProgressPercent(event, progressBar)
+  audioService.seek(percent * currentSong.value.duration)
+}
+
+function updateProgressFromEvent(event: MouseEvent): void {
+  if (!isDragging.value || !progressBarRef.value || !currentSong.value.id) return
+  const percent = calculateProgressPercent(event, progressBarRef.value)
+  currentSong.value.progress = percent * 100
+}
+
+function updateProgressFromTouch(event: TouchEvent): void {
+  if (!isDragging.value || !progressBarRef.value || !currentSong.value.id) return
+  event.preventDefault()
+  const percent = calculateProgressPercent(event, progressBarRef.value)
+  currentSong.value.progress = percent * 100
+}
+
+function startDrag(event: MouseEvent | TouchEvent): void {
+  if (!currentSong.value.id || !currentSong.value.isPlaying) return
+  isDragging.value = true
+
+  if (event.type === 'touchstart') {
+    updateProgressFromTouch(event as TouchEvent)
+    document.addEventListener('touchmove', updateProgressFromTouch, { passive: false })
+    document.addEventListener('touchend', stopDrag)
+    return
+  }
+
+  updateProgressFromEvent(event as MouseEvent)
+  document.addEventListener('mousemove', updateProgressFromEvent)
+  document.addEventListener('mouseup', stopDrag)
+}
+
+function stopDrag(): void {
+  clearDragListeners()
+  if (!isDragging.value || !currentSong.value.id) return
+
+  isDragging.value = false
+  const newTime = (currentSong.value.progress / 100) * currentSong.value.duration
+  audioService.seek(newTime)
+}
+
+function detectTouchDevice(): void {
   const legacyNavigator = navigator as LegacyNavigator
-  isTouchDevice.value = 'ontouchstart' in window || 
+  isTouchDevice.value = 'ontouchstart' in window ||
     navigator.maxTouchPoints > 0 ||
     (legacyNavigator.msMaxTouchPoints ?? 0) > 0
 }
 
-// 组件挂载时
-onMounted(() => {
-  // 检测是否是触摸设备
-  detectTouchDevice()
-  
-  // 监听窗口大小变化，重新检测设备类型
-  window.addEventListener('resize', detectTouchDevice)
-  
-  // 同步当前歌曲信息（从audioManager获取）
-  const savedSongInfo = audioManager.getCurrentSongInfo();
-  if (savedSongInfo && savedSongInfo.isPlaying) {
-    currentSong.value = savedSongInfo;
-    isVisible.value = true; // 只有在播放状态下才显示播放器
-    
-    // 如果正在播放，设置自动收起定时器
-    scheduleAutoCollapse();
-  } else {
-    isVisible.value = false; // 不在播放状态则隐藏
+function syncWithStoredSong(): void {
+  const songInfo = audioManager.getCurrentSongInfo()
+  if (!songInfo) {
+    isVisible.value = false
+    return
   }
-  
-  // 监听歌曲信息更新
-  const unsubscribers: Array<() => void> = []
-  
-  // 监听播放状态变化
+
+  currentSong.value = songInfo
+  isVisible.value = songInfo.isPlaying
+
+  if (songInfo.isPlaying) {
+    startRotation()
+    scheduleCollapse(AUTO_COLLAPSE_MS)
+  }
+}
+
+function parsePlayState(data: string): { id: string; isPlaying: boolean } | null {
+  const [id, state] = data.split(':')
+  if (!id || state === undefined) return null
+  return { id, isPlaying: state === 'true' }
+}
+
+function parseProgressData(data: string): { id: string; currentTime: number; duration?: number } | null {
+  const [id, currentTimeText, durationText] = data.split(':')
+  if (!id || !currentTimeText) return null
+  const currentTime = Number.parseFloat(currentTimeText)
+  if (Number.isNaN(currentTime)) return null
+  const duration = durationText !== undefined ? Number.parseFloat(durationText) : undefined
+  return {
+    id,
+    currentTime,
+    duration: duration !== undefined && !Number.isNaN(duration) ? duration : undefined
+  }
+}
+
+function setupEventListeners(): void {
   unsubscribers.push(
-    audioManager.on('song-info-update', (data) => {
+    audioManager.on('song-info-update', data => {
       try {
-        const songInfo = JSON.parse(data)
-        
-        // 检查是否是新的歌曲
+        const songInfo = JSON.parse(data) as SongInfo
         const isNewSong = currentSong.value.id !== songInfo.id
-        
-        // 更新歌曲信息
-        currentSong.value = {
-          ...currentSong.value,
-          ...songInfo
-        }
-        
-        // 只有在播放状态下才显示播放器
-        if (songInfo.id && songInfo.isPlaying) {
+        currentSong.value = { ...currentSong.value, ...songInfo }
+
+        if (!songInfo.id) return
+        if (songInfo.isPlaying) {
           isVisible.value = true
-          
-          // 如果是新歌曲，完全展开播放器
-          if (isNewSong) {
-            isExpanded.value = true
-            showCover.value = true
-          }
-          
-          // 设置自动收起定时器
-          scheduleAutoCollapse()
-        } else if (!songInfo.isPlaying) {
-          // 如果不是播放状态，可以考虑是否隐藏播放器
-          // 这里保留显示，但不再自动收起
-          if (autoCollapseTimer.value) {
-            clearTimeout(autoCollapseTimer.value)
-            autoCollapseTimer.value = null
-          }
+          if (isNewSong) setExpandedMode()
+          scheduleCollapse(AUTO_COLLAPSE_MS)
+          return
         }
-      } catch (e) {
-        logError('GlobalMusicPlayer', '解析歌曲信息失败', e)
+
+        clearCollapseTimer()
+      } catch (error) {
+        logError('GlobalMusicPlayer', '解析歌曲信息失败', error)
       }
     })
   )
-  
-  // 监听进度更新
+
   unsubscribers.push(
-    audioManager.on('progress-update', (data) => {
+    audioManager.on('progress-update', data => {
       if (isDragging.value) return
-      
-      try {
-        const [id, currentTime, duration] = data.split(':')
-        
-        // 只更新当前播放的歌曲
-        if (id === currentSong.value.id) {
-          currentSong.value.currentTime = parseFloat(currentTime)
-          currentSong.value.duration = parseFloat(duration)
-          currentSong.value.progress = (currentSong.value.currentTime / currentSong.value.duration) * 100 || 0
-        }
-      } catch (e) {
-        logError('GlobalMusicPlayer', '解析进度信息失败', e)
+      const parsed = parseProgressData(data)
+      if (!parsed || parsed.id !== currentSong.value.id) return
+
+      currentSong.value.currentTime = parsed.currentTime
+      if (parsed.duration !== undefined && parsed.duration > 0) {
+        currentSong.value.duration = parsed.duration
       }
+
+      currentSong.value.progress = currentSong.value.duration > 0
+        ? (currentSong.value.currentTime / currentSong.value.duration) * 100
+        : 0
     })
   )
-  
-  // 监听播放状态变化
+
   unsubscribers.push(
-    audioManager.on('play-state-change', (data) => {
-      try {
-        const [id, isPlaying] = data.split(':')
-        
-        // 只更新当前播放的歌曲
-        if (id === currentSong.value.id) {
-          const newPlayingState = isPlaying === 'true'
-          const previousPlayingState = currentSong.value.isPlaying
-          currentSong.value.isPlaying = newPlayingState
-          
-          // 如果开始播放，显示播放器并设置自动收起定时器
-          if (newPlayingState) {
-            isVisible.value = true
-            scheduleAutoCollapse()
-            // 开始封面旋转
-            startRotation()
-          } else if (previousPlayingState) { // 只在从播放状态变为暂停状态时执行
-            // 如果停止播放，清除自动收起定时器
-            if (autoCollapseTimer.value) {
-              clearTimeout(autoCollapseTimer.value)
-              autoCollapseTimer.value = null
-            }
-            // 停止封面旋转
-            stopRotation()
-          }
-        }
-      } catch (e) {
-        logError('GlobalMusicPlayer', '解析播放状态信息失败', e)
+    audioManager.on('play-state-change', data => {
+      const parsed = parsePlayState(data)
+      if (!parsed || parsed.id !== currentSong.value.id) return
+
+      const previousState = currentSong.value.isPlaying
+      currentSong.value.isPlaying = parsed.isPlaying
+
+      if (parsed.isPlaying) {
+        isVisible.value = true
+        startRotation()
+        scheduleCollapse(AUTO_COLLAPSE_MS)
+        return
+      }
+
+      if (previousState) {
+        clearCollapseTimer()
+        stopRotation()
       }
     })
   )
-  
-  // 监听歌曲结束事件
+
   unsubscribers.push(
-    audioManager.on('song-ended', (id) => {
-      if (id === currentSong.value.id) {
-        // 歌曲结束后不隐藏播放器，只更新状态
-        currentSong.value.isPlaying = false
-        // 重置封面旋转
-        resetRotation()
-      }
+    audioManager.on('song-ended', id => {
+      if (id !== currentSong.value.id) return
+      currentSong.value.isPlaying = false
+      clearCollapseTimer()
+      resetRotation()
     })
   )
-  
-  // 监听当前音频变更事件
+
   unsubscribers.push(
-    audioManager.on('current-audio-changed', (id) => {
-      // 如果当前显示的歌曲不是正在播放的歌曲，更新状态
-      if (id && id !== currentSong.value.id) {
-        const songInfo = audioManager.getCurrentSongInfo();
-        if (songInfo) {
-          // 如果切换了新歌曲，重置封面旋转
-          resetRotation();
-          currentSong.value = songInfo;
-          isVisible.value = true;
-          
-          // 切换歌曲时，完全展开播放器
-          isExpanded.value = true;
-          showCover.value = true;
-          
-          // 如果新歌曲是播放状态，开始旋转并设置自动收起定时器
-          if (songInfo.isPlaying) {
-            startRotation();
-            scheduleAutoCollapse();
-          }
-        }
+    audioManager.on('current-audio-changed', id => {
+      if (!id || id === currentSong.value.id) return
+      const songInfo = audioManager.getCurrentSongInfo()
+      if (!songInfo) return
+
+      resetRotation()
+      currentSong.value = songInfo
+      isVisible.value = true
+      setExpandedMode()
+
+      if (songInfo.isPlaying) {
+        startRotation()
+        scheduleCollapse(AUTO_COLLAPSE_MS)
       }
     })
   )
-  
-  // 组件卸载时清理事件监听和定时器
-  onUnmounted(() => {
-    unsubscribers.forEach(unsub => unsub())
-    
-    if (autoCollapseTimer.value) {
-      clearTimeout(autoCollapseTimer.value)
-      autoCollapseTimer.value = null
-    }
-    
-    if (miniModeTimer.value) {
-      clearTimeout(miniModeTimer.value)
-      miniModeTimer.value = null
-    }
-    
-    // 停止封面旋转动画
-    stopRotation()
-    
-    // 移除窗口大小变化监听器
-    window.removeEventListener('resize', detectTouchDevice)
-  })
-  
-  // 初始化时，如果有正在播放的歌曲，开始旋转
-  if (savedSongInfo && savedSongInfo.isPlaying) {
-    startRotation();
-  }
+}
+
+onMounted(() => {
+  detectTouchDevice()
+  window.addEventListener('resize', detectTouchDevice)
+  setupEventListeners()
+  syncWithStoredSong()
+})
+
+onUnmounted(() => {
+  unsubscribers.forEach(unsubscribe => unsubscribe())
+  clearCollapseTimer()
+  clearDragListeners()
+  stopRotation()
+  window.removeEventListener('resize', detectTouchDevice)
 })
 </script>
 
 <template>
   <Transition name="slide-fade">
     <div v-if="isVisible" class="global-music-player" 
-      :class="{ 'expanded': isExpanded, 'mini-mode': !showCover, 'touch-device': isTouchDevice }" 
+      :class="{ 'expanded': isExpanded, 'mini-mode': isMiniMode, 'touch-device': isTouchDevice }" 
       @mouseenter="handlePlayerMouseEnter" @mouseleave="handlePlayerMouseLeave">
       <!-- 封面区域 - 在二级和一级折叠状态下显示 -->
       <div v-if="showCover" class="cover-section" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
@@ -700,7 +465,7 @@ onMounted(() => {
         <div class="song-info">
           <div class="song-title-row">
             <div class="song-name">{{ currentSong.name || '未知歌曲' }}</div>
-            <div class="time-info">
+            <div class="time-readout">
               <span class="current-time">{{ formattedCurrentTime }}</span>
               <span class="duration">/ {{ formattedDuration }}</span>
             </div>
@@ -753,50 +518,45 @@ onMounted(() => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   z-index: 100;
   overflow: hidden;
-  transition: all var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis); /* 使用更平滑的过渡曲线 */
+  transition:
+    width var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
+    opacity var(--lc-motion-duration-normal) var(--lc-motion-ease-out),
+    transform var(--lc-motion-duration-normal) var(--lc-motion-ease-out);
   display: flex;
   flex-direction: row;
-  height: 60px; /* 固定高度 */
-  user-select: none; /* 防止文字被选中 */
-  will-change: width; /* 提示浏览器优化宽度变化的性能 */
+  height: 60px;
+  user-select: none;
+  will-change: width;
 }
 
-/* 收起状态 */
 .global-music-player:not(.expanded) {
-  width: 86px; /* 缩小为原来的2/3 */
+  width: 86px;
 }
 
-/* 三级折叠状态 - 只显示控制按钮 */
 .global-music-player.mini-mode {
-  width: 26px; /* 只有控制面板的宽度 */
+  width: 26px;
 }
 
-/* 展开状态 */
 .global-music-player.expanded {
   width: 280px;
 }
 
-/* 触摸设备特有样式 */
-/* 增加按钮点击区域 */
 .global-music-player.touch-device .control-btn {
   width: 24px;
   height: 24px;
   padding: 4px;
 }
 
-/* 确保三级折叠状态下的按钮更容易点击 */
 .global-music-player.touch-device.mini-mode .controls-panel.collapsed {
   width: 30px;
   padding: 0 2px;
 }
 
-/* 触摸设备下，按钮不需要悬浮效果 */
 .global-music-player.touch-device .control-btn:hover {
   transform: none;
   background-color: transparent;
 }
 
-/* 但保留点击效果 */
 .global-music-player.touch-device .control-btn:active {
   transform: scale(0.9);
 }
@@ -903,23 +663,21 @@ onMounted(() => {
 
 /* 控制按钮区域 */
 .controls-panel {
-  background-color: var(--vp-c-bg-alt); /* 移除绿色背景，使用主题默认颜色 */
+  background-color: var(--vp-c-bg-alt);
   display: flex;
   flex-direction: column;
-  flex-shrink: 0; /* 防止被挤压 */
+  flex-shrink: 0;
 }
 
-/* 收起状态的控制面板 */
 .controls-panel.collapsed {
-  width: 26px; /* 固定宽度 */
+  width: 26px;
   height: 100%;
   justify-content: center;
   gap: 8px;
 }
 
-/* 展开状态的控制面板 */
 .controls-panel.expanded {
-  width: 26px; /* 固定宽度 */
+  width: 26px;
   height: 100%;
   justify-content: center;
   gap: 8px;
@@ -928,28 +686,28 @@ onMounted(() => {
 .control-btn {
   background: transparent;
   border: none;
-  color: var(--vp-c-text-2); /* 使用主题默认文本颜色 */
+  color: var(--vp-c-text-2);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
-  width: 20px; /* 缩小按钮尺寸 */
-  height: 20px; /* 缩小按钮尺寸 */
+  width: 20px;
+  height: 20px;
   padding: 0;
   margin: 0 auto;
   border-radius: 2px;
-  -webkit-tap-highlight-color: transparent; /* 移除移动端点击高亮 */
+  -webkit-tap-highlight-color: transparent;
 }
 
 .control-btn:hover {
-  background-color: var(--vp-c-bg-mute); /* 使用主题默认悬停颜色 */
+  background-color: var(--vp-c-bg-mute);
   color: var(--vp-c-text-1);
-  transform: scale(1.1); /* 轻微放大效果 */
+  transform: scale(1.1);
 }
 
 .control-btn:active {
-  transform: scale(0.95); /* 点击时的按压效果 */
+  transform: scale(0.95);
 }
 
 /* 详细信息区域 */
@@ -962,8 +720,8 @@ onMounted(() => {
   animation: slide-in-right var(--lc-motion-duration-normal) var(--lc-motion-ease-out);
   height: 100%;
   position: relative;
-  min-width: 0; /* 允许内容收缩 */
-  overflow: hidden; /* 防止内容溢出 */
+  min-width: 0;
+  overflow: hidden;
 }
 
 @keyframes slide-in-right {
@@ -979,9 +737,9 @@ onMounted(() => {
 
 .song-info {
   flex: 1;
-  min-width: 0; /* 允许内容收缩 */
-  width: 100%; /* 确保占满可用空间 */
-  overflow: hidden; /* 防止内容溢出 */
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
 }
 
 .song-title-row {
@@ -1003,7 +761,7 @@ onMounted(() => {
   flex: 1;
   min-width: 0;
   padding-right: 60px;
-  user-select: none; /* 防止文字被选中 */
+  user-select: none;
 }
 
 .song-artist {
@@ -1012,20 +770,23 @@ onMounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  user-select: none; /* 防止文字被选中 */
-  margin-right: 5px; /* 确保右侧有一点空间 */
+  user-select: none;
+  margin-right: 5px;
 }
 
-.time-info {
+.time-readout {
   position: absolute;
   top: 0;
   right: 0;
+  display: flex;
+  align-items: center;
   font-size: 0.75rem;
   color: var(--vp-c-text-2);
   opacity: 0.8;
   width: 55px;
   text-align: right;
   white-space: nowrap;
+  user-select: none;
 }
 
 .global-progress-bar {
@@ -1036,8 +797,8 @@ onMounted(() => {
   width: 100%;
   margin-bottom: 6px;
   margin-left: 0;
-  z-index: 2; /* 确保进度条在最上层 */
-  padding: 8px 0; /* 增加上下内边距，确保圆点可见 */
+  z-index: 2;
+  padding: 8px 0;
 }
 
 .global-progress-bar.disabled {
@@ -1047,38 +808,40 @@ onMounted(() => {
 
 .progress-bg {
   position: absolute;
-  top: 8px; /* 调整位置以适应内边距 */
+  top: 8px;
   left: 0;
   right: 0;
-  height: 3px; /* 明确设置高度 */
+  height: 3px;
   background-color: var(--vp-c-bg-alt);
   border-radius: 2px;
 }
 
 .progress-fill {
   position: absolute;
-  top: 8px; /* 调整位置以适应内边距 */
+  top: 8px;
   left: 0;
-  height: 3px; /* 明确设置高度 */
+  height: 3px;
   background-color: var(--vp-c-brand);
   border-radius: 2px;
   transition: width var(--lc-motion-duration-instant) linear;
+}
+
+.progress-handle {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--vp-c-brand);
+  transform: translate(-50%, -50%);
+  display: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
 }
 
 
 .global-progress-bar:not(.disabled):hover .progress-handle,
 .progress-handle.visible {
   display: block;
-}
-
-.time-info {
-  display: flex;
-  align-items: center;
-  font-size: 0.65rem;
-  color: var(--vp-c-text-2);
-  white-space: nowrap;
-  flex-shrink: 0;
-  user-select: none; /* 防止文字被选中 */
 }
 
 .current-time {
@@ -1101,14 +864,13 @@ onMounted(() => {
   opacity: 0;
 }
 
-/* 响应式调整 */
 @media (max-width: 768px) {
   .global-music-player {
     bottom: 20px;
   }
   
   .global-music-player.expanded {
-    width: 260px; /* 移动端稍微缩小宽度 */
+    width: 260px;
   }
   
   .player-detail {
@@ -1116,7 +878,6 @@ onMounted(() => {
   }
 }
 
-/* 小屏幕设备适配 */
 @media (max-width: 370px) {
   .global-music-player.expanded {
     width: 260px;

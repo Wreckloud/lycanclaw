@@ -9,6 +9,7 @@ import {
 
 type PointerEventLike = MouseEvent | TouchEvent
 type TimerHandle = ReturnType<typeof setTimeout>
+type TimerKey = 'drawer' | 'comboReset' | 'hintDisplay' | 'hintAutoClose' | 'observerSetup'
 
 interface FloatingMessage {
   id: number
@@ -27,7 +28,6 @@ interface ClientPoint {
   y: number
 }
 
-// 接收属性
 const props = withDefaults(
   defineProps<{
     postCount?: number
@@ -39,85 +39,26 @@ const props = withDefaults(
   }
 )
 
-// 添加内部动画状态
 const internalAnimatedCount = ref(0)
-const animationStarted = ref(false)
+const DRAWER_CLOSE_MS = 3000
+const COMBO_RESET_MS = 3000
+const PARTICLE_THROTTLE_MS = 200
+const HINT_DISPLAY_DELAY_S = 20
+const HINT_AUTO_CLOSE_S = 7
+const OBSERVER_SETUP_DELAY_MS = 200
 
-// 监听外部动画计数变化
-watch(() => props.animatedCount, (newValue) => {
-  // 只有当外部动画计数大于0时才更新内部值
-  // 不再自动触发动画
-  internalAnimatedCount.value = newValue
-}, { immediate: true })
-
-// 启动数字动画
-function startCountAnimation() {
-  if (animationStarted.value) return
-  
-  animationStarted.value = true
-  const targetValue = props.postCount
-  const duration = 2000 // 动画持续时间（毫秒）
-  const framesPerSecond = 60
-  const totalFrames = duration / 1000 * framesPerSecond
-  let currentFrame = 0
-  
-  // 重置动画起始值
-  internalAnimatedCount.value = 0
-  
-  // 使用requestAnimationFrame实现平滑动画
-  function animate() {
-    currentFrame++
-    const progress = currentFrame / totalFrames
-    
-    // 使用easeOutQuart缓动函数
-    const easeProgress = 1 - Math.pow(1 - progress, 4)
-    
-    internalAnimatedCount.value = Math.round(easeProgress * targetValue)
-    
-    if (currentFrame < totalFrames) {
-      requestAnimationFrame(animate)
-    } else {
-      // 确保最终值精确
-      internalAnimatedCount.value = targetValue
-    }
-  }
-  
-  requestAnimationFrame(animate)
-}
-
-// 催更状态
 const encourageCount = ref(0)
 const isDrawerVisible = ref(false)
 const drawerMessage = ref('')
-let drawerTimer: TimerHandle | null = null
-let comboResetTimer: TimerHandle | null = null // 连击重置计时器
-let lastParticleTime = 0 // 上次创建粒子的时间
-let lastClickTime = 0 // 上次点击的时间
-const THROTTLE_INTERVAL = 200 // 粒子效果节流间隔（毫秒）
-
-// 使用VueUse的useThrottleFn替代节流变量
-const createParticlesThrottled = useThrottleFn(createParticles, 200)
-
-// 点击提示相关
-const widgetRef = ref<HTMLElement | null>(null) // 组件引用
+const widgetRef = ref<HTMLElement | null>(null)
 const showClickHint = ref(false)
-let hintTimer: TimerHandle | null = null
-let hintHideTimer: TimerHandle | null = null
 let observerInstance: IntersectionObserver | null = null
-let hintAutoCloseTimer: TimerHandle | null = null // 提示自动关闭计时器
+const timers: Partial<Record<TimerKey, TimerHandle>> = {}
 
-// 交互状态跟踪（仅当前会话有效）
-const hasClickedInSession = ref(false)  // 是否点击过
-const hasHoveredInSession = ref(false)  // 是否悬浮过
-
-// 时间配置（单位：秒）
-const HINT_DISPLAY_DELAY = 20 // 测试用3秒，正式是20秒
-const HINT_AUTO_CLOSE_TIME = 7 // 提示自动关闭时间
-
-// 鼠标悬停状态
+const hasClickedInSession = ref(false)
+const hasHoveredInSession = ref(false)
 const isHovered = ref(false)
 
-// 催更消息配置
 const encourageMessages: Record<number, string> = {
   1: '收到催更了',
   5: '别戳啦！已经在动笔了',
@@ -132,16 +73,42 @@ const encourageMessages: Record<number, string> = {
 const activeMessages = ref<FloatingMessage[]>([])
 let messageIdCounter = 0
 
-// 获取催更消息
+watch(
+  () => props.animatedCount,
+  (newValue) => {
+    internalAnimatedCount.value = newValue
+  },
+  { immediate: true }
+)
+
+function clearTimer(key: TimerKey): void {
+  if (!timers[key]) return
+  clearTimeout(timers[key])
+  delete timers[key]
+}
+
+function setTimer(key: TimerKey, callback: () => void, delayMs: number): void {
+  clearTimer(key)
+  timers[key] = setTimeout(() => {
+    delete timers[key]
+    callback()
+  }, delayMs)
+}
+
+function clearAllTimers(): void {
+  clearTimer('drawer')
+  clearTimer('comboReset')
+  clearTimer('hintDisplay')
+  clearTimer('hintAutoClose')
+  clearTimer('observerSetup')
+}
+
 function getEncourageMessage(count: number): string {
-  // 区间显示，查找小于等于当前数值的最大级别
   const thresholds = Object.keys(encourageMessages)
     .map(Number)
     .sort((a, b) => a - b)
-  
-  // 查找合适的区间
-  let selectedThreshold = 1 // 默认使用第一个消息
-  
+
+  let selectedThreshold = 1
   for (const threshold of thresholds) {
     if (count >= threshold) {
       selectedThreshold = threshold
@@ -149,8 +116,6 @@ function getEncourageMessage(count: number): string {
       break
     }
   }
-  
-  // 返回该区间对应的消息
   return encourageMessages[selectedThreshold]
 }
 
@@ -168,95 +133,73 @@ function getEventTargetElement(event: PointerEventLike): HTMLElement | null {
   return target instanceof HTMLElement ? target : null
 }
 
-// 显示浮动消息
 function showFloatingMessage(event: PointerEventLike, count: number): void {
-  // 防止在event缺失或event.currentTarget为null时出错
-  if (!event || !event.currentTarget) return;
+  if (!event || !event.currentTarget) return
   const targetElement = getEventTargetElement(event)
   const point = getClientPoint(event)
   if (!targetElement || !point) return
-  
+
   const x = point.x
   const y = point.y
-  
-  // 随机参数 - 增加横向和垂直方向上的偏移
-  const angle = Math.random() * 40 - 20  // 更夸张的角度范围，从 ±10 变为 ±20
-  const offsetX = Math.random() * 80 - 40  // 横向偏移增加一倍，从 ±20 变为 ±40
-  const offsetY = Math.random() * 60 - 120  // 更强的向上偏移
+
+  const angle = Math.random() * 40 - 20
+  const offsetX = Math.random() * 80 - 40
+  const offsetY = Math.random() * 60 - 120
   const color = ENCOURAGE_MESSAGE_COLORS[Math.floor(Math.random() * ENCOURAGE_MESSAGE_COLORS.length)]
   const id = messageIdCounter++
-  
-  // 添加随机大小变化
-  const sizeVariation = 0.9 + Math.random() * 0.3 // 0.9 到 1.2 之间的随机值
-  
-  // 创建消息对象
+
+  const sizeVariation = 0.9 + Math.random() * 0.3
   const displayMessage = count === 1 ? '催更' : `催更x${count}`
-  
+
   const messageObj = {
     id,
     x: x + offsetX,
-    y: y + offsetY,  // 使用更大的垂直偏移
+    y: y + offsetY,
     message: displayMessage,
-    angle,  // 使用更夸张的角度
+    angle,
     color,
     opacity: 1,
-    scale: 0.8 * sizeVariation, // 应用随机大小变化
-    fontSize: `${1.2 * sizeVariation}rem` // 随机字体大小
+    scale: 0.8 * sizeVariation,
+    fontSize: `${1.2 * sizeVariation}rem`
   }
-  
-  // 添加消息
+
   activeMessages.value.push(messageObj)
-  
-  // 设置消失定时器
+
   setTimeout(() => {
-    // 淡出动画
     const msgIndex = activeMessages.value.findIndex((m) => m.id === id)
     if (msgIndex !== -1) {
       activeMessages.value[msgIndex].opacity = 0
-      activeMessages.value[msgIndex].scale = 1.2 * sizeVariation // 保持大小比例
+      activeMessages.value[msgIndex].scale = 1.2 * sizeVariation
     }
-    
-    // 移除消息
+
     setTimeout(() => {
       activeMessages.value = activeMessages.value.filter((m) => m.id !== id)
     }, 500)
   }, 1500)
 }
 
-// 创建粒子效果（Canvas优化版）
 function createParticles(event: PointerEventLike): void {
-  // 防止在event缺失时出错
-  if (!event) return;
-  
-  const now = Date.now()
-  
-  // 节流控制 - 如果距离上次粒子效果不到200ms，跳过创建新粒子
-  if (now - lastParticleTime < THROTTLE_INTERVAL) return
-  lastParticleTime = now
-  
-  // 根据设备性能动态调整粒子数量
-  let particles = 36 // 增加粒子数量到24个
-  
-  // 移动设备检测（简易版）- 降低粒子数量
+  if (!event) return
+  const point = getClientPoint(event)
+  if (!point) return
+
+  let particles = 36
   if (window.innerWidth <= 768) {
-    particles = 24 // 移动设备使用12个粒子
+    particles = 24
   }
-  
-  // 创建Canvas元素
+
   const canvas = document.createElement('canvas')
   const maybeCtx = canvas.getContext('2d')
-  
+
   if (!maybeCtx) {
     logError('EncourageWidget', '无法创建 Canvas 上下文')
     return
   }
   const ctx = maybeCtx
-  
-  // 重要：实时获取视窗大小，而不是依赖event时的窗口大小
+
   const viewportWidth = window.innerWidth
   const viewportHeight = window.innerHeight
-  
-  // 设置Canvas样式
+
   canvas.className = 'particle-canvas'
   canvas.width = viewportWidth
   canvas.height = viewportHeight
@@ -267,16 +210,10 @@ function createParticles(event: PointerEventLike): void {
   canvas.style.height = '100vh'
   canvas.style.pointerEvents = 'none'
   canvas.style.zIndex = '9999'
-  
   document.body.appendChild(canvas)
-  
-  // 获取点击位置，同时处理触摸事件
-  const point = getClientPoint(event)
-  if (!point) return
   const x = point.x
   const y = point.y
-  
-  // 创建粒子数组
+
   const particlesArray: Array<{
     x: number
     y: number
@@ -289,7 +226,6 @@ function createParticles(event: PointerEventLike): void {
     rotationSpeed: number
   }> = []
   
-  // 创建星星路径（一次性定义，重复使用）
   function drawStar(
     ctx: CanvasRenderingContext2D,
     x: number,
@@ -301,14 +237,13 @@ function createParticles(event: PointerEventLike): void {
     ctx.beginPath()
     ctx.fillStyle = color
     
-    // 绘制更精细的星星
     const spikes = 5
     const outerRadius = size
     const innerRadius = size * 0.4
     
     for (let i = 0; i < spikes * 2; i++) {
       const radius = i % 2 === 0 ? outerRadius : innerRadius
-      const angle = (Math.PI * i) / spikes - Math.PI / 2 // 从顶部开始绘制
+      const angle = (Math.PI * i) / spikes - Math.PI / 2
       const pointX = x + Math.cos(angle) * radius
       const pointY = y + Math.sin(angle) * radius
       
@@ -329,13 +264,10 @@ function createParticles(event: PointerEventLike): void {
     const size = Math.random() * 6 + 4
     const color = ENCOURAGE_PARTICLE_COLORS[Math.floor(Math.random() * ENCOURAGE_PARTICLE_COLORS.length)]
     const angle = Math.random() * Math.PI * 2
-    const velocity = Math.random() * 2.5 + 1.8 // 增加初始速度范围
-    
-    // 计算水平和垂直速度
+    const velocity = Math.random() * 2.5 + 1.8
     const vx = Math.cos(angle) * velocity
-    const vy = Math.sin(angle) * velocity - 2 // 增加初始向上的力量
-    
-    // 创建粒子对象
+    const vy = Math.sin(angle) * velocity - 2
+
     particlesArray.push({
       x,
       y,
@@ -345,179 +277,110 @@ function createParticles(event: PointerEventLike): void {
       color,
       alpha: 1,
       rotation: 0,
-      rotationSpeed: (Math.random() * 0.8 - 0.4) * Math.PI / 180 * 12 // 增加旋转速度
+      rotationSpeed: (Math.random() * 0.8 - 0.4) * Math.PI / 180 * 12
     })
   }
-  
-  // 开始时间
+
   const startTime = performance.now()
-  const duration = 1300 // 增加粒子效果持续时间
-  
-  // 执行动画
+  const duration = 1300
+
   function animate() {
-    // 计算已过去的时间
     const elapsed = performance.now() - startTime
-    
+
     if (elapsed < duration) {
-      // 清除画布
       ctx.clearRect(0, 0, canvas.width, canvas.height)
-      
-      // 绘制每个粒子
+
       for (let i = 0; i < particlesArray.length; i++) {
         const p = particlesArray[i]
-        
-        // 更新位置
+
         p.x += p.vx
         p.y += p.vy
-        p.vy += 0.08 // 显著增加重力效果
-        p.vx *= 0.99 // 添加水平阻力
+        p.vy += 0.08
+        p.vx *= 0.99
         p.rotation += p.rotationSpeed
-        
-        // 使用缓动函数计算透明度，让消失更自然
+
         const progress = elapsed / duration
         p.alpha = 1 - Math.pow(progress, 1.5)
-        
-        // 绘制粒子
+
         ctx.globalAlpha = p.alpha
         ctx.save()
         ctx.translate(p.x, p.y)
         ctx.rotate(p.rotation)
-        
-        // 绘制星形
+
         drawStar(ctx, 0, 0, p.size, p.color)
-        
+
         ctx.restore()
         ctx.globalAlpha = 1
       }
-      
-      // 继续动画
+
       requestAnimationFrame(animate)
     } else {
-      // 动画结束，移除Canvas
       canvas.remove()
     }
   }
-  
-  // 开始动画
+
   animate()
 }
 
-// 重置连击计时器
-function resetComboTimer() {
-  // 清除之前的计时器
-  if (comboResetTimer) {
-    clearTimeout(comboResetTimer)
-  }
-  
-  // 设置新的计时器 - 3秒后重置连击
-  comboResetTimer = setTimeout(() => {
+function resetComboTimer(): void {
+  setTimer('comboReset', () => {
     if (encourageCount.value > 0) {
       encourageCount.value = 0
     }
-  }, 3000)
+  }, COMBO_RESET_MS)
 }
 
-// 催更功能（使用VueUse的useThrottleFn实现节流）
 const encourageUpdateThrottled = useThrottleFn((event: PointerEventLike) => {
-  // 增加计数
   encourageCount.value++
-  
-  // 获取消息
   const text = getEncourageMessage(encourageCount.value)
-  
-  // 显示催更消息
+
   showFloatingMessage(event, encourageCount.value)
-  
-  // 创建粒子效果
   createParticlesThrottled(event)
-  
-  // 更新抽屉消息
   drawerMessage.value = text
-  
-  // 处理连续点击
-  if (isDrawerVisible.value && drawerTimer) {
-    clearTimeout(drawerTimer)
-  } else {
-    isDrawerVisible.value = true
-  }
-  
-  // 自动关闭计时器
-  drawerTimer = setTimeout(() => {
+
+  isDrawerVisible.value = true
+  setTimer('drawer', () => {
     isDrawerVisible.value = false
-  }, 3000)
-  
-  // 重置连击计时器
+  }, DRAWER_CLOSE_MS)
+
   resetComboTimer()
-  
-  // 点击后隐藏提示
   hideClickHint()
-  
-  // 记录本次会话已经点击过
   hasClickedInSession.value = true
 }, 80)
 
-// 将原始函数更新为调用节流版本
+const createParticlesThrottled = useThrottleFn(createParticles, PARTICLE_THROTTLE_MS)
+
 function encourageUpdate(event: PointerEventLike): void {
   encourageUpdateThrottled(event)
 }
 
-// 设置交叉观察器，检测组件何时进入视口
 function setupIntersectionObserver(): void {
-  if (typeof IntersectionObserver === 'undefined' || !widgetRef.value) return;
-  
+  if (typeof IntersectionObserver === 'undefined' || !widgetRef.value) return
+
   observerInstance = new IntersectionObserver((entries) => {
-    const entry = entries[0];
-    
+    const entry = entries[0]
+
     if (entry.isIntersecting) {
-      // 组件可见，设置计时器
-      // 只有在没点击过且没悬浮过的情况下才设置自动显示计时器
-      if (!hintTimer && !hasClickedInSession.value && !hasHoveredInSession.value) {
-        hintTimer = setTimeout(() => {
-          showClickHint.value = true;
-          
-          // 设置自动关闭
-          if (hintAutoCloseTimer) {
-            clearTimeout(hintAutoCloseTimer);
-          }
-          
-          hintAutoCloseTimer = setTimeout(() => {
-            hideClickHint();
-          }, HINT_AUTO_CLOSE_TIME * 1000);
-          
-          hintTimer = null;
-        }, HINT_DISPLAY_DELAY * 1000);
+      if (!timers.hintDisplay && !hasClickedInSession.value && !hasHoveredInSession.value) {
+        setTimer('hintDisplay', () => {
+          showClickHint.value = true
+          setTimer('hintAutoClose', hideClickHint, HINT_AUTO_CLOSE_S * 1000)
+        }, HINT_DISPLAY_DELAY_S * 1000)
       }
     } else {
-      // 组件不可见，清除计时器
-      hideClickHint();
+      hideClickHint()
     }
-  }, { threshold: 0.5 }); // 当50%的组件可见时触发
-  
-  observerInstance.observe(widgetRef.value);
+  }, { threshold: 0.5 })
+
+  observerInstance.observe(widgetRef.value)
 }
 
-// 隐藏点击提示
 function hideClickHint(): void {
-  showClickHint.value = false;
-  
-  // 清除相关计时器
-  if (hintTimer) {
-    clearTimeout(hintTimer);
-    hintTimer = null;
-  }
-  
-  if (hintHideTimer) {
-    clearTimeout(hintHideTimer);
-    hintHideTimer = null;
-  }
-  
-  if (hintAutoCloseTimer) {
-    clearTimeout(hintAutoCloseTimer);
-    hintAutoCloseTimer = null;
-  }
+  showClickHint.value = false
+  clearTimer('hintDisplay')
+  clearTimer('hintAutoClose')
 }
 
-// 格式化数字
 function formatNumber(num: number | null | undefined): string {
   if (num === undefined || num === null) return '0'
   
@@ -532,55 +395,34 @@ function formatNumber(num: number | null | undefined): string {
   }
 }
 
-// 处理鼠标悬停 - 使用防抖优化
 const handleMouseEnterDebounced = useDebounceFn(() => {
-  isHovered.value = true;
-  hasHoveredInSession.value = true; // 记录已经悬浮过
-  
-  // 悬浮后清除自动显示计时器，避免后续自动显示
-  if (hintTimer) {
-    clearTimeout(hintTimer);
-    hintTimer = null;
-  }
+  isHovered.value = true
+  hasHoveredInSession.value = true
+  clearTimer('hintDisplay')
 }, 50)
 
-// 处理鼠标离开 - 使用防抖优化
 const handleMouseLeaveDebounced = useDebounceFn(() => {
-  isHovered.value = false;
+  isHovered.value = false
 }, 50)
 
-// 更新处理函数调用
-function handleMouseEnter() {
+function handleMouseEnter(): void {
   handleMouseEnterDebounced()
 }
 
-function handleMouseLeave() {
+function handleMouseLeave(): void {
   handleMouseLeaveDebounced()
 }
 
-// 组件挂载和卸载时的处理
 onMounted(() => {
-  // 初始化时不显示提示，等待用户交互
-  showClickHint.value = false;
-  
-  // 延迟一点点设置交叉观察器，确保DOM已渲染
-  setTimeout(() => {
-    setupIntersectionObserver();
-  }, 200);
+  showClickHint.value = false
+  setTimer('observerSetup', setupIntersectionObserver, OBSERVER_SETUP_DELAY_MS)
 })
 
 onUnmounted(() => {
-  // 清理所有计时器
-  if (drawerTimer) clearTimeout(drawerTimer);
-  if (comboResetTimer) clearTimeout(comboResetTimer);
-  if (hintTimer) clearTimeout(hintTimer);
-  if (hintHideTimer) clearTimeout(hintHideTimer);
-  if (hintAutoCloseTimer) clearTimeout(hintAutoCloseTimer);
-  
-  // 清理交叉观察器
+  clearAllTimers()
   if (observerInstance) {
-    observerInstance.disconnect();
-    observerInstance = null;
+    observerInstance.disconnect()
+    observerInstance = null
   }
 })
 </script>

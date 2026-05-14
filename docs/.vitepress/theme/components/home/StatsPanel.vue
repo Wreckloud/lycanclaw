@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { withBase } from 'vitepress'
 import {
   useIntersectionObserver,
@@ -11,10 +11,17 @@ import {
   fetchPublishedThoughtPosts
 } from '../../utils/contentData'
 import { calculateHomeStats } from '../../utils/homeAnalytics'
+import {
+  isHomeTwoColumnLayout,
+  markHomeTopSectionsVisible,
+  onHomeTopSectionsVisible
+} from '../../utils/homeTopSectionSync'
 import { logError } from '../../utils/logger'
 
-// 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
+const VISIBILITY_THRESHOLD = 0.6
+const VISIBILITY_ROOT_MARGIN = '0px 0px -10% 0px'
+const NUMBER_ANIMATION_DELAY_MS = 200
 
 interface StatsState {
   currentMonthPosts: number
@@ -25,27 +32,26 @@ interface StatsState {
   animatedThoughtsWords: number
 }
 
-// 统计数据
 const stats = reactive<StatsState>({
-  currentMonthPosts: 0,  // 本月更新的文章数
-  totalPostsCount: 0,    // 文章总数（原随想文章数）
-  thoughtsWords: 0,      // 文章总字数
-  // 动画相关
+  currentMonthPosts: 0,
+  totalPostsCount: 0,
+  thoughtsWords: 0,
   animatedCurrentMonthPosts: 0,
   animatedTotalPostsCount: 0,
   animatedThoughtsWords: 0,
 })
 
-// 添加可视性状态追踪
 const isVisible = ref(false)
-const animationTriggerRef = ref<HTMLElement | null>(null) // 专门用于动画触发的引用
-const statsValueRefs = ref<HTMLElement[]>([]) // 存储统计数值元素的引用
+const animationTriggerRef = ref<HTMLElement | null>(null)
+const statsValueRefs = ref<HTMLElement[]>([])
 
-// 加载与动画状态
 const isLoading = ref(true)
 const hasError = ref(false)
 const animationStarted = ref(false)
-// 格式化数字 - 智能单位显示
+let stopVisibilityObserver: (() => void) | null = null
+let stopTopSectionSync: (() => void) | null = null
+let stopResizeListener: (() => void) | null = null
+
 function formatNumber(num: number | null | undefined): string {
   if (num === undefined || num === null) return '0'
   
@@ -60,7 +66,6 @@ function formatNumber(num: number | null | undefined): string {
   }
 }
 
-// 数字滚动动画
 function animateNumbers() {
   if (!animationStarted.value) {
     animationStarted.value = true
@@ -74,17 +79,14 @@ function animateNumbers() {
     const targetTotalPostsCount = stats.totalPostsCount
     const targetThoughtsWords = stats.thoughtsWords
     
-    // 重置动画起始值
     stats.animatedCurrentMonthPosts = 0
     stats.animatedTotalPostsCount = 0
     stats.animatedThoughtsWords = 0
-    
-    // 使用requestAnimationFrame实现平滑动画
+
     function animate() {
       currentFrame++
       const progress = currentFrame / totalFrames
       
-      // 使用easeOutQuart缓动函数
       const easeProgress = 1 - Math.pow(1 - progress, 4)
       
       stats.animatedCurrentMonthPosts = Math.round(easeProgress * targetCurrentMonthPosts)
@@ -94,7 +96,6 @@ function animateNumbers() {
       if (currentFrame < totalFrames) {
         requestAnimationFrame(animate)
       } else {
-        // 确保最终值精确
         stats.animatedCurrentMonthPosts = targetCurrentMonthPosts
         stats.animatedTotalPostsCount = targetTotalPostsCount
         stats.animatedThoughtsWords = targetThoughtsWords
@@ -105,8 +106,7 @@ function animateNumbers() {
   }
 }
 
-// 添加一个带延迟的动画触发函数
-function delayedAnimateNumbers(delay = 200) {
+function delayedAnimateNumbers(delay = NUMBER_ANIMATION_DELAY_MS) {
   if (!animationStarted.value) {
     setTimeout(() => {
       animateNumbers()
@@ -114,44 +114,26 @@ function delayedAnimateNumbers(delay = 200) {
   }
 }
 
-// 使用VueUse的useIntersectionObserver
-if (isBrowser) {
-  useIntersectionObserver(
-    animationTriggerRef,
-    ([{ isIntersecting }]) => {
-      if (isIntersecting) {
-        isVisible.value = true
-        if (!isLoading.value && !animationStarted.value) {
-          delayedAnimateNumbers()
-        }
-      }
-    },
-    { 
-      threshold: 0.7,
-      rootMargin: '0px 0px -15% 0px' 
-    }
-  )
+function revealStatsPanel(): void {
+  isVisible.value = true
+  if (!isLoading.value && !animationStarted.value) {
+    delayedAnimateNumbers()
+  }
 }
 
-// 添加自适应字体大小的函数
 function adjustFontSizes() {
   if (!isBrowser || !statsValueRefs.value.length) return
   
-  // 获取每个数值元素
   statsValueRefs.value.forEach((el) => {
     if (!el) return
     
     const container = el.parentElement
     if (!container) return
     
-    // 重置缩放以获取真实宽度
     el.style.setProperty('--scale', '1')
-    
-    // 获取元素和容器的宽度
+
     const elWidth = el.scrollWidth
-    const containerWidth = container.clientWidth - 16 // 减去内边距
-    
-    // 如果元素宽度超过容器宽度，计算并应用缩放比例
+    const containerWidth = container.clientWidth - 16
     if (elWidth > containerWidth && containerWidth > 0) {
       const scale = Math.min(0.95, containerWidth / elWidth)
       el.style.setProperty('--scale', String(scale))
@@ -161,41 +143,54 @@ function adjustFontSizes() {
   })
 }
 
-// 监视数字变化，调整字体大小
 watch(() => [stats.animatedTotalPostsCount, stats.animatedThoughtsWords], () => {
-  // 等待DOM更新后再调整字体大小
   nextTick(() => {
     adjustFontSizes()
   })
 })
 
-// 加载数据
 onMounted(async () => {
   if (!isBrowser) return
-  
+
   try {
-    // 自动更新布局状态
-    useEventListener(window, 'resize', () => {
+    stopTopSectionSync = onHomeTopSectionsVisible(() => {
+      revealStatsPanel()
+    })
+
+    stopResizeListener = useEventListener(window, 'resize', () => {
       adjustFontSizes()
     })
-    
+
+    const observer = useIntersectionObserver(
+      animationTriggerRef,
+      ([entry]) => {
+        if (!entry?.isIntersecting) return
+        revealStatsPanel()
+        if (isHomeTwoColumnLayout()) {
+          markHomeTopSectionsVisible()
+        }
+        observer.stop()
+        stopVisibilityObserver = null
+      },
+      {
+        threshold: VISIBILITY_THRESHOLD,
+        rootMargin: VISIBILITY_ROOT_MARGIN
+      }
+    )
+    stopVisibilityObserver = observer.stop
+
     const thoughtsPosts = await fetchPublishedThoughtPosts(withBase)
-    
     const knowledgeStats = await fetchKnowledgeStats(withBase)
     const summary = calculateHomeStats(thoughtsPosts, knowledgeStats)
-    
-    // 更新统计数据
+
     stats.currentMonthPosts = summary.currentMonthPosts
     stats.totalPostsCount = summary.totalPostsCount
     stats.thoughtsWords = summary.totalWords
-    
+
     isLoading.value = false
-    
-    // 数据加载完成后，等待DOM更新，然后调整字体大小
+
     nextTick(() => {
       adjustFontSizes()
-      
-      // 检查元素是否已可见，如果可见则立即触发动画
       if (isVisible.value && !animationStarted.value) {
         delayedAnimateNumbers()
       }
@@ -205,6 +200,15 @@ onMounted(async () => {
     hasError.value = true
     isLoading.value = false
   }
+})
+
+onBeforeUnmount(() => {
+  stopVisibilityObserver?.()
+  stopVisibilityObserver = null
+  stopTopSectionSync?.()
+  stopTopSectionSync = null
+  stopResizeListener?.()
+  stopResizeListener = null
 })
 
 </script>
