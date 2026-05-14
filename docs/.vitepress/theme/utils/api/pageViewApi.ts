@@ -2,9 +2,9 @@
  * 页面浏览量 API 封装。
  * 负责浏览量获取、更新、防重计数与本地缓存。
  */
-import { parseWalinePageViewResponse } from './apiResponseParsers'
-import { logError } from './logger'
-import { getWalineServerUrl } from './runtimeConfig'
+import { parseWalinePageViewResponse } from './apiResponseParser'
+import { logError } from '../logger'
+import { getWalineServerUrl } from '../runtimePolicy'
 
 function getArticleEndpoint(): string {
   return `${getWalineServerUrl()}/article`

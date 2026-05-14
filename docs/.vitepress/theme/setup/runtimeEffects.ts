@@ -1,6 +1,6 @@
 import { nextTick } from 'vue'
-import audioManager from '../utils/audioManager'
-import { preloadRecentComments } from '../utils/commentApi'
+import { audioManager } from '../utils/music'
+import { preloadRecentComments } from '../utils/api'
 
 const PRELOAD_DELAY_MS = 1500
 const AUDIO_SYNC_DELAY_MS = 100

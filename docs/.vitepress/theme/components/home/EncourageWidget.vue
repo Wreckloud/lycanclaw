@@ -5,7 +5,7 @@ import { logError } from '../../utils/logger'
 import {
   ENCOURAGE_MESSAGE_COLORS,
   ENCOURAGE_PARTICLE_COLORS
-} from '../../utils/themePalette'
+} from '../../utils/theme'
 
 type PointerEventLike = MouseEvent | TouchEvent
 type TimerHandle = ReturnType<typeof setTimeout>

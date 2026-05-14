@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
-import SimpleMusicPlayer from '../common/SimpleMusicPlayer.vue'
-import { fetchWeeklyTracks, type MusicTrack } from '../../utils/musicApi'
+import SimpleMusicPlayer from './SimpleMusicPlayer.vue'
+import { fetchWeeklyTracks, type MusicTrack } from '../../utils/music'
 
 // 简化的状态
 const isLoading = ref(true)
@@ -83,6 +83,8 @@ onMounted(() => {
             :name="music.name"
             :artist="music.artist"
             :cover="music.cover"
+            playback-source="about-ranking"
+            :playback-priority="2"
           />
         </div>
       </div>

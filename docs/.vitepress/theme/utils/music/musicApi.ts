@@ -1,5 +1,11 @@
-import { addCorsProxy } from './proxyConfig'
-import { getMusicApiBase, getMusicUid } from './runtimeConfig'
+/**
+ * 网易云 API 适配层：
+ * - 拉取周听歌榜
+ * - 拉取歌曲详情与播放地址
+ * - 统一 HTTPS 与封面参数
+ */
+import { addCorsProxy } from '../api/apiProxyPolicy'
+import { getMusicApiBase, getMusicUid } from '../runtimePolicy'
 
 export interface MusicTrack {
   id: string
@@ -82,6 +88,7 @@ function extractPlayableUrl(payload: SongUrlPayload): string | null {
   return typeof url === 'string' && url ? normalizeHttps(url) : null
 }
 
+// 优先 /song/url，失败时回退 /song/download/url。
 async function fetchTrackUrlPayload(id: string): Promise<SongUrlPayload> {
   const primaryPayload = await requestJson('/song/url', {
     id,

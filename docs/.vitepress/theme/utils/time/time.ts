@@ -1,3 +1,8 @@
+/**
+ * 时间基础工具：
+ * - 解析多种日期输入
+ * - 输出中文绝对时间/相对时间
+ */
 export interface RelativeTimeOptions {
   now?: Date
   relativeDays?: number
@@ -44,7 +49,7 @@ export function parseDateInput(input: DateInput): Date | null {
   const normalized = cleanDateString(input)
   if (!normalized) return null
 
-  // Support "YYYY-MM-DD", "YYYY-MM-DD HH:mm:ss" and "YYYY-MM-DDTHH:mm:ss"
+  // 支持 "YYYY-MM-DD" / "YYYY-MM-DD HH:mm:ss" / ISO 简写。
   const commonMatch = normalized.match(
     /^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2})(?::(\d{2})(?::(\d{2}))?)?)?/
   )
@@ -108,6 +113,7 @@ export function formatRelativeTimeCn(input: DateInput, options: RelativeTimeOpti
   const hours = Math.floor(minutes / 60)
   const days = Math.floor(hours / 24)
 
+  // 优先输出“几分钟前/几天前/几周前”，超过阈值再转绝对日期。
   const thresholdDays =
     typeof relativeMonths === 'number' && relativeMonths > 0
       ? Math.floor(relativeMonths * 30)

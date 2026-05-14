@@ -2,13 +2,13 @@
  * 评论API封装
  * 提供获取最新评论、评论数量与时间格式化能力。
  */
-import { formatRecentCommentTime } from './timeDisplayPolicy'
+import { formatRecentCommentTime } from '../time/timeDisplayPolicy'
 import {
   parseWalineCommentCountResponse,
   parseWalineRecentCommentsResponse
-} from './apiResponseParsers'
-import { logError } from './logger'
-import { getWalineServerUrl } from './runtimeConfig'
+} from './apiResponseParser'
+import { logError } from '../logger'
+import { getWalineServerUrl } from '../runtimePolicy'
 
 function getCommentEndpoint(): string {
   return `${getWalineServerUrl()}/comment`

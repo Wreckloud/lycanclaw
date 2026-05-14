@@ -134,6 +134,7 @@
       "projects/index.md"
     ],
     "public": [
+      "public/daily-contributions.json",
       "public/contribution-stats.json",
       "public/images",
       "public/default.png",

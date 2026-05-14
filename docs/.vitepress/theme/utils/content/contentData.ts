@@ -1,3 +1,8 @@
+/**
+ * 内容数据读取层：
+ * - 统一读取 docs/public 下的构建产物 JSON
+ * - 提供 Thought/Knowledge/Contribution 的基础查询方法
+ */
 const THOUGHTS_PREFIX = 'thoughts/'
 const THOUGHTS_INDEX_PATH = 'thoughts/index.md'
 const THOUGHTS_TAGS_PATH = 'thoughts/tags.md'
@@ -65,6 +70,7 @@ export async function fetchSitePosts(withBase: BasePathResolver): Promise<Though
   return fetchJson<ThoughtPost[]>(withBase, '/posts.json')
 }
 
+// 随想页仅展示已发布且非索引/标签导航页面的内容。
 export async function fetchPublishedThoughtPosts(withBase: BasePathResolver): Promise<ThoughtPost[]> {
   const posts = await fetchSitePosts(withBase)
   return posts.filter(isPublishedThoughtPost)

@@ -1,6 +1,10 @@
-import { parseDateInput } from './time'
-import { countWords } from './contentMetrics'
-import type { KnowledgeStatRecord, ThoughtPost } from './contentData'
+/**
+ * 首页统计计算：
+ * 汇总随想与知识笔记数据，输出展示面板需要的聚合值。
+ */
+import { parseDateInput } from '../time/time'
+import { countWords } from '../content/contentMetrics'
+import type { KnowledgeStatRecord, ThoughtPost } from '../content/contentData'
 
 function formatDateKey(date: Date): string {
   const year = date.getFullYear()
@@ -49,6 +53,7 @@ export function calculateHomeStats(
   }
 }
 
+// 热力图按“过去 1 年”窗口展示。
 export function getOneYearDateRange(): { start: string; end: string } {
   const today = new Date()
   const end = formatDateKey(today)

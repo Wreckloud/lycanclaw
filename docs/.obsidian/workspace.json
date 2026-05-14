@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端 Web 基础/MyBatis Plus 增强框架.md",
+                "file": "knowledge/后端工具库/若依框架.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "MyBatis Plus 增强框架"
+              "title": "若依框架"
             }
           },
           {
@@ -69,13 +69,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/后端 Web 基础/MyBatis Plus 增强框架.md",
+                "file": "knowledge/后端工具库/若依框架.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "MyBatis Plus 增强框架 的大纲"
+              "title": "若依框架 的大纲"
             }
           },
           {
@@ -184,8 +184,8 @@
   },
   "active": "7b06271dd556ed6e",
   "lastOpenFiles": [
-    "MyBatis-Plus][1.md",
     "knowledge/后端 Web 基础/MyBatis Plus 增强框架.md",
+    "MyBatis-Plus][1.md",
     "knowledge/后端 Java 基础/第二部分-异常处理.md",
     "knowledge/后端工具库/若依框架.md",
     "knowledge/后端工具库/Docker.md",

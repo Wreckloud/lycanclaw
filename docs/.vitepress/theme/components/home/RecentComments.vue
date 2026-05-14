@@ -2,7 +2,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { withBase } from 'vitepress'
 import { useIntersectionObserver } from '@vueuse/core'
-import { formatCommentDate, getRecentComments, type WalineComment } from '../../utils/commentApi'
+import { formatCommentDate, getRecentComments, type WalineComment } from '../../utils/api'
 import { logError } from '../../utils/logger'
 
 const isBrowser = typeof window !== 'undefined'

@@ -10,12 +10,12 @@ import {
 } from '@vueuse/core'
 import { formatMonthDayCn } from '../../utils/time'
 import { logError } from '../../utils/logger'
-import { fetchRecommendedPosts, type RecommendedPost } from '../../utils/recommendedApi'
+import { fetchRecommendedPosts, type RecommendedPost } from '../../utils/api'
 import {
   isHomeTwoColumnLayout,
   markHomeTopSectionsVisible,
   onHomeTopSectionsVisible
-} from '../../utils/homeTopSectionSync'
+} from '../../utils/home'
 import { recommendedPosts as configuredPostsPaths } from '../../../config/recommended-posts.js'
 
 const isBrowser = typeof window !== 'undefined'

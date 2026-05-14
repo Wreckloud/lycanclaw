@@ -1,10 +1,15 @@
+/**
+ * 推荐阅读数据源：
+ * - 优先读取预生成 recommended-posts.json
+ * - 缺失时退回 posts.json 按配置路径映射
+ */
 import {
   fetchJson,
   fetchSitePosts,
   type BasePathResolver,
   type ThoughtPost
-} from './contentData'
-import { logError } from './logger'
+} from '../content/contentData'
+import { logError } from '../logger'
 
 export interface RecommendedPost {
   url: string
@@ -18,6 +23,7 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string')
 }
 
+// 统一字段，确保推荐卡片可安全渲染。
 function normalizePost(post: ThoughtPost): RecommendedPost | null {
   if (!post?.url || !post?.frontmatter?.title || !post?.frontmatter?.date) {
     return null
@@ -32,6 +38,7 @@ function normalizePost(post: ThoughtPost): RecommendedPost | null {
   }
 }
 
+// 仅保留配置中声明的文章，避免推荐区出现意外内容。
 function mapConfiguredPosts(allPosts: ThoughtPost[], configuredPaths: string[]): RecommendedPost[] {
   return configuredPaths
     .map((postPath) => {

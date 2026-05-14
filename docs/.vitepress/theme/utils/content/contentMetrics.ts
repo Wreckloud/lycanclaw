@@ -1,3 +1,8 @@
+/**
+ * 文本指标工具：
+ * - countWords: 中英文混排的近似词数字数
+ * - estimateReadMinutes: 基于词速的阅读时长估算
+ */
 export function countWords(content: string = ''): number {
   const text = content || ''
   const pattern =
@@ -8,6 +13,7 @@ export function countWords(content: string = ''): number {
     return 0
   }
 
+  // CJK 字符按字符计数，其他语言按 token 计数。
   let count = 0
   for (const token of tokens) {
     count += token.charCodeAt(0) >= 0x4e00 ? token.length : 1

@@ -1,3 +1,8 @@
+/**
+ * Waline 返回值解析器：
+ * - 屏蔽返回结构差异
+ * - 统一输出组件可直接使用的数据
+ */
 interface NumberRecord {
   [key: string]: number | unknown
   data?: number | unknown
@@ -13,6 +18,7 @@ function normalizePathCandidates(path: string): string[] {
   return [path, pathWithoutSlash, pathWithSlash]
 }
 
+// 兼容数组结果与 { data: [...] } 包装结果。
 export function parseWalineRecentCommentsResponse<T = unknown>(data: unknown): T[] {
   if (Array.isArray(data)) return data
 
@@ -26,6 +32,7 @@ export function parseWalineRecentCommentsResponse<T = unknown>(data: unknown): T
   return []
 }
 
+// 评论数接口可能返回 number、{ data: number } 或 { [path]: number }。
 export function parseWalineCommentCountResponse(data: unknown, path: string): number {
   if (typeof data === 'number') return data
   if (!data || typeof data !== 'object') return 0

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, computed, watch, nextTick } from 'vue'
 import { useData } from 'vitepress'
-import { countWords, estimateReadMinutes } from '../utils/contentMetrics'
-import { getAndUpdatePageView, getPageViewFromCache } from '../utils/pageViewApi'
+import { countWords, estimateReadMinutes } from '../utils/content'
+import { getAndUpdatePageView, getPageViewFromCache } from '../utils/api'
 import { parseDateInput, formatDateCn } from '../utils/time'
 import { logError } from '../utils/logger'
 

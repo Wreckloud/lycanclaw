@@ -1,3 +1,7 @@
+/**
+ * 音频 UI 纯函数：
+ * 统一时间格式化与进度条百分比计算，便于多个播放器复用。
+ */
 function clamp(value: number, min = 0, max = 1): number {
   return Math.max(min, Math.min(max, value))
 }

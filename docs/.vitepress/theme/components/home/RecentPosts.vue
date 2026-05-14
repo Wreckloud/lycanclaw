@@ -2,10 +2,8 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { withBase } from 'vitepress'
 import { useIntersectionObserver } from '@vueuse/core'
-import { estimateReadMinutes } from '../../utils/contentMetrics'
-import { parseDateInput } from '../../utils/time'
-import { formatRecentPostTime } from '../../utils/timeDisplayPolicy'
-import { fetchPublishedThoughtPosts } from '../../utils/contentData'
+import { estimateReadMinutes, fetchPublishedThoughtPosts } from '../../utils/content'
+import { parseDateInput, formatRecentPostTime } from '../../utils/time'
 import { logError } from '../../utils/logger'
 
 // 类型定义

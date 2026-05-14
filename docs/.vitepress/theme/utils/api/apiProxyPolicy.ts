@@ -1,4 +1,4 @@
-import { getMusicApiBase } from './runtimeConfig'
+import { getMusicApiBase } from '../runtimePolicy'
 
 /**
  * 代理配置 - 用于解决本地开发环境中的 CORS 问题

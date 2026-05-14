@@ -1,22 +1,27 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, onUnmounted } from 'vue'
-import audioManager from '../../utils/audioManager'
-import audioService from '../../utils/audioService'
+import { audioManager, audioService } from '../../utils/music'
 import { useIntersectionObserver } from '@vueuse/core'
-import { calculateProgressPercent, formatAudioTime } from '../../utils/audioUi'
+import { calculateProgressPercent, formatAudioTime } from '../../utils/music'
 import {
   fetchTrackUrlById,
   fetchWeeklyTracks,
   type MusicTrack
-} from '../../utils/musicApi'
+} from '../../utils/music'
 import { logError } from '../../utils/logger'
 
 // 默认封面图片路径
 const defaultCoverUrl = '/images/首页/default-cover.png'
 const UI_SYNC_DELAY_MS = 50
 const NEXT_SONG_DELAY_MS = 1000
-const PRELOAD_DELAY_MS = 100
-const MAX_PRELOAD_QUEUE = 2
+const MAX_NEXT_ATTEMPTS = 6
+const PLAYLIST_CACHE_KEY = 'lycan:music:weekly-ranking'
+const HOME_PLAYBACK_REQUEST = {
+  source: 'home-random',
+  priority: 1,
+  allowInterrupt: true,
+  resumeInterrupted: true
+} as const
 
 interface CurrentSongInfo {
   id: string
@@ -25,12 +30,15 @@ interface CurrentSongInfo {
   cover: string
 }
 
+const isBrowser = typeof window !== 'undefined'
+
 // 组件状态
 const containerRef = ref<HTMLElement | null>(null)
 const isPlaying = ref(false)
 const isLoading = ref(false)
 const showTitle = ref(false)
 const favoritePlaylist = ref<MusicTrack[]>([])
+const playbackQueue = ref<MusicTrack[]>([])
 const currentSongInfo = ref<CurrentSongInfo>({
   id: '',
   name: '',
@@ -45,12 +53,13 @@ const progress = ref(0)
 const progressBarRef = ref<HTMLElement | null>(null)
 const isDragging = ref(false)  // 新增：是否正在拖动进度条
 const isButtonDisabled = ref(false) // 添加按钮禁用状态
-const preloadedSongs = ref<Array<MusicTrack & { url: string }>>([]) // 预加载歌曲队列
-const isFetchingNext = ref(false) // 是否正在获取下一首歌曲
 const pendingTimers = new Set<ReturnType<typeof setTimeout>>()
 
 // 计算属性：按钮显示的文本，随机听或当前歌曲标题
 const buttonText = computed(() => {
+  if (!showTitle.value && favoritePlaylist.value.length === 0 && !isLoading.value) {
+    return '音乐暂不可用'
+  }
   return showTitle.value ? currentSongInfo.value.name : '来听歌吧！'
 })
 
@@ -124,6 +133,41 @@ function syncWithCurrentPlayback() {
   }
 }
 
+function cachePlaylist(playlist: MusicTrack[]): void {
+  if (!isBrowser) return
+  try {
+    window.localStorage.setItem(PLAYLIST_CACHE_KEY, JSON.stringify(playlist))
+  } catch (error) {
+    logError('HomeMusicPlayer', '缓存排行榜失败', error)
+  }
+}
+
+function readCachedPlaylist(): MusicTrack[] {
+  if (!isBrowser) return []
+  try {
+    const raw = window.localStorage.getItem(PLAYLIST_CACHE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((item): item is MusicTrack =>
+      !!item &&
+      typeof item.id === 'string' &&
+      typeof item.name === 'string' &&
+      typeof item.artist === 'string' &&
+      typeof item.cover === 'string'
+    )
+  } catch (error) {
+    logError('HomeMusicPlayer', '读取排行榜缓存失败', error)
+    return []
+  }
+}
+
+function rebuildPlaybackQueue(excludeSongId = ''): void {
+  const normalizedExcludeId = excludeSongId.replace('netease-', '')
+  const candidates = favoritePlaylist.value.filter((song) => song.id !== normalizedExcludeId)
+  playbackQueue.value = shuffleArray([...candidates])
+}
+
 // 获取网易云音乐排行榜数据
 async function fetchMusicRanking() {
   if (typeof window === 'undefined') return
@@ -132,20 +176,16 @@ async function fetchMusicRanking() {
   
   try {
     const songs = await fetchWeeklyTracks({ withTimestamp: true, coverSize: '120y120' })
-    const shuffledSongs = shuffleArray([...songs])
-    favoritePlaylist.value = shuffledSongs
-    
-    // 获取歌单后再次尝试同步播放状态
+    favoritePlaylist.value = songs
+    rebuildPlaybackQueue()
+    cachePlaylist(songs)
     syncWithCurrentPlayback()
   } catch (error) {
-    logError('HomeMusicPlayer', '加载音乐排行榜失败，已降级到占位歌曲', error)
+    logError('HomeMusicPlayer', '加载音乐排行榜失败，尝试使用缓存列表', error)
     if (favoritePlaylist.value.length === 0) {
-      favoritePlaylist.value = [{
-        id: '1824020871',
-        name: '音乐服务暂不可用',
-        artist: '未知艺术家',
-        cover: defaultCoverUrl
-      }]
+      const cached = readCachedPlaylist()
+      favoritePlaylist.value = cached
+      rebuildPlaybackQueue()
     }
   } finally {
     isLoading.value = false
@@ -194,186 +234,98 @@ function normalizeCoverUrl(coverUrl: string): string {
   return normalized
 }
 
-function pickQueuedOrRandomSong() {
-  if (preloadedSongs.value.length > 0) {
-    const song = preloadedSongs.value[0]
-    currentSongIndex.value = favoritePlaylist.value.findIndex((item) => item.id === song.id)
-    return song
+function drawNextSongFromQueue(): MusicTrack | null {
+  if (favoritePlaylist.value.length === 0) return null
+
+  if (playbackQueue.value.length === 0) {
+    rebuildPlaybackQueue(currentSongInfo.value.id)
   }
 
-  if (favoritePlaylist.value.length === 0) {
-    return null
-  }
+  const nextSong = playbackQueue.value.shift()
+  if (!nextSong) return null
 
-  const randomIndex = Math.floor(Math.random() * favoritePlaylist.value.length)
-  currentSongIndex.value = randomIndex
-  return favoritePlaylist.value[randomIndex]
+  currentSongIndex.value = favoritePlaylist.value.findIndex((item) => item.id === nextSong.id)
+  return nextSong
 }
 
-// 预加载下一首歌曲
-async function preloadNextSong() {
-  // 如果正在获取歌曲或歌单为空，则返回
-  if (isFetchingNext.value || favoritePlaylist.value.length === 0) return
-  
-  // 如果预加载队列已有两首歌曲，不再重复加载
-  if (preloadedSongs.value.length >= MAX_PRELOAD_QUEUE) return
-  
-  isFetchingNext.value = true
-  
-  try {
-    // 随机选择歌曲，避免选择当前播放的歌曲和已预加载的歌曲
-    let nextSong: MusicTrack | null = null
-    const existingIds = new Set([
-      ...preloadedSongs.value.map(s => s.id),
-      currentSongInfo.value.id?.replace('netease-', '')
-    ].filter(Boolean));
-    
-    let attempts = 0;
-    const maxAttempts = Math.min(10, favoritePlaylist.value.length);
-    
-    do {
-      const randomIndex = Math.floor(Math.random() * favoritePlaylist.value.length);
-      nextSong = favoritePlaylist.value[randomIndex];
-      attempts++;
-    } while (existingIds.has(nextSong.id) && attempts < maxAttempts);
+async function fetchSongDetailAndPlay(song: MusicTrack): Promise<boolean> {
+  if (typeof window === 'undefined' || !song.id) return false
 
-    if (!nextSong) return
-    
-    const musicUrl = await fetchTrackUrlById(nextSong.id)
-    if (!musicUrl) {
-      // 如果获取失败，尝试另一首歌
-      isFetchingNext.value = false
-      schedule(() => preloadNextSong(), 500)
-      return
-    }
-    
-    // 添加到预加载队列
-    preloadedSongs.value.push({
-      ...nextSong,
-      url: musicUrl,
-      cover: normalizeCoverUrl(nextSong.cover)
-    })
-    
-    // 如果预加载队列中的歌曲数量仍然少于2首，继续预加载
-    if (preloadedSongs.value.length < MAX_PRELOAD_QUEUE) {
-      schedule(() => preloadNextSong(), 300)
-    }
-  } catch (error) {
-    logError('HomeMusicPlayer', '预加载歌曲失败', error)
-  } finally {
-    isFetchingNext.value = false
-  }
-}
-
-// 获取歌曲详细信息并播放（包括音频URL）
-async function fetchSongDetailAndPlay(song: MusicTrack | (MusicTrack & { url?: string })) {
-  if (typeof window === 'undefined' || !song.id) return
-  
   isLoading.value = true
-  
+
   try {
-    // 检查是否有预加载的URL
-    let musicUrl = ''
-    let coverUrl = song.cover
-    
-    // 如果是从预加载队列中获取的歌曲，直接使用
-    const preloadedSong = preloadedSongs.value.find(s => s.id === song.id)
-    if (preloadedSong) {
-      musicUrl = preloadedSong.url
-      coverUrl = preloadedSong.cover
-      
-      // 使用后从预加载队列中移除
-      preloadedSongs.value = preloadedSongs.value.filter(s => s.id !== song.id)
-      
-      // 立即开始预加载下一首
-      schedule(() => preloadNextSong(), PRELOAD_DELAY_MS)
-    } else {
-      const resolvedUrl = await fetchTrackUrlById(song.id)
-      if (!resolvedUrl) {
-        // 如果URL为空，可能是因为版权限制
-        playNextSong()
-        return
-      }
-      musicUrl = resolvedUrl
-      coverUrl = normalizeCoverUrl(coverUrl)
-      
-      // 开始预加载下一首
-      schedule(() => preloadNextSong(), PRELOAD_DELAY_MS)
+    const resolvedUrl = await fetchTrackUrlById(song.id)
+    if (!resolvedUrl) {
+      return false
     }
-    
-    // 创建完整的歌曲信息对象
+
+    const coverUrl = normalizeCoverUrl(song.cover)
     const songInfo = {
       name: song.name,
       artist: song.artist,
       cover: coverUrl,
-      url: musicUrl
+      url: resolvedUrl
     }
-    
-    // 使用audioService播放音乐
+
     const audioId = `netease-${song.id}`
     currentSongInfo.value = { ...song, id: audioId, cover: coverUrl }
-    
-    // 播放音频
-    audioService.play(audioId, songInfo)
-      .then(() => {
-        isPlaying.value = true
-        showTitle.value = true
-        
-        // 发送歌曲信息到全局播放器
-        audioManager.emit('song-info-update', JSON.stringify({
-          id: audioId,
-          name: song.name,
-          artist: song.artist,
-          cover: coverUrl,
-          isPlaying: true,
-          progress: 0,
-          duration: 0,
-          currentTime: 0
-        }))
-      })
-      .catch(() => {
-        // 恢复播放失败，移除调试信息
-        isPlaying.value = false
-        showTitle.value = false
-        logError('HomeMusicPlayer', '播放失败，准备切换下一首', { songId: song.id })
-        
-        // 自动尝试播放下一首
-        schedule(() => playNextSong(), NEXT_SONG_DELAY_MS)
-      })
+
+    await audioService.play(audioId, songInfo, 0, HOME_PLAYBACK_REQUEST)
+    isPlaying.value = true
+    showTitle.value = true
+
+    audioManager.emit('song-info-update', JSON.stringify({
+      id: audioId,
+      name: song.name,
+      artist: song.artist,
+      cover: coverUrl,
+      isPlaying: true,
+      progress: 0,
+      duration: 0,
+      currentTime: 0
+    }))
+    return true
   } catch (error) {
-    logError('HomeMusicPlayer', '获取歌曲并播放失败，准备切换下一首', error)
     isPlaying.value = false
     showTitle.value = false
-    
-    // 自动尝试播放下一首
-    schedule(() => playNextSong(), NEXT_SONG_DELAY_MS)
+    logError('HomeMusicPlayer', '获取歌曲并播放失败', { songId: song.id, error })
+    return false
   } finally {
     isLoading.value = false
   }
 }
 
 // 随机播放一首歌
-function playRandomSong() {
-  if (isLoading.value) return
-  
-  if (favoritePlaylist.value.length === 0) {
-    // 尝试重新获取歌单
-    fetchMusicRanking()
+async function playNextSong(attempt = 0): Promise<void> {
+  if (isLoading.value || favoritePlaylist.value.length === 0) return
+  if (attempt >= Math.min(MAX_NEXT_ATTEMPTS, favoritePlaylist.value.length)) {
+    logError('HomeMusicPlayer', '连续多首歌曲不可播放，停止自动切歌', {
+      attempts: attempt
+    })
+    isPlaying.value = false
+    showTitle.value = false
     return
   }
-  
-  const song = pickQueuedOrRandomSong()
+
+  const song = drawNextSongFromQueue()
   if (!song) return
-  fetchSongDetailAndPlay(song)
+  const played = await fetchSongDetailAndPlay(song)
+  if (!played) {
+    schedule(() => {
+      void playNextSong(attempt + 1)
+    }, NEXT_SONG_DELAY_MS)
+  }
 }
 
-// 播放下一首歌
-function playNextSong() {
-  if (isLoading.value || favoritePlaylist.value.length === 0) return
-  
-  const song = pickQueuedOrRandomSong()
-  if (!song) return
-  fetchSongDetailAndPlay(song)
+function playRandomSong(): void {
+  if (isLoading.value) return
+
+  if (favoritePlaylist.value.length === 0) {
+    void fetchMusicRanking()
+    return
+  }
+
+  void playNextSong()
 }
 
 // 停止播放并恢复按钮状态
@@ -407,7 +359,7 @@ function handleNextSong(e: MouseEvent) {
   }
   
   // 播放下一首歌曲
-  playNextSong()
+  void playNextSong()
 }
 
 // 点击按钮处理
@@ -430,7 +382,7 @@ function handleButtonClick() {
         artist: currentSongInfo.value.artist,
         cover: currentSongInfo.value.cover,
         url: ''  // 服务会使用现有的音频对象
-      }, currentTime.value)
+      }, currentTime.value, HOME_PLAYBACK_REQUEST)
       .then(() => {
         isPlaying.value = true
       })
@@ -543,7 +495,9 @@ function setupEventListeners() {
     audioManager.on('song-ended', (id) => {
       if (id && id === currentSongInfo.value.id) {
         // 歌曲结束后自动播放下一首
-        schedule(() => playNextSong(), NEXT_SONG_DELAY_MS)
+        schedule(() => {
+          void playNextSong()
+        }, NEXT_SONG_DELAY_MS)
       }
     })
   )
@@ -571,7 +525,9 @@ function setupEventListeners() {
     audioManager.on('audio-error', (id) => {
       if (id === currentSongInfo.value.id) {
         // 出错时尝试播放下一首
-        schedule(() => playNextSong(), NEXT_SONG_DELAY_MS)
+        schedule(() => {
+          void playNextSong()
+        }, NEXT_SONG_DELAY_MS)
       }
     })
   )
@@ -582,11 +538,6 @@ function setupEventListeners() {
       if (id && isPlaying.value && currentSongInfo.value.id && id !== currentSongInfo.value.id) {
         // 如果切换到其他音频，更新按钮状态但保持标题
         isPlaying.value = false
-        
-        // 如果切换的是另一首网易云音乐，尝试找到并同步
-        if (id.startsWith('netease-')) {
-          syncWithCurrentPlayback()
-        }
       }
     })
   )
@@ -616,20 +567,52 @@ function setupEventListeners() {
       }
     })
   )
+
+  unsubscribers.push(
+    audioManager.on('resume-playback', (payload) => {
+      try {
+        const parsed = JSON.parse(payload) as {
+          audioId?: string
+          currentTime?: number
+          request?: {
+            source?: string
+          }
+        }
+        if (parsed.request?.source !== 'home-random') return
+        if (!parsed.audioId || parsed.audioId !== currentSongInfo.value.id) return
+
+        const resumeTime = typeof parsed.currentTime === 'number'
+          ? Math.max(0, parsed.currentTime)
+          : currentTime.value
+
+        void audioService.play(
+          currentSongInfo.value.id,
+          {
+            name: currentSongInfo.value.name,
+            artist: currentSongInfo.value.artist,
+            cover: currentSongInfo.value.cover,
+            url: ''
+          },
+          resumeTime,
+          HOME_PLAYBACK_REQUEST
+        ).then(() => {
+          isPlaying.value = true
+          showTitle.value = true
+        }).catch((error) => {
+          logError('HomeMusicPlayer', '恢复被打断歌曲失败', error)
+        })
+      } catch (error) {
+        logError('HomeMusicPlayer', '解析恢复播放事件失败', error)
+      }
+    })
+  )
 }
 
 // 组件挂载
 onMounted(() => {
   if (typeof window === 'undefined') return
   
-  // 获取排行榜数据
-  fetchMusicRanking()
-    .then(() => {
-      // 歌单加载后预加载一首歌曲
-      if (favoritePlaylist.value.length > 0) {
-        schedule(() => preloadNextSong(), NEXT_SONG_DELAY_MS)
-      }
-    })
+  void fetchMusicRanking()
   
   // 设置事件监听
   setupEventListeners()
@@ -648,7 +631,6 @@ onMounted(() => {
     )
   }
   
-  // 尝试立即同步播放状态，如果歌单已加载
   if (favoritePlaylist.value.length > 0) {
     syncWithCurrentPlayback()
   }

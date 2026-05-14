@@ -1,3 +1,8 @@
+/**
+ * 统一日志入口：
+ * - debug 仅开发环境输出
+ * - error 始终保留，便于线上问题定位
+ */
 const isDev = import.meta.env.DEV
 
 function withScope(scope: string, message: string): string {

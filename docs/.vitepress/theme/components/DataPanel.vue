@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useSidebar } from 'vitepress/theme'
-import { fetchHitokoto } from '../utils/siteApi'
+import { fetchHitokoto } from '../utils/api'
 
 const { hasSidebar } = useSidebar()
 const isBrowser = typeof window !== 'undefined'

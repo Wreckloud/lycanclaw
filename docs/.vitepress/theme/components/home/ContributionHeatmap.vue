@@ -10,10 +10,10 @@ import { CalendarComponent, VisualMapComponent } from 'echarts/components'
 import { HeatmapChart } from 'echarts/charts'
 import { CanvasRenderer } from 'echarts/renderers'
 import type { EChartsType } from 'echarts/core'
-import { fetchDailyContributions } from '../../utils/contentData'
-import { getOneYearDateRange } from '../../utils/homeAnalytics'
+import { fetchDailyContributions } from '../../utils/content'
+import { getOneYearDateRange } from '../../utils/home'
 import { logError } from '../../utils/logger'
-import { HEATMAP_CELL_BORDER, HEATMAP_PALETTE } from '../../utils/themePalette'
+import { HEATMAP_CELL_BORDER, HEATMAP_PALETTE } from '../../utils/theme'
 
 // 按需注册组件
 echarts.use([

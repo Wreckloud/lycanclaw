@@ -1,5 +1,9 @@
-import { logError } from './logger'
-import { getHitokotoApiUrl } from './runtimeConfig'
+/**
+ * 站点轻量 API：
+ * 当前仅封装一言，失败时返回调用方提供的兜底文案。
+ */
+import { logError } from '../logger'
+import { getHitokotoApiUrl } from '../runtimePolicy'
 
 interface HitokotoResponse {
   hitokoto?: string

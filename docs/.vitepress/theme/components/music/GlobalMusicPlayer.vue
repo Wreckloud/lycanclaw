@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import audioManager, { type SongInfo } from '../../utils/audioManager'
-import audioService, { type AudioSongInfo } from '../../utils/audioService'
-import { calculateProgressPercent, formatAudioTime } from '../../utils/audioUi'
+import {
+  audioManager,
+  audioService,
+  calculateProgressPercent,
+  formatAudioTime,
+  type SongInfo,
+  type AudioSongInfo
+} from '../../utils/music'
 import { logError } from '../../utils/logger'
 
 const AUTO_COLLAPSE_MS = 3000
@@ -148,7 +153,19 @@ function togglePlay(): void {
     return
   }
 
-  void audioService.play(currentSong.value.id, buildPlayableSongInfo(), currentSong.value.currentTime)
+  const requestContext = audioManager.getCurrentRequest() ?? {
+    source: 'global-player',
+    priority: 1,
+    allowInterrupt: true,
+    resumeInterrupted: true
+  }
+
+  void audioService.play(
+    currentSong.value.id,
+    buildPlayableSongInfo(),
+    currentSong.value.currentTime,
+    requestContext
+  )
     .then(() => {
       startRotation()
       scheduleCollapse(AUTO_COLLAPSE_MS)

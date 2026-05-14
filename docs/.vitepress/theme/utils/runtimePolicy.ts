@@ -1,3 +1,7 @@
+/**
+ * 运行时配置读取策略：
+ * 优先级为 window 注入配置 > 环境变量 > 默认值。
+ */
 const DEFAULT_WALINE_SERVER_URL = 'https://lycanclaw-comment.netlify.app/.netlify/functions/comment'
 const DEFAULT_HITOKOTO_API = 'https://v1.hitokoto.cn'
 const DEFAULT_MUSIC_API_BASE = 'https://apis.netstart.cn/music'
@@ -21,6 +25,7 @@ function normalizeBaseUrl(url: string): string {
   return url.replace(/\/+$/, '')
 }
 
+// 仅在浏览器端读取 window 注入值。
 function readRuntimeValue(key: keyof LycanRuntimeConfig): string | undefined {
   if (typeof window === 'undefined') return undefined
   const value = window.__LYCAN_CONFIG?.[key]

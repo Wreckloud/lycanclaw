@@ -2,12 +2,15 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useData } from 'vitepress'
 import { useIntersectionObserver } from '@vueuse/core'
-import audioManager from '../../utils/audioManager'
-import audioService from '../../utils/audioService'
-import { fetchTrackWithUrlById } from '../../utils/musicApi'
-import { calculateProgressPercent, formatAudioTime } from '../../utils/audioUi'
+import {
+  audioManager,
+  audioService,
+  fetchTrackWithUrlById,
+  calculateProgressPercent,
+  formatAudioTime
+} from '../../utils/music'
 import { logError } from '../../utils/logger'
-import type { SongInfo } from '../../utils/audioManager'
+import type { SongInfo } from '../../utils/music'
 
 interface Props {
   name?: string
@@ -16,6 +19,9 @@ interface Props {
   url?: string
   autoplay?: boolean
   neteaseid?: string
+  playbackSource?: string
+  playbackPriority?: number
+  allowInterrupt?: boolean
 }
 
 interface LocalSongInfo {
@@ -34,7 +40,10 @@ const props = withDefaults(defineProps<Props>(), {
   cover: '',
   url: '',
   autoplay: false,
-  neteaseid: ''
+  neteaseid: '',
+  playbackSource: 'article-embed',
+  playbackPriority: 3,
+  allowInterrupt: true
 })
 
 const { isDark } = useData()
@@ -76,6 +85,12 @@ const formattedDuration = computed(() => formatAudioTime(duration.value))
 const neteaseLink = computed(() => (
   props.neteaseid ? `https://music.163.com/#/song?id=${props.neteaseid}` : null
 ))
+const playbackRequest = computed(() => ({
+  source: props.playbackSource,
+  priority: props.playbackPriority,
+  allowInterrupt: props.allowInterrupt,
+  resumeInterrupted: true
+}))
 
 function clearDebounceTimer(): void {
   if (!debounceTimer.value) return
@@ -279,14 +294,16 @@ function togglePlay(): void {
       return
     }
 
-    audioManager.setCurrentPlaying(audioId.value)
-    void audioService.play(audioId.value, songInfo.value, currentTime.value)
+    void audioService.play(audioId.value, songInfo.value, currentTime.value, playbackRequest.value)
       .then(() => {
         isPlaying.value = true
         emitPlayState(true)
         sendSongInfoToGlobalPlayer()
       })
       .catch(error => {
+        if (error instanceof Error && error.message === 'PLAYBACK_DENIED') {
+          return
+        }
         if (error && (error as { name?: string }).name === 'AbortError') {
           return
         }
@@ -363,6 +380,35 @@ function setupEventListeners(): void {
     if (id === audioId.value) {
       resetVisualProgress()
       isPlaying.value = false
+    }
+  }))
+
+  unsubscribers.push(audioManager.on('resume-playback', payload => {
+    try {
+      const parsed = JSON.parse(payload) as {
+        audioId?: string
+        currentTime?: number
+      }
+      if (!parsed.audioId || parsed.audioId !== audioId.value) return
+      if (!songInfo.value.url) return
+
+      const resumeTime = typeof parsed.currentTime === 'number'
+        ? Math.max(0, parsed.currentTime)
+        : currentTime.value
+
+      void audioService.play(audioId.value, songInfo.value, resumeTime, playbackRequest.value)
+        .then(() => {
+          isPlaying.value = true
+          sendSongInfoToGlobalPlayer()
+        })
+        .catch(error => {
+          if (error instanceof Error && error.message === 'PLAYBACK_DENIED') {
+            return
+          }
+          logError('SimpleMusicPlayer', '恢复被打断歌曲失败', error)
+        })
+    } catch (error) {
+      logError('SimpleMusicPlayer', '解析恢复播放事件失败', error)
     }
   }))
 }

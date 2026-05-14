@@ -28,7 +28,7 @@ import RecommendedReading from './.vitepress/theme/components/home/RecommendedRe
 import StatsPanel from './.vitepress/theme/components/home/StatsPanel.vue'
 import ContributionHeatmap from './.vitepress/theme/components/home/ContributionHeatmap.vue'
 import RecentComments from './.vitepress/theme/components/home/RecentComments.vue'
-import HomeMusicPlayer from './.vitepress/theme/components/home/HomeMusicPlayer.vue'
+import HomeMusicPlayer from './.vitepress/theme/components/music/HomeMusicPlayer.vue'
 </script>
 
 

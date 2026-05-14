@@ -2,10 +2,10 @@ import { defineAsyncComponent } from 'vue'
 import type { App } from 'vue'
 import * as echarts from 'echarts'
 
-import GlobalMusicPlayer from '../components/common/GlobalMusicPlayer.vue'
-import SimpleMusicPlayer from '../components/common/SimpleMusicPlayer.vue'
+import GlobalMusicPlayer from '../components/music/GlobalMusicPlayer.vue'
+import SimpleMusicPlayer from '../components/music/SimpleMusicPlayer.vue'
 import BilibiliPlayer from '../components/common/BilibiliPlayer.vue'
-import HomeMusicPlayer from '../components/home/HomeMusicPlayer.vue'
+import HomeMusicPlayer from '../components/music/HomeMusicPlayer.vue'
 
 const AsyncArticleMetadata = defineAsyncComponent(() =>
   import('../components/ArticleMetadata.vue')

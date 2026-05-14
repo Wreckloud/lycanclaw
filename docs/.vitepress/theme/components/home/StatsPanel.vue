@@ -9,13 +9,13 @@ import EncourageWidget from './EncourageWidget.vue'
 import {
   fetchKnowledgeStats,
   fetchPublishedThoughtPosts
-} from '../../utils/contentData'
-import { calculateHomeStats } from '../../utils/homeAnalytics'
+} from '../../utils/content'
 import {
+  calculateHomeStats,
   isHomeTwoColumnLayout,
   markHomeTopSectionsVisible,
   onHomeTopSectionsVisible
-} from '../../utils/homeTopSectionSync'
+} from '../../utils/home'
 import { logError } from '../../utils/logger'
 
 const isBrowser = typeof window !== 'undefined'

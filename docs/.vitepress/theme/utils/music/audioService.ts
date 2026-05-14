@@ -1,10 +1,12 @@
 /**
  * 全局音频服务 - 用于在页面跳转时保持音频状态
  * 使用单例模式实现全局共享音频实例
+ * 并与 audioManager 协同完成抢占、暂停、恢复与进度广播。
  */
 import audioManager from './audioManager';
-import { addCorsProxy } from './proxyConfig';
-import { logDebug, logError } from './logger';
+import { addCorsProxy } from '../api/apiProxyPolicy';
+import { logDebug, logError } from '../logger';
+import type { PlaybackRequestContext } from './audioManager';
 
 // 音频操作状态枚举
 enum AudioOperationState {
@@ -101,9 +103,9 @@ class AudioService {
       
       // 发送歌曲结束事件
       if (this.currentAudioId) {
+        audioManager.handlePlaybackCompleted(this.currentAudioId);
         audioManager.emit('song-ended', this.currentAudioId);
         audioManager.emit('play-state-change', `${this.currentAudioId}:false`);
-        audioManager.pauseCurrent(this.currentAudioId);
       }
     });
     
@@ -176,8 +178,19 @@ class AudioService {
   }
   
   // 播放音频
-  public play(audioId: string, songInfo: AudioSongInfo, startTime: number = 0): Promise<void> {
+  public play(
+    audioId: string,
+    songInfo: AudioSongInfo,
+    startTime: number = 0,
+    requestContext: PlaybackRequestContext = {}
+  ): Promise<void> {
     if (!this.audioElement) return Promise.reject('音频元素未初始化');
+
+    // 播放权限由 audioManager 统一决策（优先级 + 是否允许打断）。
+    const granted = audioManager.requestPlayback(audioId, requestContext);
+    if (!granted) {
+      return Promise.reject(new Error('PLAYBACK_DENIED'));
+    }
     
     // 如果正在进行操作，避免重复操作
     if (this.operationInProgress) {
@@ -250,7 +263,7 @@ class AudioService {
             return new Promise<void>((resolve, reject) => {
               setTimeout(() => {
                 this.operationInProgress = false;
-                this.play(audioId, songInfo, startTime)
+                this.play(audioId, songInfo, startTime, requestContext)
                   .then(resolve)
                   .catch(reject);
               }, 1000);
@@ -267,9 +280,6 @@ class AudioService {
     // 更新状态
     this.isPlaying = true;
     this.operationState = AudioOperationState.PLAYING;
-    
-    // 通知音频管理器
-    audioManager.setCurrentPlaying(audioId);
     
     // 发送播放状态更新
     audioManager.emit('play-state-change', `${audioId}:true`);

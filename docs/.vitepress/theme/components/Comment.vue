@@ -2,7 +2,7 @@
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRoute, useData } from 'vitepress'
 import { logError } from '../utils/logger'
-import { getWalineServerUrl } from '../utils/runtimeConfig'
+import { getWalineServerUrl } from '../utils/runtimePolicy'
 
 // 获取当前路由和主题模式
 const route = useRoute()

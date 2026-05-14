@@ -2,12 +2,8 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { withBase } from 'vitepress'
 import { useIntersectionObserver } from '@vueuse/core'
-import { estimateReadMinutes } from '../utils/contentMetrics'
+import { estimateReadMinutes, fetchPublishedThoughtPosts, type ThoughtPost } from '../utils/content'
 import { formatDateCn } from '../utils/time'
-import {
-  fetchPublishedThoughtPosts,
-  type ThoughtPost
-} from '../utils/contentData'
 import { logError } from '../utils/logger'
 
 const isBrowser = typeof window !== 'undefined'

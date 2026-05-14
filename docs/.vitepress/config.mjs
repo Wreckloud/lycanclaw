@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitepress'
 import { generateSidebar } from './plugins/index.js'
-import { proxyConfig } from './theme/utils/proxyConfig'
+import { proxyConfig } from './theme/utils/api/apiProxyPolicy'
 
 // 使用自定义插件生成侧边栏
 const sidebar = generateSidebar({
