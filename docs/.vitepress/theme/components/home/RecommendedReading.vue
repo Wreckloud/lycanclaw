@@ -16,7 +16,6 @@ import {
   markHomeTopSectionsVisible,
   onHomeTopSectionsVisible
 } from '../../utils/home'
-import { recommendedPosts as configuredPostsPaths } from '../../../config/recommended-posts.js'
 
 const isBrowser = typeof window !== 'undefined'
 const INTERACTION_COOLDOWN_MS = 3000
@@ -288,8 +287,6 @@ async function fetchPosts(): Promise<void> {
 
   try {
     recommendedPosts.value = await fetchRecommendedPosts(
-      withBase,
-      configuredPostsPaths,
       props.maxPosts
     )
     hasError.value = recommendedPosts.value.length === 0

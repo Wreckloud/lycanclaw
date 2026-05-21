@@ -2,7 +2,8 @@
  * 运行时配置读取策略：
  * 优先级为 window 注入配置 > 环境变量 > 默认值。
  */
-const DEFAULT_WALINE_SERVER_URL = 'https://lycanclaw-comment.netlify.app/.netlify/functions/comment'
+// 评论服务默认指向自建 Waline，本地开发可直接联调。
+const DEFAULT_WALINE_SERVER_URL = 'http://127.0.0.1:8360'
 const DEFAULT_HITOKOTO_API = 'https://v1.hitokoto.cn'
 const DEFAULT_MUSIC_API_BASE = 'https://apis.netstart.cn/music'
 const DEFAULT_MUSIC_UID = '629126546'

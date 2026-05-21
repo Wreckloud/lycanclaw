@@ -24,10 +24,8 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 
 当前动态能力：
 
-- 评论
-- 阅读量统计
-
-这些动态能力目前仍可以先沿用现有方案，后续再逐步迁移到更可控的服务中。
+- 评论（自建 Waline）
+- 阅读量统计（自建 Waline）
 
 ## Theme 架构规范
 
@@ -114,7 +112,7 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 - 已清理一批失效脚本和未引用文件
 - Theme `utils/` 已全部迁移到 `.ts`，并统一类型导出
 - 组件脚本已迁移到 `22/22` 为 TypeScript
-- 首页推荐与页脚文案请求已下沉到 `utils/recommendedApi.ts` 与 `utils/siteApi.ts`
+- 首页推荐与页脚文案请求已下沉到 `utils/recommendedApi.ts` 与 `utils/siteApi.ts`（推荐已切到后端 `/api/recommendations`）
 - 文章字数/阅读时长逻辑已收敛到 `utils/contentMetrics.ts`
 - 首页数据读取、筛选、统计已从组件内联逻辑收敛到 `contentData + homeAnalytics`
 - 音乐相关组件已改为统一调用 `musicApi`，便于后续切换到自建 API
@@ -141,7 +139,7 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 ### 可替换配置入口
 
 - `VITE_MUSIC_API_BASE` / `VITE_MUSIC_UID`
-- `VITE_WALINE_SERVER_URL`
+- `VITE_WALINE_SERVER_URL`（必须指向你自己的 Waline 服务）
 - `VITE_HITOKOTO_API`
 - `window.__LYCAN_CONFIG`（运行时注入）
   - `musicApiBase`
@@ -152,9 +150,9 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 
 ### 后端迁移建议顺序
 
-1. 先做统一网关：后端提供 `/api/content`、`/api/comment`、`/api/stats`、`/api/music`
-2. 前端仅修改 `runtimeConfig` 与各 `*Api` 文件，不动组件
-3. 保留 `public/*.json` 作为降级兜底，确保部署稳定
+1. 统一网关：后端提供 `/api/recommendations`、`/api/music`、`/api/contributions`
+2. 评论/阅读量继续由 Waline 服务提供，前端只读 `VITE_WALINE_SERVER_URL`
+3. 前端仅修改 `runtimeConfig` 与各 `*Api` 文件，不动组件
 
 ## 时间显示规范
 
@@ -201,9 +199,9 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 - 已忽略 Obsidian 元数据目录：`.obsidian/`、`**/.obsidian/`、`.trash/`
 - 构建产物与缓存不入库：`docs/.vitepress/cache/`、`docs/.vitepress/dist/`
 
-## 音乐 API 配置
+## 运行时接口配置
 
-- 默认音乐 API：`https://163api.qijieya.cn`
+- Waline 默认地址（仅本地开发）：`http://127.0.0.1:8360`
 - 可通过环境变量覆盖（构建时生效）：
   - `VITE_MUSIC_API_BASE`
   - `VITE_MUSIC_UID`
