@@ -104,6 +104,8 @@ systemctl disable firewalld
 
 前面通过 `docker run` 快速启动了一个 MySQL 容器，但这条命令背后其实涉及镜像下载、容器创建、端口映射、环境变量配置等多个动作。
 
+![](../../public/images/文章资源/docker/file-20260521144338417.jpg)
+
 接下来就把常用命令拆开看。先从镜像下载开始。
 
 ## docker pull

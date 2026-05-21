@@ -8,10 +8,10 @@ import {
   parseWalineRecentCommentsResponse
 } from './apiResponseParser'
 import { logError } from '../logger'
-import { getWalineServerUrl } from '../runtimePolicy'
+import { getBackendApiBase } from '../runtimePolicy'
 
 function getCommentEndpoint(): string {
-  return `${getWalineServerUrl()}/comment`
+  return `${getBackendApiBase()}/api/comments`
 }
 
 const RECENT_COMMENTS_CACHE_KEY = 'lycan_recent_comments'
@@ -117,11 +117,11 @@ async function requestJson<T>(url: string): Promise<T> {
 }
 
 function buildRecentCommentsUrl(count: number): string {
-  return `${getCommentEndpoint()}?type=recent&count=${count}&_t=${Date.now()}`
+  return `${getCommentEndpoint()}/recent?limit=${count}&_t=${Date.now()}`
 }
 
 function buildCommentCountUrl(path: string): string {
-  return `${getCommentEndpoint()}?type=count&url=${encodeURIComponent(path)}`
+  return `${getCommentEndpoint()}/count?path=${encodeURIComponent(path)}`
 }
 
 export function preloadRecentComments(count: number = 5): void {

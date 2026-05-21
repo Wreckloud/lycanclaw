@@ -4,10 +4,10 @@
  */
 import { parseWalinePageViewResponse } from './apiResponseParser'
 import { logError } from '../logger'
-import { getWalineServerUrl } from '../runtimePolicy'
+import { getBackendApiBase } from '../runtimePolicy'
 
 function getArticleEndpoint(): string {
-  return `${getWalineServerUrl()}/article`
+  return `${getBackendApiBase()}/api/stats/pageview`
 }
 
 const PAGEVIEW_CACHE_PREFIX = 'lycan_pageview_'

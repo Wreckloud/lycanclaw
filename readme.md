@@ -24,8 +24,8 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 
 当前动态能力：
 
-- 评论（自建 Waline）
-- 阅读量统计（自建 Waline）
+- 评论（Waline 组件 + 后端聚合查询）
+- 阅读量统计（后端聚合到 Waline）
 
 ## Theme 架构规范
 
@@ -46,7 +46,7 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 - `docs/.vitepress/theme/utils/`
   - 运行时服务：`audioService`、`audioManager`
   - 音乐数据服务：`musicApi`（网易云接口聚合与解析）
-  - 运行时配置：`runtimeConfig`（环境变量与 `window.__LYCAN_CONFIG` 统一读取）
+  - 运行时配置：`runtimePolicy`（统一读取后端入口与运行时注入）
   - 音乐 UI 工具：`audioUi`（时间格式化与进度计算）
   - API 封装：`commentApi`、`pageViewApi`
   - API 响应解析：`apiResponseParsers`
@@ -113,10 +113,11 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 - Theme `utils/` 已全部迁移到 `.ts`，并统一类型导出
 - 组件脚本已迁移到 `22/22` 为 TypeScript
 - 首页推荐与页脚文案请求已下沉到 `utils/recommendedApi.ts` 与 `utils/siteApi.ts`（推荐已切到后端 `/api/recommendations`）
+- 随想页 Tag 列表与筛选已切到后端 `/api/tags/*`，前端不再本地聚合 tags
 - 文章字数/阅读时长逻辑已收敛到 `utils/contentMetrics.ts`
 - 首页数据读取、筛选、统计已从组件内联逻辑收敛到 `contentData + homeAnalytics`
 - 音乐相关组件已改为统一调用 `musicApi`，便于后续切换到自建 API
-- 评论、阅读量、一言接口地址已统一走 `runtimeConfig`，便于后续替换为自建后端
+- 评论与阅读统计查询已统一走后端网关；Waline 仅负责评论交互与登录
 - `.gitignore` 已覆盖 Obsidian 元数据目录，避免误提交本地笔记配置
 - 页脚计时器秒数显示已改为两位数滚动并固定宽度，消除 `08 -> 09` 等位移抖动
 
@@ -124,7 +125,7 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 
 - 持续补充 ESLint 规则，当前已启用：组件层禁 `fetch`、限制 `console`、禁止 `any`
 - 统一音乐相关组件（`HomeMusicPlayer` / `SimpleMusicPlayer` / `GlobalMusicPlayer`）的共享播放控制逻辑
-- 将 `commentApi / pageViewApi / siteApi / musicApi` 逐步切换到同一后端网关
+- 继续收敛 `siteApi` 等剩余接口到同一后端网关
 - 逐步收敛首页组件中的动画触发器与 `setTimeout` 调度逻辑
 
 ## 后端接入准备（本次整理）
@@ -133,26 +134,20 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 
 - 组件层：只调用 `utils/*Api.ts`，不直接请求网络
 - API 层：只处理请求参数、响应解析、缓存策略
-- 配置层：统一通过 `runtimeConfig.ts` 读取环境变量/运行时配置
+- 配置层：统一通过 `runtimePolicy.ts` 读取环境变量/运行时配置
 - 解析层：`apiResponseParsers.ts` 负责兼容第三方与自建返回结构差异
 
 ### 可替换配置入口
 
-- `VITE_MUSIC_API_BASE` / `VITE_MUSIC_UID`
-- `VITE_WALINE_SERVER_URL`（必须指向你自己的 Waline 服务）
-- `VITE_HITOKOTO_API`
+- 环境变量仅保留：`VITE_BACKEND_API_BASE`
 - `window.__LYCAN_CONFIG`（运行时注入）
-  - `musicApiBase`
-  - `musicUid`
-  - `walineServerUrl`
-  - `hitokotoApi`
-  - `backendApiBase`（预留）
+  - `backendApiBase`
 
 ### 后端迁移建议顺序
 
 1. 统一网关：后端提供 `/api/recommendations`、`/api/music`、`/api/contributions`
-2. 评论/阅读量继续由 Waline 服务提供，前端只读 `VITE_WALINE_SERVER_URL`
-3. 前端仅修改 `runtimeConfig` 与各 `*Api` 文件，不动组件
+2. 评论发布继续走 Waline，评论/阅读统计统一走后端 `/api/*`
+3. 前端仅修改 `runtimePolicy` 与各 `*Api` 文件，不动组件
 
 ## 时间显示规范
 
@@ -201,17 +196,10 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 
 ## 运行时接口配置
 
-- Waline 默认地址（仅本地开发）：`http://127.0.0.1:8360`
-- 可通过环境变量覆盖（构建时生效）：
-  - `VITE_MUSIC_API_BASE`
-  - `VITE_MUSIC_UID`
-  - `VITE_WALINE_SERVER_URL`
-  - `VITE_HITOKOTO_API`
+- 环境变量只保留：`VITE_BACKEND_API_BASE`
+- Waline 地址由后端入口推导：生产走 `${VITE_BACKEND_API_BASE}/waline`，本地 `127.0.0.1:8080` 自动回退到 `127.0.0.1:8360`
 - 也可通过运行时配置覆盖（页面注入 `window.__LYCAN_CONFIG`）：
-  - `musicApiBase`
-  - `musicUid`
-  - `walineServerUrl`
-  - `hitokotoApi`
+  - `backendApiBase`
 
 ## 前后端接口草案
 

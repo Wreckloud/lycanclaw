@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { withBase } from 'vitepress'
 import { useIntersectionObserver } from '@vueuse/core'
-import { estimateReadMinutes, fetchPublishedThoughtPosts, type ThoughtPost } from '../utils/content'
+import {
+  fetchThoughtPostsByTag,
+  fetchThoughtTags,
+  type ThoughtPostSummary,
+  type ThoughtTagItem
+} from '../utils/api'
 import { formatDateCn } from '../utils/time'
 import { logError } from '../utils/logger'
 
@@ -26,44 +31,19 @@ interface NormalizedFrontmatter {
   title: string
   date: string
   tags: string[]
+  readMinutes: number
 }
 
-const thoughtsPosts = ref<ThoughtPost[]>([])
+const availableTags = ref<ThoughtTagItem[]>([])
+const totalPostsCount = ref(0)
+const paginatedPosts = ref<ThoughtPostSummary[]>([])
 const isLoading = ref(true)
 const hasError = ref(false)
 const selectedTag = ref('')
 
 const currentPage = ref(1)
+const totalPages = ref(0)
 const normalizedSelectedTag = computed(() => selectedTag.value.trim())
-const availableTags = computed(() => {
-  const counter = new Map<string, number>()
-  for (const post of thoughtsPosts.value) {
-    const tags = Array.isArray(post.frontmatter?.tags) ? post.frontmatter.tags : []
-    for (const rawTag of tags) {
-      if (typeof rawTag !== 'string') continue
-      const tag = rawTag.trim()
-      if (!tag) continue
-      counter.set(tag, (counter.get(tag) || 0) + 1)
-    }
-  }
-  return Array.from(counter.entries())
-    .map(([tag, count]) => ({ tag, count }))
-    .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag, 'zh-Hans-CN'))
-})
-const filteredPosts = computed(() => {
-  const tag = normalizedSelectedTag.value
-  if (!tag) return thoughtsPosts.value
-  return thoughtsPosts.value.filter((post) => {
-    const tags = Array.isArray(post.frontmatter?.tags) ? post.frontmatter.tags : []
-    return tags.some((item) => typeof item === 'string' && item.trim() === tag)
-  })
-})
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredPosts.value.length / POSTS_PER_PAGE)))
-const paginatedPosts = computed(() => {
-  const startIndex = (currentPage.value - 1) * POSTS_PER_PAGE
-  const endIndex = startIndex + POSTS_PER_PAGE
-  return filteredPosts.value.slice(startIndex, endIndex)
-})
 const paginatedViewPosts = computed(() =>
   paginatedPosts.value.map((post) => ({
     post,
@@ -118,12 +98,9 @@ function cleanupAnimationTimers(): void {
 }
 
 function goToPage(page: PageNumber): void {
-  if (typeof page === 'number' && page >= 1 && page <= totalPages.value) {
+  if (typeof page === 'number' && page >= 1 && page <= Math.max(1, totalPages.value)) {
     currentPage.value = page
-    if (isBrowser) {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    }
-    replayListAnimation()
+    void loadPagePosts({ replayAnimation: true, smoothScroll: true })
   }
 }
 
@@ -140,6 +117,11 @@ function getTagFromUrl(): string {
 function syncTagFromUrl(): void {
   selectedTag.value = getTagFromUrl()
   currentPage.value = 1
+}
+
+function handlePopstate(): void {
+  syncTagFromUrl()
+  void loadPagePosts({ replayAnimation: true, smoothScroll: false })
 }
 
 function updateTagQueryInUrl(tag: string): void {
@@ -159,7 +141,7 @@ function setSelectedTag(tag: string): void {
   selectedTag.value = nextTag
   currentPage.value = 1
   updateTagQueryInUrl(nextTag)
-  replayListAnimation()
+  void loadPagePosts({ replayAnimation: true, smoothScroll: false })
 }
 
 function replayListAnimation(): void {
@@ -178,17 +160,46 @@ function replayListAnimation(): void {
   })
 }
 
-async function loadPosts(): Promise<void> {
-  thoughtsPosts.value = await fetchPublishedThoughtPosts(withBase)
+async function loadTags(): Promise<void> {
+  const data = await fetchThoughtTags()
+  availableTags.value = data.tags
+  totalPostsCount.value = data.totalPosts
+}
+
+async function loadPagePosts(options: { replayAnimation: boolean; smoothScroll: boolean }): Promise<void> {
+  const payload = await fetchThoughtPostsByTag({
+    tag: normalizedSelectedTag.value,
+    page: currentPage.value,
+    pageSize: POSTS_PER_PAGE
+  })
+
+  paginatedPosts.value = payload.posts
+  totalPages.value = Math.max(1, payload.totalPages || 1)
+  totalPostsCount.value = normalizedSelectedTag.value
+    ? payload.total
+    : Math.max(totalPostsCount.value, payload.total)
+
+  if (currentPage.value > totalPages.value) {
+    currentPage.value = totalPages.value
+  }
+
+  if (options.smoothScroll && isBrowser) {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  if (options.replayAnimation) {
+    replayListAnimation()
+  }
 }
 
 onMounted(async () => {
   if (!isBrowser) return
 
   try {
-    await loadPosts()
+    await loadTags()
     syncTagFromUrl()
-    window.addEventListener('popstate', syncTagFromUrl)
+    await loadPagePosts({ replayAnimation: false, smoothScroll: false })
+    window.addEventListener('popstate', handlePopstate)
     isLoading.value = false
 
     if (animationTriggerRef.value) {
@@ -217,45 +228,36 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   if (!isBrowser) return
-  window.removeEventListener('popstate', syncTagFromUrl)
+  window.removeEventListener('popstate', handlePopstate)
   cleanupAnimationTimers()
   stopObserver?.()
   stopObserver = null
 })
 
-function calculateReadTime(content: string | undefined): number {
-  return estimateReadMinutes(content || '')
-}
-
-function getPostExcerpt(post: ThoughtPost): string {
-  const description = post.frontmatter?.description
-  if (typeof description === 'string' && description.trim()) {
-    return description
-  }
+function getPostExcerpt(post: ThoughtPostSummary): string {
+  const description = typeof post.description === 'string' ? post.description.trim() : ''
+  if (description) return description
   return typeof post.excerpt === 'string' ? post.excerpt : ''
 }
 
-function normalizeFrontmatter(post: ThoughtPost): NormalizedFrontmatter {
-  const title =
-    typeof post.frontmatter?.title === 'string' && post.frontmatter.title.trim()
-      ? post.frontmatter.title
+function normalizeFrontmatter(post: ThoughtPostSummary): NormalizedFrontmatter {
+  const title = typeof post.title === 'string' && post.title.trim()
+    ? post.title
       : '未命名文章'
-  const date = typeof post.frontmatter?.date === 'string' ? post.frontmatter.date : ''
-  const tags = Array.isArray(post.frontmatter?.tags)
-    ? post.frontmatter.tags.filter((tag): tag is string => typeof tag === 'string' && !!tag.trim())
+  const date = typeof post.date === 'string' ? post.date : ''
+  const tags = Array.isArray(post.tags)
+    ? post.tags.filter((tag): tag is string => typeof tag === 'string' && !!tag.trim())
     : []
-  return { title, date, tags }
+  const readMinutes =
+    typeof post.readMinutes === 'number' && Number.isFinite(post.readMinutes)
+      ? Math.max(1, Math.round(post.readMinutes))
+      : 1
+  return { title, date, tags, readMinutes }
 }
 
 function onTagClick(tag: string): void {
   setSelectedTag(tag)
 }
-
-watch(totalPages, (pageCount) => {
-  if (currentPage.value > pageCount) {
-    currentPage.value = pageCount
-  }
-})
 </script>
 
 <template>
@@ -282,7 +284,7 @@ watch(totalPages, (pageCount) => {
           type="button"
           @click="setSelectedTag('')"
         >
-          全部 <span class="tag-chip-count">[{{ thoughtsPosts.length }}]</span>
+          全部 <span class="tag-chip-count">[{{ totalPostsCount }}]</span>
         </button>
         <button
           v-for="item in availableTags"
@@ -315,7 +317,7 @@ watch(totalPages, (pageCount) => {
             <div class="post-meta">
               <span class="post-date">{{ formatDateCn(item.meta.date) }}</span>
               <span class="post-separator">/</span>
-              <span class="post-read-time">约{{ calculateReadTime(item.post.content) }}分钟读完</span>
+              <span class="post-read-time">约{{ item.meta.readMinutes }}分钟读完</span>
               <span class="post-separator">/</span>
               <span class="post-category">随想</span>
               <span v-if="item.meta.tags.length" class="post-tags">
@@ -372,7 +374,7 @@ watch(totalPages, (pageCount) => {
       </div>
       
       <!-- 无文章提示：只在组件可见且没有文章时显示 -->
-      <div v-if="filteredPosts.length === 0 && isVisible" class="no-posts">
+      <div v-if="paginatedViewPosts.length === 0 && isVisible" class="no-posts">
         <p v-if="normalizedSelectedTag">当前标签下暂无文章：#{{ normalizedSelectedTag }}</p>
         <p v-else>暂无文章</p>
       </div>

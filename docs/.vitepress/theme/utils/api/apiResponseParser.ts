@@ -53,5 +53,13 @@ export function parseWalineCommentCountResponse(data: unknown, path: string): nu
 }
 
 export function parseWalinePageViewResponse(data: unknown): number {
-  return typeof data === 'number' ? data : 0
+  if (typeof data === 'number') return data
+  if (!data || typeof data !== 'object') return 0
+
+  const record = data as NumberRecord
+  if (typeof record.data === 'number') {
+    return record.data
+  }
+
+  return 0
 }

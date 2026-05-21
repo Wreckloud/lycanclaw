@@ -1,6 +1,5 @@
 import { defineConfig } from 'vitepress'
 import { generateSidebar } from './plugins/index.js'
-import { proxyConfig } from './theme/utils/api/apiProxyPolicy'
 
 // 使用自定义插件生成侧边栏
 const sidebar = generateSidebar({
@@ -50,11 +49,6 @@ export default defineConfig({
 
   // 开发服务器配置
   vite: {
-    server: {
-      // 添加代理配置，解决CORS问题
-      proxy: proxyConfig
-    },
-    
     // 优化音频文件处理
     optimizeDeps: {
       exclude: ['@vueuse/core']
