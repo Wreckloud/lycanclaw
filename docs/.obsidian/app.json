@@ -1,0 +1,37 @@
+{
+  "alwaysUpdateLinks": true,
+  "newFileLocation": "folder",
+  "newFileFolderPath": "posts",
+  "userIgnoreFilters": [
+    "node_modules/",
+    "public/",
+    "scaffolds/",
+    "themes/",
+    "source/about/",
+    "source/categories/",
+    "source/img/",
+    "source/masonry/",
+    "source/links/",
+    "source/img/"
+  ],
+  "attachmentFolderPath": "./attachments",
+  "useMarkdownLinks": true,
+  "newLinkFormat": "relative",
+  "uriCallbacks": false,
+  "spellcheck": false,
+  "autoPairMarkdown": false,
+  "showLineNumber": true,
+  "rightToLeft": false,
+  "readableLineLength": false,
+  "promptDelete": false,
+  "smartIndentList": false,
+  "autoConvertHtml": false,
+  "tabSize": 2,
+  "pdfExportSettings": {
+    "includeName": true,
+    "pageSize": "Letter",
+    "landscape": false,
+    "margin": "0",
+    "downscalePercent": 100
+  }
+}

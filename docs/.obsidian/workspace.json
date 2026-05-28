@@ -1,0 +1,206 @@
+{
+  "main": {
+    "id": "2a327d01976d7041",
+    "type": "split",
+    "children": [
+      {
+        "id": "57b49faf48feed40",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "31f181ae07cf6de7",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "knowledge/后端 微服务基础/微服务基础.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "微服务基础"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "e614729a7ff4aac3",
+    "type": "split",
+    "children": [
+      {
+        "id": "d57180d71a95b5ef",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "9390bb6f3770f8ef",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "knowledge/后端 微服务基础/微服务基础.md",
+                "followCursor": false,
+                "showSearch": true,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "微服务基础 的大纲"
+            }
+          },
+          {
+            "id": "aebed8ba13ee6df8",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "书签"
+            }
+          },
+          {
+            "id": "35b2b112743022f8",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "搜索"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 283.5
+  },
+  "right": {
+    "id": "318f4ed2312b0f42",
+    "type": "split",
+    "children": [
+      {
+        "id": "de2db9869ac882b8",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "609913dcbebc90fd",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "文件列表"
+            }
+          },
+          {
+            "id": "b5c835b74111611c",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "从 JDBC 到 MyBatis 的数据库与连接池 的反向链接列表"
+            }
+          },
+          {
+            "id": "f9e1fca7e6683779",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "标签"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 266.5
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "bases:新建数据库": false,
+      "switcher:打开快速切换": false,
+      "graph:查看关系图谱": false,
+      "canvas:新建白板": false,
+      "templates:插入模板": false,
+      "command-palette:打开命令面板": false
+    }
+  },
+  "active": "31f181ae07cf6de7",
+  "lastOpenFiles": [
+    "knowledge/实习实训/Linux 输入输出重定向.md",
+    "knowledge/实习实训/SQL 文件导入方式.md",
+    "knowledge/后端工具库/Docker 容器技术.md",
+    "public/images/文章资源/docker-容器技术",
+    "knowledge/实习实训/Java后端与AI智能体开发全景梳理.md",
+    "knowledge/后端 微服务基础/微服务基础.md",
+    "knowledge/实习实训/java-restart-log.md",
+    "knowledge/后端工具库/若依框架.md",
+    "knowledge/实习实训/java_course_audit_and_real_plan_2026-04-12.md",
+    "knowledge/实习实训/record 记录类.md",
+    "public/images/文章资源/docker-容器技术/file-20260521144338417.jpg",
+    "public/images/文章资源/docker",
+    "knowledge/后端 Web 基础/MyBatis Plus 增强框架.md",
+    "MyBatis-Plus][1.md",
+    "knowledge/后端 Java 基础/第二部分-异常处理.md",
+    "knowledge/后端工具库/Swagger 与 Knife4j 接口文档.md",
+    "public/images/文章资源/swagger-与-knife4j-接口文档/file-20260511174025107.jpg",
+    "public/images/文章资源/swagger-与-knife4j-接口文档/file-20260511173837333.jpg",
+    "public/images/文章资源/swagger-与-knife4j-接口文档",
+    "knowledge/后端 Web 基础/分页查询.md",
+    "knowledge/后端 Web 基础/从 JDBC 到 MyBatis 的数据库与连接池.md",
+    "knowledge/后端 Web 基础/Spring入门.md",
+    "knowledge/后端 Web 基础/spring boot原理.md",
+    "thoughts/RE ACTION.md",
+    "thoughts/献给狼，献给你.md",
+    "public/images/文章资源/献给狼，献给你/file-20260507195406516.jpg",
+    "public/images/文章资源/献给狼，献给你",
+    "thoughts/我从人间走过.md",
+    "thoughts/我从来都不是一个难相处的人.md",
+    "thoughts/光不在彼方.md",
+    "thoughts/环境变量.md",
+    "thoughts/竟然被回关.md",
+    "thoughts/獠牙下的野蔷薇.md",
+    "thoughts/每个人都拥有的言灵.md",
+    "public/images/文章资源/第四部分-反射与注解/file-20260429150451231.jpg",
+    "public/images/文章资源/第四部分-反射与注解",
+    "public/images/文章资源/第二部分-常用-api/file-20250627102749604.jpg",
+    "public/images/文章资源/第一部分-面向对象基础/file-20250626172112970.jpg",
+    "public/images/文章资源/第一部分-面向对象基础",
+    "public/images/文章资源/mybatis-plus-增强框架/file-20260304101703944.jpg",
+    "public/images/文章资源/mybatis-plus-增强框架/file-20260304101642267.jpg",
+    "public/images/文章资源/四、代码填空题/file-20260121174008569.jpg",
+    "public/images/文章资源/四、代码填空题",
+    "public/images/文章资源/五、阅读程序",
+    "public/images/文章资源/微服务基础",
+    "knowledge/后端 微服务基础",
+    "点子合集.canvas"
+  ]
+}
