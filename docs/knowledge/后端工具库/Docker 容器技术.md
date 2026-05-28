@@ -1,5 +1,5 @@
 ---
-title: Docker
+title: Docker 容器技术
 date: 2026-05-12 20:17:08
 description: 这是一篇新文章!
 order: 0
@@ -104,7 +104,7 @@ systemctl disable firewalld
 
 前面通过 `docker run` 快速启动了一个 MySQL 容器，但这条命令背后其实涉及镜像下载、容器创建、端口映射、环境变量配置等多个动作。
 
-![](../../public/images/文章资源/docker/file-20260521144338417.jpg)
+![](../../public/images/文章资源/docker-容器技术/file-20260521144338417.jpg)
 
 接下来就把常用命令拆开看。先从镜像下载开始。
 
@@ -683,7 +683,7 @@ docker rmi
 
 容器是由镜像创建出来的运行实例，二者不是一个东西。
 
-### 进入容器执行命令
+### exec 进入容器执行命令
 
 每个容器看起来都像一个相对独立的运行环境。
 如果想在容器内部执行 Linux 命令，可以使用 `docker exec`。
@@ -721,3 +721,47 @@ docker exec mysql cat /etc/os-release
 ```
 
 `docker exec` 适合临时查看容器内部状态、排查问题，或者执行少量维护命令。真正长期运行的服务配置，还是应该尽量写在 `docker run` 参数、挂载文件或后续的 Docker Compose 配置中。
+
+
+# build 构建镜像
+
+(以一个简单功能作为构建镜像的演示, 先演示过程, 不做过多解释, 然后再解释其中的细节)
+
+Dockerfile 没有后缀
+
+所有Dockerfile第一行都是From, 指明基础镜像, 
+
+WORKDIE /app ,有点像cd, 作为工作目录
+
+COPY . . 把代码文件拷贝到容器
+
+RUN, pip 表示要在镜像中执行
+
+EXPOSE 因为代码中占用了, 这里只是声明, 实际运行时还是以-p参数为准
+
+`CMD ["python3","main.py"]`每当容器启动时, 容器内部自动执行这些, 一个docker文件里只能写一个CMD.
+同类型的有 ENTRYPOInt, 优先级更高, 不容易被覆盖
+
+写好之后就可以用 docker build 构建
+-t 可以起一个镜像的名字, 名字后面可以加: 指明版本号, 也可以不写
+最后 . 指的是在当前文件夹下构建
+
+然后就可以使用 ducker run -d -p 做一下端口映射 , 把容器内的8000映射到8000.
+
+
+想要把自己的镜像推送到docker hub上, 首先得在docker hub上有一个账号, 记住其用户名. 
+在 docker build时带上自己的用户名:
+例子
+
+然后推送
+docker push 带上自己用户名的镜像
+
+
+# docker 网络
+
+默认是bridge桥接模式, 每个容器内部都分配了一个内部ip, 一般时 172. 17开,
+容器可以通过这个内部子网里, 通过内部IP地址互相访问, 但容器网络与宿主机是隔离的
+可以使用
+docker network create network 创建出子网, 默认情况下创建出的子网也是桥接模式的一种, 然后可以指定容器加入不同的子网, 同一个
+
+(拓展. 为啥需要这些模式 还有哪些模式, 这些究竟是啥)
