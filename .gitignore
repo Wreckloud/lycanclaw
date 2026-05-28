@@ -19,5 +19,6 @@ Thumbs.db
 
 # Obsidian vault metadata
 .obsidian/
+docs/.obsidian/
 **/.obsidian/
 .trash/
