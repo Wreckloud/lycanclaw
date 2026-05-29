@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * HomeMusicPlayer.vue：
+ * 定义HomeMusicPlayer组件的交互与展示逻辑。
+ */
+
 import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { audioManager, audioService } from '../../utils/music'
 import { useIntersectionObserver } from '@vueuse/core'
@@ -7,6 +12,7 @@ import {
   enqueueMusicQueueItem,
   playNextFromMusicQueue,
   fetchTrackUrlById,
+  fetchTrackWithUrlById,
   type MusicQueueItem,
   type MusicQueueSnapshot,
   fetchWeeklyTracks,
@@ -59,6 +65,7 @@ const isDragging = ref(false)  // 新增：是否正在拖动进度条
 const isButtonDisabled = ref(false) // 添加按钮禁用状态
 const pendingTimers = new Set<ReturnType<typeof setTimeout>>()
 const isQueuePrefilling = ref(false)
+const queueWriteRestricted = ref(false)
 let songPool: MusicTrack[] = []
 
 // 计算属性：按钮显示的文本，随机听或当前歌曲标题
@@ -267,16 +274,41 @@ function drawSongCandidate(excludeSongIds: Set<string>): MusicTrack | null {
   return null
 }
 
+function isQueueWriteAuthError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false
+  return error.message.includes('401') || error.message.includes('ADMIN_TOKEN_INVALID')
+}
+
 function collectQueuedSongIds(snapshot: MusicQueueSnapshot): Set<string> {
   const ids = new Set<string>()
   if (snapshot.current?.id) ids.add(snapshot.current.id)
-  for (const item of snapshot.queue) {
+  for (const item of snapshot.nextPreview ?? []) {
     if (item.id) ids.add(item.id)
   }
   return ids
 }
 
+async function playRandomTrackDirect(excludeSongIds: Set<string>): Promise<boolean> {
+  const candidate = drawSongCandidate(excludeSongIds)
+  if (!candidate) return false
+  const detail = await fetchTrackWithUrlById(candidate.id)
+  if (!detail?.url) return false
+
+  return playQueueItem({
+    queueId: `local-${candidate.id}-${Date.now()}`,
+    id: candidate.id,
+    name: detail.name,
+    artist: detail.artist,
+    cover: detail.cover,
+    url: detail.url,
+    source: HOME_QUEUE_SOURCE,
+    priority: 1,
+    enqueuedAt: new Date().toISOString()
+  })
+}
+
 async function ensureQueuePrefetch(snapshot: MusicQueueSnapshot): Promise<void> {
+  if (queueWriteRestricted.value) return
   if (isQueuePrefilling.value) return
   if (favoritePlaylist.value.length === 0) return
   if (snapshot.queueSize >= QUEUE_PREFETCH_SIZE) return
@@ -296,17 +328,16 @@ async function ensureQueuePrefetch(snapshot: MusicQueueSnapshot): Promise<void> 
       const enqueueResult = await enqueueMusicQueueItem({
         id: candidate.id,
         source: HOME_QUEUE_SOURCE,
-        insertFront: false,
-        interruptCurrent: false,
-        resumeCurrent: true,
-        priority: 1,
-        dedupeMode: 'skip'
       })
 
       workingSnapshot = enqueueResult.snapshot
       attempts += 1
     }
   } catch (error) {
+    if (isQueueWriteAuthError(error)) {
+      queueWriteRestricted.value = true
+      return
+    }
     logError('HomeMusicPlayer', '预填充播放队列失败', error)
   } finally {
     isQueuePrefilling.value = false
@@ -314,6 +345,7 @@ async function ensureQueuePrefetch(snapshot: MusicQueueSnapshot): Promise<void> 
 }
 
 async function enqueueRandomSongAsCurrent(): Promise<MusicQueueSnapshot | null> {
+  if (queueWriteRestricted.value) return null
   const excludedSongIds = new Set<string>()
   if (currentSongInfo.value.id.startsWith('netease-')) {
     excludedSongIds.add(currentSongInfo.value.id.replace('netease-', ''))
@@ -322,16 +354,19 @@ async function enqueueRandomSongAsCurrent(): Promise<MusicQueueSnapshot | null> 
   const candidate = drawSongCandidate(excludedSongIds)
   if (!candidate) return null
 
-  const result = await enqueueMusicQueueItem({
-    id: candidate.id,
-    source: HOME_QUEUE_SOURCE,
-    insertFront: true,
-    interruptCurrent: true,
-    resumeCurrent: true,
-    priority: 1,
-    dedupeMode: 'replace'
-  })
-  return result.snapshot
+  try {
+    const result = await enqueueMusicQueueItem({
+      id: candidate.id,
+      source: HOME_QUEUE_SOURCE,
+    })
+    return result.snapshot
+  } catch (error) {
+    if (isQueueWriteAuthError(error)) {
+      queueWriteRestricted.value = true
+      return null
+    }
+    throw error
+  }
 }
 
 async function resolveTrackUrl(item: MusicQueueItem): Promise<string> {
@@ -392,10 +427,21 @@ async function playQueueItem(item: MusicQueueItem): Promise<boolean> {
 }
 
 async function resolveNextSnapshot(): Promise<MusicQueueSnapshot | null> {
+  if (queueWriteRestricted.value) {
+    return null
+  }
   if (currentSongInfo.value.id) {
-    const result = await playNextFromMusicQueue()
-    if (result.snapshot.current) {
-      return result.snapshot
+    try {
+      const result = await playNextFromMusicQueue()
+      if (result.snapshot.current) {
+        return result.snapshot
+      }
+    } catch (error) {
+      if (isQueueWriteAuthError(error)) {
+        queueWriteRestricted.value = true
+        return null
+      }
+      throw error
     }
   }
   return enqueueRandomSongAsCurrent()
@@ -415,6 +461,21 @@ async function playNextSong(attempt = 0): Promise<void> {
 
   try {
     const snapshot = await resolveNextSnapshot()
+    if (queueWriteRestricted.value) {
+      const excludedSongIds = new Set<string>()
+      if (currentSongInfo.value.id.startsWith('netease-')) {
+        excludedSongIds.add(currentSongInfo.value.id.replace('netease-', ''))
+      }
+      const played = await playRandomTrackDirect(excludedSongIds)
+      if (!played) {
+        schedule(() => {
+          void playNextSong(attempt + 1)
+        }, NEXT_SONG_DELAY_MS)
+        return
+      }
+      return
+    }
+
     const nextItem = snapshot?.current ?? null
     if (!nextItem) {
       schedule(() => {

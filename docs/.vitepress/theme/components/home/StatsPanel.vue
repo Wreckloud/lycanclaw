@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * StatsPanel.vue：
+ * 定义StatsPanel组件的交互与展示逻辑。
+ */
+
 import { nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { withBase } from 'vitepress'
 import {

@@ -1,6 +1,6 @@
 /**
- * 页面级时间展示策略：
- * 将“近期动态/最新评论”的阈值规则集中在这里，组件只调用格式化函数。
+ * timeDisplayPolicy.ts：
+ * 提供timeDisplayPolicy相关的通用工具能力。
  */
 import { formatRelativeTimeCn, type DateInput, type RelativeTimeOptions } from './time'
 

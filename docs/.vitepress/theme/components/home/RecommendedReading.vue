@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * RecommendedReading.vue：
+ * 定义RecommendedReading组件的交互与展示逻辑。
+ */
+
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { withBase } from 'vitepress'
 import {

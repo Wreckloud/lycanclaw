@@ -1,3 +1,7 @@
+/**
+ * runtimeEffects.ts：
+ * 承载runtimeEffects模块实现。
+ */
 import { nextTick } from 'vue'
 import { audioManager } from '../utils/music'
 import { preloadRecentComments } from '../utils/api'

@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * BilibiliPlayer.vue：
+ * 定义BilibiliPlayer组件的交互与展示逻辑。
+ */
+
 import { ref, onMounted } from 'vue'
 
 const props = defineProps({

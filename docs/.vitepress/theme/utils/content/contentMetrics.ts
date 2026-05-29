@@ -1,7 +1,6 @@
 /**
- * 文本指标工具：
- * - countWords: 中英文混排的近似词数字数
- * - estimateReadMinutes: 基于词速的阅读时长估算
+ * contentMetrics.ts：
+ * 提供contentMetrics相关的通用工具能力。
  */
 export function countWords(content: string = ''): number {
   const text = content || ''

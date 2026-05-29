@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * ArticleMetadata.vue：
+ * 定义ArticleMetadata组件的交互与展示逻辑。
+ */
+
 import { onMounted, onBeforeUnmount, ref, computed, watch, nextTick } from 'vue'
 import { useData } from 'vitepress'
 import { countWords, estimateReadMinutes } from '../utils/content'

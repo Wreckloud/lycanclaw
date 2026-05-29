@@ -1,6 +1,6 @@
 /**
- * 运行时配置读取策略：
- * 优先级为 window 注入配置 > 环境变量 > 默认值。
+ * runtimePolicy.ts：
+ * 提供runtimePolicy相关的通用工具能力。
  */
 const DEFAULT_HITOKOTO_API = 'https://v1.hitokoto.cn'
 const DEFAULT_BACKEND_API_BASE = 'http://127.0.0.1:8080'

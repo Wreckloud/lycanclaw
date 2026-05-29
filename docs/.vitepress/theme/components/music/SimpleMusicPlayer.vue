@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * SimpleMusicPlayer.vue：
+ * 定义SimpleMusicPlayer组件的交互与展示逻辑。
+ */
+
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useData } from 'vitepress'
 import { useIntersectionObserver } from '@vueuse/core'

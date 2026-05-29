@@ -1,3 +1,7 @@
+/**
+ * registerGlobalComponents.ts：
+ * 承载registerGlobalComponents模块实现。
+ */
 import { defineAsyncComponent } from 'vue'
 import type { App } from 'vue'
 import * as echarts from 'echarts'

@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * BackToTop.vue：
+ * 定义BackToTop组件的交互与展示逻辑。
+ */
+
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 
 // ===== 返回顶部按钮相关逻辑 =====

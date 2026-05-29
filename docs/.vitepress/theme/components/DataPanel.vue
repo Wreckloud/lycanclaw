@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * DataPanel.vue：
+ * 定义DataPanel组件的交互与展示逻辑。
+ */
+
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useSidebar } from 'vitepress/theme'
 import { fetchHitokoto } from '../utils/api'

@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * PostTitle.vue：
+ * 定义PostTitle组件的交互与展示逻辑。
+ */
+
 import { computed, defineAsyncComponent } from 'vue'
 import { useData } from 'vitepress'
 

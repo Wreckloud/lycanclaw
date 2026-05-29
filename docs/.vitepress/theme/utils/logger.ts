@@ -1,7 +1,6 @@
 /**
- * 统一日志入口：
- * - debug 仅开发环境输出
- * - error 始终保留，便于线上问题定位
+ * logger.ts：
+ * 提供logger相关的通用工具能力。
  */
 const isDev = import.meta.env.DEV
 

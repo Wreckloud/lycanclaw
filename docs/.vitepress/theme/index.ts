@@ -1,3 +1,7 @@
+/**
+ * index.ts：
+ * 承载index模块实现。
+ */
 import DefaultTheme from 'vitepress/theme'
 import type { Theme } from 'vitepress'
 import { onMounted } from 'vue'

@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * PostList.vue：
+ * 定义PostList组件的交互与展示逻辑。
+ */
+
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { withBase } from 'vitepress'
 import { useIntersectionObserver } from '@vueuse/core'

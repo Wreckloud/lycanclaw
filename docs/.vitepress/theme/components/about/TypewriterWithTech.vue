@@ -30,6 +30,11 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * TypewriterWithTech.vue：
+ * 定义TypewriterWithTech组件的交互与展示逻辑。
+ */
+
 import { ref, onMounted, onUnmounted } from 'vue'
 
 // 技术栈数据中心化管理

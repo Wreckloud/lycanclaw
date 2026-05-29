@@ -1,7 +1,6 @@
 /**
- * 全局音频服务 - 用于在页面跳转时保持音频状态
- * 使用单例模式实现全局共享音频实例
- * 并与 audioManager 协同完成抢占、暂停、恢复与进度广播。
+ * audioService.ts：
+ * 提供audioService相关的通用工具能力。
  */
 import audioManager from './audioManager';
 import { addCorsProxy } from '../api/apiProxyPolicy';

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * GitHub风格贡献热力图
- * 基于ECharts实现，显示文章发布的热力分布
+ * ContributionHeatmap.vue：
+ * 定义ContributionHeatmap组件的交互与展示逻辑。
  */
 import { ref, onMounted, onBeforeUnmount, nextTick, computed, watch } from 'vue'
 import { useData } from 'vitepress'

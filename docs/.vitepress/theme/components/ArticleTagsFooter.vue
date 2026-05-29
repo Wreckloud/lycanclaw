@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * ArticleTagsFooter.vue：
+ * 定义ArticleTagsFooter组件的交互与展示逻辑。
+ */
+
 import { computed } from 'vue'
 import { useData, withBase } from 'vitepress'
 

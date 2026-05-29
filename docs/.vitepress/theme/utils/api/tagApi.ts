@@ -1,3 +1,7 @@
+/**
+ * tagApi.ts：
+ * 提供tagApi相关的通用工具能力。
+ */
 import { getBackendApiBase } from '../runtimePolicy'
 import { logError } from '../logger'
 

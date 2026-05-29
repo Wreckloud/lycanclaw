@@ -11,6 +11,11 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Greeting.vue：
+ * 定义Greeting组件的交互与展示逻辑。
+ */
+
 import { ref } from 'vue'
 import MouseParticleEffect from './MouseParticleEffect.vue'
 

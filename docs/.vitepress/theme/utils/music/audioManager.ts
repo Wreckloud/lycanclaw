@@ -1,8 +1,6 @@
 /**
- * 全局音频事件总线：
- * - 同步当前播放状态
- * - 处理优先级抢占与被打断恢复
- * - 对外暴露统一事件接口
+ * audioManager.ts：
+ * 提供audioManager相关的通用工具能力。
  */
 import { logError } from '../logger'
 

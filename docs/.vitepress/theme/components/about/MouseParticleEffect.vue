@@ -6,6 +6,11 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * MouseParticleEffect.vue：
+ * 定义MouseParticleEffect组件的交互与展示逻辑。
+ */
+
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import anime from 'animejs'
 

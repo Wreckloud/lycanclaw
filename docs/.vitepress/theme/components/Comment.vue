@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * Comment.vue：
+ * 定义Comment组件的交互与展示逻辑。
+ */
+
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRoute, useData } from 'vitepress'
 import { logError } from '../utils/logger'

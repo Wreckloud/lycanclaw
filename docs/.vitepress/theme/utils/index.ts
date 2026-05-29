@@ -1,3 +1,7 @@
+/**
+ * index.ts：
+ * 提供index相关的通用工具能力。
+ */
 // theme utils 根导出，提供按域聚合后的统一入口。
 export * from './api'
 export * from './content'

@@ -1,6 +1,6 @@
 /**
- * 页面浏览量 API 封装。
- * 负责浏览量获取、更新、防重计数与本地缓存。
+ * pageViewApi.ts：
+ * 提供pageViewApi相关的通用工具能力。
  */
 import { parseWalinePageViewResponse } from './apiResponseParser'
 import { logError } from '../logger'

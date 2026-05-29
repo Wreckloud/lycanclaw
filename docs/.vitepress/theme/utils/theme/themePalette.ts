@@ -1,6 +1,6 @@
 /**
- * 主题色板常量：
- * 热力图与鼓励气泡组件统一从这里取色，避免散落硬编码。
+ * themePalette.ts：
+ * 提供themePalette相关的通用工具能力。
  */
 export const HEATMAP_PALETTE = {
   dark: ['#2d333b', '#0e4429', '#006d32', '#26a641', '#39d353'],

@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * MusicRanking.vue：
+ * 定义MusicRanking组件的交互与展示逻辑。
+ */
+
 import { ref, onMounted, nextTick } from 'vue'
 import SimpleMusicPlayer from './SimpleMusicPlayer.vue'
 import { fetchWeeklyTracks, type MusicTrack } from '../../utils/music'

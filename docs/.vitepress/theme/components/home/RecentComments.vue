@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * RecentComments.vue：
+ * 定义RecentComments组件的交互与展示逻辑。
+ */
+
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { withBase } from 'vitepress'
 import { useIntersectionObserver } from '@vueuse/core'

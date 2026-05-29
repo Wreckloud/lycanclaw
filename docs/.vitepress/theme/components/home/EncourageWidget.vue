@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * EncourageWidget.vue：
+ * 定义EncourageWidget组件的交互与展示逻辑。
+ */
+
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useDebounceFn, useThrottleFn } from '@vueuse/core'
 import { logError } from '../../utils/logger'

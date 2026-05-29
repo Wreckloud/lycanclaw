@@ -1,6 +1,6 @@
 /**
- * 首页首屏双列联动：
- * 在双列布局下，让“推荐阅读”和“数据统计”使用同一触发时机。
+ * homeTopSectionSync.ts：
+ * 提供homeTopSectionSync相关的通用工具能力。
  */
 const HOME_TOP_SECTIONS_VISIBLE_EVENT = 'lycan:home-top-sections-visible'
 const HOME_TWO_COLUMN_MEDIA_QUERY = '(min-width: 960px)'

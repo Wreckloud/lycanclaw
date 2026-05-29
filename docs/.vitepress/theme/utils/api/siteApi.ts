@@ -1,6 +1,6 @@
 /**
- * 站点轻量 API：
- * 当前仅封装一言，失败时返回调用方提供的兜底文案。
+ * siteApi.ts：
+ * 提供siteApi相关的通用工具能力。
  */
 import { logError } from '../logger'
 import { getHitokotoApiUrl } from '../runtimePolicy'

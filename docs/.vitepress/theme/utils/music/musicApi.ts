@@ -1,6 +1,6 @@
 /**
- * 音乐后端接口适配层：
- * 所有音乐数据统一走 LycanClawBackend，前端不再直连第三方接口。
+ * musicApi.ts：
+ * 提供musicApi相关的通用工具能力。
  */
 import { getBackendApiBase } from '../runtimePolicy'
 
@@ -30,7 +30,7 @@ export interface MusicQueueItem {
 export interface MusicQueueSnapshot {
   current: MusicQueueItem | null
   queueSize: number
-  queue: MusicQueueItem[]
+  nextPreview: MusicQueueItem[]
 }
 
 interface ApiError {
@@ -156,19 +156,14 @@ export async function fetchTrackUrlById(id: string): Promise<string | null> {
   return normalizeHttps(payload.url)
 }
 
-export async function fetchMusicQueue(limit = 30): Promise<MusicQueueSnapshot> {
+export async function fetchMusicQueue(limit = 3): Promise<MusicQueueSnapshot> {
   return requestJson<MusicQueueSnapshot>('/api/music/queue', { limit })
 }
 
 export async function enqueueMusicQueueItem(payload: {
   id: string
   source?: string
-  insertFront?: boolean
-  interruptCurrent?: boolean
-  resumeCurrent?: boolean
-  priority?: number
   level?: string
-  dedupeMode?: 'replace' | 'skip' | 'allow'
 }): Promise<QueueEnqueueResponse> {
   const response = await fetch(buildUrl('/api/music/queue/enqueue'), {
     method: 'POST',
@@ -183,47 +178,6 @@ export async function enqueueMusicQueueItem(payload: {
   const data = (await response.json()) as ApiResponse<QueueEnqueueResponse>
   if (!data.success || !data.data) {
     throw new Error(data?.error?.message || '音乐队列入队失败')
-  }
-  return data.data
-}
-
-export async function setMusicQueueCurrent(payload: {
-  queueId: string
-  resumeCurrent?: boolean
-}): Promise<QueueGenericResponse> {
-  const response = await fetch(buildUrl('/api/music/queue/current'), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
-  })
-  if (!response.ok) {
-    throw new Error(`音乐队列切换失败: ${response.status}`)
-  }
-  const data = (await response.json()) as ApiResponse<QueueGenericResponse>
-  if (!data.success || !data.data) {
-    throw new Error(data?.error?.message || '音乐队列切换失败')
-  }
-  return data.data
-}
-
-export async function removeMusicQueueItem(payload: {
-  queueId: string
-}): Promise<QueueGenericResponse> {
-  const response = await fetch(buildUrl('/api/music/queue/remove'), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
-  })
-  if (!response.ok) {
-    throw new Error(`音乐队列移除失败: ${response.status}`)
-  }
-  const data = (await response.json()) as ApiResponse<QueueGenericResponse>
-  if (!data.success || !data.data) {
-    throw new Error(data?.error?.message || '音乐队列移除失败')
   }
   return data.data
 }

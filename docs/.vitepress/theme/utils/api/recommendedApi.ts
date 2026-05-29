@@ -1,6 +1,6 @@
 /**
- * 推荐阅读数据源：
- * - 统一走后端 /api/recommendations
+ * recommendedApi.ts：
+ * 提供recommendedApi相关的通用工具能力。
  */
 import { getBackendApiBase } from '../runtimePolicy'
 import { logError } from '../logger'

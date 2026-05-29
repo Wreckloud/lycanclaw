@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * GlobalMusicPlayer.vue：
+ * 定义GlobalMusicPlayer组件的交互与展示逻辑。
+ */
+
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import {
   audioManager,

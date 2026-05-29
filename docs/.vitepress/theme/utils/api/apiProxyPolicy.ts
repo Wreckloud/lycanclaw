@@ -1,5 +1,6 @@
 /**
- * 音频 URL 兼容处理：统一修正协议，并保留网易云资源域名白名单。
+ * apiProxyPolicy.ts：
+ * 提供apiProxyPolicy相关的通用工具能力。
  */
 export function addCorsProxy(url: string): string {
   if (!url) return ''

@@ -1,6 +1,6 @@
 /**
- * 首页统计计算：
- * 汇总随想与知识笔记数据，输出展示面板需要的聚合值。
+ * homeAnalytics.ts：
+ * 提供homeAnalytics相关的通用工具能力。
  */
 import { parseDateInput } from '../time/time'
 import { countWords } from '../content/contentMetrics'

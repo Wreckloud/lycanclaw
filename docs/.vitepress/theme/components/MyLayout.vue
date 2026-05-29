@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * MyLayout.vue：
+ * 定义MyLayout组件的交互与展示逻辑。
+ */
+
 import DefaultTheme from 'vitepress/theme'
 import PostTitle from './PostTitle.vue'
 import ArticleTagsFooter from './ArticleTagsFooter.vue'

@@ -1,3 +1,7 @@
+/**
+ * contributionApi.ts：
+ * 提供contributionApi相关的通用工具能力。
+ */
 import { getBackendApiBase } from '../runtimePolicy'
 
 export interface DailyContributionRecord {

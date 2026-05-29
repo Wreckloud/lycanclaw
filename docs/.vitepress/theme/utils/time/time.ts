@@ -1,7 +1,6 @@
 /**
- * 时间基础工具：
- * - 解析多种日期输入
- * - 输出中文绝对时间/相对时间
+ * time.ts：
+ * 提供time相关的通用工具能力。
  */
 export interface RelativeTimeOptions {
   now?: Date

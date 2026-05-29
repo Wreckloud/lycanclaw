@@ -1,7 +1,6 @@
 /**
- * 内容数据读取层：
- * - 统一读取 docs/public 下的构建产物 JSON
- * - 提供 Thought/Knowledge/Contribution 的基础查询方法
+ * contentData.ts：
+ * 提供contentData相关的通用工具能力。
  */
 const THOUGHTS_PREFIX = 'thoughts/'
 const THOUGHTS_INDEX_PATH = 'thoughts/index.md'

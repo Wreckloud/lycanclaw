@@ -1,6 +1,6 @@
 /**
- * 评论API封装
- * 提供获取最新评论、评论数量与时间格式化能力。
+ * commentApi.ts：
+ * 提供commentApi相关的通用工具能力。
  */
 import { formatRecentCommentTime } from '../time/timeDisplayPolicy'
 import {

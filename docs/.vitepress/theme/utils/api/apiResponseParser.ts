@@ -1,7 +1,6 @@
 /**
- * Waline 返回值解析器：
- * - 屏蔽返回结构差异
- * - 统一输出组件可直接使用的数据
+ * apiResponseParser.ts：
+ * 提供apiResponseParser相关的通用工具能力。
  */
 interface NumberRecord {
   [key: string]: number | unknown

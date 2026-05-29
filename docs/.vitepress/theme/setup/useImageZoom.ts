@@ -1,3 +1,7 @@
+/**
+ * useImageZoom.ts：
+ * 承载useImageZoom模块实现。
+ */
 import mediumZoom from 'medium-zoom'
 import type { Zoom } from 'medium-zoom'
 import { nextTick, onMounted, watch } from 'vue'
