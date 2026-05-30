@@ -29,12 +29,40 @@ interface DailyContributionResponse {
   data: DailyContributionRecord[]
 }
 
+const CONTRIBUTION_CACHE_TTL_MS = 10 * 60 * 1000
+const contributionMemoryCache = new Map<string, { expiresAt: number; payload: DailyContributionResponse }>()
+
 function buildDailyContributionsUrl(days?: number): string {
   const query = typeof days === 'number' && days > 0 ? `?days=${Math.floor(days)}` : ''
   return `${getBackendApiBase()}/api/contributions/daily${query}`
 }
 
-export async function fetchDailyContributions(days?: number): Promise<DailyContributionRecord[]> {
+function getContributionCacheKey(days?: number): string {
+  return typeof days === 'number' && days > 0 ? `days:${Math.floor(days)}` : 'days:default'
+}
+
+function readContributionCache(key: string): DailyContributionResponse | null {
+  const cached = contributionMemoryCache.get(key)
+  if (!cached) return null
+  if (cached.expiresAt <= Date.now()) {
+    contributionMemoryCache.delete(key)
+    return null
+  }
+  return cached.payload
+}
+
+function writeContributionCache(key: string, payload: DailyContributionResponse): void {
+  contributionMemoryCache.set(key, {
+    expiresAt: Date.now() + CONTRIBUTION_CACHE_TTL_MS,
+    payload
+  })
+}
+
+export async function fetchDailyContributionPayload(days?: number): Promise<DailyContributionResponse> {
+  const cacheKey = getContributionCacheKey(days)
+  const cached = readContributionCache(cacheKey)
+  if (cached) return cached
+
   const response = await fetch(buildDailyContributionsUrl(days), {
     method: 'GET',
     headers: {
@@ -51,5 +79,11 @@ export async function fetchDailyContributions(days?: number): Promise<DailyContr
     throw new Error(payload?.error?.message || '日贡献接口返回格式错误')
   }
 
-  return payload.data.data
+  writeContributionCache(cacheKey, payload.data)
+  return payload.data
+}
+
+export async function fetchDailyContributions(days?: number): Promise<DailyContributionRecord[]> {
+  const payload = await fetchDailyContributionPayload(days)
+  return payload.data
 }

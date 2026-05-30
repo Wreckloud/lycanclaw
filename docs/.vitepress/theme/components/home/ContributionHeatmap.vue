@@ -10,7 +10,7 @@ import { CalendarComponent, VisualMapComponent } from 'echarts/components'
 import { HeatmapChart } from 'echarts/charts'
 import { CanvasRenderer } from 'echarts/renderers'
 import type { EChartsType } from 'echarts/core'
-import { fetchDailyContributions } from '../../utils/api'
+import { fetchDailyContributionPayload } from '../../utils/api'
 import { getOneYearDateRange } from '../../utils/home'
 import { logError } from '../../utils/logger'
 import { HEATMAP_CELL_BORDER, HEATMAP_PALETTE } from '../../utils/theme'
@@ -28,6 +28,7 @@ const { isDark: themeIsDark } = useData()
 
 // 判断是否在浏览器环境中
 const isBrowser = typeof window !== 'undefined'
+const VISIBILITY_THRESHOLD = 0.1
 
 // 引用DOM元素
 const heatmapRef = ref<HTMLElement | null>(null)
@@ -43,6 +44,8 @@ const isVisible = ref(false) // 添加可见性状态
 const isLoading = ref(true)
 const hasError = ref(false)
 const isDark = computed(() => themeIsDark.value) // 使用VitePress的主题状态
+const isRequested = ref(false)
+const isInitialized = ref(false)
 
 // 热力图数据
 const heatmapData = ref<Array<[string, number]>>([])
@@ -66,6 +69,14 @@ function formatDate(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+function parseDateAsLocal(value: string): Date {
+  const [year, month, day] = value.split('-').map((part) => Number.parseInt(part, 10))
+  if (!year || !month || !day) {
+    return new Date(value)
+  }
+  return new Date(year, month - 1, day)
 }
 
 function getRootCssVar(name: string, fallback: string): string {
@@ -173,22 +184,18 @@ function setupIntersectionObserver(): (() => void) | null {
     entries.forEach((entry) => {
       if (entry.isIntersecting && !isVisible.value) {
         isVisible.value = true
-        // 触发滚动动画
-        performScrollAnimation()
+        void loadAndInitHeatmap()
         observer.unobserve(entry.target)
       }
     })
   }, { 
-    threshold: 0.1, // 降低阈值，只需要30%进入视口就触发
-    rootMargin: '0px 0px 0px 0px' // 移除负边距，不再延迟触发
+    threshold: VISIBILITY_THRESHOLD,
+    rootMargin: '0px 0px 0px 0px'
   })
   
-  // 观察动画触发元素
-  setTimeout(() => {
-    if (animationTriggerRef.value) {
-      observer.observe(animationTriggerRef.value)
-    }
-  }, 100)
+  if (animationTriggerRef.value) {
+    observer.observe(animationTriggerRef.value)
+  }
   
   return () => {
     if (animationTriggerRef.value && observer) {
@@ -206,12 +213,8 @@ function initChart() {
   }
   
   try {
-    // 强制设置容器尺寸 - 保留原始尺寸设置
-    heatmapRef.value.style.width = '1000px'
-    heatmapRef.value.style.height = '200px'
-    
     // 初始化图表
-    const chart = echarts.init(heatmapRef.value, isDark.value ? 'dark' : undefined)
+    const chart = echarts.init(heatmapRef.value)
     
     // 设置图表选项
     chart.setOption(getChartOption())
@@ -221,10 +224,12 @@ function initChart() {
     
     // 保存图表实例，以便后续可以销毁
     chartInstance.value = chart
+    isInitialized.value = true
     
     // 更新滚动状态
     nextTick(() => {
       updateScrollPosition()
+      requestAnimationFrame(() => performScrollAnimation())
     })
   } catch (err) {
     logError('ContributionHeatmap', '初始化热力图失败', err)
@@ -234,28 +239,9 @@ function initChart() {
 
 // 监听主题变化
 watch(isDark, (newVal, oldVal) => {
-  if (newVal !== oldVal && chartInstance.value) {
-    // 保存当前滚动位置
-    const currentScrollLeft = containerRef.value?.scrollLeft || 0;
-    
-    // 重新初始化图表以应用新主题
-    nextTick(() => {
-      if (chartInstance.value) {
-        const el = chartInstance.value.getDom()
-        chartInstance.value.dispose();
-        el.style.backgroundColor = newVal ? 'transparent' : '';
-        chartInstance.value = echarts.init(el, newVal ? 'dark' : undefined);
-        chartInstance.value.setOption(getChartOption());
-        
-        // 恢复滚动位置
-        nextTick(() => {
-          if (containerRef.value) {
-            containerRef.value.scrollLeft = currentScrollLeft;
-            updateScrollPosition();
-          }
-        });
-      }
-    });
+  if (newVal !== oldVal && chartInstance.value && isInitialized.value) {
+    chartInstance.value.setOption(getChartOption(), true)
+    nextTick(() => updateScrollPosition())
   }
 }, { immediate: false });
 
@@ -273,60 +259,74 @@ function handleResize() {
 let cleanupObserver: (() => void) | null = null
 let wheelListener: ((event: WheelEvent) => void) | null = null
 
-onMounted(async () => {
-  // 确保只在浏览器环境中执行
-  if (!isBrowser) return
-  
+async function loadAndInitHeatmap() {
+  if (isRequested.value) return
+  isRequested.value = true
+  isLoading.value = true
+
   try {
-    const dailyContributions = await fetchDailyContributions()
+    const payload = await fetchDailyContributionPayload()
+    const dailyContributions = payload.data
     const contributionMap = new Map(
       dailyContributions.map((item) => [item.date, item.total])
     )
-    
-    // 确定日期范围
-    yearRange.value = getOneYearDateRange()
-    const startDate = new Date(yearRange.value.start)
-    const endDate = new Date(yearRange.value.end)
-    
+
+    const fallbackRange = getOneYearDateRange()
+    const firstDate = dailyContributions[0]?.date || fallbackRange.start
+    const lastDate = dailyContributions[dailyContributions.length - 1]?.date || fallbackRange.end
+
+    yearRange.value = {
+      start: firstDate,
+      end: lastDate
+    }
+
+    const startDate = parseDateAsLocal(yearRange.value.start)
+    const endDate = parseDateAsLocal(yearRange.value.end)
+
     // 转换为热力图需要的数据格式 [日期, 日贡献值]
     const tempData: Array<[string, number]> = []
-    
+
     // 遍历日期范围内的每一天
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
       const dateStr = formatDate(d)
       const contribution = contributionMap.get(dateStr) || 0
       tempData.push([dateStr, contribution])
     }
-    
+
     // 计算颜色范围
     const maxValue = Math.max(
       ...tempData.map((item) => item[1]),
-      1 // 确保至少为1，避免所有数据为0的情况
+      1
     )
-    
+
     // 设置为GitHub贡献图的5种颜色等级
     const levels = 5
     const step = Math.ceil(maxValue / levels)
     visualMapMax.value = step * levels
-    
+
     // 保存数据
     heatmapData.value = tempData
-    
-    // 渲染完成后，需要设置isLoading为false
     isLoading.value = false
-    
-    // 确保DOM已渲染后初始化图表
-    nextTick(() => {
-      setTimeout(() => {
-        initChart()
-        setupHorizontalScroll() // 设置横向滚动
-        cleanupObserver = setupIntersectionObserver() // 设置交叉观察器
-      }, 100) // 添加一点延迟，以确保DOM完全渲染
+
+    await nextTick()
+    requestAnimationFrame(() => {
+      initChart()
+      setupHorizontalScroll()
     })
   } catch (error) {
     logError('ContributionHeatmap', '加载热力图数据失败', error)
     hasError.value = true
     isLoading.value = false
+  }
+}
+
+onMounted(() => {
+  if (!isBrowser) return
+
+  cleanupObserver = setupIntersectionObserver()
+  if (!cleanupObserver) {
+    isVisible.value = true
+    void loadAndInitHeatmap()
   }
 })
 
@@ -497,6 +497,8 @@ onBeforeUnmount(() => {
 
 .heatmap-chart {
   position: relative;
+  width: 1000px;
+  height: 200px;
   background-color: transparent;
 }
 

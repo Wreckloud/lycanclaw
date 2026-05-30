@@ -1,64 +1,33 @@
 /**
  * apiResponseParser.ts：
- * 提供apiResponseParser相关的通用工具能力。
+ * 解析后端统一响应结构，提取接口业务数据。
  */
-interface NumberRecord {
-  [key: string]: number | unknown
-  data?: number | unknown
-}
-
-export interface WalineRecentCommentEnvelope<T> {
-  data?: T[]
-}
-
-function normalizePathCandidates(path: string): string[] {
-  const pathWithoutSlash = path.startsWith('/') ? path.slice(1) : path
-  const pathWithSlash = path.startsWith('/') ? path : `/${path}`
-  return [path, pathWithoutSlash, pathWithSlash]
-}
-
-// 兼容数组结果与 { data: [...] } 包装结果。
-export function parseWalineRecentCommentsResponse<T = unknown>(data: unknown): T[] {
-  if (Array.isArray(data)) return data
-
-  if (data && typeof data === 'object' && 'data' in data) {
-    const envelope = data as WalineRecentCommentEnvelope<T>
-    if (Array.isArray(envelope.data)) {
-      return envelope.data
-    }
+interface ApiResponseEnvelope<T> {
+  success?: boolean
+  data?: T
+  error?: {
+    code?: string
+    message?: string
   }
-
-  return []
 }
 
-// 评论数接口可能返回 number、{ data: number } 或 { [path]: number }。
-export function parseWalineCommentCountResponse(data: unknown, path: string): number {
-  if (typeof data === 'number') return data
-  if (!data || typeof data !== 'object') return 0
-
-  const record = data as NumberRecord
-  if ('data' in record && typeof record.data === 'number') {
-    return record.data
-  }
-
-  const candidates = normalizePathCandidates(path)
-  for (const candidate of candidates) {
-    if (typeof record[candidate] === 'number') {
-      return record[candidate]
-    }
-  }
-
-  return 0
+// 解析最新评论响应数据。
+export function parseWalineRecentCommentsResponse<T = unknown>(payload: unknown): T[] {
+  if (!payload || typeof payload !== 'object') return []
+  const envelope = payload as ApiResponseEnvelope<unknown>
+  return Array.isArray(envelope.data) ? (envelope.data as T[]) : []
 }
 
-export function parseWalinePageViewResponse(data: unknown): number {
-  if (typeof data === 'number') return data
-  if (!data || typeof data !== 'object') return 0
+// 解析评论数响应数据。
+export function parseWalineCommentCountResponse(payload: unknown): number {
+  if (!payload || typeof payload !== 'object') return 0
+  const envelope = payload as ApiResponseEnvelope<unknown>
+  return typeof envelope.data === 'number' ? envelope.data : 0
+}
 
-  const record = data as NumberRecord
-  if (typeof record.data === 'number') {
-    return record.data
-  }
-
-  return 0
+// 解析阅读量响应数据。
+export function parseWalinePageViewResponse(payload: unknown): number {
+  if (!payload || typeof payload !== 'object') return 0
+  const envelope = payload as ApiResponseEnvelope<unknown>
+  return typeof envelope.data === 'number' ? envelope.data : 0
 }

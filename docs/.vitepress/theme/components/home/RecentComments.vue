@@ -7,7 +7,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { withBase } from 'vitepress'
 import { useIntersectionObserver } from '@vueuse/core'
-import { formatCommentDate, getRecentComments, type WalineComment } from '../../utils/api'
+import { formatCommentDate, getRecentComments, type RecentComment } from '../../utils/api'
 import { logError } from '../../utils/logger'
 
 const isBrowser = typeof window !== 'undefined'
@@ -21,7 +21,7 @@ const containerRef = ref<HTMLElement | null>(null)
 const animationTriggerRef = ref<HTMLElement | null>(null)
 const isVisible = ref(false)
 
-const comments = ref<WalineComment[]>([])
+const comments = ref<RecentComment[]>([])
 const isLoading = ref(true)
 const hasError = ref(false)
 const errorMessage = ref('')
@@ -54,6 +54,7 @@ function decodePathSegment(value: string): string {
 }
 
 function getArticleTitle(url: string): string {
+  if (!url) return '未知文章'
   const path = url.replace(/^\//, '')
   if (!path || path === 'index.html') return '首页'
   if (path === 'about.html') return '留痕之地-关于'
@@ -63,7 +64,7 @@ function getArticleTitle(url: string): string {
 }
 
 function getArticleLink(url: string): string {
-  return withBase(url)
+  return withBase(url || '/')
 }
 
 async function loadComments(forceRefresh = false): Promise<void> {
@@ -78,7 +79,7 @@ async function loadComments(forceRefresh = false): Promise<void> {
   }
 
   try {
-    comments.value = await getRecentComments(COMMENT_LIMIT, true)
+    comments.value = await getRecentComments(COMMENT_LIMIT, forceRefresh)
   } catch (error) {
     hasError.value = true
     errorMessage.value = error instanceof Error ? error.message : '未知错误'
@@ -138,7 +139,7 @@ onBeforeUnmount(() => {
       <div class="comments-content" ref="containerRef" @scroll="updateScrollPosition">
         <div 
           v-for="(comment, index) in comments" 
-          :key="comment.objectId" 
+          :key="comment.id" 
           class="comment-item"
           :class="{ 'animate-item': isVisible }"
           :style="{ '--item-delay': `${index * 0.08 + 0.3}s` }"
@@ -151,7 +152,7 @@ onBeforeUnmount(() => {
                 {{ getArticleTitle(comment.url) }}
               </a>
             </div>
-            <div class="comment-time">{{ formatCommentDate(comment.insertedAt) }}</div>
+            <div class="comment-time">{{ formatCommentDate(comment.createdAt) }}</div>
           </div>
           <div class="comment-body" v-html="comment.comment"></div>
         </div>

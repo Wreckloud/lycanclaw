@@ -18,34 +18,17 @@ const RECENT_COMMENTS_CACHE_KEY = 'lycan_recent_comments'
 const RECENT_COMMENTS_CACHE_TIME_KEY = 'lycan_recent_comments_time'
 const CACHE_EXPIRATION = 10 * 60 * 1000
 
-export interface WalineComment {
-  objectId: string
+export interface RecentComment {
+  id: string
   comment: string
   nick: string
-  mail: string
-  link: string
   url: string
-  insertedAt: string
-  browser?: string
-  os?: string
-  level?: number
-  avatar?: string
-  addr?: string
-  ip?: string
-  pid?: string
-  rid?: string
-  status?: string
-  ua?: string
-  like?: number
-  sticky?: boolean
-  user_id?: string
-  createdAt?: string
-  updatedAt?: string
-  ACL?: unknown
+  path: string
+  createdAt: string
 }
 
 let isPreloading = false
-let preloadPromise: Promise<WalineComment[]> | null = null
+let preloadPromise: Promise<RecentComment[]> | null = null
 
 function canUseStorage(): boolean {
   return typeof window !== 'undefined' && !!window.localStorage
@@ -61,7 +44,7 @@ function readCacheTimestamp(): number | null {
   return Number.isNaN(parsed) ? null : parsed
 }
 
-function getRecentCommentsFromCache(): WalineComment[] | null {
+function getRecentCommentsFromCache(): RecentComment[] | null {
   if (!canUseStorage()) return null
 
   try {
@@ -71,13 +54,13 @@ function getRecentCommentsFromCache(): WalineComment[] | null {
     }
 
     const raw = localStorage.getItem(RECENT_COMMENTS_CACHE_KEY)
-    return raw ? (JSON.parse(raw) as WalineComment[]) : null
+    return raw ? (JSON.parse(raw) as RecentComment[]) : null
   } catch {
     return null
   }
 }
 
-function saveRecentCommentsToCache(comments: WalineComment[]): void {
+function saveRecentCommentsToCache(comments: RecentComment[]): void {
   if (!canUseStorage() || comments.length === 0) return
 
   try {
@@ -143,7 +126,7 @@ export function preloadRecentComments(count: number = 5): void {
 export async function getRecentComments(
   count: number = 5,
   forceRefresh: boolean = false
-): Promise<WalineComment[]> {
+): Promise<RecentComment[]> {
   if (forceRefresh) {
     clearCommentsCache()
   }
@@ -160,7 +143,7 @@ export async function getRecentComments(
   const fetchPromise = (async () => {
     try {
       const data = await requestJson<unknown>(buildRecentCommentsUrl(count))
-      const comments = parseWalineRecentCommentsResponse<WalineComment>(data)
+      const comments = parseWalineRecentCommentsResponse<RecentComment>(data)
       if (comments.length > 0) {
         saveRecentCommentsToCache(comments)
       }
@@ -186,7 +169,7 @@ export async function getCommentCount(path: string): Promise<number> {
 
   try {
     const data = await requestJson<unknown>(buildCommentCountUrl(path))
-    return parseWalineCommentCountResponse(data, path)
+    return parseWalineCommentCountResponse(data)
   } catch (error) {
     logError('commentApi', '获取评论数失败', error)
     return 0
