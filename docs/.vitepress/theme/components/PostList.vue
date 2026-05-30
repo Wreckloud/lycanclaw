@@ -8,11 +8,10 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { withBase } from 'vitepress'
 import { useIntersectionObserver } from '@vueuse/core'
 import {
-  fetchThoughtPostsByTag,
-  fetchThoughtTags,
-  type ThoughtPostSummary,
-  type ThoughtTagItem
-} from '../utils/api'
+  fetchPublishedThoughtPosts,
+  estimateReadMinutes,
+  type ThoughtPost
+} from '../utils/content'
 import { formatDateCn } from '../utils/time'
 import { logError } from '../utils/logger'
 
@@ -39,6 +38,22 @@ interface NormalizedFrontmatter {
   readMinutes: number
 }
 
+interface ThoughtTagItem {
+  tag: string
+  count: number
+}
+
+interface ThoughtPostSummary {
+  url: string
+  title: string
+  description: string
+  date: string
+  tags: string[]
+  excerpt: string
+  readMinutes: number
+}
+
+const allThoughtPosts = ref<ThoughtPostSummary[]>([])
 const availableTags = ref<ThoughtTagItem[]>([])
 const totalPostsCount = ref(0)
 const paginatedPosts = ref<ThoughtPostSummary[]>([])
@@ -166,27 +181,36 @@ function replayListAnimation(): void {
 }
 
 async function loadTags(): Promise<void> {
-  const data = await fetchThoughtTags()
-  availableTags.value = data.tags
-  totalPostsCount.value = data.totalPosts
+  const counter = new Map<string, number>()
+  for (const post of allThoughtPosts.value) {
+    for (const tag of post.tags) {
+      counter.set(tag, (counter.get(tag) || 0) + 1)
+    }
+  }
+  availableTags.value = [...counter.entries()]
+    .sort((a, b) => {
+      if (b[1] !== a[1]) return b[1] - a[1]
+      return a[0].localeCompare(b[0], 'zh-Hans-CN')
+    })
+    .map(([tag, count]) => ({ tag, count }))
+  totalPostsCount.value = allThoughtPosts.value.length
 }
 
 async function loadPagePosts(options: { replayAnimation: boolean; smoothScroll: boolean }): Promise<void> {
-  const payload = await fetchThoughtPostsByTag({
-    tag: normalizedSelectedTag.value,
-    page: currentPage.value,
-    pageSize: POSTS_PER_PAGE
-  })
+  const selected = normalizedSelectedTag.value
+  const matched = selected
+    ? allThoughtPosts.value.filter((post) => post.tags.includes(selected))
+    : allThoughtPosts.value
 
-  paginatedPosts.value = payload.posts
-  totalPages.value = Math.max(1, payload.totalPages || 1)
-  totalPostsCount.value = normalizedSelectedTag.value
-    ? payload.total
-    : Math.max(totalPostsCount.value, payload.total)
-
+  const total = matched.length
+  totalPages.value = Math.max(1, Math.ceil(total / POSTS_PER_PAGE))
   if (currentPage.value > totalPages.value) {
     currentPage.value = totalPages.value
   }
+  const start = (currentPage.value - 1) * POSTS_PER_PAGE
+  paginatedPosts.value = matched.slice(start, start + POSTS_PER_PAGE)
+  totalPostsCount.value = selected ? total : allThoughtPosts.value.length
+
 
   if (options.smoothScroll && isBrowser) {
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -197,10 +221,54 @@ async function loadPagePosts(options: { replayAnimation: boolean; smoothScroll: 
   }
 }
 
+function parseThoughtPost(post: ThoughtPost): ThoughtPostSummary | null {
+  const frontmatter = post.frontmatter || {}
+  const url = typeof post.url === 'string' ? post.url : ''
+  const title = typeof frontmatter.title === 'string' ? frontmatter.title.trim() : ''
+  const date = typeof frontmatter.date === 'string' ? frontmatter.date.trim() : ''
+  if (!url || !title || !date) return null
+
+  const description = typeof frontmatter.description === 'string'
+    ? frontmatter.description.trim()
+    : ''
+  const excerpt = typeof post.excerpt === 'string' ? post.excerpt : ''
+  const tags = Array.isArray(frontmatter.tags)
+    ? frontmatter.tags.filter((tag): tag is string => typeof tag === 'string' && !!tag.trim())
+    : []
+  const content = typeof post.content === 'string' ? post.content : ''
+  const readMinutes = estimateReadMinutes(content)
+
+  return {
+    url,
+    title,
+    description,
+    date,
+    tags,
+    excerpt,
+    readMinutes
+  }
+}
+
+async function loadThoughtPosts(): Promise<void> {
+  const posts = await fetchPublishedThoughtPosts(withBase)
+  const normalized = posts
+    .map(parseThoughtPost)
+    .filter((post): post is ThoughtPostSummary => post !== null)
+
+  normalized.sort((a, b) => {
+    const left = new Date(a.date).getTime()
+    const right = new Date(b.date).getTime()
+    if (right !== left) return right - left
+    return a.title.localeCompare(b.title, 'zh-Hans-CN')
+  })
+  allThoughtPosts.value = normalized
+}
+
 onMounted(async () => {
   if (!isBrowser) return
 
   try {
+    await loadThoughtPosts()
     await loadTags()
     syncTagFromUrl()
     await loadPagePosts({ replayAnimation: false, smoothScroll: false })
