@@ -1,0 +1,58 @@
+/*
+ * music-progress.css：
+ * 统一音乐播放器进度条视觉样式。
+ */
+
+.lc-progress-root {
+  width: 100%;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.lc-progress-root.is-disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.lc-progress-bar {
+  height: 4px;
+  width: 100%;
+  position: relative;
+  border-radius: 2px;
+  overflow: visible;
+  background-color: var(--vp-c-divider);
+}
+
+.lc-progress-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: 2px;
+  background-color: var(--vp-c-brand);
+  transition: width var(--lc-motion-duration-instant) linear;
+}
+
+.lc-progress-root.is-dragging .lc-progress-fill {
+  transition: none;
+}
+
+.lc-progress-fill::after {
+  content: '';
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--vp-c-brand);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  transition: opacity var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
+}
+
+.lc-progress-root:not(.is-disabled):hover .lc-progress-fill::after,
+.lc-progress-root.is-dragging .lc-progress-fill::after {
+  opacity: 1;
+}

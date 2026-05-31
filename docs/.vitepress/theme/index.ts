@@ -19,6 +19,7 @@ import { useImageZoom } from './setup/useImageZoom'
 import './styles/index.css'
 import './styles/codeblock-fix.css'
 import './styles/fade-mask.css'
+import './styles/music-progress.css'
 
 const theme: Theme = {
   extends: DefaultTheme,

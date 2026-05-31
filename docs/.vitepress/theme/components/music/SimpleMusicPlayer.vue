@@ -94,7 +94,7 @@ const playbackRequest = computed(() => ({
   source: props.playbackSource,
   priority: props.playbackPriority,
   allowInterrupt: props.allowInterrupt,
-  resumeInterrupted: true
+  resumeInterrupted: false
 }))
 
 function playbackRequestBySource(source: string | undefined) {
@@ -103,7 +103,7 @@ function playbackRequestBySource(source: string | undefined) {
       source: 'home-random',
       priority: 1,
       allowInterrupt: true,
-      resumeInterrupted: true
+      resumeInterrupted: false
     }
   }
   if (source === 'about-ranking') {
@@ -111,7 +111,7 @@ function playbackRequestBySource(source: string | undefined) {
       source: 'about-ranking',
       priority: 2,
       allowInterrupt: true,
-      resumeInterrupted: true
+      resumeInterrupted: false
     }
   }
   if (source === 'article-embed') {
@@ -119,7 +119,7 @@ function playbackRequestBySource(source: string | undefined) {
       source: 'article-embed',
       priority: 3,
       allowInterrupt: true,
-      resumeInterrupted: true
+      resumeInterrupted: false
     }
   }
   return playbackRequest.value
@@ -660,18 +660,18 @@ watch(
         
         <!-- 进度条 -->
         <div 
-          class="progress-container" 
+          class="progress-container lc-progress-root" 
           @click="setProgress" 
           @mousedown="startDrag"
           @touchstart="startDrag"
-          :class="{ 'dragging': isDragging, 'disabled': !isAudioReady }"
+          :class="{ 'is-dragging': isDragging, 'is-disabled': !isAudioReady }"
         >
           <!-- 进度条骨架屏 -->
           <div v-if="isLoading" class="skeleton-progress">
             <div class="skeleton-pulse"></div>
           </div>
-          <div v-else ref="progressBarRef" class="progress-bar">
-            <div class="progress-current" :style="{ width: `${progress}%` }"></div>
+          <div v-else ref="progressBarRef" class="progress-bar lc-progress-bar">
+            <div class="progress-current lc-progress-fill" :style="{ width: `${progress}%` }"></div>
           </div>
         </div>
       </div>
@@ -1076,59 +1076,27 @@ watch(
   margin-top: auto; /* 推到底部 */
 }
 
-.progress-container.disabled {
+.progress-container.is-disabled {
   cursor: default;
   opacity: 0.7;
 }
 
-.progress-container.dragging {
+.progress-container.is-dragging {
   cursor: grabbing;
 }
 
 .progress-bar {
-  height: 4px;
   width: 100%;
-  background-color: var(--vp-c-divider);
-  border-radius: 2px;
-  position: relative;
-  overflow: visible;
   touch-action: none;
 }
 
 .progress-current {
-  position: absolute;
-  top: 0;
-  left: 0;
   height: 100%;
-  background-color: var(--vp-c-brand);
-  border-radius: 2px;
-  transition: width var(--lc-motion-duration-instant) linear;
 }
 
 /* 拖动时禁用过渡效果 */
-.dragging .progress-current {
+.is-dragging .progress-current {
   transition: none;
-}
-
-/* 圆形滑块 */
-.progress-current::after {
-  content: '';
-  position: absolute;
-  right: -5px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background-color: var(--vp-c-brand);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-  opacity: 0;
-  transition: opacity var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
-}
-
-.progress-container:not(.disabled):hover .progress-current::after,
-.dragging .progress-current::after {
-  opacity: 1;
 }
 
 /* 响应式布局 */
@@ -1169,9 +1137,6 @@ watch(
   background-color: var(--vp-c-bg-soft);
 }
 
-.dark-mode .progress-bar {
-  background-color: rgba(255, 255, 255, 0.1);
-}
 
 .song-title-link {
   color: inherit;

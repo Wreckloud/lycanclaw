@@ -16,12 +16,16 @@ export {
   startAboutSequenceFlow,
   interruptSingleFlow,
   playNextFromFlow,
-  fetchFlowState
+  fetchFlowState,
+  stopFlow,
+  fetchTrackLyric
 } from './musicApi'
 export type {
   MusicTrack,
   MusicTrackWithUrl,
   MusicQueueItem,
   MusicQueueSnapshot,
-  MusicFlowState
+  MusicFlowState,
+  MusicTrackLyric,
+  MusicLyricLine
 } from './musicApi'

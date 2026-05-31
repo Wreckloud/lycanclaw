@@ -40,6 +40,17 @@ export interface MusicFlowState {
   nextPreview: MusicQueueItem[]
 }
 
+export interface MusicLyricLine {
+  timeMs: number
+  text: string
+}
+
+export interface MusicTrackLyric {
+  id: string
+  hasLyric: boolean
+  lines: MusicLyricLine[]
+}
+
 interface ApiError {
   code: string
   message: string
@@ -220,4 +231,26 @@ export async function playNextFromFlow(): Promise<MusicFlowState> {
 
 export async function fetchFlowState(): Promise<MusicFlowState> {
   return requestJson<MusicFlowState>('/api/music/flow/state')
+}
+
+export async function stopFlow(): Promise<MusicFlowState> {
+  return requestPostJson<MusicFlowState>('/api/music/flow/stop')
+}
+
+export async function fetchTrackLyric(id: string): Promise<MusicTrackLyric | null> {
+  if (!id) return null
+  const payload = await requestJson<MusicTrackLyric>('/api/music/track/lyric', { id })
+  if (!payload || !Array.isArray(payload.lines)) {
+    return null
+  }
+  return {
+    id: String(payload.id || ''),
+    hasLyric: Boolean(payload.hasLyric),
+    lines: payload.lines
+      .map(line => ({
+        timeMs: Number(line?.timeMs || 0),
+        text: String(line?.text || '')
+      }))
+      .filter(line => line.text.trim().length > 0)
+  }
 }

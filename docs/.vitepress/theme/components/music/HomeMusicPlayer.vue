@@ -25,7 +25,7 @@ const HOME_PLAYBACK_REQUEST = {
   source: 'home-random',
   priority: 1,
   allowInterrupt: true,
-  resumeInterrupted: true
+  resumeInterrupted: false
 } as const
 
 interface CurrentSongInfo {
@@ -520,13 +520,13 @@ onUnmounted(() => {
           
           <!-- 进度条 -->
           <div v-if="showTitle" 
-               class="progress-container" 
+               class="progress-container lc-progress-root" 
                @click="setProgress" 
                @mousedown="startDrag"
                @touchstart="startDrag"
-               :class="{ 'dragging': isDragging }">
-            <div ref="progressBarRef" class="progress-bar">
-              <div class="progress-current" :style="{ width: `${progress}%` }"></div>
+               :class="{ 'is-dragging': isDragging }">
+            <div ref="progressBarRef" class="progress-bar lc-progress-bar">
+              <div class="progress-current lc-progress-fill" :style="{ width: `${progress}%` }"></div>
             </div>
           </div>
         </div>
@@ -869,53 +869,21 @@ onUnmounted(() => {
   padding-top: 2px; /* 增加内边距 */
 }
 
-.progress-container.dragging {
+.progress-container.is-dragging {
   cursor: grabbing;
 }
 
 .progress-bar {
-  height: 4px;
   width: 100%;
-  background-color: var(--vp-c-divider);
-  border-radius: 2px;
-  position: relative;
-  overflow: visible;
 }
 
 .progress-current {
-  position: absolute;
-  top: 0;
-  left: 0;
   height: 100%;
-  background-color: var(--vp-c-brand);
-  border-radius: 2px;
-  transition: width var(--lc-motion-duration-instant) linear;
 }
 
 /* 拖动时禁用过渡效果 */
-.dragging .progress-current {
+.is-dragging .progress-current {
   transition: none;
-}
-
-/* 圆形滑块 */
-.progress-current::after {
-  content: '';
-  position: absolute;
-  right: -5px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background-color: var(--vp-c-brand);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-  opacity: 0;
-  transition: opacity var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
-}
-
-.progress-container:hover .progress-current::after,
-.dragging .progress-current::after {
-  opacity: 1;
 }
 
 /* 新增：控制面板样式 */
