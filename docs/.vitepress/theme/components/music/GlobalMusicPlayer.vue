@@ -11,7 +11,9 @@ import {
   calculateProgressPercent,
   formatAudioTime,
   type SongInfo,
-  type AudioSongInfo
+  type AudioSongInfo,
+  playNextFromFlow,
+  type MusicFlowState
 } from '../../utils/music'
 import { logError } from '../../utils/logger'
 
@@ -145,6 +147,85 @@ function buildPlayableSongInfo(): AudioSongInfo {
     artist: currentSong.value.artist,
     cover: currentSong.value.cover,
     url: ''
+  }
+}
+
+function playbackRequestBySource(source: string | undefined) {
+  if (source === 'home-random') {
+    return {
+      source: 'home-random',
+      priority: 1,
+      allowInterrupt: true,
+      resumeInterrupted: true
+    }
+  }
+  if (source === 'about-ranking') {
+    return {
+      source: 'about-ranking',
+      priority: 2,
+      allowInterrupt: true,
+      resumeInterrupted: true
+    }
+  }
+  if (source === 'article-embed') {
+    return {
+      source: 'article-embed',
+      priority: 3,
+      allowInterrupt: true,
+      resumeInterrupted: true
+    }
+  }
+  return {
+    source: source || 'global-player',
+    priority: 2,
+    allowInterrupt: true,
+    resumeInterrupted: true
+  }
+}
+
+async function playFromFlowState(state: MusicFlowState): Promise<void> {
+  if (!state.current) {
+    currentSong.value.isPlaying = false
+    clearCollapseTimer()
+    stopRotation()
+    return
+  }
+
+  const nextAudioId = `netease-${state.current.id}`
+  currentSong.value = {
+    id: nextAudioId,
+    name: state.current.name,
+    artist: state.current.artist,
+    cover: state.current.cover,
+    isPlaying: false,
+    progress: 0,
+    duration: 0,
+    currentTime: 0
+  }
+  isVisible.value = true
+  setExpandedMode()
+  await audioService.play(
+    nextAudioId,
+    {
+      name: state.current.name,
+      artist: state.current.artist,
+      cover: state.current.cover,
+      url: state.current.url || ''
+    },
+    0,
+    playbackRequestBySource(state.current.source)
+  )
+}
+
+async function advanceFlowAfterEnded(endedAudioId: string): Promise<void> {
+  try {
+    const state = await playNextFromFlow()
+    await playFromFlowState(state)
+    if (state.current) {
+      scheduleCollapse(AUTO_COLLAPSE_MS)
+    }
+  } catch (error) {
+    logError('GlobalMusicPlayer', '歌曲结束后推进播放流失败', { endedAudioId, error })
   }
 }
 
@@ -396,6 +477,7 @@ function setupEventListeners(): void {
       currentSong.value.isPlaying = false
       clearCollapseTimer()
       resetRotation()
+      void advanceFlowAfterEnded(id)
     })
   )
 

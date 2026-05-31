@@ -1,0 +1,63 @@
+.lc-fade-mask {
+  position: absolute;
+  z-index: 10;
+  pointer-events: none;
+  transition: var(--lc-fade-mask-transition);
+}
+
+.lc-fade-mask--left {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--lc-fade-mask-width, 60px);
+  background: linear-gradient(to right, var(--lc-fade-mask-bg), transparent);
+}
+
+.lc-fade-mask--right {
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: var(--lc-fade-mask-width, 60px);
+  background: linear-gradient(to left, var(--lc-fade-mask-bg), transparent);
+}
+
+.lc-fade-mask--top {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--lc-fade-mask-height, 40px);
+  background: linear-gradient(to bottom, var(--lc-fade-mask-bg), transparent);
+}
+
+.lc-fade-mask--bottom {
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--lc-fade-mask-height, 40px);
+  background: linear-gradient(to top, var(--lc-fade-mask-bg), transparent);
+}
+
+.lc-fade-frame {
+  position: relative;
+}
+
+.lc-fade-frame::before,
+.lc-fade-frame::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: var(--lc-fade-frame-size, 0.22em);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.lc-fade-frame::before {
+  top: 0;
+  background: linear-gradient(to bottom, var(--lc-fade-mask-bg), rgba(0, 0, 0, 0));
+}
+
+.lc-fade-frame::after {
+  bottom: 0;
+  background: linear-gradient(to top, var(--lc-fade-mask-bg), rgba(0, 0, 0, 0));
+}

@@ -28,6 +28,7 @@ const NEXT_PREV_COOLDOWN_MS = 1000
 const INDEX_UPDATE_DEBOUNCE_MS = 50
 const VISIBILITY_THRESHOLD = 0.6
 const VISIBILITY_ROOT_MARGIN = '0px 0px -10% 0px'
+const SLOW_LOADING_HINT_DELAY_MS = 1500
 
 const props = defineProps({
   maxPosts: {
@@ -46,6 +47,7 @@ const animationTriggerRef = ref<HTMLElement | null>(null)
 const isVisible = ref(false)
 const recommendedPosts = ref<RecommendedPost[]>([])
 const isLoading = ref(true)
+const showSlowLoadingHint = ref(false)
 const hasError = ref(false)
 const currentIndex = ref(0)
 const scrollPosition = ref(0)
@@ -65,6 +67,7 @@ const canAutoplay = computed(() =>
 )
 
 let scrollResetTimer: number | null = null
+let slowLoadingHintTimer: number | null = null
 let stopVisibilityObserver: (() => void) | null = null
 let stopTopSectionSync: (() => void) | null = null
 
@@ -124,6 +127,23 @@ function clearInteractionResetTimer(): void {
   if (scrollResetTimer === null) return
   clearTimeout(scrollResetTimer)
   scrollResetTimer = null
+}
+
+function clearSlowLoadingHintTimer(): void {
+  if (slowLoadingHintTimer === null) return
+  clearTimeout(slowLoadingHintTimer)
+  slowLoadingHintTimer = null
+}
+
+function startSlowLoadingHintTimer(): void {
+  clearSlowLoadingHintTimer()
+  showSlowLoadingHint.value = false
+  slowLoadingHintTimer = window.setTimeout(() => {
+    slowLoadingHintTimer = null
+    if (isLoading.value) {
+      showSlowLoadingHint.value = true
+    }
+  }, SLOW_LOADING_HINT_DELAY_MS)
 }
 
 function scheduleInteractionReset(delayMs = INTERACTION_COOLDOWN_MS): void {
@@ -279,6 +299,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   pauseAutoplay()
   clearInteractionResetTimer()
+  clearSlowLoadingHintTimer()
   stopVisibilityObserver?.()
   stopVisibilityObserver = null
   stopTopSectionSync?.()
@@ -288,6 +309,7 @@ onBeforeUnmount(() => {
 async function fetchPosts(): Promise<void> {
   if (!isBrowser) return
   isLoading.value = true
+  startSlowLoadingHintTimer()
   hasError.value = false
 
   try {
@@ -300,6 +322,8 @@ async function fetchPosts(): Promise<void> {
     recommendedPosts.value = []
     hasError.value = true
   } finally {
+    clearSlowLoadingHintTimer()
+    showSlowLoadingHint.value = false
     isLoading.value = false
   }
 }
@@ -314,7 +338,7 @@ async function fetchPosts(): Promise<void> {
 
     <!-- 加载中状态：只在组件可见时显示 -->
     <div v-if="isLoading && isVisible" class="loading">
-      <p>加载中...</p>
+      <p>{{ showSlowLoadingHint ? '正在生成推荐快照...' : '加载中...' }}</p>
     </div>
 
     <!-- 错误状态：只在组件可见时显示 -->
@@ -333,7 +357,7 @@ async function fetchPosts(): Promise<void> {
         style="--anim-delay: 0.15s"
       >
         <!-- 左侧渐变遮罩 -->
-        <div class="fade-mask left" :style="{ 
+        <div class="lc-fade-mask lc-fade-mask--left" :style="{ 
           opacity: scrollPosition > 0 && recommendedPosts.length > 1 ? 1 : 0 
         }"></div>
         
@@ -387,7 +411,7 @@ async function fetchPosts(): Promise<void> {
         </div>
         
         <!-- 右侧渐变遮罩 -->
-        <div class="fade-mask right" :style="{ 
+        <div class="lc-fade-mask lc-fade-mask--right" :style="{ 
           opacity: scrollPosition < maxScroll - 10 && recommendedPosts.length > 1 ? 1 : 0 
         }"></div>
       </div>
@@ -467,25 +491,8 @@ async function fetchPosts(): Promise<void> {
   min-width: calc((100% - 70%) / 2);
 }
 
-/* 左右渐变遮罩 */
-.fade-mask {
-  position: absolute;
-  top: 0;
-  height: 100%;
-  width: 80px;
-  z-index: 10;
-  pointer-events: none;
-  transition: opacity var(--lc-motion-duration-normal) var(--lc-motion-ease-standard);
-}
-
-.fade-mask.left {
-  left: 0;
-  background: linear-gradient(to right, var(--vp-c-bg), transparent);
-}
-
-.fade-mask.right {
-  right: 0;
-  background: linear-gradient(to left, var(--vp-c-bg), transparent);
+.lc-fade-mask {
+  --lc-fade-mask-width: 80px;
 }
 
 /* 文章卡片样式 */
@@ -670,8 +677,8 @@ async function fetchPosts(): Promise<void> {
     margin-bottom: 1rem;
   }
   
-  .fade-mask {
-    width: 60px;
+  .lc-fade-mask {
+    --lc-fade-mask-width: 60px;
   }
 
   .post-card {
@@ -705,8 +712,8 @@ async function fetchPosts(): Promise<void> {
     padding-bottom: 0.4rem;
   }
 
-  .fade-mask {
-    width: 40px;
+  .lc-fade-mask {
+    --lc-fade-mask-width: 40px;
   }
 
   .post-card {

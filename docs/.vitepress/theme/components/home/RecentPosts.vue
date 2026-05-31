@@ -240,6 +240,8 @@ function buildThoughtsTagUrl(tag: string): string {
 
 .title-link:hover {
   text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.08em;
   color: var(--vp-c-brand-1);
 }
 
@@ -294,7 +296,6 @@ function buildThoughtsTagUrl(tag: string): string {
 
 .post-tag:hover {
   color: var(--vp-c-brand-2);
-  text-decoration: underline;
 }
 
 .loading, .error, .no-posts {

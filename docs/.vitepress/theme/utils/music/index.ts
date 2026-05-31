@@ -12,14 +12,16 @@ export {
   fetchWeeklyTracks,
   fetchTrackUrlById,
   fetchTrackWithUrlById,
-  fetchMusicQueue,
-  enqueueMusicQueueItem,
-  playNextFromMusicQueue,
-  clearMusicQueue
+  startRandomFlow,
+  startAboutSequenceFlow,
+  interruptSingleFlow,
+  playNextFromFlow,
+  fetchFlowState
 } from './musicApi'
 export type {
   MusicTrack,
   MusicTrackWithUrl,
   MusicQueueItem,
-  MusicQueueSnapshot
+  MusicQueueSnapshot,
+  MusicFlowState
 } from './musicApi'

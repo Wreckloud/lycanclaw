@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * HomeMusicPlayer.vue：
- * 定义HomeMusicPlayer组件的交互与展示逻辑。
+ * 首页播放器始终与全局播放器同步，负责随机流播放入口。
  */
 
 import { ref, onMounted, computed, onUnmounted } from 'vue'
@@ -9,31 +9,24 @@ import { audioManager, audioService } from '../../utils/music'
 import { useIntersectionObserver } from '@vueuse/core'
 import { calculateProgressPercent, formatAudioTime } from '../../utils/music'
 import {
-  enqueueMusicQueueItem,
-  playNextFromMusicQueue,
-  fetchTrackUrlById,
-  fetchTrackWithUrlById,
-  type MusicQueueItem,
-  type MusicQueueSnapshot,
+  startRandomFlow,
+  playNextFromFlow,
+  fetchFlowState,
   fetchWeeklyTracks,
-  type MusicTrack
+  type MusicFlowState,
+  type MusicQueueItem
 } from '../../utils/music'
 import { logError } from '../../utils/logger'
 
-// 默认封面图片路径
 const defaultCoverUrl = '/images/首页/default-cover.png'
 const UI_SYNC_DELAY_MS = 50
-const NEXT_SONG_DELAY_MS = 1000
-const MAX_NEXT_ATTEMPTS = 6
-const QUEUE_PREFETCH_SIZE = 4
-const PLAYLIST_CACHE_KEY = 'lycan:music:weekly-ranking'
+const NEXT_SONG_DELAY_MS = 350
 const HOME_PLAYBACK_REQUEST = {
   source: 'home-random',
   priority: 1,
   allowInterrupt: true,
   resumeInterrupted: true
 } as const
-const HOME_QUEUE_SOURCE = 'home-random'
 
 interface CurrentSongInfo {
   id: string
@@ -42,14 +35,11 @@ interface CurrentSongInfo {
   cover: string
 }
 
-const isBrowser = typeof window !== 'undefined'
-
-// 组件状态
 const containerRef = ref<HTMLElement | null>(null)
 const isPlaying = ref(false)
 const isLoading = ref(false)
 const showTitle = ref(false)
-const favoritePlaylist = ref<MusicTrack[]>([])
+const hasAvailableTracks = ref(true)
 const currentSongInfo = ref<CurrentSongInfo>({
   id: '',
   name: '',
@@ -61,22 +51,18 @@ const currentTime = ref(0)
 const duration = ref(0)
 const progress = ref(0)
 const progressBarRef = ref<HTMLElement | null>(null)
-const isDragging = ref(false)  // 新增：是否正在拖动进度条
-const isButtonDisabled = ref(false) // 添加按钮禁用状态
+const isDragging = ref(false)
+const isButtonDisabled = ref(false)
 const pendingTimers = new Set<ReturnType<typeof setTimeout>>()
-const isQueuePrefilling = ref(false)
-const queueWriteRestricted = ref(false)
-let songPool: MusicTrack[] = []
+const unsubscribers: Array<() => void> = []
 
-// 计算属性：按钮显示的文本，随机听或当前歌曲标题
 const buttonText = computed(() => {
-  if (!showTitle.value && favoritePlaylist.value.length === 0 && !isLoading.value) {
+  if (!showTitle.value && !hasAvailableTracks.value && !isLoading.value) {
     return '音乐暂不可用'
   }
   return showTitle.value ? currentSongInfo.value.name : '来听歌吧！'
 })
 
-// 格式化滚动标题的样式
 const titleStyle = computed(() => {
   if (!showTitle.value || currentSongInfo.value.name.length <= 14) {
     return {}
@@ -84,11 +70,10 @@ const titleStyle = computed(() => {
   return {
     animation: `marquee ${currentSongInfo.value.name.length * 0.3}s linear infinite`,
     animationDelay: '1.5s',
-    paddingRight: '20px' // 为了确保文字可以完全滚动
+    paddingRight: '20px'
   }
 })
 
-// 格式化时间显示
 function formatTime(seconds: number): string {
   return formatAudioTime(seconds)
 }
@@ -96,120 +81,16 @@ function formatTime(seconds: number): string {
 const formattedCurrentTime = computed(() => formatTime(currentTime.value))
 const formattedDuration = computed(() => formatTime(duration.value))
 
-// 同步当前播放状态
-function syncWithCurrentPlayback() {
-  const currentPlayingId = audioManager.getCurrentPlayingId()
-  const savedSongInfo = audioManager.getCurrentSongInfo()
-  
-  if (currentPlayingId && savedSongInfo) {
-    // 提取网易云ID
-    const match = currentPlayingId.match(/netease-(\d+)/)
-    if (match && match[1]) {
-      const neteaseId = match[1]
-      
-      // 查找我们的歌单中是否有这首歌
-      const matchedSong = favoritePlaylist.value.find(song => String(song.id) === neteaseId)
-
-      if (matchedSong) {
-        // 找到了歌曲，更新状态
-        // 两步处理来确保动画正常：先重置状态
-        showTitle.value = false
-        
-        // 短暂延迟后设置新状态，让DOM有时间更新
-        schedule(() => {
-          // 1. 设置歌曲信息
-          currentSongInfo.value = {
-            id: currentPlayingId,
-            name: savedSongInfo.name,
-            artist: savedSongInfo.artist,
-            cover: savedSongInfo.cover
-          }
-          
-          // 2. 设置播放状态和进度
-          currentTime.value = savedSongInfo.currentTime
-          duration.value = savedSongInfo.duration
-          progress.value = savedSongInfo.progress
-          
-          // 3. 显示标题和播放状态，触发动画
-          showTitle.value = true
-          
-          // 4. 再次短暂延迟后更新播放状态，以确保UI完全更新
-          schedule(() => {
-            isPlaying.value = savedSongInfo.isPlaying
-          }, UI_SYNC_DELAY_MS)
-          
-        }, UI_SYNC_DELAY_MS)
-      }
-    }
+function normalizeCoverUrl(coverUrl: string): string {
+  if (!coverUrl) return coverUrl
+  let normalized = coverUrl
+  if (normalized.startsWith('http:')) {
+    normalized = normalized.replace('http:', 'https:')
   }
-}
-
-function cachePlaylist(playlist: MusicTrack[]): void {
-  if (!isBrowser) return
-  try {
-    window.localStorage.setItem(PLAYLIST_CACHE_KEY, JSON.stringify(playlist))
-  } catch (error) {
-    logError('HomeMusicPlayer', '缓存排行榜失败', error)
+  if (normalized.includes('music.126.net') && !normalized.includes('param=')) {
+    normalized += '?param=80y80'
   }
-}
-
-function readCachedPlaylist(): MusicTrack[] {
-  if (!isBrowser) return []
-  try {
-    const raw = window.localStorage.getItem(PLAYLIST_CACHE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter((item): item is MusicTrack =>
-      !!item &&
-      typeof item.id === 'string' &&
-      typeof item.name === 'string' &&
-      typeof item.artist === 'string' &&
-      typeof item.cover === 'string'
-    )
-  } catch (error) {
-    logError('HomeMusicPlayer', '读取排行榜缓存失败', error)
-    return []
-  }
-}
-
-function resetSongPool(excludeSongId = ''): void {
-  const normalizedExcludeId = excludeSongId.replace('netease-', '')
-  const candidates = favoritePlaylist.value.filter((song) => song.id !== normalizedExcludeId)
-  songPool = shuffleArray([...candidates])
-}
-
-// 获取网易云音乐排行榜数据
-async function fetchMusicRanking() {
-  if (typeof window === 'undefined') return
-  
-  isLoading.value = true
-  
-  try {
-    const songs = await fetchWeeklyTracks({ withTimestamp: true, coverSize: '120y120' })
-    favoritePlaylist.value = songs
-    resetSongPool()
-    cachePlaylist(songs)
-    syncWithCurrentPlayback()
-  } catch (error) {
-    logError('HomeMusicPlayer', '加载音乐排行榜失败，尝试使用缓存列表', error)
-    if (favoritePlaylist.value.length === 0) {
-      const cached = readCachedPlaylist()
-      favoritePlaylist.value = cached
-      resetSongPool()
-    }
-  } finally {
-    isLoading.value = false
-  }
-}
-
-// Fisher-Yates 洗牌算法，用于打乱数组顺序
-function shuffleArray<T>(array: T[]): T[] {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
-  }
-  return array;
+  return normalized
 }
 
 function schedule(task: () => void, delay = 100) {
@@ -227,604 +108,348 @@ function clearPendingTimers(): void {
   pendingTimers.clear()
 }
 
-function stopCurrentSongPlayback(): void {
-  if (!currentSongInfo.value.id) return
-  audioService.pause()
-  audioManager.pauseCurrent(currentSongInfo.value.id)
+function updateCurrentSongInfo(item: {
+  id: string
+  name: string
+  artist: string
+  cover: string
+}): void {
+  currentSongInfo.value = {
+    id: `netease-${item.id}`,
+    name: item.name,
+    artist: item.artist,
+    cover: normalizeCoverUrl(item.cover)
+  }
+  showTitle.value = true
 }
 
-function normalizeCoverUrl(coverUrl: string): string {
-  if (!coverUrl) return coverUrl
-  let normalized = coverUrl
-  if (normalized.startsWith('http:')) {
-    normalized = normalized.replace('http:', 'https:')
-  }
-  if (normalized.includes('music.126.net') && !normalized.includes('param=')) {
-    normalized += '?param=80y80'
-  }
-  return normalized
-}
-
-function drawSongCandidate(excludeSongIds: Set<string>): MusicTrack | null {
-  if (favoritePlaylist.value.length === 0) return null
-
-  const maxAttempts = favoritePlaylist.value.length * 2
-  let attempts = 0
-
-  while (attempts < maxAttempts) {
-    if (songPool.length === 0) {
-      resetSongPool(currentSongInfo.value.id)
-      if (songPool.length === 0) return null
-    }
-
-    const nextSong = songPool.shift()
-    if (!nextSong) {
-      attempts += 1
-      continue
-    }
-
-    if (excludeSongIds.has(nextSong.id) && favoritePlaylist.value.length > 1) {
-      attempts += 1
-      continue
-    }
-
-    return nextSong
+function syncFromAudioManager(): void {
+  const info = audioManager.getCurrentSongInfo()
+  if (!info || !info.id) {
+    return
   }
 
-  return null
-}
-
-function isQueueWriteAuthError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false
-  return error.message.includes('401') || error.message.includes('ADMIN_TOKEN_INVALID')
-}
-
-function collectQueuedSongIds(snapshot: MusicQueueSnapshot): Set<string> {
-  const ids = new Set<string>()
-  if (snapshot.current?.id) ids.add(snapshot.current.id)
-  for (const item of snapshot.nextPreview ?? []) {
-    if (item.id) ids.add(item.id)
+  currentSongInfo.value = {
+    id: info.id,
+    name: info.name,
+    artist: info.artist,
+    cover: normalizeCoverUrl(info.cover)
   }
-  return ids
+  showTitle.value = true
+  currentTime.value = info.currentTime
+  duration.value = info.duration
+  progress.value = info.progress
+  isPlaying.value = info.isPlaying
 }
 
-async function playRandomTrackDirect(excludeSongIds: Set<string>): Promise<boolean> {
-  const candidate = drawSongCandidate(excludeSongIds)
-  if (!candidate) return false
-  const detail = await fetchTrackWithUrlById(candidate.id)
-  if (!detail?.url) return false
-
-  return playQueueItem({
-    queueId: `local-${candidate.id}-${Date.now()}`,
-    id: candidate.id,
-    name: detail.name,
-    artist: detail.artist,
-    cover: detail.cover,
-    url: detail.url,
-    source: HOME_QUEUE_SOURCE,
-    priority: 1,
-    enqueuedAt: new Date().toISOString()
-  })
-}
-
-async function ensureQueuePrefetch(snapshot: MusicQueueSnapshot): Promise<void> {
-  if (queueWriteRestricted.value) return
-  if (isQueuePrefilling.value) return
-  if (favoritePlaylist.value.length === 0) return
-  if (snapshot.queueSize >= QUEUE_PREFETCH_SIZE) return
-
-  isQueuePrefilling.value = true
-  try {
-    let workingSnapshot = snapshot
-    const excludedSongIds = collectQueuedSongIds(snapshot)
-    const maxAttempts = favoritePlaylist.value.length * 2
-    let attempts = 0
-
-    while (workingSnapshot.queueSize < QUEUE_PREFETCH_SIZE && attempts < maxAttempts) {
-      const candidate = drawSongCandidate(excludedSongIds)
-      if (!candidate) break
-      excludedSongIds.add(candidate.id)
-
-      const enqueueResult = await enqueueMusicQueueItem({
-        id: candidate.id,
-        source: HOME_QUEUE_SOURCE,
-      })
-
-      workingSnapshot = enqueueResult.snapshot
-      attempts += 1
-    }
-  } catch (error) {
-    if (isQueueWriteAuthError(error)) {
-      queueWriteRestricted.value = true
-      return
-    }
-    logError('HomeMusicPlayer', '预填充播放队列失败', error)
-  } finally {
-    isQueuePrefilling.value = false
+function toAudioSongInfo(item: MusicQueueItem) {
+  return {
+    name: item.name,
+    artist: item.artist,
+    cover: normalizeCoverUrl(item.cover),
+    url: item.url || ''
   }
-}
-
-async function enqueueRandomSongAsCurrent(): Promise<MusicQueueSnapshot | null> {
-  if (queueWriteRestricted.value) return null
-  const excludedSongIds = new Set<string>()
-  if (currentSongInfo.value.id.startsWith('netease-')) {
-    excludedSongIds.add(currentSongInfo.value.id.replace('netease-', ''))
-  }
-
-  const candidate = drawSongCandidate(excludedSongIds)
-  if (!candidate) return null
-
-  try {
-    const result = await enqueueMusicQueueItem({
-      id: candidate.id,
-      source: HOME_QUEUE_SOURCE,
-    })
-    return result.snapshot
-  } catch (error) {
-    if (isQueueWriteAuthError(error)) {
-      queueWriteRestricted.value = true
-      return null
-    }
-    throw error
-  }
-}
-
-async function resolveTrackUrl(item: MusicQueueItem): Promise<string> {
-  if (item.url) return item.url
-  const fallbackUrl = await fetchTrackUrlById(item.id)
-  return fallbackUrl || ''
 }
 
 async function playQueueItem(item: MusicQueueItem): Promise<boolean> {
-  if (typeof window === 'undefined' || !item.id) return false
+  if (!item?.id) return false
 
   isLoading.value = true
-
   try {
-    const resolvedUrl = await resolveTrackUrl(item)
-    if (!resolvedUrl) {
-      return false
-    }
-
-    const coverUrl = normalizeCoverUrl(item.cover)
-    const audioId = `netease-${item.id}`
-    currentSongInfo.value = {
-      id: audioId,
-      name: item.name,
-      artist: item.artist,
-      cover: coverUrl
-    }
-
-    await audioService.play(audioId, {
-      name: item.name,
-      artist: item.artist,
-      cover: coverUrl,
-      url: resolvedUrl
-    }, 0, HOME_PLAYBACK_REQUEST)
-
+    updateCurrentSongInfo(item)
+    await audioService.play(
+      currentSongInfo.value.id,
+      toAudioSongInfo(item),
+      0,
+      HOME_PLAYBACK_REQUEST
+    )
     isPlaying.value = true
     showTitle.value = true
-
-    audioManager.emit('song-info-update', JSON.stringify({
-      id: audioId,
-      name: item.name,
-      artist: item.artist,
-      cover: coverUrl,
-      isPlaying: true,
-      progress: 0,
-      duration: 0,
-      currentTime: 0
-    }))
     return true
   } catch (error) {
     isPlaying.value = false
-    showTitle.value = false
-    logError('HomeMusicPlayer', '播放队列歌曲失败', { songId: item.id, error })
+    logError('HomeMusicPlayer', '播放流歌曲失败', { songId: item.id, error })
     return false
   } finally {
     isLoading.value = false
   }
 }
 
-async function resolveNextSnapshot(): Promise<MusicQueueSnapshot | null> {
-  if (queueWriteRestricted.value) {
-    return null
-  }
-  if (currentSongInfo.value.id) {
-    try {
-      const result = await playNextFromMusicQueue()
-      if (result.snapshot.current) {
-        return result.snapshot
-      }
-    } catch (error) {
-      if (isQueueWriteAuthError(error)) {
-        queueWriteRestricted.value = true
-        return null
-      }
-      throw error
-    }
-  }
-  return enqueueRandomSongAsCurrent()
-}
-
-// 随机播放一首歌
-async function playNextSong(attempt = 0): Promise<void> {
-  if (isLoading.value || favoritePlaylist.value.length === 0) return
-  if (attempt >= Math.min(MAX_NEXT_ATTEMPTS, favoritePlaylist.value.length)) {
-    logError('HomeMusicPlayer', '连续多首歌曲不可播放，停止自动切歌', {
-      attempts: attempt
-    })
+async function applyFlowState(state: MusicFlowState, fallbackNext = false): Promise<void> {
+  if (!state.current) {
     isPlaying.value = false
-    showTitle.value = false
+    if (fallbackNext) {
+      schedule(() => {
+        void playNextSong()
+      }, NEXT_SONG_DELAY_MS)
+    }
     return
   }
 
-  try {
-    const snapshot = await resolveNextSnapshot()
-    if (queueWriteRestricted.value) {
-      const excludedSongIds = new Set<string>()
-      if (currentSongInfo.value.id.startsWith('netease-')) {
-        excludedSongIds.add(currentSongInfo.value.id.replace('netease-', ''))
-      }
-      const played = await playRandomTrackDirect(excludedSongIds)
-      if (!played) {
-        schedule(() => {
-          void playNextSong(attempt + 1)
-        }, NEXT_SONG_DELAY_MS)
-        return
-      }
-      return
-    }
-
-    const nextItem = snapshot?.current ?? null
-    if (!nextItem) {
-      schedule(() => {
-        void playNextSong(attempt + 1)
-      }, NEXT_SONG_DELAY_MS)
-      return
-    }
-
-    const played = await playQueueItem(nextItem)
-    if (!played) {
-      schedule(() => {
-        void playNextSong(attempt + 1)
-      }, NEXT_SONG_DELAY_MS)
-      return
-    }
-
-    if (snapshot) {
-      void ensureQueuePrefetch(snapshot)
-    }
-  } catch (error) {
-    logError('HomeMusicPlayer', '队列切歌失败', error)
+  const played = await playQueueItem(state.current)
+  if (!played && fallbackNext) {
     schedule(() => {
-      void playNextSong(attempt + 1)
+      void playNextSong()
     }, NEXT_SONG_DELAY_MS)
   }
 }
 
-function playRandomSong(): void {
-  if (isLoading.value) return
-
-  if (favoritePlaylist.value.length === 0) {
-    void fetchMusicRanking()
-    return
+async function refreshAvailability(): Promise<void> {
+  try {
+    const tracks = await fetchWeeklyTracks({ limit: 1 })
+    hasAvailableTracks.value = tracks.length > 0
+  } catch {
+    hasAvailableTracks.value = false
   }
-
-  void playNextSong()
 }
 
-// 停止播放并恢复按钮状态
+async function startRandomPlayback(): Promise<void> {
+  try {
+    isLoading.value = true
+    const state = await startRandomFlow()
+    await applyFlowState(state)
+  } catch (error) {
+    logError('HomeMusicPlayer', '启动随机流失败', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+async function playNextSong(): Promise<void> {
+  try {
+    const state = await playNextFromFlow()
+    await applyFlowState(state, true)
+  } catch (error) {
+    logError('HomeMusicPlayer', '随机流下一首失败', error)
+  }
+}
+
+function stopCurrentSongPlayback(): void {
+  if (!currentSongInfo.value.id) return
+  audioService.pause()
+  audioManager.pauseCurrent(currentSongInfo.value.id)
+}
+
 function stopPlayAndReset() {
   if (currentSongInfo.value.id) {
     stopCurrentSongPlayback()
     audioManager.emit('play-state-change', `${currentSongInfo.value.id}:false`)
   }
-  
-  // 恢复按钮状态
   isPlaying.value = false
   showTitle.value = false
 }
 
-// 处理下一首按钮点击事件
 function handleNextSong(e: MouseEvent) {
-  e.stopPropagation() // 防止事件冒泡到父元素
-  
-  // 如果按钮已禁用，不执行操作
+  e.stopPropagation()
   if (isButtonDisabled.value || isLoading.value) return
-  
-  // 禁用按钮1秒
+
   isButtonDisabled.value = true
   schedule(() => {
     isButtonDisabled.value = false
   }, 1000)
-  
-  // 如果当前正在播放，先停止
+
   if (isPlaying.value && currentSongInfo.value.id) {
     stopCurrentSongPlayback()
   }
-  
-  // 播放下一首歌曲
+
   void playNextSong()
 }
 
-// 点击按钮处理
 function handleButtonClick() {
   if (isLoading.value) return
-  
+
   if (!showTitle.value) {
-    // 如果没有显示标题（第一次播放），播放随机歌曲
-    playRandomSong()
-  } else {
-    // 如果已经有歌曲，只切换播放状态，不切换歌曲
-    if (isPlaying.value) {
-      // 如果正在播放，暂停
-      stopCurrentSongPlayback()
-      isPlaying.value = false
-    } else {
-      // 如果已暂停，继续播放当前歌曲
-      audioService.play(currentSongInfo.value.id, {
-        name: currentSongInfo.value.name,
-        artist: currentSongInfo.value.artist,
-        cover: currentSongInfo.value.cover,
-        url: ''  // 服务会使用现有的音频对象
-      }, currentTime.value, HOME_PLAYBACK_REQUEST)
-      .then(() => {
-        isPlaying.value = true
-      })
-      .catch(() => {
-        // 恢复播放失败，移除调试信息
-        isPlaying.value = false
-        logError('HomeMusicPlayer', '恢复播放失败', { songId: currentSongInfo.value.id })
-      })
-    }
-    
-    // 发送播放状态更新
-    audioManager.emit('play-state-change', `${currentSongInfo.value.id}:${isPlaying.value}`)
+    void startRandomPlayback()
+    return
   }
+
+  if (isPlaying.value) {
+    stopCurrentSongPlayback()
+    isPlaying.value = false
+    return
+  }
+
+  void audioService.play(
+    currentSongInfo.value.id,
+    {
+      name: currentSongInfo.value.name,
+      artist: currentSongInfo.value.artist,
+      cover: currentSongInfo.value.cover,
+      url: ''
+    },
+    currentTime.value,
+    HOME_PLAYBACK_REQUEST
+  ).then(() => {
+    isPlaying.value = true
+  }).catch((error) => {
+    isPlaying.value = false
+    logError('HomeMusicPlayer', '恢复播放失败', { songId: currentSongInfo.value.id, error })
+  })
 }
 
-// 进度条拖动相关函数
 function startDrag(e: MouseEvent | TouchEvent) {
   if (!duration.value || !showTitle.value) return
-  
+
   isDragging.value = true
-  
-  // 处理触摸事件或鼠标事件
   if (e.type === 'touchstart') {
     updateProgressFromTouch(e as TouchEvent)
-  } else {
-    updateProgressFromEvent(e as MouseEvent)
-  }
-  
-  // 添加全局事件监听
-  if (e.type === 'touchstart') {
     document.addEventListener('touchmove', updateProgressFromTouch, { passive: false })
     document.addEventListener('touchend', stopDrag)
-  } else {
-    document.addEventListener('mousemove', updateProgressFromEvent)
-    document.addEventListener('mouseup', stopDrag)
+    return
   }
+
+  updateProgressFromEvent(e as MouseEvent)
+  document.addEventListener('mousemove', updateProgressFromEvent)
+  document.addEventListener('mouseup', stopDrag)
 }
 
 function updateProgressFromEvent(e: MouseEvent) {
   if (!isDragging.value) return
-  
   const progressBar = progressBarRef.value
   if (!progressBar) return
-  
   const percent = calculateProgressPercent(e, progressBar)
-  
   progress.value = percent * 100
   currentTime.value = percent * duration.value
 }
 
 function updateProgressFromTouch(e: TouchEvent) {
   if (!isDragging.value) return
-  
-  // 阻止触摸事件的默认行为（如滚动）
   e.preventDefault()
-  
   const progressBar = progressBarRef.value
   if (!progressBar) return
-  
   const percent = calculateProgressPercent(e, progressBar)
-  
   progress.value = percent * 100
   currentTime.value = percent * duration.value
 }
 
-function stopDrag(e?: MouseEvent | TouchEvent) {
-  // 移除全局事件监听
+function stopDrag() {
   document.removeEventListener('mousemove', updateProgressFromEvent)
   document.removeEventListener('mouseup', stopDrag)
   document.removeEventListener('touchmove', updateProgressFromTouch)
   document.removeEventListener('touchend', stopDrag)
 
   if (!isDragging.value) return
-  
   isDragging.value = false
-  
-  // 设置音频播放位置
   audioService.seek(currentTime.value)
 }
 
 function setProgress(e: MouseEvent) {
   if (!showTitle.value || isDragging.value) return
-  
+
   const progressBar = progressBarRef.value || (e.currentTarget as HTMLElement)
   const percent = calculateProgressPercent(e, progressBar)
-  
   progress.value = percent * 100
   currentTime.value = percent * duration.value
-  
-  // 设置音频播放位置
   audioService.seek(currentTime.value)
 }
 
-// 计算网易云音乐链接
 const neteaseLink = computed(() => {
   if (currentSongInfo.value.id && currentSongInfo.value.id.startsWith('netease-')) {
-    const id = currentSongInfo.value.id.replace('netease-', '');
-    return `https://music.163.com/#/song?id=${id}`;
+    const id = currentSongInfo.value.id.replace('netease-', '')
+    return `https://music.163.com/#/song?id=${id}`
   }
-  return null;
-});
+  return null
+})
 
-// 订阅全局播放器事件
-const unsubscribers: Array<() => void> = []
-
-// 监听全局播放器的歌曲结束事件
 function setupEventListeners() {
-  // 监听歌曲结束事件
   unsubscribers.push(
-    audioManager.on('song-ended', (id) => {
-      if (id && id === currentSongInfo.value.id) {
-        // 歌曲结束后自动播放下一首
-        schedule(() => {
-          void playNextSong()
-        }, NEXT_SONG_DELAY_MS)
+    audioManager.on('song-info-update', (payload) => {
+      try {
+        const parsed = JSON.parse(payload) as {
+          id: string
+          name: string
+          artist: string
+          cover: string
+          isPlaying: boolean
+          progress: number
+          duration: number
+          currentTime: number
+        }
+        if (!parsed.id) return
+        currentSongInfo.value = {
+          id: parsed.id,
+          name: parsed.name,
+          artist: parsed.artist,
+          cover: normalizeCoverUrl(parsed.cover)
+        }
+        showTitle.value = true
+        isPlaying.value = parsed.isPlaying
+        progress.value = parsed.progress
+        duration.value = parsed.duration
+        currentTime.value = parsed.currentTime
+      } catch (error) {
+        logError('HomeMusicPlayer', '解析 song-info-update 失败', error)
       }
     })
   )
-  
-  // 监听播放状态变化
+
   unsubscribers.push(
     audioManager.on('play-state-change', (data) => {
       if (!data) return
-      
-      try {
-        const [id, isPlayingStr] = data.split(':')
-        if (id === currentSongInfo.value.id) {
-          const newPlayingState = isPlayingStr === 'true'
-          // 同步按钮状态
-          isPlaying.value = newPlayingState
-        }
-      } catch (e) {
-        logError('HomeMusicPlayer', '解析播放状态事件失败', e)
-      }
-    })
-  )
-
-  // 监听音频加载错误事件
-  unsubscribers.push(
-    audioManager.on('audio-error', (id) => {
+      const [id, state] = data.split(':')
       if (id === currentSongInfo.value.id) {
-        // 出错时尝试播放下一首
-        schedule(() => {
-          void playNextSong()
-        }, NEXT_SONG_DELAY_MS)
-      }
-    })
-  )
-  
-  // 监听关闭事件（全局播放器关闭时重置按钮状态）
-  unsubscribers.push(
-    audioManager.on('current-audio-changed', (id) => {
-      if (id && isPlaying.value && currentSongInfo.value.id && id !== currentSongInfo.value.id) {
-        // 如果切换到其他音频，更新按钮状态但保持标题
-        isPlaying.value = false
+        isPlaying.value = state === 'true'
       }
     })
   )
 
-  // 添加对GlobalMusicPlayer关闭事件的监听
-  unsubscribers.push(
-    audioManager.on('player-closed', () => {
-      // 全局播放器关闭时，重置按钮状态
-      stopPlayAndReset()
-    })
-  )
-  
-  // 订阅进度更新事件
   unsubscribers.push(
     audioManager.on('progress-update', (data) => {
       try {
-        const [id, time, dur] = data.split(':');
-        if (id === currentSongInfo.value.id) {
-          currentTime.value = parseFloat(time);
-          if (dur && parseFloat(dur) > 0) {
-            duration.value = parseFloat(dur);
-          }
-          progress.value = duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0;
+        const [id, time, dur] = data.split(':')
+        if (id !== currentSongInfo.value.id || isDragging.value) return
+        const timeValue = Number.parseFloat(time)
+        const durationValue = Number.parseFloat(dur)
+        if (!Number.isNaN(timeValue)) {
+          currentTime.value = timeValue
         }
-      } catch (e) {
-        logError('HomeMusicPlayer', '解析进度事件失败', e)
+        if (!Number.isNaN(durationValue) && durationValue > 0) {
+          duration.value = durationValue
+        }
+        progress.value = duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0
+      } catch (error) {
+        logError('HomeMusicPlayer', '解析进度事件失败', error)
       }
     })
   )
 
   unsubscribers.push(
-    audioManager.on('resume-playback', (payload) => {
-      try {
-        const parsed = JSON.parse(payload) as {
-          audioId?: string
-          currentTime?: number
-          request?: {
-            source?: string
-          }
-        }
-        if (parsed.request?.source !== 'home-random') return
-        if (!parsed.audioId || parsed.audioId !== currentSongInfo.value.id) return
-
-        const resumeTime = typeof parsed.currentTime === 'number'
-          ? Math.max(0, parsed.currentTime)
-          : currentTime.value
-
-        void audioService.play(
-          currentSongInfo.value.id,
-          {
-            name: currentSongInfo.value.name,
-            artist: currentSongInfo.value.artist,
-            cover: currentSongInfo.value.cover,
-            url: ''
-          },
-          resumeTime,
-          HOME_PLAYBACK_REQUEST
-        ).then(() => {
-          isPlaying.value = true
-          showTitle.value = true
-        }).catch((error) => {
-          logError('HomeMusicPlayer', '恢复被打断歌曲失败', error)
-        })
-      } catch (error) {
-        logError('HomeMusicPlayer', '解析恢复播放事件失败', error)
-      }
+    audioManager.on('player-closed', () => {
+      stopPlayAndReset()
     })
   )
 }
 
-// 组件挂载
 onMounted(() => {
   if (typeof window === 'undefined') return
-  
-  void fetchMusicRanking()
-  
-  // 设置事件监听
-  setupEventListeners()
 
-  // 设置动画可见性检测
+  void refreshAvailability()
+  void fetchFlowState().then((state) => applyFlowState(state)).catch(() => {
+    // 仅用于初始同步，失败时忽略。
+  })
+
+  setupEventListeners()
+  syncFromAudioManager()
+
   if (containerRef.value) {
     const { stop } = useIntersectionObserver(
       containerRef,
       ([{ isIntersecting }]) => {
         if (isIntersecting) {
           isVisible.value = true
-          stop() // 只触发一次
+          stop()
         }
       },
       { threshold: 0.2, immediate: true }
     )
   }
-  
-  if (favoritePlaylist.value.length > 0) {
-    syncWithCurrentPlayback()
-  }
+
+  schedule(() => {
+    syncFromAudioManager()
+  }, UI_SYNC_DELAY_MS)
 })
 
-// 组件卸载
 onUnmounted(() => {
-  // 清理事件监听
   unsubscribers.forEach(unsub => unsub())
   clearPendingTimers()
   stopDrag()

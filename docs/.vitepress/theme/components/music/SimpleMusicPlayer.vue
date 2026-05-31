@@ -11,6 +11,8 @@ import {
   audioManager,
   audioService,
   fetchTrackWithUrlById,
+  interruptSingleFlow,
+  startAboutSequenceFlow,
   calculateProgressPercent,
   formatAudioTime
 } from '../../utils/music'
@@ -37,7 +39,6 @@ interface LocalSongInfo {
 }
 
 const PLAY_TOGGLE_DEBOUNCE_MS = 200
-const INITIAL_RENDER_DELAY_MS = 50
 
 const props = withDefaults(defineProps<Props>(), {
   name: '',
@@ -63,7 +64,6 @@ const hasError = ref(false)
 const isDragging = ref(false)
 const isAudioReady = ref(false)
 const useNetease = ref(false)
-const isInitialRender = ref(true)
 const animationApplied = ref(false)
 const playerRef = ref<HTMLElement | null>(null)
 const progressBarRef = ref<HTMLElement | null>(null)
@@ -96,6 +96,34 @@ const playbackRequest = computed(() => ({
   allowInterrupt: props.allowInterrupt,
   resumeInterrupted: true
 }))
+
+function playbackRequestBySource(source: string | undefined) {
+  if (source === 'home-random') {
+    return {
+      source: 'home-random',
+      priority: 1,
+      allowInterrupt: true,
+      resumeInterrupted: true
+    }
+  }
+  if (source === 'about-ranking') {
+    return {
+      source: 'about-ranking',
+      priority: 2,
+      allowInterrupt: true,
+      resumeInterrupted: true
+    }
+  }
+  if (source === 'article-embed') {
+    return {
+      source: 'article-embed',
+      priority: 3,
+      allowInterrupt: true,
+      resumeInterrupted: true
+    }
+  }
+  return playbackRequest.value
+}
 
 function clearDebounceTimer(): void {
   if (!debounceTimer.value) return
@@ -299,24 +327,83 @@ function togglePlay(): void {
       return
     }
 
-    void audioService.play(audioId.value, songInfo.value, currentTime.value, playbackRequest.value)
-      .then(() => {
-        isPlaying.value = true
-        emitPlayState(true)
-        sendSongInfoToGlobalPlayer()
-      })
-      .catch(error => {
-        if (error instanceof Error && error.message === 'PLAYBACK_DENIED') {
-          return
-        }
-        if (error && (error as { name?: string }).name === 'AbortError') {
-          return
-        }
-        logError('SimpleMusicPlayer', '播放出错', error)
-        isPlaying.value = false
-        emitPlayState(false)
-      })
+    void startPlaybackByContext()
   }, PLAY_TOGGLE_DEBOUNCE_MS)
+}
+
+async function playFromFlowState(state: {
+  current: {
+    id: string
+    name: string
+    artist: string
+    cover: string
+    url: string
+    source: string
+  } | null
+}): Promise<void> {
+  if (!state.current) {
+    isPlaying.value = false
+    emitPlayState(false)
+    return
+  }
+
+  const flowItem = state.current
+  const flowAudioId = `netease-${flowItem.id}`
+  const flowSong = {
+    name: flowItem.name,
+    artist: flowItem.artist,
+    cover: normalizeHttpToHttps(flowItem.cover),
+    url: normalizeHttpToHttps(flowItem.url || '')
+  }
+
+  await audioService.play(flowAudioId, flowSong, 0, playbackRequestBySource(flowItem.source))
+  isPlaying.value = flowAudioId === audioId.value
+  emitPlayState(isPlaying.value)
+  if (isPlaying.value) {
+    sendSongInfoToGlobalPlayer()
+  }
+}
+
+async function playLocalSong(): Promise<void> {
+  await audioService.play(audioId.value, songInfo.value, currentTime.value, playbackRequest.value)
+  isPlaying.value = true
+  emitPlayState(true)
+  sendSongInfoToGlobalPlayer()
+}
+
+function hasActivePlayback(): boolean {
+  const currentId = audioManager.getCurrentPlayingId()
+  return !!currentId
+}
+
+async function startPlaybackByContext(): Promise<void> {
+  try {
+    if (props.neteaseid && props.playbackSource === 'about-ranking') {
+      const flowState = hasActivePlayback()
+        ? await interruptSingleFlow(props.neteaseid, 'about-ranking')
+        : await startAboutSequenceFlow(props.neteaseid)
+      await playFromFlowState(flowState)
+      return
+    }
+
+    if (props.neteaseid && props.playbackSource === 'article-embed' && hasActivePlayback()) {
+      const flowState = await interruptSingleFlow(props.neteaseid, 'article-embed')
+      await playFromFlowState(flowState)
+      return
+    }
+
+    await playLocalSong()
+  } catch (error) {
+    if (error instanceof Error && error.message === 'PLAYBACK_DENIED') {
+      return
+    }
+    if (error && (error as { name?: string }).name === 'AbortError') {
+      return
+    }
+    logError('SimpleMusicPlayer', '播放出错', error)
+    isPlaying.value = false
+    emitPlayState(false)
+  }
 }
 
 function setupEventListeners(): void {
@@ -419,10 +506,6 @@ function setupEventListeners(): void {
 }
 
 onMounted(() => {
-  window.setTimeout(() => {
-    isInitialRender.value = false
-  }, INITIAL_RENDER_DELAY_MS)
-
   if (typeof window !== 'undefined' && playerRef.value) {
     const observer = useIntersectionObserver(
       playerRef,
@@ -477,10 +560,11 @@ watch(
 </script>
 
 <template>
-  <div class="music-player" ref="playerRef" :class="{ 'dark-mode': isDark, 'animate-in': isVisible && !isInitialRender, 'initial-render': isInitialRender }">
+  <div class="music-player" ref="playerRef" :class="{ 'dark-mode': isDark, 'animate-in': isVisible }">
     <!-- 网易云iframe播放器 -->
-    <iframe v-if="useNetease" 
-      class="netease-player animate-in"
+      <iframe v-if="useNetease" 
+      class="netease-player"
+      :class="{ 'animate-in': isVisible }"
       frameborder="no" 
       border="0" 
       marginwidth="0" 
@@ -493,7 +577,7 @@ watch(
     <!-- 自定义播放器 -->
     <div v-else class="player-container">
       <!-- 封面 -->
-      <div class="cover-container" :class="{ 'animate-in': isVisible && !isInitialRender }" style="--anim-delay: 0.1s">
+      <div class="cover-container" :class="{ 'animate-in': isVisible }" style="--anim-delay: 0.1s">
         <!-- 骨架屏 -->
         <div v-if="isLoading && !songInfo.cover" class="skeleton-cover">
           <div class="skeleton-pulse"></div>
@@ -539,7 +623,7 @@ watch(
       </div>
       
       <!-- 播放器控制区 -->
-      <div class="controls-container" :class="{ 'animate-in': isVisible && !isInitialRender }" style="--anim-delay: var(--lc-motion-duration-fast)">
+      <div class="controls-container" :class="{ 'animate-in': isVisible }" style="--anim-delay: var(--lc-motion-duration-fast)">
         <div class="player-top">
           <!-- 歌曲信息 -->
           <div class="song-info">
@@ -603,17 +687,9 @@ watch(
   background-color: var(--vp-c-bg-soft);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
   border-radius: 3px;
-  /* 显示为可见，但准备动画 */
-  opacity: 1;
-  transform: translateY(0);
+  opacity: 0;
+  transform: translateY(16px);
   will-change: opacity, transform;
-}
-
-/* 避免初始闪烁 */
-.initial-render {
-  opacity: 0 !important;
-  transform: translateY(20px) !important;
-  transition: none !important;
 }
 
 /* 网易云播放器样式 */
@@ -658,6 +734,19 @@ watch(
 }
 
 .animate-in {
+  animation: fadeInUp var(--lc-motion-duration-slow) var(--lc-motion-ease-standard) forwards;
+  animation-delay: var(--anim-delay, 0s);
+}
+
+.cover-container,
+.controls-container {
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+.cover-container.animate-in,
+.controls-container.animate-in,
+.netease-player.animate-in {
   animation: fadeInUp var(--lc-motion-duration-slow) var(--lc-motion-ease-standard) forwards;
   animation-delay: var(--anim-delay, 0s);
 }

@@ -33,6 +33,13 @@ export interface MusicQueueSnapshot {
   nextPreview: MusicQueueItem[]
 }
 
+export interface MusicFlowState {
+  mode: 'idle' | 'random' | 'about-sequence' | 'interrupt-single'
+  current: MusicQueueItem | null
+  queueSize: number
+  nextPreview: MusicQueueItem[]
+}
+
 interface ApiError {
   code: string
   message: string
@@ -60,14 +67,13 @@ interface TrackDetailWithUrlResponse extends MusicTrackWithUrl {
   level: string
 }
 
-interface QueueEnqueueResponse {
-  action: string
-  item: MusicQueueItem
-  snapshot: MusicQueueSnapshot
+interface AboutSequenceStartRequest {
+  startSongId: string
 }
 
-interface QueueGenericResponse {
-  snapshot: MusicQueueSnapshot
+interface InterruptSingleRequest {
+  songId: string
+  source: string
 }
 
 function normalizeHttps(url: string): string {
@@ -90,11 +96,30 @@ function buildUrl(path: string, params: Record<string, string | number> = {}): s
   return `${base}${path}${query ? `?${query}` : ''}`
 }
 
+const PLAYBACK_SESSION_STORAGE_KEY = 'lycan:playback-session-id'
+
+function buildPlaybackSessionId(): string {
+  const random = Math.random().toString(36).slice(2)
+  return `lycan-${Date.now().toString(36)}-${random}`
+}
+
+function resolvePlaybackSessionId(): string {
+  if (typeof window === 'undefined') {
+    return buildPlaybackSessionId()
+  }
+  const existing = window.localStorage.getItem(PLAYBACK_SESSION_STORAGE_KEY)
+  if (existing && existing.trim()) return existing.trim()
+  const created = buildPlaybackSessionId()
+  window.localStorage.setItem(PLAYBACK_SESSION_STORAGE_KEY, created)
+  return created
+}
+
 async function requestJson<T>(path: string, params: Record<string, string | number> = {}): Promise<T> {
   const response = await fetch(buildUrl(path, params), {
     method: 'GET',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'X-Lycan-Playback-Session': resolvePlaybackSessionId()
     }
   })
 
@@ -108,6 +133,25 @@ async function requestJson<T>(path: string, params: Record<string, string | numb
   }
 
   return payload.data
+}
+
+async function requestPostJson<T>(path: string, body?: object): Promise<T> {
+  const response = await fetch(buildUrl(path), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Lycan-Playback-Session': resolvePlaybackSessionId()
+    },
+    body: body ? JSON.stringify(body) : undefined
+  })
+  if (!response.ok) {
+    throw new Error(`音乐后端请求失败: ${response.status}`)
+  }
+  const data = (await response.json()) as ApiResponse<T>
+  if (!data.success || !data.data) {
+    throw new Error(data?.error?.message || '音乐后端返回数据异常')
+  }
+  return data.data
 }
 
 export async function fetchWeeklyTracks(options: {
@@ -156,62 +200,24 @@ export async function fetchTrackUrlById(id: string): Promise<string | null> {
   return normalizeHttps(payload.url)
 }
 
-export async function fetchMusicQueue(limit = 3): Promise<MusicQueueSnapshot> {
-  return requestJson<MusicQueueSnapshot>('/api/music/queue', { limit })
+export async function startRandomFlow(): Promise<MusicFlowState> {
+  return requestPostJson<MusicFlowState>('/api/music/flow/start-random')
 }
 
-export async function enqueueMusicQueueItem(payload: {
-  id: string
-  source?: string
-  level?: string
-}): Promise<QueueEnqueueResponse> {
-  const response = await fetch(buildUrl('/api/music/queue/enqueue'), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
-  })
-  if (!response.ok) {
-    throw new Error(`音乐队列入队失败: ${response.status}`)
-  }
-  const data = (await response.json()) as ApiResponse<QueueEnqueueResponse>
-  if (!data.success || !data.data) {
-    throw new Error(data?.error?.message || '音乐队列入队失败')
-  }
-  return data.data
+export async function startAboutSequenceFlow(startSongId: string): Promise<MusicFlowState> {
+  const payload: AboutSequenceStartRequest = { startSongId }
+  return requestPostJson<MusicFlowState>('/api/music/flow/start-about-sequence', payload)
 }
 
-export async function playNextFromMusicQueue(): Promise<QueueGenericResponse> {
-  const response = await fetch(buildUrl('/api/music/queue/next'), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  })
-  if (!response.ok) {
-    throw new Error(`音乐队列切歌失败: ${response.status}`)
-  }
-  const data = (await response.json()) as ApiResponse<QueueGenericResponse>
-  if (!data.success || !data.data) {
-    throw new Error(data?.error?.message || '音乐队列切歌失败')
-  }
-  return data.data
+export async function interruptSingleFlow(songId: string, source: string): Promise<MusicFlowState> {
+  const payload: InterruptSingleRequest = { songId, source }
+  return requestPostJson<MusicFlowState>('/api/music/flow/interrupt-single', payload)
 }
 
-export async function clearMusicQueue(keepCurrent = true): Promise<QueueGenericResponse> {
-  const response = await fetch(buildUrl('/api/music/queue/clear', { keepCurrent: keepCurrent ? 'true' : 'false' }), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  })
-  if (!response.ok) {
-    throw new Error(`清空音乐队列失败: ${response.status}`)
-  }
-  const data = (await response.json()) as ApiResponse<QueueGenericResponse>
-  if (!data.success || !data.data) {
-    throw new Error(data?.error?.message || '清空音乐队列失败')
-  }
-  return data.data
+export async function playNextFromFlow(): Promise<MusicFlowState> {
+  return requestPostJson<MusicFlowState>('/api/music/flow/next')
+}
+
+export async function fetchFlowState(): Promise<MusicFlowState> {
+  return requestJson<MusicFlowState>('/api/music/flow/state')
 }

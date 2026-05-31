@@ -74,7 +74,7 @@ onMounted(() => {
     <!-- 内容区域 - 添加滚动和遮罩 -->
     <div v-else class="ranking-wrapper">
       <!-- 顶部渐变遮罩 -->
-      <div class="fade-mask top" :style="{ opacity: isAtTop ? 0 : 1 }"></div>
+      <div class="lc-fade-mask lc-fade-mask--top" :style="{ opacity: isAtTop ? 0 : 1 }"></div>
       
       <!-- 滚动容器 -->
       <div 
@@ -95,7 +95,7 @@ onMounted(() => {
       </div>
       
       <!-- 底部渐变遮罩 -->
-      <div class="fade-mask bottom" :style="{ opacity: isAtBottom ? 0 : 1 }"></div>
+      <div class="lc-fade-mask lc-fade-mask--bottom" :style="{ opacity: isAtBottom ? 0 : 1 }"></div>
     </div>
   </div>
 </template>
@@ -135,25 +135,8 @@ onMounted(() => {
   display: none;
 }
 
-/* 渐变遮罩 */
-.fade-mask {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 35px;
-  pointer-events: none; /* 允许点击穿透 */
-  transition: opacity var(--lc-motion-duration-normal) var(--lc-motion-ease-standard);
-  z-index: 10;
-}
-
-.fade-mask.top {
-  top: 0;
-  background: linear-gradient(to bottom, var(--vp-c-bg), transparent);
-}
-
-.fade-mask.bottom {
-  bottom: 0;
-  background: linear-gradient(to top, var(--vp-c-bg), transparent);
+.lc-fade-mask {
+  --lc-fade-mask-height: 35px;
 }
 
 .music-item {

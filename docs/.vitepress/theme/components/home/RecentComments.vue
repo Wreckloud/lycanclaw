@@ -134,7 +134,7 @@ onBeforeUnmount(() => {
       style="--anim-delay: var(--lc-motion-duration-fast)"
     >
       <!-- 顶部渐变遮罩 -->
-      <div class="fade-mask top" :style="{ opacity: isAtTop ? 0 : 1 }"></div>
+      <div class="lc-fade-mask lc-fade-mask--top" :style="{ opacity: isAtTop ? 0 : 1 }"></div>
       
       <div class="comments-content" ref="containerRef" @scroll="updateScrollPosition">
         <div 
@@ -159,7 +159,7 @@ onBeforeUnmount(() => {
       </div>
       
       <!-- 底部渐变遮罩 -->
-      <div class="fade-mask bottom" :style="{ opacity: isAtBottom ? 0 : 1 }"></div>
+      <div class="lc-fade-mask lc-fade-mask--bottom" :style="{ opacity: isAtBottom ? 0 : 1 }"></div>
     </div>
     
     <!-- 加载状态：只在组件可见时显示 -->
@@ -170,7 +170,7 @@ onBeforeUnmount(() => {
       style="--anim-delay: var(--lc-motion-duration-fast)"
     >
       <!-- 顶部渐变遮罩 -->
-      <div class="fade-mask top" style="opacity: 0"></div>
+      <div class="lc-fade-mask lc-fade-mask--top" style="opacity: 0"></div>
       
       <div class="comments-content loading-content">
         <div v-for="i in 5" :key="i" class="comment-item skeleton-item">
@@ -186,7 +186,7 @@ onBeforeUnmount(() => {
       </div>
       
       <!-- 加载状态下的底部渐变遮罩 -->
-      <div class="fade-mask bottom" style="opacity: 1"></div>
+      <div class="lc-fade-mask lc-fade-mask--bottom" style="opacity: 1"></div>
     </div>
     
     <!-- 空状态：只在组件可见且没有评论时显示 -->
@@ -294,28 +294,8 @@ onBeforeUnmount(() => {
   display: none;
 }
 
-/* 渐变遮罩 */
-.fade-mask {
-  position: absolute;
-  z-index: 10;
-  pointer-events: none; /* 允许点击穿透 */
-  transition: opacity var(--lc-motion-duration-normal) var(--lc-motion-ease-standard);
-}
-
-.fade-mask.top {
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 40px;
-  background: linear-gradient(to bottom, var(--vp-c-bg), transparent);
-}
-
-.fade-mask.bottom {
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 40px;
-  background: linear-gradient(to top, var(--vp-c-bg), transparent);
+.lc-fade-mask {
+  --lc-fade-mask-height: 40px;
 }
 
 /* 评论项 */
@@ -530,9 +510,8 @@ onBeforeUnmount(() => {
     font-size: 0.8rem;
   }
   
-  .fade-mask.top,
-  .fade-mask.bottom {
-    height: 30px;
+  .lc-fade-mask {
+    --lc-fade-mask-height: 30px;
   }
 }
 </style> 
