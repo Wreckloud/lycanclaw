@@ -5,6 +5,7 @@
 import { nextTick } from 'vue'
 import { audioManager } from '../utils/music'
 import { preloadRecentComments } from '../utils/api'
+import { trackRouteVisit } from '../utils/analyticsTracker'
 
 const PRELOAD_DELAY_MS = 1500
 const AUDIO_SYNC_DELAY_MS = 100
@@ -109,6 +110,8 @@ export function setupRouteSideEffects(router: VitePressRouterLike): void {
   if (typeof window === 'undefined') return
 
   router.onAfterRouteChanged = (to) => {
+    trackRouteVisit(to)
+
     if (to === '/') {
       setTimeout(syncSectionHeights, HOME_SYNC_DELAY_MS)
       bindResize()
@@ -123,6 +126,8 @@ export function setupRouteSideEffects(router: VitePressRouterLike): void {
     setTimeout(syncSectionHeights, HOME_SYNC_DELAY_MS)
     bindResize()
   }
+
+  trackRouteVisit(router.route.path)
 }
 
 export function syncAudioOnMounted(): void {

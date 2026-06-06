@@ -7,6 +7,8 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useDebounceFn, useThrottleFn } from '@vueuse/core'
 import { logError } from '../../utils/logger'
+import { beaconSettleEncouragement, settleEncouragement } from '../../utils/encouragementApi'
+import { getVisitorId } from '../../utils/visitorIdentity'
 import {
   ENCOURAGE_MESSAGE_COLORS,
   ENCOURAGE_PARTICLE_COLORS
@@ -51,6 +53,7 @@ const PARTICLE_THROTTLE_MS = 200
 const HINT_DISPLAY_DELAY_S = 20
 const HINT_AUTO_CLOSE_S = 7
 const OBSERVER_SETUP_DELAY_MS = 200
+const ENCOURAGEMENT_SETTLE_DELAY_MS = 1200
 
 const encourageCount = ref(0)
 const isDrawerVisible = ref(false)
@@ -59,6 +62,8 @@ const widgetRef = ref<HTMLElement | null>(null)
 const showClickHint = ref(false)
 let observerInstance: IntersectionObserver | null = null
 const timers: Partial<Record<TimerKey, TimerHandle>> = {}
+let settleTimer: TimerHandle | null = null
+let pendingEncouragementDelta = 0
 
 const hasClickedInSession = ref(false)
 const hasHoveredInSession = ref(false)
@@ -106,6 +111,13 @@ function clearAllTimers(): void {
   clearTimer('hintDisplay')
   clearTimer('hintAutoClose')
   clearTimer('observerSetup')
+  clearSettleTimer()
+}
+
+function clearSettleTimer(): void {
+  if (!settleTimer) return
+  clearTimeout(settleTimer)
+  settleTimer = null
 }
 
 function getEncourageMessage(count: number): string {
@@ -335,8 +347,41 @@ function resetComboTimer(): void {
   }, COMBO_RESET_MS)
 }
 
+function buildEncouragementPayload(delta: number) {
+  return {
+    delta,
+    visitorId: getVisitorId(),
+    path: '/',
+    title: '首页催更'
+  }
+}
+
+function flushEncouragement(useBeacon = false): void {
+  if (pendingEncouragementDelta <= 0) return
+  const delta = pendingEncouragementDelta
+  pendingEncouragementDelta = 0
+  clearSettleTimer()
+
+  const payload = buildEncouragementPayload(delta)
+  if (useBeacon && beaconSettleEncouragement(payload)) return
+
+  settleEncouragement(payload).catch((error) => {
+    logError('EncourageWidget', '催更结算失败', error)
+  })
+}
+
+function scheduleEncouragementSettle(): void {
+  clearSettleTimer()
+  settleTimer = setTimeout(() => {
+    settleTimer = null
+    flushEncouragement(false)
+  }, ENCOURAGEMENT_SETTLE_DELAY_MS)
+}
+
 const encourageUpdateThrottled = useThrottleFn((event: PointerEventLike) => {
   encourageCount.value++
+  pendingEncouragementDelta++
+  scheduleEncouragementSettle()
   const text = getEncourageMessage(encourageCount.value)
 
   showFloatingMessage(event, encourageCount.value)
@@ -421,15 +466,22 @@ function handleMouseLeave(): void {
 onMounted(() => {
   showClickHint.value = false
   setTimer('observerSetup', setupIntersectionObserver, OBSERVER_SETUP_DELAY_MS)
+  window.addEventListener('pagehide', handlePageHide)
 })
 
 onUnmounted(() => {
+  window.removeEventListener('pagehide', handlePageHide)
+  flushEncouragement(true)
   clearAllTimers()
   if (observerInstance) {
     observerInstance.disconnect()
     observerInstance = null
   }
 })
+
+function handlePageHide(): void {
+  flushEncouragement(true)
+}
 </script>
 
 <template>
