@@ -5,6 +5,9 @@ description: 这是一篇新文章!
 order: 0
 publish: true
 tags:
+  - SQL
+  - 数据库
+  - 面试
 ---
 
 ## **内连接 (`INNER JOIN`) 和 `IN` 的区别**

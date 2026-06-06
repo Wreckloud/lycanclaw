@@ -4,7 +4,9 @@ date: '2025-05-06 14:03:47'
 description: 专为 Vue 应用程序开发的状态管理模式
 publish: true
 tags:
-  - VUE
+  - Vuex
+  - 状态管理
+  - Vue
 ---
 
 # Vuex 状态管理

@@ -4,8 +4,9 @@ date: '2023-09-17 19:02:12'
 description: CSS 让网页变得美观，它定义了网页的样式和布局。
 publish: true
 tags:
+  - CSS
+  - 样式系统
   - 前端基础
-  - CSS3
 ---
 
 # CSS 核心概念

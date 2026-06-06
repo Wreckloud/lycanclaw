@@ -4,7 +4,10 @@ date: '2025-10-15 09:30:54'
 description: '这是一篇新文章!'
 order: 0
 publish: true
-tags: 
+tags:
+  - MyBatis
+  - 面试
+  - ORM
 ---
 
 # #{} 和 ${} 的区别

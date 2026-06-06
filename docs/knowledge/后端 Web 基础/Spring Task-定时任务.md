@@ -4,7 +4,10 @@ date: '2025-11-21 14:45:07'
 description: '这是一篇新文章!'
 order: 0
 publish: true
-tags: 
+tags:
+  - SpringTask
+  - 定时任务
+  - Spring
 ---
 
 场景引入和问题引出

@@ -4,7 +4,10 @@ date: '2025-09-29 09:31:57'
 description: '这是一篇新文章!'
 order: 0
 publish: true
-tags: 
+tags:
+  - Java
+  - 集合
+  - 面试
 ---
 
 # 有没有可能两个不相等的对象有相同的 `hashCode`

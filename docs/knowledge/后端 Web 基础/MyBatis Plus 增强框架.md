@@ -5,6 +5,9 @@ description: 这是一篇新文章!
 order: 0
 publish: true
 tags:
+  - MyBatisPlus
+  - ORM
+  - 数据库
 ---
 
 MyBatis-Plus（简称 **MP**）是基于 MyBatis 的增强框架。

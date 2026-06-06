@@ -5,6 +5,9 @@ description: 这是一篇新文章!
 order: 0
 publish: true
 tags:
+  - Java
+  - record
+  - 语法特性
 ---
 
 在 Java 中，我们经常会写一些“只负责装数据”的类。

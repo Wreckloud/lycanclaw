@@ -4,7 +4,9 @@ date: '2024-11-24 18:04:40'
 description: Vue是一款用于构建用户界面的渐进式的 JavaScript 框架。
 publish: true
 tags:
-  - VUE
+  - Vue
+  - Vue2
+  - 前端框架
 ---
 
 # Vue 核心概念

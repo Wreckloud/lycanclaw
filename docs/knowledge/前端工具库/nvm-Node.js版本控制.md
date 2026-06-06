@@ -5,6 +5,9 @@ description: 这是一篇新文章!
 order: 0
 publish: true
 tags:
+  - nvm
+  - Node.js
+  - 版本管理
 ---
 
 ## 教程定位与前置说明

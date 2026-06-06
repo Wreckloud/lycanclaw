@@ -4,7 +4,9 @@ date: '2025-03-07 12:33:11'
 description: 详细介绍JavaScript中DOM和BOM操作的常用方法，包括元素选择、内容修改、样式控制、事件处理等前端开发必备技能。
 publish: true
 tags:
-  - Javascript
+  - JavaScript
+  - WebAPI
+  - DOM
 ---
 
 Web API 是浏览器为 JavaScript 提供的**双向通信接口**，使脚本具备两大核心能力：

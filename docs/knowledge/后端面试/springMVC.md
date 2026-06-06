@@ -4,7 +4,10 @@ date: '2025-10-20 16:27:29'
 description: '这是一篇新文章!'
 order: 0
 publish: true
-tags: 
+tags:
+  - SpringMVC
+  - 面试
+  - Web基础
 ---
 
 # SpringMVC 请求流程

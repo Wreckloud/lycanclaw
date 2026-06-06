@@ -4,7 +4,10 @@ date: '2025-10-24 08:55:12'
 description: '这是一篇新文章!'
 order: 0
 publish: true
-tags: 
+tags:
+  - SpringBoot
+  - 面试
+  - 自动配置
 ---
 
 # 你是怎么理解 Spring Boot 的？

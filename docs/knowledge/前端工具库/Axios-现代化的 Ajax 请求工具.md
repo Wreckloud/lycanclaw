@@ -5,6 +5,8 @@ description: Ajax是一种在无需重新加载整个页面的情况下，与服
 publish: true
 tags:
   - Axios
+  - HTTP
+  - 前端请求
 ---
 
 # Ajax 基础概念

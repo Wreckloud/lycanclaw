@@ -4,7 +4,10 @@ date: '2025-11-09 11:15:57'
 description: '这是一篇新文章!'
 order: 0
 publish: true
-tags: 
+tags:
+  - Redis
+  - 缓存
+  - 数据库
 ---
 
 # Redis 入门

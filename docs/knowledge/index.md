@@ -4,5 +4,11 @@ comment: false
 aside: false
 ---
 
+<script setup>
+import KnowledgeTagAtlas from '../.vitepress/theme/components/knowledge/KnowledgeTagAtlas.vue'
+</script>
+
 路途上的思考与总结，留作回望时的坐标。  
 行过的路，未必都记得，但痕迹会替我指引归途。
+
+<KnowledgeTagAtlas />

@@ -4,6 +4,9 @@ date: 2025-06-18T19:46:36
 description: 这是一篇新文章!
 publish: true
 tags:
+  - Vue
+  - 组合式函数
+  - 代码复用
 ---
 Vue 社区提倡：**按业务拆逻辑函数**。
 

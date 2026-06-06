@@ -5,6 +5,9 @@ description: 这是一篇新文章!
 order: 0
 publish: true
 tags:
+  - MySQL
+  - 数据库
+  - SQL
 ---
 
 # 数据库简介

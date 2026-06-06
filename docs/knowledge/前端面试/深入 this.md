@@ -4,7 +4,9 @@ date: 2025-06-16 11:01:55
 description: 这是一篇新文章!
 publish: true
 tags:
-  - Javascript
+  - JavaScript
+  - this
+  - 面试
 ---
 
 `this` 是 JavaScript 中一个运行时绑定的关键字，它的指向是在**函数调用时**根据调用方式动态确定的。这种机制使得它在不同上下文中表现各异。

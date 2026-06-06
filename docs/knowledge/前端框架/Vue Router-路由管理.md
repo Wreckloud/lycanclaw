@@ -4,7 +4,9 @@ date: '2025-05-06 14:03:52'
 description: Vue Router 是 Vue.js 官方的路由管理器，它与 Vue.js 核心深度集成，让构建单页面应用变得易如反掌。
 publish: true
 tags:
-  - VUE
+  - VueRouter
+  - 路由
+  - Vue
 ---
 
 # Vue Router

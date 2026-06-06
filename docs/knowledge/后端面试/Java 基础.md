@@ -4,7 +4,10 @@ date: '2025-09-15 08:46:30'
 description: '这是一篇新文章!'
 order: 0
 publish: true
-tags: 
+tags:
+  - Java
+  - 面试
+  - 基础语法
 ---
 
 # **String、StringBuffer、StringBuilder 的区别**

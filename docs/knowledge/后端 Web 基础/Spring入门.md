@@ -5,6 +5,9 @@ description: 这是一篇新文章!
 order: 3
 publish: true
 tags:
+  - Spring
+  - IoC
+  - 依赖注入
 ---
 
 你可能已经听说过 **Spring**，这个在 Java 开发世界里几乎无处不在的名字。Spring 就像是一个超强的工具箱，里面有一堆各式各样的工具，专门用来解决开发中的各种问题。

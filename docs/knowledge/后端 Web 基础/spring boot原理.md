@@ -5,6 +5,9 @@ description: 这是一篇新文章!
 order: 0
 publish: true
 tags:
+  - SpringBoot
+  - 自动配置
+  - 框架原理
 ---
 
 # 配置优先级

@@ -4,7 +4,10 @@ date: '2025-10-10 08:49:23'
 description: '这是一篇新文章!'
 order: 0
 publish: true
-tags: 
+tags:
+  - Spring
+  - 面试
+  - IoC
 ---
 
 # 谈谈你对 Spring 的理解

@@ -4,8 +4,9 @@ date: '2023-09-17 19:02:12'
 description: HTML是网页的基础结构语言，定义了网页的骨架和内容。
 publish: true
 tags:
-  - 前端基础
   - HTML
+  - Web标准
+  - 前端基础
 ---
 
 # HTML 定义

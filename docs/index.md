@@ -18,7 +18,7 @@ hero:
       text: 📚 知识笔记 
       link: /knowledge/
     - theme: alt
-      text: 🛠️ 项目展示 
+      text: 🛠️ 绝穴密藏
       link: /projects/
 ---
 

@@ -5,8 +5,8 @@ description: 前端开发环境必备指南：Node.js安装与npm、Yarn、pnpm�
 publish: true
 tags:
   - npm
-  - yarn
-  - pnpm
+  - 包管理
+  - Node.js
 ---
 
 # 序

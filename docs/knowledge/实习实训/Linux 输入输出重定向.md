@@ -5,6 +5,9 @@ description: 这是一篇新文章!
 order: 0
 publish: true
 tags:
+  - Linux
+  - Shell
+  - 命令行
 ---
 
 当我们在终端里执行一个命令时，程序通常会默认连接三个通道：

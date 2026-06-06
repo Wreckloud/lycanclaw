@@ -25,6 +25,23 @@ function countWord(data) {
   return count
 }
 
+function normalizeTags(tags) {
+  if (Array.isArray(tags)) {
+    return tags
+      .map(tag => String(tag).trim())
+      .filter(Boolean)
+  }
+
+  if (typeof tags === 'string') {
+    return tags
+      .split(',')
+      .map(tag => tag.trim())
+      .filter(Boolean)
+  }
+
+  return []
+}
+
 // 递归获取目录下的所有md文件
 function getAllMarkdownFiles(dir, fileList = []) {
   if (!fs.existsSync(dir)) {
@@ -311,8 +328,10 @@ function generateKnowledgeStats(knowledgeDir, publicDir, docsDir) {
       const relativePath = path.relative(docsDir, filePath).replace(/\\/g, '/')
       
       stats.push({
+        title: frontmatter.title || path.basename(filePath, '.md'),
         date,
         wordCount,
+        tags: normalizeTags(frontmatter.tags),
         relativePath // 用于调试和文件变更检测
       })
     } catch (err) {
@@ -375,4 +394,4 @@ async function main() {
 }
 
 // 执行主函数
-main(); 
+main();

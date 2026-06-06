@@ -23,8 +23,10 @@ export interface ThoughtPost {
 }
 
 export interface KnowledgeStatRecord {
+  title?: string
   date?: string
   wordCount?: number
+  tags?: string[]
   relativePath?: string
   [key: string]: unknown
 }

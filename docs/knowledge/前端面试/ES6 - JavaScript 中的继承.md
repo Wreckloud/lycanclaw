@@ -4,7 +4,9 @@ date: 2025-06-18 11:10:59
 description: 这是一篇新文章!
 publish: true
 tags:
-  - Javascript
+  - JavaScript
+  - ES6
+  - 面试
 ---
 
 继承是面向对象中的核心概念，它允许**子类复用父类的属性和方法**，从而避免重复代码，提升代码的结构性与扩展性。

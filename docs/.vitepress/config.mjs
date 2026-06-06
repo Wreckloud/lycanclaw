@@ -84,7 +84,7 @@ export default defineConfig({
       { text: '首页', link: '/' },
       { text: '知识笔记', link: '/knowledge/' },
       { text: '思考随笔', link: '/thoughts/' },
-      { text: '项目展示', link: '/projects/' },
+      { text: '绝穴密藏', link: '/projects/' },
       { text: '关于', link: '/about' }
     ],
 

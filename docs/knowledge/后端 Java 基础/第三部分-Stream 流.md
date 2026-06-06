@@ -5,6 +5,9 @@ description: 这是一篇新文章!
 order: 8
 publish: true
 tags:
+  - Java
+  - Stream
+  - 函数式编程
 ---
 
 # Stream 流

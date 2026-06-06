@@ -4,7 +4,9 @@ date: '2025-04-02 12:09:57'
 description: 这是一篇新文章!
 publish: true
 tags:
-  - Javascript
+  - JavaScript
+  - 进阶语法
+  - 异步编程
 ---
 
 # 作用域

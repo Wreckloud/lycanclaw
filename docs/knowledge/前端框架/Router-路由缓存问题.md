@@ -4,6 +4,9 @@ date: 2025-06-18 17:19:41
 description: 这是一篇新文章!
 publish: true
 tags:
+  - VueRouter
+  - 路由
+  - 缓存
 ---
 
 # Router-路由缓存问题

@@ -5,6 +5,9 @@ description: 这是一篇新文章!
 order: 0
 publish: true
 tags:
+  - Swagger
+  - Knife4j
+  - 接口文档
 ---
 
 在实际开发过程中，后端接口通常会提供给前端、测试人员，或者其他系统调用。Swagger 的作用，就是让接口信息尽量回到代码本身。

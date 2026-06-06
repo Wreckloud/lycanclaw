@@ -5,7 +5,9 @@ description: 这是一篇新文章!
 order: 4
 publish: true
 tags:
-  - 数据库
+  - JDBC
+  - MyBatis
+  - 连接池
 ---
 
 # JDBC 入门

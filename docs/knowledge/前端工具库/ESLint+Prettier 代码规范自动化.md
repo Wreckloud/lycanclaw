@@ -4,6 +4,8 @@ date: '2025-05-18 19:17:14'
 description: 进入团队、协作、开源项目，代码风格就不是你一个人的事了。
 publish: true
 tags:
+  - ESLint
+  - Prettier
   - 代码规范
 ---
 

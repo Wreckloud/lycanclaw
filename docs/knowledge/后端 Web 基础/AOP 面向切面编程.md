@@ -5,6 +5,9 @@ description: 这是一篇新文章!
 order: 0
 publish: true
 tags:
+  - Spring
+  - AOP
+  - 切面编程
 ---
 
 **AOP**（Aspect Oriented Programming，面向切面编程）是一种在不改变原有业务代码的前提下，为特定方法统一织入“附加功能”的编程思想。

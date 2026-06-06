@@ -4,7 +4,10 @@ date: '2025-11-02 10:49:56'
 description: '这是一篇新文章!'
 order: 0
 publish: true
-tags: 
+tags:
+  - Nginx
+  - 反向代理
+  - 负载均衡
 ---
 
 # 反向代理
