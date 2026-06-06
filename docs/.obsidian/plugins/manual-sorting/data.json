@@ -28,6 +28,7 @@
       "knowledge/index.md"
     ],
     "knowledge/后端 微服务基础": [
+      "knowledge/后端 微服务基础/远程调用.md",
       "knowledge/后端 微服务基础/微服务基础.md"
     ],
     "knowledge/后端 Java 基础": [
