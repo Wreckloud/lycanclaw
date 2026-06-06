@@ -224,6 +224,13 @@ class AudioEventBus {
     }
   }
 
+  clearCurrentSession(): void {
+    this.currentPlayingId = ''
+    this.currentRequest = null
+    this.currentSongInfo = null
+    this.interruptedStack = []
+  }
+
   handlePlaybackCompleted(audioId: string): void {
     if (!audioId) return
 

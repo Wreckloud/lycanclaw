@@ -239,7 +239,15 @@ export async function stopFlow(): Promise<MusicFlowState> {
 
 export async function fetchTrackLyric(id: string): Promise<MusicTrackLyric | null> {
   if (!id) return null
-  const payload = await requestJson<MusicTrackLyric>('/api/music/track/lyric', { id })
+  let payload: MusicTrackLyric
+  try {
+    payload = await requestJson<MusicTrackLyric>('/api/music/track/lyric', { id })
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('404')) {
+      return null
+    }
+    throw error
+  }
   if (!payload || !Array.isArray(payload.lines)) {
     return null
   }

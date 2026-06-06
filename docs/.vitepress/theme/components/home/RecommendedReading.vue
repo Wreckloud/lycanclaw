@@ -13,7 +13,7 @@ import {
   useIntervalFn,
   useWindowSize
 } from '@vueuse/core'
-import { formatMonthDayCn } from '../../utils/time'
+import { formatRecentPostTime } from '../../utils/time'
 import { logError } from '../../utils/logger'
 import { fetchRecommendedPosts, type RecommendedPost } from '../../utils/api'
 import {
@@ -327,6 +327,10 @@ async function fetchPosts(): Promise<void> {
     isLoading.value = false
   }
 }
+
+function buildThoughtsTagUrl(tag: string): string {
+  return withBase(`/thoughts/?tag=${encodeURIComponent(tag.trim())}`)
+}
 </script>
 
 <template>
@@ -390,15 +394,17 @@ async function fetchPosts(): Promise<void> {
               <p class="post-excerpt">{{ post.description }}</p>
 
               <div class="post-meta">
-                <span class="post-date">{{ formatMonthDayCn(post.date) }}</span>
-                <span class="post-separator">/</span>
-                <span class="post-category">推荐</span>
-
-                <!-- 标签 -->
+                <span class="post-date">{{ formatRecentPostTime(post.date) }}</span>
+                <span v-if="post.tags?.length" class="post-separator">/</span>
                 <span v-if="post.tags?.length" class="post-tags">
-                  <span v-for="(tag, tagIndex) in post.tags" :key="tagIndex" class="post-tag">
+                  <a
+                    v-for="(tag, tagIndex) in post.tags"
+                    :key="tagIndex"
+                    class="post-tag"
+                    :href="buildThoughtsTagUrl(tag)"
+                  >
                     #{{ tag }}
-                  </span>
+                  </a>
                 </span>
               </div>
             </div>
@@ -595,6 +601,8 @@ async function fetchPosts(): Promise<void> {
 
 .title-link:hover {
   text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.08em;
   color: var(--vp-c-brand-1);
 }
 
@@ -627,33 +635,38 @@ async function fetchPosts(): Promise<void> {
 }
 
 .post-meta {
-  font-size: 0.75rem;
-  color: var(--vp-c-text-3);
+  font-size: 0.86rem;
+  color: var(--vp-c-text-2);
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   margin-top: 0.5rem;
-  opacity: 0.8;
 }
 
-.post-date,
-.post-category {
-  margin-right: 3px;
+.post-date {
+  margin-right: 4px;
 }
 
 .post-separator {
-  margin: 0 3px;
+  margin: 0 4px;
   opacity: 0.5;
 }
 
 .post-tags {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   margin-left: 4px;
 }
 
 .post-tag {
   margin-right: 8px;
+  color: var(--vp-c-brand-1);
+  text-decoration: none;
+  transition: color var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
+}
+
+.post-tag:hover {
   color: var(--vp-c-brand-2);
 }
 

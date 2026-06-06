@@ -19,8 +19,8 @@ const isBrowser = typeof window !== 'undefined'
 const POSTS_PER_PAGE = 7
 const MAX_VISIBLE_PAGES = 5
 const ANIMATION_RESET_DELAY_MS = 16
-const VISIBILITY_THRESHOLD = 0.1
-const VISIBILITY_ROOT_MARGIN = '0px 0px -10% 0px'
+const VISIBILITY_THRESHOLD = 0.05
+const VISIBILITY_ROOT_MARGIN = '0px 0px 18% 0px'
 type PageNumber = number | '...'
 
 const animationTriggerRef = ref<HTMLElement | null>(null)
@@ -55,7 +55,6 @@ interface ThoughtPostSummary {
 
 const allThoughtPosts = ref<ThoughtPostSummary[]>([])
 const availableTags = ref<ThoughtTagItem[]>([])
-const totalPostsCount = ref(0)
 const paginatedPosts = ref<ThoughtPostSummary[]>([])
 const isLoading = ref(true)
 const hasError = ref(false)
@@ -64,6 +63,7 @@ const selectedTag = ref('')
 const currentPage = ref(1)
 const totalPages = ref(0)
 const normalizedSelectedTag = computed(() => selectedTag.value.trim())
+const allPostsCount = computed(() => allThoughtPosts.value.length)
 const paginatedViewPosts = computed(() =>
   paginatedPosts.value.map((post) => ({
     post,
@@ -193,7 +193,6 @@ async function loadTags(): Promise<void> {
       return a[0].localeCompare(b[0], 'zh-Hans-CN')
     })
     .map(([tag, count]) => ({ tag, count }))
-  totalPostsCount.value = allThoughtPosts.value.length
 }
 
 async function loadPagePosts(options: { replayAnimation: boolean; smoothScroll: boolean }): Promise<void> {
@@ -209,9 +208,6 @@ async function loadPagePosts(options: { replayAnimation: boolean; smoothScroll: 
   }
   const start = (currentPage.value - 1) * POSTS_PER_PAGE
   paginatedPosts.value = matched.slice(start, start + POSTS_PER_PAGE)
-  totalPostsCount.value = selected ? total : allThoughtPosts.value.length
-
-
   if (options.smoothScroll && isBrowser) {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -357,7 +353,7 @@ function onTagClick(tag: string): void {
           type="button"
           @click="setSelectedTag('')"
         >
-          全部 <span class="tag-chip-count">[{{ totalPostsCount }}]</span>
+          全部 <span class="tag-chip-count">[{{ allPostsCount }}]</span>
         </button>
         <button
           v-for="item in availableTags"
@@ -377,7 +373,7 @@ function onTagClick(tag: string): void {
           :key="item.post.url" 
           class="post-item"
           :class="{ 'post-item-animate': listVisible }"
-          :style="{ '--post-delay': `${index * 0.08 + 0.04}s` }"
+          :style="{ '--post-delay': `${index * 0.07 + 0.06}s` }"
         >
           <div class="post-content">
             <h2 class="post-item-title">
@@ -414,7 +410,7 @@ function onTagClick(tag: string): void {
         v-if="totalPages > 1" 
         class="pagination"
         :class="{ 'pagination-animate': listVisible }"
-        :style="{ '--pagination-delay': `${paginatedViewPosts.length * 0.08 + 0.2}s` }"
+        :style="{ '--pagination-delay': `${paginatedViewPosts.length * 0.07 + 0.2}s` }"
       >
         <button 
           class="pagination-button" 
@@ -540,10 +536,10 @@ function onTagClick(tag: string): void {
   border-bottom: 1px dashed var(--vp-c-divider);
   padding-bottom: 1rem;
   opacity: 0;
-  transform: translateY(40px);
+  transform: translateY(20px);
   transition:
-    opacity var(--lc-motion-duration-slower) var(--lc-motion-ease-standard),
-    transform var(--lc-motion-duration-slower) var(--lc-motion-ease-standard);
+    opacity var(--lc-motion-duration-slow) var(--lc-motion-ease-standard),
+    transform var(--lc-motion-duration-slow) var(--lc-motion-ease-standard);
 }
 
 .post-item-animate {
@@ -564,10 +560,10 @@ function onTagClick(tag: string): void {
   margin-top: 2rem;
   gap: 0.25rem;
   opacity: 0;
-  transform: translateY(30px);
+  transform: translateY(20px);
   transition:
-    opacity var(--lc-motion-duration-slower) var(--lc-motion-ease-standard),
-    transform var(--lc-motion-duration-slower) var(--lc-motion-ease-standard);
+    opacity var(--lc-motion-duration-slow) var(--lc-motion-ease-standard),
+    transform var(--lc-motion-duration-slow) var(--lc-motion-ease-standard);
 }
 
 .pagination-animate {

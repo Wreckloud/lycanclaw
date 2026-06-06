@@ -20,13 +20,19 @@ import {
 } from '../../utils/music'
 import { logError } from '../../utils/logger'
 
-const AUTO_COLLAPSE_MS = 5000
-const PANEL_GAP = 8
+const PANEL_GAP = 0
 const MOBILE_BREAKPOINT = 768
+const DRAG_CANCEL_THRESHOLD = 8
+const COVER_GESTURE_THRESHOLD = 6
+const NAV_SAFE_TOP = 65
 const VOLUME_STORAGE_KEY = 'lycan:global-player-volume'
 const POSITION_STORAGE_KEY = 'lycan:global-player-position'
+const ROTATE_BASE_DEG_PER_SEC = 18
+const ROTATE_GESTURE_DECAY = 0.92
+const ROTATE_GESTURE_GAIN = 120
+const VOLUME_SWIPE_GAIN = 0.32
 
-type PanelMode = 'mini' | 'collapsed' | 'expanded'
+type PanelMode = 'collapsed' | 'expanded'
 
 const playerRef = ref<HTMLElement | null>(null)
 const progressBarRef = ref<HTMLElement | null>(null)
@@ -34,7 +40,6 @@ const isTouchDevice = ref(false)
 const isNarrowScreen = ref(false)
 const isVisible = ref(false)
 const panelMode = ref<PanelMode>('collapsed')
-const isHoveringDetail = ref(false)
 const isDraggingProgress = ref(false)
 const lyricLines = ref<MusicLyricLine[]>([])
 const currentLyricIndex = ref(-1)
@@ -49,22 +54,35 @@ const currentSong = ref<SongInfo>({
   currentTime: 0
 })
 const volume = ref(70)
-const coverResetVersion = ref(0)
 const position = ref({ x: 0, y: 0, side: 'left' as 'left' | 'right' })
+const coverAngle = ref(0)
+const gestureSpinVelocity = ref(0)
 
 const unsubscribers: Array<() => void> = []
-let collapseTimer: ReturnType<typeof setTimeout> | null = null
-let dragTimer: ReturnType<typeof setTimeout> | null = null
+let resizeTimer: ReturnType<typeof setTimeout> | null = null
 let resizeHandler: (() => void) | null = null
+
 let isDraggingPanel = false
 let panelPointerOffsetX = 0
 let panelPointerOffsetY = 0
 let draggedInGesture = false
 let suppressClickUntil = 0
 
+let isPendingControlPress = false
+let controlPressSource: 'mouse' | 'touch' | 'none' = 'none'
+let controlPressMoved = false
+let controlPressPoint = { x: 0, y: 0 }
+let controlLastPoint = { x: 0, y: 0 }
+let isCoverGestureActive = false
+let coverGestureMode: 'idle' | 'volume' = 'idle'
+let coverStartPoint = { x: 0, y: 0 }
+let coverLastPoint = { x: 0, y: 0 }
+let coverLastTs = 0
+
+let rotationRafId: number | null = null
+let lastRotationTs = 0
+
 const isExpanded = computed(() => panelMode.value === 'expanded')
-const showCover = computed(() => panelMode.value !== 'mini')
-const showCloseButton = computed(() => isExpanded.value)
 const formattedCurrentTime = computed(() => formatAudioTime(currentSong.value.currentTime))
 const formattedDuration = computed(() => formatAudioTime(currentSong.value.duration))
 const currentLyric = computed(() => {
@@ -80,58 +98,23 @@ const nextLyric = computed(() => {
   }
   return lyricLines.value[nextIndex]?.text || ''
 })
-
 const panelStyle = computed(() => ({
   left: `${position.value.x}px`,
   top: `${position.value.y}px`
 }))
+const coverTransformStyle = computed(() => ({
+  transform: `rotate(${coverAngle.value}deg)`
+}))
 
-function clearCollapseTimer(): void {
-  if (!collapseTimer) return
-  clearTimeout(collapseTimer)
-  collapseTimer = null
+function clearResizeTimer(): void {
+  if (!resizeTimer) return
+  clearTimeout(resizeTimer)
+  resizeTimer = null
 }
 
-function clearDragTimer(): void {
-  if (!dragTimer) return
-  clearTimeout(dragTimer)
-  dragTimer = null
-}
-
-function scheduleCollapse(): void {
-  clearCollapseTimer()
-  if (isTouchDevice.value || !isExpanded.value) return
-  collapseTimer = setTimeout(() => {
-    collapseTimer = null
-    if (isHoveringDetail.value || !isExpanded.value) return
-    panelMode.value = isNarrowScreen.value ? 'mini' : 'collapsed'
-    ensurePanelInViewport()
-  }, AUTO_COLLAPSE_MS)
-}
-
-function loadVolumePreference(): void {
-  if (typeof window === 'undefined') return
-  const raw = window.localStorage.getItem(VOLUME_STORAGE_KEY)
-  const parsed = Number.parseInt(raw || '', 10)
-  if (!Number.isNaN(parsed)) {
-    volume.value = Math.max(0, Math.min(parsed, 100))
-  }
-  audioService.setVolume(volume.value)
-}
-
-function saveVolumePreference(): void {
-  if (typeof window === 'undefined') return
-  window.localStorage.setItem(VOLUME_STORAGE_KEY, String(volume.value))
-}
-
-function onVolumeInput(event: Event): void {
-  const target = event.target as HTMLInputElement | null
-  if (!target) return
-  const nextValue = Number.parseInt(target.value, 10)
-  if (Number.isNaN(nextValue)) return
-  volume.value = Math.max(0, Math.min(nextValue, 100))
-  audioService.setVolume(volume.value)
-  saveVolumePreference()
+function normalizeSongId(rawId: string): string {
+  if (!rawId) return ''
+  return rawId.startsWith('netease-') ? rawId.slice('netease-'.length) : rawId
 }
 
 function detectDeviceState(): void {
@@ -140,30 +123,30 @@ function detectDeviceState(): void {
   isNarrowScreen.value = window.innerWidth <= MOBILE_BREAKPOINT
 }
 
-function getPanelSize(mode: PanelMode): { width: number; height: number } {
-  if (mode === 'mini') {
-    return { width: 40, height: 64 }
-  }
-  if (mode === 'collapsed') {
-    return { width: 98, height: 64 }
-  }
-  return { width: isNarrowScreen.value ? 346 : 382, height: 118 }
+function defaultModeByDevice(): PanelMode {
+  return 'collapsed'
 }
 
-function defaultModeByDevice(): PanelMode {
-  if (isTouchDevice.value || isNarrowScreen.value) {
-    return 'mini'
+function getPanelSize(mode: PanelMode): { width: number; height: number } {
+  if (mode === 'collapsed') {
+    return { width: 86, height: 58 }
   }
-  return 'collapsed'
+  return { width: isNarrowScreen.value ? 340 : 404, height: 108 }
+}
+
+function clampPanelYToViewport(nextY: number, mode: PanelMode): number {
+  const size = getPanelSize(mode)
+  const minY = Math.max(PANEL_GAP, NAV_SAFE_TOP)
+  const maxY = Math.max(minY, window.innerHeight - size.height - PANEL_GAP)
+  return Math.min(Math.max(nextY, minY), maxY)
 }
 
 function clampPanelPosition(nextX: number, nextY: number, mode: PanelMode): { x: number; y: number } {
   const size = getPanelSize(mode)
   const maxX = Math.max(PANEL_GAP, window.innerWidth - size.width - PANEL_GAP)
-  const maxY = Math.max(PANEL_GAP, window.innerHeight - size.height - PANEL_GAP)
   return {
     x: Math.min(Math.max(PANEL_GAP, nextX), maxX),
-    y: Math.min(Math.max(PANEL_GAP, nextY), maxY)
+    y: clampPanelYToViewport(nextY, mode)
   }
 }
 
@@ -184,12 +167,13 @@ function loadPanelPosition(mode: PanelMode): void {
 
   try {
     const parsed = JSON.parse(raw) as { x?: number; y?: number; side?: 'left' | 'right' }
+    const side = parsed.side === 'right' ? 'right' : 'left'
     const clamped = clampPanelPosition(Number(parsed.x ?? PANEL_GAP), Number(parsed.y ?? PANEL_GAP), mode)
-    position.value = {
-      x: clamped.x,
-      y: clamped.y,
-      side: parsed.side === 'right' ? 'right' : 'left'
-    }
+    const size = getPanelSize(mode)
+    const edgeX = side === 'right'
+      ? Math.max(PANEL_GAP, window.innerWidth - size.width - PANEL_GAP)
+      : PANEL_GAP
+    position.value = { x: edgeX, y: clamped.y, side }
   } catch {
     const size = getPanelSize(mode)
     const initialY = Math.max(PANEL_GAP, window.innerHeight - size.height - 92)
@@ -199,7 +183,11 @@ function loadPanelPosition(mode: PanelMode): void {
 
 function ensurePanelInViewport(): void {
   const clamped = clampPanelPosition(position.value.x, position.value.y, panelMode.value)
-  position.value = { ...position.value, x: clamped.x, y: clamped.y }
+  const size = getPanelSize(panelMode.value)
+  const edgeX = position.value.side === 'right'
+    ? Math.max(PANEL_GAP, window.innerWidth - size.width - PANEL_GAP)
+    : PANEL_GAP
+  position.value = { ...position.value, x: edgeX, y: clamped.y }
   savePanelPosition()
 }
 
@@ -219,89 +207,86 @@ function snapToHorizontalEdge(): void {
   savePanelPosition()
 }
 
-function pointerFromEvent(event: MouseEvent | TouchEvent): { x: number; y: number } | null {
-  if (event instanceof MouseEvent) {
-    return { x: event.clientX, y: event.clientY }
-  }
+function pointerFromMouse(event: MouseEvent): { x: number; y: number } {
+  return { x: event.clientX, y: event.clientY }
+}
+
+function pointerFromTouch(event: TouchEvent): { x: number; y: number } | null {
   const touch = event.touches?.[0] || event.changedTouches?.[0]
   if (!touch) return null
   return { x: touch.clientX, y: touch.clientY }
-}
-
-function shouldBlockDragStart(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false
-  return Boolean(target.closest('[data-control="true"]'))
-}
-
-function startPanelDrag(event: MouseEvent | TouchEvent): void {
-  if (!isVisible.value) return
-  if (shouldBlockDragStart(event.target)) return
-  const pointer = pointerFromEvent(event)
-  if (!pointer) return
-
-  isDraggingPanel = true
-  draggedInGesture = false
-  const rect = playerRef.value?.getBoundingClientRect()
-  panelPointerOffsetX = pointer.x - (rect?.left ?? position.value.x)
-  panelPointerOffsetY = pointer.y - (rect?.top ?? position.value.y)
-
-  clearCollapseTimer()
-
-  if (event instanceof MouseEvent) {
-    document.addEventListener('mousemove', onPanelDragMove)
-    document.addEventListener('mouseup', endPanelDrag)
-    return
-  }
-
-  document.addEventListener('touchmove', onPanelDragTouchMove, { passive: false })
-  document.addEventListener('touchend', endPanelDrag)
-}
-
-function onPanelDragMove(event: MouseEvent): void {
-  if (!isDraggingPanel) return
-  const nextX = event.clientX - panelPointerOffsetX
-  const nextY = event.clientY - panelPointerOffsetY
-  const clamped = clampPanelPosition(nextX, nextY, panelMode.value)
-  position.value = { ...position.value, x: clamped.x, y: clamped.y }
-  draggedInGesture = true
-}
-
-function onPanelDragTouchMove(event: TouchEvent): void {
-  if (!isDraggingPanel) return
-  const pointer = pointerFromEvent(event)
-  if (!pointer) return
-  event.preventDefault()
-  const nextX = pointer.x - panelPointerOffsetX
-  const nextY = pointer.y - panelPointerOffsetY
-  const clamped = clampPanelPosition(nextX, nextY, panelMode.value)
-  position.value = { ...position.value, x: clamped.x, y: clamped.y }
-  draggedInGesture = true
-}
-
-function endPanelDrag(): void {
-  document.removeEventListener('mousemove', onPanelDragMove)
-  document.removeEventListener('mouseup', endPanelDrag)
-  document.removeEventListener('touchmove', onPanelDragTouchMove)
-  document.removeEventListener('touchend', endPanelDrag)
-
-  if (!isDraggingPanel) return
-  isDraggingPanel = false
-
-  if (draggedInGesture) {
-    suppressClickUntil = Date.now() + 160
-    snapToHorizontalEdge()
-  }
-
-  draggedInGesture = false
-  scheduleCollapse()
 }
 
 function blockClickAfterDrag(): boolean {
   return Date.now() < suppressClickUntil
 }
 
-function resetCoverRotation(): void {
-  coverResetVersion.value += 1
+function loadVolumePreference(): void {
+  if (typeof window === 'undefined') return
+  const raw = window.localStorage.getItem(VOLUME_STORAGE_KEY)
+  const parsed = Number.parseInt(raw || '', 10)
+  if (!Number.isNaN(parsed)) {
+    volume.value = Math.max(0, Math.min(parsed, 100))
+  }
+  audioService.setVolume(volume.value)
+}
+
+function saveVolumePreference(): void {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(VOLUME_STORAGE_KEY, String(volume.value))
+}
+
+function setVolumeByDelta(delta: number): void {
+  if (delta === 0) return
+  const next = Math.max(0, Math.min(100, volume.value + delta))
+  if (next === volume.value) return
+  volume.value = next
+  audioService.setVolume(next)
+  saveVolumePreference()
+}
+
+function startRotationLoop(): void {
+  if (rotationRafId !== null) return
+  lastRotationTs = performance.now()
+
+  const tick = (now: number) => {
+    const deltaSec = Math.min(0.05, (now - lastRotationTs) / 1000)
+    lastRotationTs = now
+
+    const baseVelocity = currentSong.value.isPlaying ? ROTATE_BASE_DEG_PER_SEC : 0
+    const totalVelocity = baseVelocity + gestureSpinVelocity.value
+    coverAngle.value = (coverAngle.value + totalVelocity * deltaSec + 360) % 360
+
+    if (Math.abs(gestureSpinVelocity.value) > 0.01) {
+      gestureSpinVelocity.value *= Math.pow(ROTATE_GESTURE_DECAY, deltaSec * 60)
+    } else {
+      gestureSpinVelocity.value = 0
+    }
+
+    const shouldContinue = currentSong.value.isPlaying || Math.abs(gestureSpinVelocity.value) > 0.1
+    if (!shouldContinue) {
+      rotationRafId = null
+      return
+    }
+
+    rotationRafId = requestAnimationFrame(tick)
+  }
+
+  rotationRafId = requestAnimationFrame(tick)
+}
+
+function stopRotationLoop(): void {
+  if (rotationRafId === null) return
+  cancelAnimationFrame(rotationRafId)
+  rotationRafId = null
+}
+
+function syncRotationLoop(): void {
+  if (!currentSong.value.isPlaying && Math.abs(gestureSpinVelocity.value) <= 0.1) {
+    stopRotationLoop()
+    return
+  }
+  startRotationLoop()
 }
 
 function buildPlayableSongInfo(): AudioSongInfo {
@@ -338,11 +323,6 @@ function playbackRequestBySource(source: string | undefined) {
   }
 }
 
-function resolveSongId(rawId: string): string {
-  if (!rawId) return ''
-  return rawId.startsWith('netease-') ? rawId.slice('netease-'.length) : rawId
-}
-
 function updateLyricCursor(currentTimeSec: number): void {
   if (!lyricLines.value.length) {
     currentLyricIndex.value = -1
@@ -368,7 +348,7 @@ function updateLyricCursor(currentTimeSec: number): void {
 }
 
 async function loadLyricForCurrentSong(songId: string): Promise<void> {
-  const targetId = resolveSongId(songId)
+  const targetId = normalizeSongId(songId)
   lyricLines.value = []
   currentLyricIndex.value = -1
   if (!targetId) return
@@ -385,10 +365,19 @@ async function loadLyricForCurrentSong(songId: string): Promise<void> {
   }
 }
 
+function applySongInfo(info: SongInfo): void {
+  currentSong.value = { ...currentSong.value, ...info }
+  if (currentSong.value.duration > 0) {
+    currentSong.value.progress = (currentSong.value.currentTime / currentSong.value.duration) * 100
+  }
+  isVisible.value = true
+  syncRotationLoop()
+}
+
 async function playFromFlowState(state: MusicFlowState): Promise<void> {
   if (!state.current) {
     currentSong.value.isPlaying = false
-    resetCoverRotation()
+    syncRotationLoop()
     return
   }
 
@@ -417,6 +406,7 @@ async function playFromFlowState(state: MusicFlowState): Promise<void> {
     playbackRequestBySource(state.current.source)
   )
 
+  syncRotationLoop()
   await loadLyricForCurrentSong(nextAudioId)
 }
 
@@ -425,7 +415,6 @@ async function handleNextSong(): Promise<void> {
   try {
     const state = await playNextFromFlow()
     await playFromFlowState(state)
-    scheduleCollapse()
   } catch (error) {
     logError('GlobalMusicPlayer', '下一首失败', error)
   }
@@ -439,9 +428,10 @@ async function closePlayer(): Promise<void> {
     logError('GlobalMusicPlayer', '停止播放流失败', error)
   }
 
-  audioService.pause()
-  audioManager.pauseCurrent(currentSong.value.id)
-  audioManager.emit('player-closed', '')
+  const closedSongId = currentSong.value.id
+  audioService.reset()
+  audioManager.clearCurrentSession()
+  audioManager.emit('player-closed', closedSongId)
 
   isVisible.value = false
   currentSong.value = {
@@ -456,9 +446,9 @@ async function closePlayer(): Promise<void> {
   }
   lyricLines.value = []
   currentLyricIndex.value = -1
-  clearCollapseTimer()
+  gestureSpinVelocity.value = 0
   panelMode.value = defaultModeByDevice()
-  resetCoverRotation()
+  syncRotationLoop()
 }
 
 function togglePlay(): void {
@@ -466,7 +456,6 @@ function togglePlay(): void {
   if (currentSong.value.isPlaying) {
     audioService.pause()
     audioManager.pauseCurrent(currentSong.value.id)
-    clearCollapseTimer()
     return
   }
 
@@ -483,7 +472,8 @@ function togglePlay(): void {
     currentSong.value.currentTime,
     requestContext
   ).then(() => {
-    scheduleCollapse()
+    currentSong.value.isPlaying = true
+    syncRotationLoop()
   }).catch(error => {
     logError('GlobalMusicPlayer', '恢复播放失败', error)
   })
@@ -493,32 +483,289 @@ function expandPanel(): void {
   if (panelMode.value === 'expanded') return
   panelMode.value = 'expanded'
   nextTick(() => ensurePanelInViewport())
-  scheduleCollapse()
 }
 
 function collapsePanel(): void {
-  panelMode.value = isNarrowScreen.value ? 'mini' : 'collapsed'
+  panelMode.value = 'collapsed'
   nextTick(() => ensurePanelInViewport())
-  clearCollapseTimer()
 }
 
-function onExpandButton(): void {
-  if (blockClickAfterDrag()) return
-  if (panelMode.value !== 'expanded') {
-    expandPanel()
+function beginPanelDragFromPoint(point: { x: number; y: number }, source: 'mouse' | 'touch'): void {
+  isDraggingPanel = true
+  draggedInGesture = false
+
+  const rect = playerRef.value?.getBoundingClientRect()
+  panelPointerOffsetX = point.x - (rect?.left ?? position.value.x)
+  panelPointerOffsetY = point.y - (rect?.top ?? position.value.y)
+
+  if (source === 'mouse') {
+    document.addEventListener('mousemove', onPanelDragMouseMove)
+    document.addEventListener('mouseup', endPanelDrag)
     return
   }
-  collapsePanel()
+
+  document.addEventListener('touchmove', onPanelDragTouchMove, { passive: false })
+  document.addEventListener('touchend', endPanelDrag)
 }
 
-function onDetailEnter(): void {
-  isHoveringDetail.value = true
-  clearCollapseTimer()
+function onPanelDragMouseMove(event: MouseEvent): void {
+  if (!isDraggingPanel) return
+  const nextX = event.clientX - panelPointerOffsetX
+  const nextY = event.clientY - panelPointerOffsetY
+  const clamped = clampPanelPosition(nextX, nextY, panelMode.value)
+  position.value = { ...position.value, x: clamped.x, y: clamped.y }
+  draggedInGesture = true
 }
 
-function onDetailLeave(): void {
-  isHoveringDetail.value = false
-  scheduleCollapse()
+function onPanelDragTouchMove(event: TouchEvent): void {
+  if (!isDraggingPanel) return
+  const pointer = pointerFromTouch(event)
+  if (!pointer) return
+  event.preventDefault()
+  const nextX = pointer.x - panelPointerOffsetX
+  const nextY = pointer.y - panelPointerOffsetY
+  const clamped = clampPanelPosition(nextX, nextY, panelMode.value)
+  position.value = { ...position.value, x: clamped.x, y: clamped.y }
+  draggedInGesture = true
+}
+
+function endPanelDrag(): void {
+  document.removeEventListener('mousemove', onPanelDragMouseMove)
+  document.removeEventListener('mouseup', endPanelDrag)
+  document.removeEventListener('touchmove', onPanelDragTouchMove)
+  document.removeEventListener('touchend', endPanelDrag)
+
+  if (!isDraggingPanel) return
+  isDraggingPanel = false
+
+  if (draggedInGesture) {
+    suppressClickUntil = Date.now() + 160
+    snapToHorizontalEdge()
+  }
+
+  draggedInGesture = false
+}
+
+function clearPendingControlPressListeners(source: 'mouse' | 'touch'): void {
+  if (source === 'mouse') {
+    document.removeEventListener('mousemove', onControlPressMouseMove)
+    document.removeEventListener('mouseup', onControlPressMouseUp)
+    return
+  }
+  document.removeEventListener('touchmove', onControlPressTouchMove)
+  document.removeEventListener('touchend', onControlPressTouchEnd)
+}
+
+function resetPendingControlPress(): void {
+  if (!isPendingControlPress) return
+  clearPendingControlPressListeners(controlPressSource === 'none' ? 'mouse' : controlPressSource)
+  isPendingControlPress = false
+  controlPressSource = 'none'
+}
+
+function beginPendingControlPress(point: { x: number; y: number }, source: 'mouse' | 'touch'): void {
+  resetPendingControlPress()
+  isPendingControlPress = true
+  controlPressSource = source
+  controlPressMoved = false
+  controlPressPoint = point
+  controlLastPoint = point
+
+  if (source === 'mouse') {
+    document.addEventListener('mousemove', onControlPressMouseMove)
+    document.addEventListener('mouseup', onControlPressMouseUp)
+    return
+  }
+
+  document.addEventListener('touchmove', onControlPressTouchMove, { passive: false })
+  document.addEventListener('touchend', onControlPressTouchEnd)
+}
+
+function controlPressDistance(next: { x: number; y: number }): number {
+  const dx = next.x - controlPressPoint.x
+  const dy = next.y - controlPressPoint.y
+  return Math.hypot(dx, dy)
+}
+
+function onControlPressMouseMove(event: MouseEvent): void {
+  if (!isPendingControlPress) return
+  controlLastPoint = pointerFromMouse(event)
+  if (controlPressDistance(controlLastPoint) > DRAG_CANCEL_THRESHOLD) {
+    controlPressMoved = true
+    const source = controlPressSource === 'touch' ? 'touch' : 'mouse'
+    resetPendingControlPress()
+    beginPanelDragFromPoint(controlLastPoint, source)
+    onPanelDragMouseMove(event)
+  }
+}
+
+function onControlPressTouchMove(event: TouchEvent): void {
+  if (!isPendingControlPress) return
+  const point = pointerFromTouch(event)
+  if (!point) return
+  controlLastPoint = point
+  if (controlPressDistance(point) > DRAG_CANCEL_THRESHOLD) {
+    controlPressMoved = true
+    const source = controlPressSource === 'touch' ? 'touch' : 'mouse'
+    resetPendingControlPress()
+    beginPanelDragFromPoint(point, source)
+    onPanelDragTouchMove(event)
+  }
+  event.preventDefault()
+}
+
+function handleControlPressRelease(): void {
+  const moved = controlPressMoved
+  const pending = isPendingControlPress
+  resetPendingControlPress()
+
+  if (!pending) return
+  if (moved) {
+    suppressClickUntil = Date.now() + 120
+    return
+  }
+
+  if (!isExpanded.value) {
+    expandPanel()
+  }
+}
+
+function onControlPressMouseUp(): void {
+  handleControlPressRelease()
+}
+
+function onControlPressTouchEnd(): void {
+  handleControlPressRelease()
+}
+
+function onControlAreaMouseDown(event: MouseEvent): void {
+  if (!isVisible.value || blockClickAfterDrag()) return
+
+  if (isExpanded.value) {
+    return
+  }
+
+  beginPendingControlPress(pointerFromMouse(event), 'mouse')
+}
+
+function onControlAreaTouchStart(event: TouchEvent): void {
+  if (!isVisible.value || blockClickAfterDrag()) return
+  const point = pointerFromTouch(event)
+  if (!point) return
+
+  if (isExpanded.value) {
+    return
+  }
+
+  beginPendingControlPress(point, 'touch')
+}
+
+function clearCoverGestureListeners(source: 'mouse' | 'touch'): void {
+  if (source === 'mouse') {
+    document.removeEventListener('mousemove', onCoverMouseMove)
+    document.removeEventListener('mouseup', onCoverMouseUp)
+    return
+  }
+  document.removeEventListener('touchmove', onCoverTouchMove)
+  document.removeEventListener('touchend', onCoverTouchEnd)
+}
+
+function finishCoverGesture(source: 'mouse' | 'touch', shouldToggleWhenIdle = true): void {
+  clearCoverGestureListeners(source)
+  if (!isCoverGestureActive) return
+
+  const shouldToggle = shouldToggleWhenIdle && coverGestureMode === 'idle' && !blockClickAfterDrag()
+  isCoverGestureActive = false
+  coverGestureMode = 'idle'
+
+  if (shouldToggle) {
+    togglePlay()
+    return
+  }
+
+  suppressClickUntil = Date.now() + 140
+  syncRotationLoop()
+}
+
+function onCoverGestureMove(point: { x: number; y: number }, nowTs: number, preventTouchDefault: () => void): void {
+  if (!isCoverGestureActive) return
+
+  const deltaX = Math.abs(point.x - coverStartPoint.x)
+  const deltaY = Math.abs(point.y - coverStartPoint.y)
+
+  if (coverGestureMode === 'idle' && (deltaY > COVER_GESTURE_THRESHOLD || deltaX > DRAG_CANCEL_THRESHOLD)) {
+    coverGestureMode = 'volume'
+  }
+
+  if (coverGestureMode !== 'volume') {
+    coverLastPoint = point
+    coverLastTs = nowTs
+    return
+  }
+
+  preventTouchDefault()
+  const dy = coverLastPoint.y - point.y
+  const dtMs = Math.max(16, nowTs - coverLastTs)
+
+  if (dy !== 0) {
+    setVolumeByDelta(dy * VOLUME_SWIPE_GAIN)
+    const velocity = (dy / dtMs) * ROTATE_GESTURE_GAIN
+    gestureSpinVelocity.value += velocity
+    syncRotationLoop()
+  }
+
+  coverLastPoint = point
+  coverLastTs = nowTs
+}
+
+function onCoverMouseMove(event: MouseEvent): void {
+  onCoverGestureMove(pointerFromMouse(event), performance.now(), () => {})
+}
+
+function onCoverTouchMove(event: TouchEvent): void {
+  const point = pointerFromTouch(event)
+  if (!point) return
+  onCoverGestureMove(point, performance.now(), () => event.preventDefault())
+}
+
+function onCoverMouseUp(): void {
+  finishCoverGesture('mouse')
+}
+
+function onCoverTouchEnd(): void {
+  finishCoverGesture('touch')
+}
+
+function onCoverMouseDown(event: MouseEvent): void {
+  if (!currentSong.value.id) return
+  if (blockClickAfterDrag()) return
+
+  isCoverGestureActive = true
+  coverGestureMode = 'idle'
+  const point = pointerFromMouse(event)
+  coverStartPoint = point
+  coverLastPoint = point
+  coverLastTs = performance.now()
+
+  document.addEventListener('mousemove', onCoverMouseMove)
+  document.addEventListener('mouseup', onCoverMouseUp)
+}
+
+function onCoverTouchStart(event: TouchEvent): void {
+  if (!currentSong.value.id) return
+  if (blockClickAfterDrag()) return
+
+  const point = pointerFromTouch(event)
+  if (!point) return
+
+  isCoverGestureActive = true
+  coverGestureMode = 'idle'
+  coverStartPoint = point
+  coverLastPoint = point
+  coverLastTs = performance.now()
+
+  document.addEventListener('touchmove', onCoverTouchMove, { passive: false })
+  document.addEventListener('touchend', onCoverTouchEnd)
 }
 
 function setProgress(event: MouseEvent): void {
@@ -576,21 +823,15 @@ function setupEventListeners(): void {
       try {
         const incoming = JSON.parse(data) as SongInfo
         const changedSong = incoming.id && incoming.id !== currentSong.value.id
-        currentSong.value = { ...currentSong.value, ...incoming }
+        applySongInfo(incoming)
 
         if (!incoming.id) return
         if (changedSong) {
-          resetCoverRotation()
           void loadLyricForCurrentSong(incoming.id)
-          isVisible.value = true
           if (panelMode.value !== 'expanded') {
             panelMode.value = defaultModeByDevice()
           }
           nextTick(() => ensurePanelInViewport())
-        }
-
-        if (incoming.isPlaying) {
-          scheduleCollapse()
         }
       } catch (error) {
         logError('GlobalMusicPlayer', '解析歌曲信息失败', error)
@@ -624,14 +865,8 @@ function setupEventListeners(): void {
     audioManager.on('play-state-change', data => {
       const [id, state] = data.split(':')
       if (!id || id !== currentSong.value.id) return
-      const isPlaying = state === 'true'
-      currentSong.value.isPlaying = isPlaying
-      if (isPlaying) {
-        isVisible.value = true
-        scheduleCollapse()
-        return
-      }
-      clearCollapseTimer()
+      currentSong.value.isPlaying = state === 'true'
+      syncRotationLoop()
     })
   )
 
@@ -639,8 +874,7 @@ function setupEventListeners(): void {
     audioManager.on('song-ended', id => {
       if (!id || id !== currentSong.value.id) return
       currentSong.value.isPlaying = false
-      clearCollapseTimer()
-      resetCoverRotation()
+      syncRotationLoop()
       void handleNextSong()
     })
   )
@@ -648,11 +882,9 @@ function setupEventListeners(): void {
   unsubscribers.push(
     audioManager.on('current-audio-changed', id => {
       if (!id || id === currentSong.value.id) return
-      resetCoverRotation()
       const info = audioManager.getCurrentSongInfo()
       if (!info) return
-      currentSong.value = info
-      isVisible.value = true
+      applySongInfo(info)
       if (panelMode.value !== 'expanded') {
         panelMode.value = defaultModeByDevice()
       }
@@ -666,12 +898,25 @@ function syncWithStoredSong(): void {
   const songInfo = audioManager.getCurrentSongInfo()
   if (!songInfo || !songInfo.id) {
     isVisible.value = false
+    syncRotationLoop()
     return
   }
-  currentSong.value = songInfo
+
+  const status = audioService.getPlayingStatus()
+  const isSameAudio = status.audioId === songInfo.id
+  currentSong.value = {
+    ...songInfo,
+    isPlaying: isSameAudio ? status.isPlaying : false,
+    currentTime: isSameAudio ? status.currentTime : songInfo.currentTime,
+    duration: isSameAudio && status.duration > 0 ? status.duration : songInfo.duration
+  }
+  currentSong.value.progress = currentSong.value.duration > 0
+    ? (currentSong.value.currentTime / currentSong.value.duration) * 100
+    : 0
+
   isVisible.value = true
   void loadLyricForCurrentSong(songInfo.id)
-  scheduleCollapse()
+  syncRotationLoop()
 }
 
 watch(panelMode, () => {
@@ -688,15 +933,9 @@ onMounted(() => {
 
   const onResize = () => {
     detectDeviceState()
-    if (isTouchDevice.value && panelMode.value === 'collapsed') {
-      panelMode.value = 'mini'
-    }
-    if (!isTouchDevice.value && !isNarrowScreen.value && panelMode.value === 'mini') {
-      panelMode.value = 'collapsed'
-    }
-    clearDragTimer()
-    dragTimer = setTimeout(() => {
-      dragTimer = null
+    clearResizeTimer()
+    resizeTimer = setTimeout(() => {
+      resizeTimer = null
       ensurePanelInViewport()
     }, 80)
   }
@@ -706,10 +945,13 @@ onMounted(() => {
 
 onUnmounted(() => {
   unsubscribers.forEach(unsubscribe => unsubscribe())
-  clearCollapseTimer()
-  clearDragTimer()
+  clearResizeTimer()
   stopProgressDrag()
+  resetPendingControlPress()
   endPanelDrag()
+  finishCoverGesture('mouse', false)
+  finishCoverGesture('touch', false)
+  stopRotationLoop()
   if (resizeHandler) {
     window.removeEventListener('resize', resizeHandler)
   }
@@ -722,22 +964,34 @@ onUnmounted(() => {
       v-if="isVisible"
       ref="playerRef"
       class="global-music-player"
-      :class="[`mode-${panelMode}`, { 'is-touch': isTouchDevice }]"
+      :class="[`mode-${panelMode}`, { 'is-touch': isTouchDevice, 'is-dragging-panel': isDraggingPanel }]"
       :style="panelStyle"
-      @mousedown="startPanelDrag"
-      @touchstart="startPanelDrag"
     >
-      <div v-if="showCover" class="cover-section">
-        <button class="cover-button" type="button" data-control="true" @click="togglePlay" :aria-label="currentSong.isPlaying ? '暂停' : '播放'">
-          <div class="rotating-cover" :class="{ 'is-playing': currentSong.isPlaying }" :key="`cover-${coverResetVersion}`">
-            <img v-if="currentSong.cover" :src="currentSong.cover" :alt="currentSong.name" class="cover-image" />
-            <div v-else class="cover-placeholder">♪</div>
+      <div class="cover-section">
+        <button
+          class="cover-button"
+          type="button"
+          draggable="false"
+          data-control-area="true"
+          :aria-label="currentSong.isPlaying ? '暂停' : '播放'"
+          @mousedown="onCoverMouseDown"
+          @touchstart="onCoverTouchStart"
+        >
+          <div class="cover-rotation-layer" :style="coverTransformStyle">
+            <div class="rotating-cover" :class="{ 'is-playing': currentSong.isPlaying }">
+              <img v-if="currentSong.cover" :src="currentSong.cover" :alt="currentSong.name" class="cover-image" draggable="false" />
+              <div v-else class="cover-placeholder">♪</div>
+            </div>
           </div>
-          <div v-if="!currentSong.isPlaying" class="cover-overlay">▶</div>
+          <div v-if="!currentSong.isPlaying" class="cover-overlay">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <polygon points="7,5 19,12 7,19" />
+            </svg>
+          </div>
         </button>
       </div>
 
-      <div v-if="isExpanded" class="detail-panel" @mouseenter="onDetailEnter" @mouseleave="onDetailLeave">
+      <div v-if="isExpanded" class="detail-panel">
         <div class="header-row">
           <div class="title-wrap">
             <div class="song-name">{{ currentSong.name || '未知歌曲' }}</div>
@@ -752,7 +1006,7 @@ onUnmounted(() => {
         <div
           class="progress-container lc-progress-root"
           :class="{ 'is-dragging': isDraggingProgress }"
-          data-control="true"
+          data-control-area="true"
           @click="setProgress"
           @mousedown="startProgressDrag"
           @touchstart="startProgressDrag"
@@ -762,38 +1016,51 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <div class="lyric-row" data-control="true">
+        <div class="lyric-row" data-control-area="true">
           <div class="lyric-current">{{ currentLyric || '暂无歌词' }}</div>
           <div class="lyric-next" v-if="nextLyric">{{ nextLyric }}</div>
         </div>
-
-        <div class="action-row" data-control="true">
-          <button class="icon-btn" type="button" @click="togglePlay" :aria-label="currentSong.isPlaying ? '暂停' : '播放'">
-            {{ currentSong.isPlaying ? '⏸' : '▶' }}
-          </button>
-          <button class="icon-btn" type="button" @click="handleNextSong" aria-label="下一首">⏭</button>
-          <div class="volume-box">
-            <span class="volume-label">🔊</span>
-            <input
-              class="volume-range"
-              type="range"
-              min="0"
-              max="100"
-              step="1"
-              :value="volume"
-              @input="onVolumeInput"
-            />
-          </div>
-        </div>
       </div>
 
-      <div class="side-controls" :class="{ expanded: isExpanded }">
-        <button class="icon-btn" type="button" data-control="true" @click="onExpandButton" :aria-label="isExpanded ? '收起面板' : '展开面板'">
-          {{ isExpanded ? '<' : '>' }}
-        </button>
-        <button v-if="showCloseButton" class="icon-btn close" type="button" data-control="true" @click="closePlayer" aria-label="停止并清空">
-          ×
-        </button>
+      <div
+        class="side-controls"
+        :class="{ expanded: isExpanded, collapsed: !isExpanded }"
+        data-control-rail="true"
+        @mousedown="onControlAreaMouseDown"
+        @touchstart="onControlAreaTouchStart"
+      >
+        <template v-if="isExpanded">
+          <button class="rail-btn" type="button" data-control-btn="true" @click="closePlayer" aria-label="停止并清空">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+          <button class="rail-btn" type="button" data-control-btn="true" @click="collapsePanel" aria-label="收起面板">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M15 6l-6 6 6 6" />
+            </svg>
+          </button>
+          <button class="rail-btn" type="button" data-control-btn="true" @click="handleNextSong" aria-label="下一首">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <polygon points="5 4 15 12 5 20 5 4"></polygon>
+              <line x1="19" y1="5" x2="19" y2="19"></line>
+            </svg>
+          </button>
+        </template>
+
+        <div
+          v-else
+          class="collapsed-expand"
+          aria-label="展开面板"
+          role="button"
+          tabindex="0"
+          @keydown.enter.prevent="expandPanel"
+          @keydown.space.prevent="expandPanel"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 6l6 6-6 6" />
+          </svg>
+        </div>
       </div>
     </div>
   </Transition>
@@ -805,46 +1072,50 @@ onUnmounted(() => {
   z-index: 120;
   display: flex;
   align-items: stretch;
-  height: 64px;
+  height: 58px;
   background-color: var(--vp-c-bg-soft);
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 8px;
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.22);
+  border: 0;
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   overflow: hidden;
   transition: width var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
     height var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
-    opacity var(--lc-motion-duration-fast) var(--lc-motion-ease-out);
-}
-
-.global-music-player.mode-mini {
-  width: 40px;
+    opacity var(--lc-motion-duration-fast) var(--lc-motion-ease-out),
+    transform var(--lc-motion-duration-fast) var(--lc-motion-ease-out);
 }
 
 .global-music-player.mode-collapsed {
-  width: 98px;
+  width: 86px;
 }
 
 .global-music-player.mode-expanded {
-  width: 382px;
-  height: 118px;
+  width: 404px;
+  height: 108px;
 }
 
 .global-music-player.mode-expanded.is-touch {
-  width: min(92vw, 362px);
+  width: min(92vw, 340px);
 }
 
 .cover-section {
-  width: 64px;
-  height: 64px;
-  flex-shrink: 0;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+}
+
+.global-music-player.mode-collapsed .cover-section,
+.global-music-player.mode-expanded .cover-section {
+  width: 58px;
+}
+
+.global-music-player.mode-expanded .cover-section {
+  width: 86px;
 }
 
 .cover-button {
-  width: 50px;
-  height: 50px;
   border: none;
   padding: 0;
   border-radius: 50%;
@@ -852,6 +1123,55 @@ onUnmounted(() => {
   overflow: hidden;
   cursor: pointer;
   background: transparent;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16);
+  user-select: none;
+  -webkit-user-drag: none;
+  touch-action: none;
+  transition: width var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
+    height var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
+    box-shadow var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
+}
+
+.cover-button::before,
+.cover-button::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.cover-button::before {
+  width: 25%;
+  height: 25%;
+  background: color-mix(in srgb, var(--vp-c-bg) 90%, transparent);
+}
+
+.cover-button::after {
+  width: 11%;
+  height: 11%;
+  background: color-mix(in srgb, var(--vp-c-bg) 92%, var(--vp-c-text-1));
+}
+
+.global-music-player.mode-collapsed .cover-button,
+.global-music-player.mode-expanded .cover-button {
+  width: 44px;
+  height: 44px;
+}
+
+.global-music-player.mode-expanded .cover-button {
+  width: 74px;
+  height: 74px;
+}
+
+.cover-rotation-layer {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
 }
 
 .rotating-cover {
@@ -859,23 +1179,14 @@ onUnmounted(() => {
   height: 100%;
   border-radius: 50%;
   overflow: hidden;
-  animation: disc-spin 8s linear infinite;
-  animation-play-state: paused;
-}
-
-.rotating-cover.is-playing {
-  animation-play-state: running;
-}
-
-@keyframes disc-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 
 .cover-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .cover-placeholder {
@@ -893,43 +1204,51 @@ onUnmounted(() => {
   inset: 0;
   display: grid;
   place-items: center;
+  z-index: 3;
   color: #fff;
-  background: rgba(0, 0, 0, 0.34);
-  font-size: 16px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.cover-overlay svg {
+  width: 16px;
+  height: 16px;
+  fill: #fff;
 }
 
 .detail-panel {
   flex: 1;
   min-width: 0;
-  padding: 8px 10px;
+  padding: 8px 10px 7px 6px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
+  animation: panel-slide-in var(--lc-motion-duration-normal) var(--lc-motion-ease-out);
 }
 
 .header-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
 }
 
 .title-wrap {
   min-width: 0;
-  flex: 1;
+  flex: 1 1 auto;
 }
 
 .song-name {
-  font-size: 0.88rem;
+  font-size: 0.83rem;
   color: var(--vp-c-text-1);
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .song-artist {
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   color: var(--vp-c-text-2);
   white-space: nowrap;
   overflow: hidden;
@@ -937,11 +1256,11 @@ onUnmounted(() => {
 }
 
 .time-readout {
-  flex-shrink: 0;
-  min-width: 108px;
+  flex: 0 0 auto;
+  min-width: 72px;
   text-align: right;
   white-space: nowrap;
-  font-size: 0.76rem;
+  font-size: 0.72rem;
   font-variant-numeric: tabular-nums;
 }
 
@@ -954,7 +1273,7 @@ onUnmounted(() => {
 }
 
 .progress-container {
-  height: 16px;
+  height: 12px;
   display: flex;
   align-items: center;
 }
@@ -973,7 +1292,7 @@ onUnmounted(() => {
 }
 
 .lyric-current {
-  font-size: 0.76rem;
+  font-size: 0.72rem;
   color: var(--vp-c-text-1);
   white-space: nowrap;
   overflow: hidden;
@@ -981,131 +1300,131 @@ onUnmounted(() => {
 }
 
 .lyric-next {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   color: var(--vp-c-text-3);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.action-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.side-controls {
+  flex-shrink: 0;
+  border-left: 1px solid color-mix(in srgb, var(--vp-c-divider) 70%, transparent);
+  background-color: color-mix(in srgb, var(--vp-c-bg-soft) 86%, var(--vp-c-bg-alt));
+  touch-action: none;
+  user-select: none;
 }
 
-.side-controls {
-  width: 34px;
-  flex-shrink: 0;
-  border-left: 1px solid var(--vp-c-divider);
-  background-color: var(--vp-c-bg-alt);
+.side-controls.collapsed {
+  width: 28px;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
   align-items: center;
-  gap: 6px;
-  padding: 4px 0;
+  justify-content: center;
+  cursor: default;
 }
 
 .side-controls.expanded {
-  justify-content: flex-start;
-  padding-top: 6px;
+  width: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: stretch;
+  cursor: default;
 }
 
-.icon-btn {
-  width: 24px;
-  height: 24px;
+.global-music-player.is-dragging-panel .side-controls.collapsed {
+  cursor: default;
+}
+
+.collapsed-expand {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--vp-c-text-2);
+  transition: color var(--lc-motion-duration-fast) var(--lc-motion-ease-standard),
+    background-color var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
+}
+
+.collapsed-expand svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.side-controls.collapsed:hover .collapsed-expand {
+  color: var(--vp-c-text-1);
+  background-color: color-mix(in srgb, var(--vp-c-bg-mute) 55%, transparent);
+}
+
+.rail-btn {
+  flex: 1;
+  width: 100%;
   border: none;
-  border-radius: 4px;
+  padding: 0;
+  margin: 0;
   background: transparent;
   color: var(--vp-c-text-2);
   cursor: pointer;
-  display: grid;
-  place-items: center;
-  font-size: 13px;
-  transition: background-color var(--lc-motion-duration-fast) var(--lc-motion-ease-standard),
-    color var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
-}
-
-.icon-btn:hover {
-  background: var(--vp-c-bg-mute);
-  color: var(--vp-c-text-1);
-}
-
-.icon-btn.close {
-  font-size: 18px;
-  line-height: 1;
-}
-
-.volume-box {
-  flex: 1;
   display: flex;
   align-items: center;
-  gap: 6px;
-  min-width: 0;
+  justify-content: center;
+  transition: color var(--lc-motion-duration-fast) var(--lc-motion-ease-standard),
+    background-color var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
 }
 
-.volume-label {
-  color: var(--vp-c-text-2);
-  font-size: 12px;
+.rail-btn + .rail-btn {
+  border-top: none;
 }
 
-.volume-range {
-  flex: 1;
-  height: 4px;
-  margin: 0;
-  background: transparent;
-  appearance: none;
+.rail-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-.volume-range:focus {
-  outline: none;
-}
-
-.volume-range::-webkit-slider-runnable-track {
-  height: 4px;
-  border-radius: 2px;
-  background: var(--vp-c-divider);
-}
-
-.volume-range::-webkit-slider-thumb {
-  appearance: none;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  margin-top: -3px;
-  background: var(--vp-c-brand);
-}
-
-.volume-range::-moz-range-track {
-  height: 4px;
-  border-radius: 2px;
-  background: var(--vp-c-divider);
-}
-
-.volume-range::-moz-range-thumb {
-  width: 10px;
-  height: 10px;
-  border: none;
-  border-radius: 50%;
-  background: var(--vp-c-brand);
+.rail-btn:hover {
+  color: var(--vp-c-text-1);
+  background-color: color-mix(in srgb, var(--vp-c-bg-mute) 55%, transparent);
 }
 
 .slide-fade-enter-active,
 .slide-fade-leave-active {
   transition: opacity var(--lc-motion-duration-fast) var(--lc-motion-ease-standard),
-    transform var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
+    transform var(--lc-motion-duration-fast) var(--lc-motion-ease-standard),
+    width var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis);
 }
 
 .slide-fade-enter-from,
 .slide-fade-leave-to {
   opacity: 0;
-  transform: translateX(-12px);
+  transform: translateX(-20px);
+}
+
+@keyframes panel-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @media (max-width: 768px) {
   .global-music-player.mode-expanded {
-    width: min(92vw, 362px);
+    width: min(92vw, 340px);
+    height: 108px;
   }
 }
 </style>
