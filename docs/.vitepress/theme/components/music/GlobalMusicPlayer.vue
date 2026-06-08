@@ -13,6 +13,7 @@ import {
   fetchTrackLyric,
   formatAudioTime,
   playNextFromFlow,
+  startRandomFlow,
   stopFlow,
   type AudioSongInfo,
   type MusicFlowState,
@@ -28,7 +29,7 @@ const DRAG_CANCEL_THRESHOLD = 8
 const COVER_GESTURE_THRESHOLD = 6
 const NAV_SAFE_TOP = 65
 const DEFAULT_VOLUME = 50
-const LYRIC_LEAD_MS = 1000
+const LYRIC_DELAY_MS = -500
 const VOLUME_STORAGE_KEY = 'lycan:global-player-volume'
 const POSITION_STORAGE_KEY = 'lycan:global-player-position'
 const RESUME_STORAGE_KEY = 'lycan:global-player-resume-snapshot'
@@ -43,7 +44,7 @@ const ROTATE_GESTURE_DECAY = 0.92
 const ROTATE_GESTURE_GAIN = 120
 const VOLUME_SWIPE_GAIN = 0.32
 
-type PanelMode = 'collapsed' | 'expanded'
+type PanelMode = 'immersive' | 'collapsed' | 'expanded'
 type PlayerSide = 'left' | 'right'
 
 interface ResumeSnapshot {
@@ -66,6 +67,7 @@ const isNarrowScreen = ref(false)
 const isVisible = ref(false)
 const panelMode = ref<PanelMode>('collapsed')
 const isDraggingProgress = ref(false)
+const isPanelDragging = ref(false)
 const isSnapping = ref(false)
 const lyricLines = ref<MusicLyricLine[]>([])
 const currentLyricIndex = ref(-1)
@@ -92,6 +94,8 @@ let resizeHandler: (() => void) | null = null
 let snapTimer: ReturnType<typeof setTimeout> | null = null
 let resumeSaveTimer = 0
 let pageHideHandler: (() => void) | null = null
+let beforeUnloadHandler: (() => void) | null = null
+let visibilityChangeHandler: (() => void) | null = null
 let scrollHandler: (() => void) | null = null
 let scrollRafId: number | null = null
 let lastScrollY = 0
@@ -118,6 +122,7 @@ let rotationRafId: number | null = null
 let lastRotationTs = 0
 
 const isExpanded = computed(() => panelMode.value === 'expanded')
+const isImmersive = computed(() => panelMode.value === 'immersive')
 const formattedCurrentTime = computed(() => formatAudioTime(currentSong.value.currentTime))
 const formattedDuration = computed(() => formatAudioTime(currentSong.value.duration))
 const currentLyric = computed(() => {
@@ -162,7 +167,14 @@ function defaultModeByDevice(): PanelMode {
   return 'collapsed'
 }
 
+function getViewportWidth(): number {
+  return window.innerWidth
+}
+
 function getPanelSize(mode: PanelMode): { width: number; height: number } {
+  if (mode === 'immersive') {
+    return { width: 24, height: 58 }
+  }
   if (mode === 'collapsed') {
     return { width: 82, height: 58 }
   }
@@ -178,7 +190,7 @@ function clampPanelYToViewport(nextY: number, mode: PanelMode): number {
 
 function clampPanelPosition(nextX: number, nextY: number, mode: PanelMode): { x: number; y: number } {
   const size = getPanelSize(mode)
-  const maxX = Math.max(PANEL_GAP, window.innerWidth - size.width - PANEL_GAP)
+  const maxX = Math.max(PANEL_GAP, getViewportWidth() - size.width - PANEL_GAP)
   return {
     x: Math.min(Math.max(PANEL_GAP, nextX), maxX),
     y: clampPanelYToViewport(nextY, mode)
@@ -187,7 +199,10 @@ function clampPanelPosition(nextX: number, nextY: number, mode: PanelMode): { x:
 
 function savePanelPosition(): void {
   if (typeof window === 'undefined') return
-  window.localStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify(position.value))
+  window.localStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify({
+    y: position.value.y,
+    side: position.value.side
+  }))
 }
 
 function clearSnapTimer(): void {
@@ -221,7 +236,7 @@ function loadPanelPosition(mode: PanelMode): void {
     const clamped = clampPanelPosition(Number(parsed.x ?? PANEL_GAP), Number(parsed.y ?? PANEL_GAP), mode)
     const size = getPanelSize(mode)
     const edgeX = side === 'right'
-      ? Math.max(PANEL_GAP, window.innerWidth - size.width - PANEL_GAP)
+      ? Math.max(PANEL_GAP, getViewportWidth() - size.width - PANEL_GAP)
       : PANEL_GAP
     position.value = { x: edgeX, y: clamped.y, side }
   } catch {
@@ -235,7 +250,7 @@ function ensurePanelInViewport(animate = true): void {
   const clamped = clampPanelPosition(position.value.x, position.value.y, panelMode.value)
   const size = getPanelSize(panelMode.value)
   const edgeX = position.value.side === 'right'
-    ? Math.max(PANEL_GAP, window.innerWidth - size.width - PANEL_GAP)
+    ? Math.max(PANEL_GAP, getViewportWidth() - size.width - PANEL_GAP)
     : PANEL_GAP
   if (animate) animatePanelSnap()
   position.value = { ...position.value, x: edgeX, y: clamped.y }
@@ -245,9 +260,10 @@ function ensurePanelInViewport(animate = true): void {
 function snapToHorizontalEdge(): void {
   const size = getPanelSize(panelMode.value)
   const centerX = position.value.x + size.width / 2
-  const snapRight = centerX > window.innerWidth / 2
+  const viewportWidth = getViewportWidth()
+  const snapRight = centerX > viewportWidth / 2
   const targetX = snapRight
-    ? Math.max(PANEL_GAP, window.innerWidth - size.width - PANEL_GAP)
+    ? Math.max(PANEL_GAP, viewportWidth - size.width - PANEL_GAP)
     : PANEL_GAP
   const clamped = clampPanelPosition(targetX, position.value.y, panelMode.value)
   animatePanelSnap()
@@ -375,6 +391,14 @@ function playbackRequestBySource(source: string | undefined) {
       resumeInterrupted: false
     }
   }
+  if (source === 'interrupt-single') {
+    return {
+      source: 'interrupt-single',
+      priority: 3,
+      allowInterrupt: true,
+      resumeInterrupted: false
+    }
+  }
   return {
     source: source || 'global-player',
     priority: 3,
@@ -389,7 +413,7 @@ function updateLyricCursor(currentTimeSec: number): void {
     return
   }
 
-  const currentMs = Math.max(0, Math.floor(currentTimeSec * 1000) + LYRIC_LEAD_MS)
+  const currentMs = Math.max(0, Math.floor(currentTimeSec * 1000) - LYRIC_DELAY_MS)
   let left = 0
   let right = lyricLines.value.length - 1
   let index = -1
@@ -495,6 +519,8 @@ async function restoreResumeSnapshot(): Promise<boolean> {
   }
 
   playableSongInfo.value = snapshot.songInfo
+  volume.value = Math.max(0, Math.min(Number(snapshot.volume) || DEFAULT_VOLUME, 100))
+  audioService.setVolume(volume.value)
   shouldFadeOnNextPlay.value = true
   currentSong.value = {
     id: snapshot.audioId,
@@ -582,7 +608,7 @@ async function playFromFlowState(state: MusicFlowState): Promise<void> {
     nextAudioId,
     playableSongInfo.value,
     0,
-    playbackRequestBySource(state.current.source)
+    playbackRequestBySource(state.mode === 'interrupt-single' ? 'interrupt-single' : state.current.source)
   )
 
   syncRotationLoop()
@@ -592,7 +618,13 @@ async function playFromFlowState(state: MusicFlowState): Promise<void> {
 async function handleNextSong(): Promise<void> {
   if (blockClickAfterDrag()) return
   try {
-    const state = await playNextFromFlow()
+    const source = audioManager.getCurrentRequest()?.source
+    const isFlowSource = source === 'home-random' || source === 'about-ranking' || source === 'interrupt-single'
+    if (!isFlowSource || source === 'interrupt-single') {
+      audioService.pause()
+      audioManager.pauseCurrent(currentSong.value.id)
+    }
+    const state = isFlowSource ? await playNextFromFlow() : await startRandomFlow()
     await playFromFlowState(state)
   } catch (error) {
     logError('GlobalMusicPlayer', '下一首失败', error)
@@ -635,7 +667,9 @@ async function closePlayer(): Promise<void> {
 
 function togglePlay(): void {
   if (blockClickAfterDrag() || !currentSong.value.id) return
-  if (currentSong.value.isPlaying) {
+  const status = audioService.getPlayingStatus()
+  const isActiveAudio = status.audioId === currentSong.value.id
+  if (currentSong.value.isPlaying || (isActiveAudio && status.isPlaying)) {
     audioService.pause()
     audioManager.pauseCurrent(currentSong.value.id)
     return
@@ -650,8 +684,8 @@ function togglePlay(): void {
 
   void audioService.play(
     currentSong.value.id,
-    buildPlayableSongInfo(),
-    currentSong.value.currentTime,
+    isActiveAudio && status.songInfo?.url ? status.songInfo : buildPlayableSongInfo(),
+    isActiveAudio ? status.currentTime : currentSong.value.currentTime,
     requestContext,
     shouldFadeOnNextPlay.value ? { fadeInMs: RESUME_FADE_IN_MS, retryOnNotAllowed: false } : undefined
   ).then(() => {
@@ -671,6 +705,12 @@ function expandPanel(): void {
 
 function collapsePanel(): void {
   panelMode.value = 'collapsed'
+  nextTick(() => ensurePanelInViewport())
+}
+
+function enterImmersiveMode(): void {
+  if (panelMode.value === 'immersive') return
+  panelMode.value = 'immersive'
   nextTick(() => ensurePanelInViewport())
 }
 
@@ -695,10 +735,10 @@ function handleReadingScroll(): void {
     downwardScrollDistance = 0
   }
 
-  if (downwardScrollDistance < READ_SCROLL_DELTA || !isVisible.value || panelMode.value !== 'expanded') return
+  if (downwardScrollDistance < READ_SCROLL_DELTA || !isVisible.value || panelMode.value === 'immersive') return
   if (!isReadableArticlePath() || !shouldUseImmersiveCollapse()) return
   downwardScrollDistance = 0
-  collapsePanel()
+  enterImmersiveMode()
 }
 
 function onWindowScroll(): void {
@@ -708,6 +748,7 @@ function onWindowScroll(): void {
 
 function beginPanelDragFromPoint(point: { x: number; y: number }, source: 'mouse' | 'touch'): void {
   isDraggingPanel = true
+  isPanelDragging.value = true
   draggedInGesture = false
 
   const rect = playerRef.value?.getBoundingClientRect()
@@ -753,6 +794,7 @@ function endPanelDrag(): void {
 
   if (!isDraggingPanel) return
   isDraggingPanel = false
+  isPanelDragging.value = false
 
   if (draggedInGesture) {
     suppressClickUntil = Date.now() + 160
@@ -1044,7 +1086,7 @@ function setupEventListeners(): void {
         if (!incoming.id) return
         if (changedSong) {
           void loadLyricForCurrentSong(incoming.id)
-          if (panelMode.value !== 'expanded') {
+          if (panelMode.value !== 'expanded' && panelMode.value !== 'immersive') {
             panelMode.value = defaultModeByDevice()
           }
           nextTick(() => ensurePanelInViewport())
@@ -1105,7 +1147,7 @@ function setupEventListeners(): void {
       const info = audioManager.getCurrentSongInfo()
       if (!info) return
       applySongInfo(info)
-      if (panelMode.value !== 'expanded') {
+      if (panelMode.value !== 'expanded' && panelMode.value !== 'immersive') {
         panelMode.value = defaultModeByDevice()
       }
       void loadLyricForCurrentSong(info.id)
@@ -1179,6 +1221,14 @@ onMounted(() => {
 
   pageHideHandler = () => saveResumeSnapshot(true)
   window.addEventListener('pagehide', pageHideHandler)
+  beforeUnloadHandler = () => saveResumeSnapshot(true)
+  window.addEventListener('beforeunload', beforeUnloadHandler)
+  visibilityChangeHandler = () => {
+    if (document.visibilityState === 'hidden') {
+      saveResumeSnapshot(true)
+    }
+  }
+  document.addEventListener('visibilitychange', visibilityChangeHandler)
 })
 
 onUnmounted(() => {
@@ -1204,6 +1254,12 @@ onUnmounted(() => {
   if (pageHideHandler) {
     window.removeEventListener('pagehide', pageHideHandler)
   }
+  if (beforeUnloadHandler) {
+    window.removeEventListener('beforeunload', beforeUnloadHandler)
+  }
+  if (visibilityChangeHandler) {
+    document.removeEventListener('visibilitychange', visibilityChangeHandler)
+  }
 })
 </script>
 
@@ -1218,13 +1274,13 @@ onUnmounted(() => {
         `side-${position.side}`,
         {
           'is-touch': isTouchDevice,
-          'is-dragging-panel': isDraggingPanel,
+          'is-dragging-panel': isPanelDragging,
           'is-snapping': isSnapping
         }
       ]"
       :style="panelStyle"
     >
-      <div class="cover-section">
+      <div v-if="!isImmersive" class="cover-section">
         <button
           class="cover-button"
           type="button"
@@ -1281,7 +1337,7 @@ onUnmounted(() => {
 
       <div
         class="side-controls"
-        :class="{ expanded: isExpanded, collapsed: !isExpanded }"
+        :class="{ expanded: isExpanded, immersive: isImmersive, collapsed: !isExpanded && !isImmersive }"
         data-control-rail="true"
         @mousedown="onControlAreaMouseDown"
         @touchstart="onControlAreaTouchStart"
@@ -1326,7 +1382,7 @@ onUnmounted(() => {
 <style scoped>
 .global-music-player {
   position: fixed;
-  z-index: 120;
+  z-index: 999;
   display: flex;
   align-items: stretch;
   height: 58px;
@@ -1344,6 +1400,7 @@ onUnmounted(() => {
 
 .global-music-player.is-snapping {
   transition: left var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
+    right var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
     top var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
     width var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
     height var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
@@ -1354,6 +1411,20 @@ onUnmounted(() => {
 .global-music-player.side-right {
   flex-direction: row-reverse;
   border-radius: 8px 0 0 8px;
+}
+
+.global-music-player.side-left:not(.is-dragging-panel) {
+  left: 0 !important;
+  right: auto;
+}
+
+.global-music-player.side-right:not(.is-dragging-panel) {
+  left: auto !important;
+  right: 0;
+}
+
+.global-music-player.mode-immersive {
+  width: 24px;
 }
 
 .global-music-player.mode-collapsed {
@@ -1594,7 +1665,8 @@ onUnmounted(() => {
   border-left: 0;
 }
 
-.side-controls.collapsed {
+.side-controls.collapsed,
+.side-controls.immersive {
   width: 24px;
   display: flex;
   align-items: center;
@@ -1611,7 +1683,8 @@ onUnmounted(() => {
   cursor: default;
 }
 
-.global-music-player.is-dragging-panel .side-controls.collapsed {
+.global-music-player.is-dragging-panel .side-controls.collapsed,
+.global-music-player.is-dragging-panel .side-controls.immersive {
   cursor: default;
 }
 
@@ -1641,7 +1714,8 @@ onUnmounted(() => {
   transform: scaleX(-1);
 }
 
-.side-controls.collapsed:hover .collapsed-expand {
+.side-controls.collapsed:hover .collapsed-expand,
+.side-controls.immersive:hover .collapsed-expand {
   color: var(--vp-c-text-1);
   background-color: color-mix(in srgb, var(--vp-c-bg-mute) 55%, transparent);
 }

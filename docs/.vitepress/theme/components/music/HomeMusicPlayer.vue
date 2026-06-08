@@ -4,16 +4,18 @@
  * 首页播放器始终与全局播放器同步，负责随机流播放入口。
  */
 
-import { ref, onMounted, computed, onUnmounted } from 'vue'
+import { ref, onMounted, computed, onUnmounted, watch } from 'vue'
 import { audioManager, audioService } from '../../utils/music'
 import { useIntersectionObserver } from '@vueuse/core'
 import { calculateProgressPercent, formatAudioTime } from '../../utils/music'
 import {
+  fetchTrackLyric,
   startRandomFlow,
   playNextFromFlow,
   fetchFlowState,
   fetchWeeklyTracks,
   type MusicFlowState,
+  type MusicLyricLine,
   type MusicQueueItem
 } from '../../utils/music'
 import { logError } from '../../utils/logger'
@@ -21,6 +23,7 @@ import { logError } from '../../utils/logger'
 const defaultCoverUrl = '/images/首页/default-cover.png'
 const UI_SYNC_DELAY_MS = 50
 const NEXT_SONG_DELAY_MS = 350
+const LYRIC_DELAY_MS = -500
 const HOME_PLAYBACK_REQUEST = {
   source: 'home-random',
   priority: 1,
@@ -53,8 +56,11 @@ const progress = ref(0)
 const progressBarRef = ref<HTMLElement | null>(null)
 const isDragging = ref(false)
 const isButtonDisabled = ref(false)
+const lyricLines = ref<MusicLyricLine[]>([])
+const currentLyricIndex = ref(-1)
 const pendingTimers = new Set<ReturnType<typeof setTimeout>>()
 const unsubscribers: Array<() => void> = []
+let lyricRequestSequence = 0
 
 const buttonText = computed(() => {
   if (!showTitle.value && !hasAvailableTracks.value && !isLoading.value) {
@@ -80,6 +86,25 @@ function formatTime(seconds: number): string {
 
 const formattedCurrentTime = computed(() => formatTime(currentTime.value))
 const formattedDuration = computed(() => formatTime(duration.value))
+const currentLyric = computed(() => {
+  if (currentLyricIndex.value < 0 || currentLyricIndex.value >= lyricLines.value.length) {
+    return ''
+  }
+  return lyricLines.value[currentLyricIndex.value]?.text || ''
+})
+const nextLyric = computed(() => {
+  const nextIndex = currentLyricIndex.value + 1
+  if (nextIndex < 0 || nextIndex >= lyricLines.value.length) {
+    return ''
+  }
+  return lyricLines.value[nextIndex]?.text || ''
+})
+const hasLyricDisplay = computed(() => isPlaying.value && lyricLines.value.length > 0)
+
+function normalizeSongId(rawId: string): string {
+  if (!rawId) return ''
+  return rawId.startsWith('netease-') ? rawId.slice('netease-'.length) : rawId
+}
 
 function normalizeCoverUrl(coverUrl: string): string {
   if (!coverUrl) return coverUrl
@@ -106,6 +131,52 @@ function clearPendingTimers(): void {
     clearTimeout(timer)
   }
   pendingTimers.clear()
+}
+
+function updateLyricCursor(currentTimeSec: number): void {
+  if (!lyricLines.value.length) {
+    currentLyricIndex.value = -1
+    return
+  }
+
+  const currentMs = Math.max(0, Math.floor(currentTimeSec * 1000) - LYRIC_DELAY_MS)
+  let left = 0
+  let right = lyricLines.value.length - 1
+  let index = -1
+
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2)
+    if (lyricLines.value[mid].timeMs <= currentMs) {
+      index = mid
+      left = mid + 1
+    } else {
+      right = mid - 1
+    }
+  }
+
+  currentLyricIndex.value = index
+}
+
+async function loadLyricForCurrentSong(songId: string): Promise<void> {
+  const requestSequence = ++lyricRequestSequence
+  const targetId = normalizeSongId(songId)
+  lyricLines.value = []
+  currentLyricIndex.value = -1
+  if (!targetId) return
+
+  try {
+    const lyric = await fetchTrackLyric(targetId)
+    if (!lyric?.hasLyric || !lyric.lines.length) {
+      return
+    }
+    if (requestSequence !== lyricRequestSequence || normalizeSongId(currentSongInfo.value.id) !== targetId) {
+      return
+    }
+    lyricLines.value = lyric.lines
+    updateLyricCursor(currentTime.value)
+  } catch (error) {
+    logError('HomeMusicPlayer', '加载歌词失败', { songId: targetId, error })
+  }
 }
 
 function updateCurrentSongInfo(item: {
@@ -140,6 +211,7 @@ function syncFromAudioManager(): void {
   duration.value = info.duration
   progress.value = info.progress
   isPlaying.value = info.isPlaying
+  updateLyricCursor(currentTime.value)
 }
 
 function toAudioSongInfo(item: MusicQueueItem) {
@@ -237,6 +309,8 @@ function stopPlayAndReset() {
   }
   isPlaying.value = false
   showTitle.value = false
+  lyricLines.value = []
+  currentLyricIndex.value = -1
 }
 
 function handleNextSong(e: MouseEvent) {
@@ -263,7 +337,9 @@ function handleButtonClick() {
     return
   }
 
-  if (isPlaying.value) {
+  const status = audioService.getPlayingStatus()
+  const isCurrentAudioPlaying = status.audioId === currentSongInfo.value.id && status.isPlaying
+  if (isPlaying.value || isCurrentAudioPlaying) {
     stopCurrentSongPlayback()
     isPlaying.value = false
     return
@@ -377,6 +453,7 @@ function setupEventListeners() {
         progress.value = parsed.progress
         duration.value = parsed.duration
         currentTime.value = parsed.currentTime
+        updateLyricCursor(currentTime.value)
       } catch (error) {
         logError('HomeMusicPlayer', '解析 song-info-update 失败', error)
       }
@@ -407,6 +484,7 @@ function setupEventListeners() {
           duration.value = durationValue
         }
         progress.value = duration.value > 0 ? (currentTime.value / duration.value) * 100 : 0
+        updateLyricCursor(currentTime.value)
       } catch (error) {
         logError('HomeMusicPlayer', '解析进度事件失败', error)
       }
@@ -419,6 +497,13 @@ function setupEventListeners() {
     })
   )
 }
+
+watch(
+  () => currentSongInfo.value.id,
+  (songId) => {
+    void loadLyricForCurrentSong(songId)
+  }
+)
 
 onMounted(() => {
   if (typeof window === 'undefined') return
@@ -480,14 +565,14 @@ onUnmounted(() => {
           </div>
           
           <!-- 播放按钮 - 在暂停或未播放时显示 -->
-          <div v-if="!isPlaying" class="play-overlay" @click="handleButtonClick">
+          <div v-if="!isPlaying" class="play-overlay" @click.stop="handleButtonClick">
             <div class="play-button">
               <span>▶</span>
             </div>
           </div>
           
           <!-- 暂停按钮 - 在播放时显示（小角落） -->
-          <div v-if="isPlaying" class="pause-button" @click="handleButtonClick">
+          <div v-if="isPlaying" class="pause-button" @click.stop="handleButtonClick">
             <span>❚❚</span>
           </div>
         </div>
@@ -550,8 +635,42 @@ onUnmounted(() => {
 
       <!-- 添加一个固定高度的容器包裹小提示 -->
       <div class="tip-container">
-        <!-- 添加小提示 -->
-        <p class="music-tip" :class="{ 'animate-in': isVisible }" style="--anim-delay: 0.3s">只有"下一首"的播放器。<br />错过了?——等它再次路过你耳边吧，狼不回头。</p>
+        <Transition name="tip-mode" mode="out-in">
+          <div
+            v-if="hasLyricDisplay"
+            key="lyrics"
+            class="music-lyric-tip"
+            :class="{ 'animate-in': isVisible }"
+            style="--anim-delay: 0.3s"
+          >
+            <TransitionGroup name="lyric-stack" tag="div" class="lyric-stack">
+              <div
+                v-if="currentLyric"
+                :key="currentLyricIndex"
+                class="lyric-line lyric-line-current"
+              >
+                {{ currentLyric }}
+              </div>
+              <div
+                v-if="nextLyric"
+                :key="currentLyricIndex + 1"
+                class="lyric-line lyric-line-next"
+              >
+                {{ nextLyric }}
+              </div>
+            </TransitionGroup>
+          </div>
+          <!-- 添加小提示 -->
+          <p
+            v-else
+            key="tip"
+            class="music-tip"
+            :class="{ 'animate-in': isVisible }"
+            style="--anim-delay: 0.3s"
+          >
+            只有"下一首"的播放器。<br />错过了?——等它再次路过你耳边吧，狼不回头。
+          </p>
+        </Transition>
       </div>
     </div>
   </div>
@@ -571,6 +690,7 @@ onUnmounted(() => {
 /* 添加小提示样式 */
 .music-tip {
   font-size: 0.75rem;
+  line-height: 1.6;
   color: var(--vp-c-text-3);
   text-align: center;
   font-style: italic;
@@ -590,6 +710,89 @@ onUnmounted(() => {
   animation-delay: var(--anim-delay, 0s);
   animation-fill-mode: both; /* 确保保持最终状态 */
   transform: translateY(0); /* 动画结束时的状态 */
+}
+
+.music-lyric-tip {
+  width: 100%;
+  min-height: 40px;
+  opacity: 0;
+  transform: translateY(20px);
+  position: relative;
+  z-index: 1;
+}
+
+.animate-in.music-lyric-tip {
+  animation: fadeInUp var(--lc-motion-duration-slower) var(--lc-motion-ease-standard) forwards;
+  animation-delay: var(--anim-delay, 0s);
+  animation-fill-mode: both;
+}
+
+.lyric-stack {
+  position: relative;
+  width: 100%;
+  height: 40px;
+  overflow: hidden;
+}
+
+.lyric-line {
+  width: 100%;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  text-align: center;
+  font-style: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition:
+    transform var(--lc-motion-duration-fast) var(--lc-motion-ease-standard),
+    opacity var(--lc-motion-duration-fast) var(--lc-motion-ease-standard),
+    color var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
+}
+
+.lyric-line-current {
+  color: var(--vp-c-brand);
+}
+
+.lyric-line-next {
+  color: var(--vp-c-text-3);
+}
+
+.lyric-stack-enter-active,
+.lyric-stack-leave-active {
+  transition:
+    transform var(--lc-motion-duration-fast) var(--lc-motion-ease-standard),
+    opacity var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
+}
+
+.lyric-stack-move {
+  transition: transform var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
+}
+
+.lyric-stack-enter-from {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+.lyric-stack-leave-to {
+  opacity: 0;
+  transform: translateY(-14px);
+}
+
+.lyric-stack-leave-active {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+}
+
+.tip-mode-enter-active,
+.tip-mode-leave-active {
+  transition: opacity var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
+}
+
+.tip-mode-enter-from,
+.tip-mode-leave-to {
+  opacity: 0;
 }
 
 .home-music-player {

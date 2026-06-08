@@ -122,6 +122,14 @@ function playbackRequestBySource(source: string | undefined) {
       resumeInterrupted: false
     }
   }
+  if (source === 'interrupt-single') {
+    return {
+      source: 'interrupt-single',
+      priority: 3,
+      allowInterrupt: true,
+      resumeInterrupted: false
+    }
+  }
   return playbackRequest.value
 }
 
@@ -332,6 +340,7 @@ function togglePlay(): void {
 }
 
 async function playFromFlowState(state: {
+  mode?: string
   current: {
     id: string
     name: string
@@ -355,8 +364,9 @@ async function playFromFlowState(state: {
     cover: normalizeHttpToHttps(flowItem.cover),
     url: normalizeHttpToHttps(flowItem.url || '')
   }
+  const requestSource = state.mode === 'interrupt-single' ? 'interrupt-single' : flowItem.source
 
-  await audioService.play(flowAudioId, flowSong, 0, playbackRequestBySource(flowItem.source))
+  await audioService.play(flowAudioId, flowSong, 0, playbackRequestBySource(requestSource))
   isPlaying.value = flowAudioId === audioId.value
   emitPlayState(isPlaying.value)
   if (isPlaying.value) {

@@ -225,9 +225,8 @@ class AudioService {
       this.audioElement.load();
       this.operationState = AudioOperationState.LOADING;
       
-      // 设置音量，断点续播可从静音渐入，避免刷新后突兀出声。
       this.cancelVolumeFade();
-      this.setElementVolume(options.fadeInMs ? 0 : this.volume);
+      this.setElementVolume(this.volume);
       
       // 如果有指定开始时间
       if (startTime > 0) {
@@ -235,6 +234,12 @@ class AudioService {
       } else {
         this.currentTime = 0;
       }
+    }
+
+    // 断点续播即使复用同一个 audio src，也需要从静音重新渐入。
+    if (options.fadeInMs) {
+      this.cancelVolumeFade();
+      this.setElementVolume(0);
     }
     
     // 播放音频
@@ -323,13 +328,13 @@ class AudioService {
   // 暂停音频
   public pause(): void {
     if (!this.audioElement || !this.isPlaying) return;
-    
-    // 如果正在进行操作，避免重复操作
+
+    // 暂停是用户的直接控制，加载中的播放也应允许被打断。
     if (this.operationInProgress) {
-      logDebug('audioService', '操作正在进行中，请稍候再试');
-      return;
+      logDebug('audioService', '播放操作进行中，直接执行暂停');
     }
-    
+
+    this.cancelVolumeFade();
     this.operationInProgress = true;
     
     try {
