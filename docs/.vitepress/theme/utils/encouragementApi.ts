@@ -25,6 +25,7 @@ async function postSettle(payload: EncouragementSettlePayload): Promise<void> {
     method: 'POST',
     mode: 'cors',
     credentials: 'omit',
+    keepalive: true,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   })

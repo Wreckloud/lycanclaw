@@ -538,8 +538,8 @@ function onTagClick(tag: string): void {
   opacity: 0;
   transform: translateY(20px);
   transition:
-    opacity var(--lc-motion-duration-slow) var(--lc-motion-ease-standard),
-    transform var(--lc-motion-duration-slow) var(--lc-motion-ease-standard);
+    opacity var(--lc-motion-duration-normal) var(--lc-motion-ease-standard),
+    transform var(--lc-motion-duration-normal) var(--lc-motion-ease-standard);
 }
 
 .post-item-animate {
@@ -562,8 +562,8 @@ function onTagClick(tag: string): void {
   opacity: 0;
   transform: translateY(20px);
   transition:
-    opacity var(--lc-motion-duration-slow) var(--lc-motion-ease-standard),
-    transform var(--lc-motion-duration-slow) var(--lc-motion-ease-standard);
+    opacity var(--lc-motion-duration-normal) var(--lc-motion-ease-standard),
+    transform var(--lc-motion-duration-normal) var(--lc-motion-ease-standard);
 }
 
 .pagination-animate {

@@ -64,6 +64,7 @@ let observerInstance: IntersectionObserver | null = null
 const timers: Partial<Record<TimerKey, TimerHandle>> = {}
 let settleTimer: TimerHandle | null = null
 let pendingEncouragementDelta = 0
+let isSettlementInFlight = false
 
 const hasClickedInSession = ref(false)
 const hasHoveredInSession = ref(false)
@@ -357,7 +358,7 @@ function buildEncouragementPayload(delta: number) {
 }
 
 function flushEncouragement(useBeacon = false): void {
-  if (pendingEncouragementDelta <= 0) return
+  if (pendingEncouragementDelta <= 0 || isSettlementInFlight) return
   const delta = pendingEncouragementDelta
   pendingEncouragementDelta = 0
   clearSettleTimer()
@@ -365,8 +366,13 @@ function flushEncouragement(useBeacon = false): void {
   const payload = buildEncouragementPayload(delta)
   if (useBeacon && beaconSettleEncouragement(payload)) return
 
+  isSettlementInFlight = true
   settleEncouragement(payload).catch((error) => {
+    pendingEncouragementDelta += delta
     logError('EncourageWidget', '催更结算失败', error)
+  }).finally(() => {
+    isSettlementInFlight = false
+    if (pendingEncouragementDelta > 0) scheduleEncouragementSettle()
   })
 }
 

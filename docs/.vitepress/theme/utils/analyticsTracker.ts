@@ -23,6 +23,7 @@ let activeVisit: ActiveVisit | null = null
 let pendingPath = ''
 let pendingTimer: ReturnType<typeof setTimeout> | null = null
 let isBound = false
+let visitSequence = 0
 
 function normalizePath(path: string): string {
   if (!path) return '/'
@@ -105,6 +106,7 @@ function bindLifecycle(): void {
 }
 
 async function startTrackableVisit(path: string): Promise<void> {
+  const sequence = ++visitSequence
   const normalized = normalizePath(path)
   if (!isTrackablePath(normalized)) {
     finishActiveVisit(true)
@@ -121,6 +123,14 @@ async function startTrackableVisit(path: string): Promise<void> {
       visitorId: getVisitorId(),
       pageType: inferPageType(normalized)
     })
+
+    if (sequence !== visitSequence) {
+      endVisit({ visitId: response.visitId, durationMs: 0 }).catch((error) => {
+        logError('analyticsTracker', '清理过期页面访问失败', error)
+      })
+      return
+    }
+
     activeVisit = {
       visitId: response.visitId,
       path: normalized,
