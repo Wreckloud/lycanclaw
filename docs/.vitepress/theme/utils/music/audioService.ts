@@ -32,6 +32,11 @@ interface AudioPlayStatus {
   operationState: AudioOperationState
 }
 
+interface AudioPlayOptions {
+  fadeInMs?: number
+  retryOnNotAllowed?: boolean
+}
+
 class AudioService {
   private static instance: AudioService;
   private audioElement: HTMLAudioElement | null = null;
@@ -40,11 +45,12 @@ class AudioService {
   private isPlaying: boolean = false;
   private currentTime: number = 0;
   private duration: number = 0;
-  private volume: number = 70;
+  private volume: number = 50;
   private operationState: AudioOperationState = AudioOperationState.IDLE;
   private operationInProgress: boolean = false;
   private retryCount: number = 0;
   private maxRetries: number = 3;
+  private volumeFadeFrameId: number | null = null;
   
   // 私有构造函数，防止外部实例化
   private constructor() {
@@ -181,7 +187,8 @@ class AudioService {
     audioId: string,
     songInfo: AudioSongInfo,
     startTime: number = 0,
-    requestContext: PlaybackRequestContext = {}
+    requestContext: PlaybackRequestContext = {},
+    options: AudioPlayOptions = {}
   ): Promise<void> {
     if (!this.audioElement) return Promise.reject('音频元素未初始化');
 
@@ -218,8 +225,9 @@ class AudioService {
       this.audioElement.load();
       this.operationState = AudioOperationState.LOADING;
       
-      // 设置音量
-      this.audioElement.volume = this.volume / 100;
+      // 设置音量，断点续播可从静音渐入，避免刷新后突兀出声。
+      this.cancelVolumeFade();
+      this.setElementVolume(options.fadeInMs ? 0 : this.volume);
       
       // 如果有指定开始时间
       if (startTime > 0) {
@@ -231,6 +239,11 @@ class AudioService {
     
     // 播放音频
     const playPromise = this.audioElement.play()
+      .then(() => {
+        if (options.fadeInMs) {
+          this.fadeElementVolumeTo(this.volume, options.fadeInMs);
+        }
+      })
       .catch(error => {
         // 处理AbortError - 这是由于play()请求被pause()中断导致的
         // 这种情况通常发生在快速切换播放/暂停时
@@ -250,6 +263,14 @@ class AudioService {
         }
         
         // 网络错误，尝试重试
+        if (error.name === 'NotAllowedError' && options.retryOnNotAllowed === false) {
+          this.isPlaying = false;
+          this.operationState = AudioOperationState.PAUSED;
+          this.operationInProgress = false;
+          audioManager.emit('play-state-change', `${audioId}:false`);
+          return Promise.reject(error);
+        }
+
         if (error.name === 'NotAllowedError' || error.name === 'NotSupportedError') {
           if (this.retryCount < this.maxRetries) {
             this.retryCount++;
@@ -262,7 +283,7 @@ class AudioService {
             return new Promise<void>((resolve, reject) => {
               setTimeout(() => {
                 this.operationInProgress = false;
-                this.play(audioId, songInfo, startTime, requestContext)
+                this.play(audioId, songInfo, startTime, requestContext, options)
                   .then(resolve)
                   .catch(reject);
               }, 1000);
@@ -353,8 +374,9 @@ class AudioService {
     if (!this.audioElement) return;
     
     try {
+      this.cancelVolumeFade();
       this.volume = Math.max(0, Math.min(volume, 100));
-      this.audioElement.volume = this.volume / 100;
+      this.setElementVolume(this.volume);
     } catch (error) {
       logError('audioService', '设置音量时出错', error);
     }
@@ -395,9 +417,45 @@ class AudioService {
       this.operationState = AudioOperationState.IDLE;
       this.operationInProgress = false;
       this.retryCount = 0;
+      this.cancelVolumeFade();
     } catch (error) {
       logError('audioService', '重置音频服务时出错', error);
     }
+  }
+
+  private setElementVolume(volume: number): void {
+    if (!this.audioElement) return;
+    const normalized = Math.max(0, Math.min(volume, 100));
+    this.audioElement.volume = normalized / 100;
+  }
+
+  private cancelVolumeFade(): void {
+    if (this.volumeFadeFrameId === null) return;
+    cancelAnimationFrame(this.volumeFadeFrameId);
+    this.volumeFadeFrameId = null;
+  }
+
+  private fadeElementVolumeTo(targetVolume: number, durationMs: number): void {
+    if (!this.audioElement) return;
+    this.cancelVolumeFade();
+
+    const startedAt = performance.now();
+    const startVolume = this.audioElement.volume * 100;
+    const safeDuration = Math.max(120, durationMs);
+    const target = Math.max(0, Math.min(targetVolume, 100));
+
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / safeDuration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      this.setElementVolume(startVolume + (target - startVolume) * eased);
+      if (progress < 1) {
+        this.volumeFadeFrameId = requestAnimationFrame(tick);
+        return;
+      }
+      this.volumeFadeFrameId = null;
+    };
+
+    this.volumeFadeFrameId = requestAnimationFrame(tick);
   }
 }
 

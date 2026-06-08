@@ -5,6 +5,7 @@
  */
 
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute } from 'vitepress'
 import {
   audioManager,
   audioService,
@@ -16,6 +17,7 @@ import {
   type AudioSongInfo,
   type MusicFlowState,
   type MusicLyricLine,
+  type PlaybackRequestContext,
   type SongInfo
 } from '../../utils/music'
 import { logError } from '../../utils/logger'
@@ -25,22 +27,46 @@ const MOBILE_BREAKPOINT = 768
 const DRAG_CANCEL_THRESHOLD = 8
 const COVER_GESTURE_THRESHOLD = 6
 const NAV_SAFE_TOP = 65
+const DEFAULT_VOLUME = 50
+const LYRIC_LEAD_MS = 1000
 const VOLUME_STORAGE_KEY = 'lycan:global-player-volume'
 const POSITION_STORAGE_KEY = 'lycan:global-player-position'
+const RESUME_STORAGE_KEY = 'lycan:global-player-resume-snapshot'
+const RESUME_MAX_AGE_MS = 30 * 60 * 1000
+const RESUME_SAVE_INTERVAL_MS = 2000
+const RESUME_END_GUARD_SEC = 3
+const RESUME_FADE_IN_MS = 900
+const READ_COLLAPSE_WIDTH = 960
+const READ_SCROLL_DELTA = 48
 const ROTATE_BASE_DEG_PER_SEC = 18
 const ROTATE_GESTURE_DECAY = 0.92
 const ROTATE_GESTURE_GAIN = 120
 const VOLUME_SWIPE_GAIN = 0.32
 
 type PanelMode = 'collapsed' | 'expanded'
+type PlayerSide = 'left' | 'right'
+
+interface ResumeSnapshot {
+  version: 1
+  audioId: string
+  songInfo: AudioSongInfo
+  requestContext: PlaybackRequestContext
+  currentTime: number
+  duration: number
+  volume: number
+  wasPlaying: boolean
+  savedAt: number
+}
 
 const playerRef = ref<HTMLElement | null>(null)
 const progressBarRef = ref<HTMLElement | null>(null)
+const route = useRoute()
 const isTouchDevice = ref(false)
 const isNarrowScreen = ref(false)
 const isVisible = ref(false)
 const panelMode = ref<PanelMode>('collapsed')
 const isDraggingProgress = ref(false)
+const isSnapping = ref(false)
 const lyricLines = ref<MusicLyricLine[]>([])
 const currentLyricIndex = ref(-1)
 const currentSong = ref<SongInfo>({
@@ -53,14 +79,23 @@ const currentSong = ref<SongInfo>({
   duration: 0,
   currentTime: 0
 })
-const volume = ref(70)
-const position = ref({ x: 0, y: 0, side: 'left' as 'left' | 'right' })
+const volume = ref(DEFAULT_VOLUME)
+const position = ref({ x: 0, y: 0, side: 'left' as PlayerSide })
 const coverAngle = ref(0)
 const gestureSpinVelocity = ref(0)
+const playableSongInfo = ref<AudioSongInfo | null>(null)
+const shouldFadeOnNextPlay = ref(false)
 
 const unsubscribers: Array<() => void> = []
 let resizeTimer: ReturnType<typeof setTimeout> | null = null
 let resizeHandler: (() => void) | null = null
+let snapTimer: ReturnType<typeof setTimeout> | null = null
+let resumeSaveTimer = 0
+let pageHideHandler: (() => void) | null = null
+let scrollHandler: (() => void) | null = null
+let scrollRafId: number | null = null
+let lastScrollY = 0
+let downwardScrollDistance = 0
 
 let isDraggingPanel = false
 let panelPointerOffsetX = 0
@@ -129,7 +164,7 @@ function defaultModeByDevice(): PanelMode {
 
 function getPanelSize(mode: PanelMode): { width: number; height: number } {
   if (mode === 'collapsed') {
-    return { width: 86, height: 58 }
+    return { width: 82, height: 58 }
   }
   return { width: isNarrowScreen.value ? 340 : 404, height: 108 }
 }
@@ -153,6 +188,21 @@ function clampPanelPosition(nextX: number, nextY: number, mode: PanelMode): { x:
 function savePanelPosition(): void {
   if (typeof window === 'undefined') return
   window.localStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify(position.value))
+}
+
+function clearSnapTimer(): void {
+  if (!snapTimer) return
+  clearTimeout(snapTimer)
+  snapTimer = null
+}
+
+function animatePanelSnap(): void {
+  clearSnapTimer()
+  isSnapping.value = true
+  snapTimer = setTimeout(() => {
+    isSnapping.value = false
+    snapTimer = null
+  }, 260)
 }
 
 function loadPanelPosition(mode: PanelMode): void {
@@ -181,12 +231,13 @@ function loadPanelPosition(mode: PanelMode): void {
   }
 }
 
-function ensurePanelInViewport(): void {
+function ensurePanelInViewport(animate = true): void {
   const clamped = clampPanelPosition(position.value.x, position.value.y, panelMode.value)
   const size = getPanelSize(panelMode.value)
   const edgeX = position.value.side === 'right'
     ? Math.max(PANEL_GAP, window.innerWidth - size.width - PANEL_GAP)
     : PANEL_GAP
+  if (animate) animatePanelSnap()
   position.value = { ...position.value, x: edgeX, y: clamped.y }
   savePanelPosition()
 }
@@ -199,6 +250,7 @@ function snapToHorizontalEdge(): void {
     ? Math.max(PANEL_GAP, window.innerWidth - size.width - PANEL_GAP)
     : PANEL_GAP
   const clamped = clampPanelPosition(targetX, position.value.y, panelMode.value)
+  animatePanelSnap()
   position.value = {
     x: clamped.x,
     y: clamped.y,
@@ -289,12 +341,20 @@ function syncRotationLoop(): void {
   startRotationLoop()
 }
 
+function syncPlayableSongInfoFromStatus(): void {
+  const status = audioService.getPlayingStatus()
+  if (status.audioId === currentSong.value.id && status.songInfo?.url) {
+    playableSongInfo.value = status.songInfo
+  }
+}
+
 function buildPlayableSongInfo(): AudioSongInfo {
+  syncPlayableSongInfoFromStatus()
   return {
     name: currentSong.value.name,
     artist: currentSong.value.artist,
     cover: currentSong.value.cover,
-    url: ''
+    url: playableSongInfo.value?.url || ''
   }
 }
 
@@ -329,7 +389,7 @@ function updateLyricCursor(currentTimeSec: number): void {
     return
   }
 
-  const currentMs = Math.max(0, Math.floor(currentTimeSec * 1000))
+  const currentMs = Math.max(0, Math.floor(currentTimeSec * 1000) + LYRIC_LEAD_MS)
   let left = 0
   let right = lyricLines.value.length - 1
   let index = -1
@@ -365,8 +425,124 @@ async function loadLyricForCurrentSong(songId: string): Promise<void> {
   }
 }
 
+function clearResumeSnapshot(): void {
+  if (typeof window === 'undefined') return
+  window.localStorage.removeItem(RESUME_STORAGE_KEY)
+}
+
+function readResumeSnapshot(): ResumeSnapshot | null {
+  if (typeof window === 'undefined') return null
+  const raw = window.localStorage.getItem(RESUME_STORAGE_KEY)
+  if (!raw) return null
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<ResumeSnapshot>
+    if (parsed.version !== 1 || !parsed.audioId || !parsed.songInfo?.url || !parsed.savedAt) {
+      return null
+    }
+    if (Date.now() - parsed.savedAt > RESUME_MAX_AGE_MS) {
+      clearResumeSnapshot()
+      return null
+    }
+    return parsed as ResumeSnapshot
+  } catch {
+    clearResumeSnapshot()
+    return null
+  }
+}
+
+function shouldSkipResumeSnapshot(currentTime: number, duration: number): boolean {
+  if (currentTime <= 0) return true
+  return duration > 0 && duration - currentTime <= RESUME_END_GUARD_SEC
+}
+
+function saveResumeSnapshot(force = false): void {
+  if (typeof window === 'undefined' || !currentSong.value.id) return
+  const now = Date.now()
+  if (!force && now - resumeSaveTimer < RESUME_SAVE_INTERVAL_MS) return
+
+  const status = audioService.getPlayingStatus()
+  const isSameAudio = status.audioId === currentSong.value.id
+  const songInfo = isSameAudio && status.songInfo?.url
+    ? status.songInfo
+    : playableSongInfo.value
+  if (!songInfo?.url) return
+
+  const currentTime = isSameAudio ? status.currentTime : currentSong.value.currentTime
+  const duration = isSameAudio && status.duration > 0 ? status.duration : currentSong.value.duration
+  if (shouldSkipResumeSnapshot(currentTime, duration)) return
+
+  const snapshot: ResumeSnapshot = {
+    version: 1,
+    audioId: currentSong.value.id,
+    songInfo,
+    requestContext: audioManager.getCurrentRequest() ?? playbackRequestBySource('global-player'),
+    currentTime,
+    duration,
+    volume: volume.value,
+    wasPlaying: isSameAudio ? status.isPlaying : currentSong.value.isPlaying,
+    savedAt: now
+  }
+
+  window.localStorage.setItem(RESUME_STORAGE_KEY, JSON.stringify(snapshot))
+  resumeSaveTimer = now
+}
+
+async function restoreResumeSnapshot(): Promise<boolean> {
+  const snapshot = readResumeSnapshot()
+  if (!snapshot || shouldSkipResumeSnapshot(snapshot.currentTime, snapshot.duration)) {
+    return false
+  }
+
+  playableSongInfo.value = snapshot.songInfo
+  shouldFadeOnNextPlay.value = true
+  currentSong.value = {
+    id: snapshot.audioId,
+    name: snapshot.songInfo.name,
+    artist: snapshot.songInfo.artist,
+    cover: snapshot.songInfo.cover,
+    isPlaying: false,
+    progress: snapshot.duration > 0 ? (snapshot.currentTime / snapshot.duration) * 100 : 0,
+    duration: snapshot.duration,
+    currentTime: snapshot.currentTime
+  }
+  isVisible.value = true
+  void loadLyricForCurrentSong(snapshot.audioId)
+  syncRotationLoop()
+
+  if (!snapshot.wasPlaying) {
+    return true
+  }
+
+  try {
+    await audioService.play(
+      snapshot.audioId,
+      snapshot.songInfo,
+      snapshot.currentTime,
+      snapshot.requestContext ?? playbackRequestBySource('global-player'),
+      { fadeInMs: RESUME_FADE_IN_MS, retryOnNotAllowed: false }
+    )
+    currentSong.value.isPlaying = true
+    shouldFadeOnNextPlay.value = false
+    syncRotationLoop()
+  } catch (error) {
+    currentSong.value.isPlaying = false
+    syncRotationLoop()
+    if (!(error instanceof DOMException && error.name === 'NotAllowedError')) {
+      logError('GlobalMusicPlayer', '断点续播失败', error)
+    }
+  }
+
+  return true
+}
+
 function applySongInfo(info: SongInfo): void {
+  const changedSong = info.id && info.id !== currentSong.value.id
+  if (changedSong) {
+    playableSongInfo.value = null
+  }
   currentSong.value = { ...currentSong.value, ...info }
+  syncPlayableSongInfoFromStatus()
   if (currentSong.value.duration > 0) {
     currentSong.value.progress = (currentSong.value.currentTime / currentSong.value.duration) * 100
   }
@@ -377,6 +553,7 @@ function applySongInfo(info: SongInfo): void {
 async function playFromFlowState(state: MusicFlowState): Promise<void> {
   if (!state.current) {
     currentSong.value.isPlaying = false
+    clearResumeSnapshot()
     syncRotationLoop()
     return
   }
@@ -392,16 +569,18 @@ async function playFromFlowState(state: MusicFlowState): Promise<void> {
     duration: 0,
     currentTime: 0
   }
+  playableSongInfo.value = {
+    name: state.current.name,
+    artist: state.current.artist,
+    cover: state.current.cover,
+    url: state.current.url || ''
+  }
+  shouldFadeOnNextPlay.value = false
   isVisible.value = true
 
   await audioService.play(
     nextAudioId,
-    {
-      name: state.current.name,
-      artist: state.current.artist,
-      cover: state.current.cover,
-      url: state.current.url || ''
-    },
+    playableSongInfo.value,
     0,
     playbackRequestBySource(state.current.source)
   )
@@ -432,6 +611,7 @@ async function closePlayer(): Promise<void> {
   audioService.reset()
   audioManager.clearCurrentSession()
   audioManager.emit('player-closed', closedSongId)
+  clearResumeSnapshot()
 
   isVisible.value = false
   currentSong.value = {
@@ -446,6 +626,8 @@ async function closePlayer(): Promise<void> {
   }
   lyricLines.value = []
   currentLyricIndex.value = -1
+  playableSongInfo.value = null
+  shouldFadeOnNextPlay.value = false
   gestureSpinVelocity.value = 0
   panelMode.value = defaultModeByDevice()
   syncRotationLoop()
@@ -470,9 +652,11 @@ function togglePlay(): void {
     currentSong.value.id,
     buildPlayableSongInfo(),
     currentSong.value.currentTime,
-    requestContext
+    requestContext,
+    shouldFadeOnNextPlay.value ? { fadeInMs: RESUME_FADE_IN_MS, retryOnNotAllowed: false } : undefined
   ).then(() => {
     currentSong.value.isPlaying = true
+    shouldFadeOnNextPlay.value = false
     syncRotationLoop()
   }).catch(error => {
     logError('GlobalMusicPlayer', '恢复播放失败', error)
@@ -488,6 +672,38 @@ function expandPanel(): void {
 function collapsePanel(): void {
   panelMode.value = 'collapsed'
   nextTick(() => ensurePanelInViewport())
+}
+
+function isReadableArticlePath(): boolean {
+  const path = route.path || window.location.pathname
+  return /^\/(thoughts|knowledge)\/.+/.test(path) && !path.endsWith('/index.html')
+}
+
+function shouldUseImmersiveCollapse(): boolean {
+  return isTouchDevice.value || isNarrowScreen.value || window.innerWidth <= READ_COLLAPSE_WIDTH
+}
+
+function handleReadingScroll(): void {
+  scrollRafId = null
+  const nextY = window.scrollY || document.documentElement.scrollTop || 0
+  const delta = nextY - lastScrollY
+  lastScrollY = nextY
+
+  if (delta > 0) {
+    downwardScrollDistance += delta
+  } else if (delta < 0) {
+    downwardScrollDistance = 0
+  }
+
+  if (downwardScrollDistance < READ_SCROLL_DELTA || !isVisible.value || panelMode.value !== 'expanded') return
+  if (!isReadableArticlePath() || !shouldUseImmersiveCollapse()) return
+  downwardScrollDistance = 0
+  collapsePanel()
+}
+
+function onWindowScroll(): void {
+  if (scrollRafId !== null) return
+  scrollRafId = requestAnimationFrame(handleReadingScroll)
 }
 
 function beginPanelDragFromPoint(point: { x: number; y: number }, source: 'mouse' | 'touch'): void {
@@ -833,6 +1049,7 @@ function setupEventListeners(): void {
           }
           nextTick(() => ensurePanelInViewport())
         }
+        saveResumeSnapshot(true)
       } catch (error) {
         logError('GlobalMusicPlayer', '解析歌曲信息失败', error)
       }
@@ -858,6 +1075,7 @@ function setupEventListeners(): void {
         ? (currentSong.value.currentTime / currentSong.value.duration) * 100
         : 0
       updateLyricCursor(currentSong.value.currentTime)
+      saveResumeSnapshot()
     })
   )
 
@@ -867,6 +1085,7 @@ function setupEventListeners(): void {
       if (!id || id !== currentSong.value.id) return
       currentSong.value.isPlaying = state === 'true'
       syncRotationLoop()
+      saveResumeSnapshot(true)
     })
   )
 
@@ -874,6 +1093,7 @@ function setupEventListeners(): void {
     audioManager.on('song-ended', id => {
       if (!id || id !== currentSong.value.id) return
       currentSong.value.isPlaying = false
+      clearResumeSnapshot()
       syncRotationLoop()
       void handleNextSong()
     })
@@ -890,16 +1110,17 @@ function setupEventListeners(): void {
       }
       void loadLyricForCurrentSong(info.id)
       nextTick(() => ensurePanelInViewport())
+      saveResumeSnapshot(true)
     })
   )
 }
 
-function syncWithStoredSong(): void {
+function syncWithStoredSong(): boolean {
   const songInfo = audioManager.getCurrentSongInfo()
   if (!songInfo || !songInfo.id) {
     isVisible.value = false
     syncRotationLoop()
-    return
+    return false
   }
 
   const status = audioService.getPlayingStatus()
@@ -917,10 +1138,17 @@ function syncWithStoredSong(): void {
   isVisible.value = true
   void loadLyricForCurrentSong(songInfo.id)
   syncRotationLoop()
+  saveResumeSnapshot(true)
+  return true
 }
 
 watch(panelMode, () => {
   nextTick(() => ensurePanelInViewport())
+})
+
+watch(() => route.path, () => {
+  lastScrollY = window.scrollY || document.documentElement.scrollTop || 0
+  downwardScrollDistance = 0
 })
 
 onMounted(() => {
@@ -929,7 +1157,9 @@ onMounted(() => {
   loadPanelPosition(panelMode.value)
   loadVolumePreference()
   setupEventListeners()
-  syncWithStoredSong()
+  if (!syncWithStoredSong()) {
+    void restoreResumeSnapshot()
+  }
 
   const onResize = () => {
     detectDeviceState()
@@ -941,19 +1171,38 @@ onMounted(() => {
   }
   resizeHandler = onResize
   window.addEventListener('resize', onResize)
+
+  lastScrollY = window.scrollY || document.documentElement.scrollTop || 0
+  downwardScrollDistance = 0
+  scrollHandler = onWindowScroll
+  window.addEventListener('scroll', onWindowScroll, { passive: true })
+
+  pageHideHandler = () => saveResumeSnapshot(true)
+  window.addEventListener('pagehide', pageHideHandler)
 })
 
 onUnmounted(() => {
   unsubscribers.forEach(unsubscribe => unsubscribe())
   clearResizeTimer()
+  clearSnapTimer()
   stopProgressDrag()
   resetPendingControlPress()
   endPanelDrag()
   finishCoverGesture('mouse', false)
   finishCoverGesture('touch', false)
   stopRotationLoop()
+  if (scrollRafId !== null) {
+    cancelAnimationFrame(scrollRafId)
+    scrollRafId = null
+  }
   if (resizeHandler) {
     window.removeEventListener('resize', resizeHandler)
+  }
+  if (scrollHandler) {
+    window.removeEventListener('scroll', scrollHandler)
+  }
+  if (pageHideHandler) {
+    window.removeEventListener('pagehide', pageHideHandler)
   }
 })
 </script>
@@ -964,7 +1213,15 @@ onUnmounted(() => {
       v-if="isVisible"
       ref="playerRef"
       class="global-music-player"
-      :class="[`mode-${panelMode}`, { 'is-touch': isTouchDevice, 'is-dragging-panel': isDraggingPanel }]"
+      :class="[
+        `mode-${panelMode}`,
+        `side-${position.side}`,
+        {
+          'is-touch': isTouchDevice,
+          'is-dragging-panel': isDraggingPanel,
+          'is-snapping': isSnapping
+        }
+      ]"
       :style="panelStyle"
     >
       <div class="cover-section">
@@ -1085,8 +1342,22 @@ onUnmounted(() => {
     transform var(--lc-motion-duration-fast) var(--lc-motion-ease-out);
 }
 
+.global-music-player.is-snapping {
+  transition: left var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
+    top var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
+    width var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
+    height var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
+    opacity var(--lc-motion-duration-fast) var(--lc-motion-ease-out),
+    transform var(--lc-motion-duration-fast) var(--lc-motion-ease-out);
+}
+
+.global-music-player.side-right {
+  flex-direction: row-reverse;
+  border-radius: 8px 0 0 8px;
+}
+
 .global-music-player.mode-collapsed {
-  width: 86px;
+  width: 82px;
 }
 
 .global-music-player.mode-expanded {
@@ -1127,8 +1398,8 @@ onUnmounted(() => {
   user-select: none;
   -webkit-user-drag: none;
   touch-action: none;
-  transition: width var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
-    height var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
+  transform: scale(1);
+  transition: transform var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
     box-shadow var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
 }
 
@@ -1163,8 +1434,7 @@ onUnmounted(() => {
 }
 
 .global-music-player.mode-expanded .cover-button {
-  width: 74px;
-  height: 74px;
+  transform: scale(1.68);
 }
 
 .cover-rotation-layer {
@@ -1223,6 +1493,10 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 5px;
   animation: panel-slide-in var(--lc-motion-duration-normal) var(--lc-motion-ease-out);
+}
+
+.global-music-player.side-right .detail-panel {
+  animation-name: panel-slide-in-right;
 }
 
 .header-row {
@@ -1315,8 +1589,13 @@ onUnmounted(() => {
   user-select: none;
 }
 
+.global-music-player.side-right .side-controls {
+  border-right: 1px solid color-mix(in srgb, var(--vp-c-divider) 70%, transparent);
+  border-left: 0;
+}
+
 .side-controls.collapsed {
-  width: 28px;
+  width: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1324,7 +1603,7 @@ onUnmounted(() => {
 }
 
 .side-controls.expanded {
-  width: 30px;
+  width: 26px;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -1355,6 +1634,11 @@ onUnmounted(() => {
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.global-music-player.side-right .collapsed-expand svg,
+.global-music-player.side-right .rail-btn:nth-child(2) svg {
+  transform: scaleX(-1);
 }
 
 .side-controls.collapsed:hover .collapsed-expand {
@@ -1410,10 +1694,26 @@ onUnmounted(() => {
   transform: translateX(-20px);
 }
 
+.global-music-player.side-right.slide-fade-enter-from,
+.global-music-player.side-right.slide-fade-leave-to {
+  transform: translateX(20px);
+}
+
 @keyframes panel-slide-in {
   from {
     opacity: 0;
     transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes panel-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
   }
   to {
     opacity: 1;

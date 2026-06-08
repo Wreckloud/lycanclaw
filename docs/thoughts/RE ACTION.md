@@ -1,7 +1,7 @@
 ---
 title: RE ACTION
 date: 2026-02-21 16:25:50
-description: 这是一篇新文章!
+description: 其实是高中写下来的一首诗（
 order: 0
 publish: true
 tags:

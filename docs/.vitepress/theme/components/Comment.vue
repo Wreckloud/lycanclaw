@@ -221,6 +221,15 @@ onBeforeUnmount(() => {
   --waline-bg-color: transparent;
 }
 
+.waline-container a[href*="type=weibo"],
+.waline-container a[href*="type=twitter"],
+.waline-container a[href*="type=facebook"],
+.waline-container a[href*="type%3Dweibo"],
+.waline-container a[href*="type%3Dtwitter"],
+.waline-container a[href*="type%3Dfacebook"] {
+  display: none !important;
+}
+
 /* 适配暗黑模式 */
 html.dark .waline-container {
   --waline-border-color: var(--vp-c-divider);

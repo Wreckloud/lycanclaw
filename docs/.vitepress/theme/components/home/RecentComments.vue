@@ -190,7 +190,12 @@ onBeforeUnmount(() => {
     </div>
     
     <!-- 空状态：只在组件可见且没有评论时显示 -->
-    <div v-else-if="!hasError && comments.length === 0 && isVisible" class="comments-empty">
+    <div
+      v-else-if="!hasError && comments.length === 0 && isVisible"
+      class="comments-empty"
+      :class="{ 'animate-in': isVisible }"
+      style="--anim-delay: var(--lc-motion-duration-fast)"
+    >
       <div class="empty-message">暂无评论</div>
     </div>
     
@@ -448,8 +453,11 @@ onBeforeUnmount(() => {
   justify-content: center;
   height: 330px;
   color: var(--vp-c-text-2);
-  background-color: var(--vp-c-bg-soft);
-  border-radius: 6px;
+}
+
+.comments-empty {
+  opacity: 0;
+  transform: translateY(20px);
 }
 
 .empty-message,
