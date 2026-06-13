@@ -36,6 +36,7 @@ interface LocalSongInfo {
   artist: string
   cover: string
   url: string
+  urlSource?: string
 }
 
 const PLAY_TOGGLE_DEBOUNCE_MS = 200
@@ -170,7 +171,8 @@ function sendSongInfoToGlobalPlayer(): void {
     isPlaying: isPlaying.value,
     progress: progress.value,
     duration: duration.value,
-    currentTime: currentTime.value
+    currentTime: currentTime.value,
+    urlSource: songInfo.value.urlSource || 'unknown'
   }
   audioManager.emit('song-info-update', JSON.stringify(songData))
 }
@@ -253,7 +255,8 @@ async function fetchNeteaseMusicInfo(id: string): Promise<boolean> {
       name: track.name,
       artist: track.artist || '未知艺术家',
       cover: track.cover,
-      url: track.url
+      url: track.url,
+      urlSource: track.urlSource
     }
     isLoading.value = false
     return true
@@ -348,6 +351,7 @@ async function playFromFlowState(state: {
     cover: string
     url: string
     source: string
+    urlSource?: string
   } | null
 }): Promise<void> {
   if (!state.current) {
@@ -362,7 +366,8 @@ async function playFromFlowState(state: {
     name: flowItem.name,
     artist: flowItem.artist,
     cover: normalizeHttpToHttps(flowItem.cover),
-    url: normalizeHttpToHttps(flowItem.url || '')
+    url: normalizeHttpToHttps(flowItem.url || ''),
+    urlSource: flowItem.urlSource || 'unknown'
   }
   const requestSource = state.mode === 'interrupt-single' ? 'interrupt-single' : flowItem.source
 

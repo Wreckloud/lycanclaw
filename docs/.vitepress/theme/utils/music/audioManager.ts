@@ -13,6 +13,7 @@ export interface SongInfo {
   progress: number
   duration: number
   currentTime: number
+  urlSource?: string
 }
 
 export interface PlaybackRequestContext {

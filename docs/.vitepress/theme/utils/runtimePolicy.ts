@@ -3,7 +3,7 @@
  * 提供runtimePolicy相关的通用工具能力。
  */
 const DEFAULT_HITOKOTO_API = 'https://v1.hitokoto.cn'
-const DEFAULT_BACKEND_API_BASE = 'http://127.0.0.1:8080'
+const DEFAULT_BACKEND_API_BASE = import.meta.env.DEV ? 'http://127.0.0.1:8080' : ''
 
 export interface LycanRuntimeConfig {
   backendApiBase?: string

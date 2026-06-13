@@ -17,6 +17,7 @@ interface ActiveVisit {
   visibleSince: number
   visibleDurationMs: number
   visible: boolean
+  maxScrollPercent: number
 }
 
 let activeVisit: ActiveVisit | null = null
@@ -28,7 +29,12 @@ let visitSequence = 0
 function normalizePath(path: string): string {
   if (!path) return '/'
   const url = path.split('#')[0].split('?')[0]
-  return url.startsWith('/') ? url : `/${url}`
+  const normalized = url.startsWith('/') ? url : `/${url}`
+  try {
+    return decodeURIComponent(normalized)
+  } catch {
+    return normalized
+  }
 }
 
 function isArticlePath(path: string): boolean {
@@ -74,9 +80,11 @@ function durationForSubmit(): number {
 
 function finishActiveVisit(useBeacon = false): void {
   if (!activeVisit) return
+  updateReadingProgress()
   const payload = {
     visitId: activeVisit.visitId,
-    durationMs: durationForSubmit()
+    durationMs: durationForSubmit(),
+    maxScrollPercent: activeVisit.maxScrollPercent
   }
   activeVisit = null
 
@@ -101,8 +109,25 @@ function handleVisibilityChange(): void {
 function bindLifecycle(): void {
   if (isBound || typeof window === 'undefined') return
   document.addEventListener('visibilitychange', handleVisibilityChange)
+  window.addEventListener('scroll', updateReadingProgress, { passive: true })
+  window.addEventListener('resize', updateReadingProgress, { passive: true })
   window.addEventListener('pagehide', () => finishActiveVisit(true))
   isBound = true
+}
+
+function updateReadingProgress(): void {
+  if (!activeVisit || !isArticlePath(activeVisit.path)) return
+  const content = document.querySelector<HTMLElement>('.VPDoc .vp-doc, .vp-doc')
+  if (!content || content.offsetHeight <= 0) return
+
+  const rect = content.getBoundingClientRect()
+  const viewportBottom = window.scrollY + window.innerHeight
+  const contentTop = window.scrollY + rect.top
+  const percent = Math.round(((viewportBottom - contentTop) / content.offsetHeight) * 100)
+  activeVisit.maxScrollPercent = Math.max(
+    activeVisit.maxScrollPercent,
+    Math.max(0, Math.min(percent, 100))
+  )
 }
 
 async function startTrackableVisit(path: string): Promise<void> {
@@ -125,7 +150,7 @@ async function startTrackableVisit(path: string): Promise<void> {
     })
 
     if (sequence !== visitSequence) {
-      endVisit({ visitId: response.visitId, durationMs: 0 }).catch((error) => {
+      endVisit({ visitId: response.visitId, durationMs: 0, maxScrollPercent: 0 }).catch((error) => {
         logError('analyticsTracker', '清理过期页面访问失败', error)
       })
       return
@@ -136,8 +161,10 @@ async function startTrackableVisit(path: string): Promise<void> {
       path: normalized,
       visibleSince: Date.now(),
       visibleDurationMs: 0,
-      visible: document.visibilityState !== 'hidden'
+      visible: document.visibilityState !== 'hidden',
+      maxScrollPercent: 0
     }
+    requestAnimationFrame(updateReadingProgress)
   } catch (error) {
     logError('analyticsTracker', '创建页面访问统计失败', error)
   }

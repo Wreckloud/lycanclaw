@@ -20,7 +20,12 @@ const VISIT_RECORD_EXPIRATION = 30 * 60 * 1000
 const updatingPaths = new Set<string>()
 
 function canUseStorage(): boolean {
-  return typeof window !== 'undefined' && !!window.localStorage
+  if (typeof window === 'undefined') return false
+  try {
+    return !!window.localStorage
+  } catch {
+    return false
+  }
 }
 
 function parseStoredInt(value: string | null): number | null {
@@ -61,14 +66,6 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
 
 function buildGetPageViewUrl(path: string): string {
   return `${getArticleEndpoint()}?path=${encodeURIComponent(path)}`
-}
-
-function isLocalhost(): boolean {
-  return typeof window !== 'undefined' && window.location.hostname === 'localhost'
-}
-
-function createMockPageView(): number {
-  return Math.floor(Math.random() * 100) + 10
 }
 
 function savePageViewToCache(path: string, count: number): void {
@@ -142,7 +139,7 @@ function resolvePath(path?: string): string {
   return window.location.pathname
 }
 
-export async function getPageView(path?: string, fallbackValue: number = 1): Promise<number> {
+export async function getPageView(path?: string, fallbackValue: number = 0): Promise<number> {
   const currentPath = resolvePath(path)
   if (!currentPath) return fallbackValue
 
@@ -165,13 +162,6 @@ export async function getPageView(path?: string, fallbackValue: number = 1): Pro
     return fallbackValue
   } catch (error) {
     logError('pageViewApi', '获取页面浏览量失败', error)
-
-    if (isLocalhost()) {
-      const mockCount = createMockPageView()
-      savePageViewToCache(currentPath, mockCount)
-      return mockCount
-    }
-
     return fallbackValue
   }
 }
@@ -213,15 +203,11 @@ export async function updatePageView(path?: string): Promise<boolean> {
 
 export async function getAndUpdatePageView(
   path?: string,
-  fallbackValue: number = 1
+  fallbackValue: number = 0
 ): Promise<number> {
   const currentPath = resolvePath(path)
   if (!currentPath) return fallbackValue
 
   await updatePageView(currentPath)
   return getPageView(currentPath, fallbackValue)
-}
-
-export async function getSiteUV(fallbackValue: number = 100): Promise<number> {
-  return fallbackValue
 }

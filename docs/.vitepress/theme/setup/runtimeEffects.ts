@@ -1,11 +1,11 @@
 /**
- * runtimeEffects.ts：
- * 承载runtimeEffects模块实现。
+ * 统一安装路由、音频同步和首页布局等客户端副作用。
  */
 import { nextTick } from 'vue'
 import { audioManager } from '../utils/music'
 import { preloadRecentComments } from '../utils/api'
 import { trackRouteVisit } from '../utils/analyticsTracker'
+import { setupMusicAnalytics } from '../utils/music/musicAnalytics'
 
 const PRELOAD_DELAY_MS = 1500
 const AUDIO_SYNC_DELAY_MS = 100
@@ -108,6 +108,7 @@ function unbindResize(): void {
 
 export function setupRouteSideEffects(router: VitePressRouterLike): void {
   if (typeof window === 'undefined') return
+  setupMusicAnalytics()
 
   router.onAfterRouteChanged = (to) => {
     trackRouteVisit(to)

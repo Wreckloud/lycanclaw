@@ -146,6 +146,30 @@ const coverTransformStyle = computed(() => ({
   transform: `rotate(${coverAngle.value}deg)`
 }))
 
+function readLocalStorage(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+function writeLocalStorage(key: string, value: string): void {
+  try {
+    window.localStorage.setItem(key, value)
+  } catch {
+    // 浏览器禁用存储时仅放弃偏好持久化，不影响播放。
+  }
+}
+
+function removeLocalStorage(key: string): void {
+  try {
+    window.localStorage.removeItem(key)
+  } catch {
+    // 浏览器禁用存储时无需清理。
+  }
+}
+
 function clearResizeTimer(): void {
   if (!resizeTimer) return
   clearTimeout(resizeTimer)
@@ -199,7 +223,7 @@ function clampPanelPosition(nextX: number, nextY: number, mode: PanelMode): { x:
 
 function savePanelPosition(): void {
   if (typeof window === 'undefined') return
-  window.localStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify({
+  writeLocalStorage(POSITION_STORAGE_KEY, JSON.stringify({
     y: position.value.y,
     side: position.value.side
   }))
@@ -222,7 +246,7 @@ function animatePanelSnap(): void {
 
 function loadPanelPosition(mode: PanelMode): void {
   if (typeof window === 'undefined') return
-  const raw = window.localStorage.getItem(POSITION_STORAGE_KEY)
+  const raw = readLocalStorage(POSITION_STORAGE_KEY)
   if (!raw) {
     const size = getPanelSize(mode)
     const initialY = Math.max(PANEL_GAP, window.innerHeight - size.height - 92)
@@ -291,7 +315,7 @@ function blockClickAfterDrag(): boolean {
 
 function loadVolumePreference(): void {
   if (typeof window === 'undefined') return
-  const raw = window.localStorage.getItem(VOLUME_STORAGE_KEY)
+  const raw = readLocalStorage(VOLUME_STORAGE_KEY)
   const parsed = Number.parseInt(raw || '', 10)
   if (!Number.isNaN(parsed)) {
     volume.value = Math.max(0, Math.min(parsed, 100))
@@ -301,7 +325,7 @@ function loadVolumePreference(): void {
 
 function saveVolumePreference(): void {
   if (typeof window === 'undefined') return
-  window.localStorage.setItem(VOLUME_STORAGE_KEY, String(volume.value))
+  writeLocalStorage(VOLUME_STORAGE_KEY, String(volume.value))
 }
 
 function setVolumeByDelta(delta: number): void {
@@ -451,12 +475,12 @@ async function loadLyricForCurrentSong(songId: string): Promise<void> {
 
 function clearResumeSnapshot(): void {
   if (typeof window === 'undefined') return
-  window.localStorage.removeItem(RESUME_STORAGE_KEY)
+  removeLocalStorage(RESUME_STORAGE_KEY)
 }
 
 function readResumeSnapshot(): ResumeSnapshot | null {
   if (typeof window === 'undefined') return null
-  const raw = window.localStorage.getItem(RESUME_STORAGE_KEY)
+  const raw = readLocalStorage(RESUME_STORAGE_KEY)
   if (!raw) return null
 
   try {
@@ -508,7 +532,7 @@ function saveResumeSnapshot(force = false): void {
     savedAt: now
   }
 
-  window.localStorage.setItem(RESUME_STORAGE_KEY, JSON.stringify(snapshot))
+  writeLocalStorage(RESUME_STORAGE_KEY, JSON.stringify(snapshot))
   resumeSaveTimer = now
 }
 
@@ -599,7 +623,8 @@ async function playFromFlowState(state: MusicFlowState): Promise<void> {
     name: state.current.name,
     artist: state.current.artist,
     cover: state.current.cover,
-    url: state.current.url || ''
+    url: state.current.url || '',
+    urlSource: state.current.urlSource || 'unknown'
   }
   shouldFadeOnNextPlay.value = false
   isVisible.value = true

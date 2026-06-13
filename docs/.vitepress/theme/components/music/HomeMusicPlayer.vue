@@ -219,7 +219,8 @@ function toAudioSongInfo(item: MusicQueueItem) {
     name: item.name,
     artist: item.artist,
     cover: normalizeCoverUrl(item.cover),
-    url: item.url || ''
+    url: item.url || '',
+    urlSource: item.urlSource || 'unknown'
   }
 }
 

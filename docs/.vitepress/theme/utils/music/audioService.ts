@@ -21,6 +21,7 @@ export interface AudioSongInfo {
   artist: string
   cover: string
   url: string
+  urlSource?: string
 }
 
 interface AudioPlayStatus {
@@ -48,8 +49,6 @@ class AudioService {
   private volume: number = 50;
   private operationState: AudioOperationState = AudioOperationState.IDLE;
   private operationInProgress: boolean = false;
-  private retryCount: number = 0;
-  private maxRetries: number = 3;
   private volumeFadeFrameId: number | null = null;
   
   // 私有构造函数，防止外部实例化
@@ -192,20 +191,17 @@ class AudioService {
   ): Promise<void> {
     if (!this.audioElement) return Promise.reject('音频元素未初始化');
 
+    if (this.operationInProgress) {
+      return Promise.reject(new Error('AUDIO_BUSY'));
+    }
+
     // 播放权限由 audioManager 统一决策（优先级 + 是否允许打断）。
     const granted = audioManager.requestPlayback(audioId, requestContext);
     if (!granted) {
       return Promise.reject(new Error('PLAYBACK_DENIED'));
     }
     
-    // 如果正在进行操作，避免重复操作
-    if (this.operationInProgress) {
-      logDebug('audioService', '操作正在进行中，请稍候再试');
-      return Promise.resolve();
-    }
-    
     this.operationInProgress = true;
-    this.retryCount = 0;
     
     // 如果是不同的音频，则加载新的
     if (this.currentAudioId !== audioId || !this.audioElement.src) {
@@ -276,27 +272,7 @@ class AudioService {
           return Promise.reject(error);
         }
 
-        if (error.name === 'NotAllowedError' || error.name === 'NotSupportedError') {
-          if (this.retryCount < this.maxRetries) {
-            this.retryCount++;
-            logDebug(
-              'audioService',
-              `播放失败，正在重试(${this.retryCount}/${this.maxRetries})...`
-            );
-            
-            // 短暂延迟后重试
-            return new Promise<void>((resolve, reject) => {
-              setTimeout(() => {
-                this.operationInProgress = false;
-                this.play(audioId, songInfo, startTime, requestContext, options)
-                  .then(resolve)
-                  .catch(reject);
-              }, 1000);
-            });
-          }
-        }
-        
-        // 其他类型的错误，继续抛出
+        // 自动播放限制需要用户交互，同一 URL 不应循环重试。
         this.operationState = AudioOperationState.ERROR;
         this.operationInProgress = false;
         return Promise.reject(error);
@@ -318,7 +294,8 @@ class AudioService {
       isPlaying: true,
       progress: (this.currentTime / (this.duration || 1)) * 100,
       duration: this.duration,
-      currentTime: this.currentTime
+      currentTime: this.currentTime,
+      urlSource: songInfo.urlSource || 'unknown'
     };
     audioManager.emit('song-info-update', JSON.stringify(songData));
     
@@ -421,7 +398,6 @@ class AudioService {
       this.currentSongInfo = null;
       this.operationState = AudioOperationState.IDLE;
       this.operationInProgress = false;
-      this.retryCount = 0;
       this.cancelVolumeFade();
     } catch (error) {
       logError('audioService', '重置音频服务时出错', error);

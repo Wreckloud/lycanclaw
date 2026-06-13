@@ -1,10 +1,8 @@
 /**
- * registerGlobalComponents.ts：
- * 承载registerGlobalComponents模块实现。
+ * 注册主题内可由 Markdown 和布局直接使用的全局组件。
  */
 import { defineAsyncComponent } from 'vue'
 import type { App } from 'vue'
-import * as echarts from 'echarts'
 
 import GlobalMusicPlayer from '../components/music/GlobalMusicPlayer.vue'
 import SimpleMusicPlayer from '../components/music/SimpleMusicPlayer.vue'
@@ -30,8 +28,4 @@ export function registerGlobalComponents(app: App): void {
   app.component('GlobalMusicPlayer', GlobalMusicPlayer)
   app.component('HomeMusicPlayer', HomeMusicPlayer)
   app.component('BilibiliPlayer', BilibiliPlayer)
-}
-
-export function registerGlobalRuntime(app: App): void {
-  app.config.globalProperties.$echarts = echarts
 }

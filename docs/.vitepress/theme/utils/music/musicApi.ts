@@ -13,6 +13,8 @@ export interface MusicTrack {
 
 export interface MusicTrackWithUrl extends MusicTrack {
   url: string
+  urlSource: string
+  trial: boolean
 }
 
 export interface MusicQueueItem {
@@ -23,6 +25,7 @@ export interface MusicQueueItem {
   cover: string
   url: string
   source: string
+  urlSource: string
   priority: number
   enqueuedAt: string
 }
@@ -72,10 +75,13 @@ interface TrackUrlResponse {
   id: string
   url: string
   level: string
+  source: string
+  trial: boolean
 }
 
 interface TrackDetailWithUrlResponse extends MusicTrackWithUrl {
   level: string
+  source: string
 }
 
 interface AboutSequenceStartRequest {
@@ -108,6 +114,7 @@ function buildUrl(path: string, params: Record<string, string | number> = {}): s
 }
 
 const PLAYBACK_SESSION_STORAGE_KEY = 'lycan:playback-session-id'
+let memoryPlaybackSessionId = ''
 
 function buildPlaybackSessionId(): string {
   const random = Math.random().toString(36).slice(2)
@@ -118,11 +125,17 @@ function resolvePlaybackSessionId(): string {
   if (typeof window === 'undefined') {
     return buildPlaybackSessionId()
   }
-  const existing = window.localStorage.getItem(PLAYBACK_SESSION_STORAGE_KEY)
-  if (existing && existing.trim()) return existing.trim()
-  const created = buildPlaybackSessionId()
-  window.localStorage.setItem(PLAYBACK_SESSION_STORAGE_KEY, created)
-  return created
+  try {
+    const existing = window.localStorage.getItem(PLAYBACK_SESSION_STORAGE_KEY)
+    if (existing && existing.trim()) return existing.trim()
+    const created = memoryPlaybackSessionId || buildPlaybackSessionId()
+    memoryPlaybackSessionId = created
+    window.localStorage.setItem(PLAYBACK_SESSION_STORAGE_KEY, created)
+    return created
+  } catch {
+    if (!memoryPlaybackSessionId) memoryPlaybackSessionId = buildPlaybackSessionId()
+    return memoryPlaybackSessionId
+  }
 }
 
 async function requestJson<T>(path: string, params: Record<string, string | number> = {}): Promise<T> {
@@ -200,7 +213,9 @@ export async function fetchTrackWithUrlById(
     name: payload.name || '',
     artist: payload.artist || '',
     cover: withCoverSize(payload.cover || '', coverSize),
-    url: normalizeHttps(payload.url || '')
+    url: normalizeHttps(payload.url || ''),
+    urlSource: payload.source || 'unknown',
+    trial: Boolean(payload.trial)
   }
 }
 

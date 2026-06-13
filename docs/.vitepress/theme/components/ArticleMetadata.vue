@@ -46,7 +46,7 @@ const fetchPageViewCount = async () => {
       isLoading.value = false
     }
 
-    const count = await getAndUpdatePageView(currentPagePath, 1)
+    const count = await getAndUpdatePageView(currentPagePath, 0)
     if (count > 0) {
       pageviewCount.value = count.toString()
     } else if (pageviewCount.value === '--') {

@@ -24,6 +24,7 @@ export interface RecentComment {
   nick: string
   url: string
   path: string
+  articleTitle?: string
   createdAt: string
 }
 
@@ -31,7 +32,12 @@ let isPreloading = false
 let preloadPromise: Promise<RecentComment[]> | null = null
 
 function canUseStorage(): boolean {
-  return typeof window !== 'undefined' && !!window.localStorage
+  if (typeof window === 'undefined') return false
+  try {
+    return !!window.localStorage
+  } catch {
+    return false
+  }
 }
 
 function readCacheTimestamp(): number | null {

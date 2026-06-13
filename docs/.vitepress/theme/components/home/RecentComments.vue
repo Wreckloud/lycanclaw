@@ -53,7 +53,8 @@ function decodePathSegment(value: string): string {
   }
 }
 
-function getArticleTitle(url: string): string {
+function getArticleTitle(url: string, articleTitle?: string): string {
+  if (articleTitle) return articleTitle
   if (!url) return '未知文章'
   const path = url.replace(/^\//, '')
   if (!path || path === 'index.html') return '首页'
@@ -149,12 +150,12 @@ onBeforeUnmount(() => {
               <span class="nick">{{ comment.nick }}</span>
               <span class="connector">发表在</span>
               <a class="article-link" :href="getArticleLink(comment.url)">
-                {{ getArticleTitle(comment.url) }}
+                {{ getArticleTitle(comment.url, comment.articleTitle) }}
               </a>
             </div>
             <div class="comment-time">{{ formatCommentDate(comment.createdAt) }}</div>
           </div>
-          <div class="comment-body" v-html="comment.comment"></div>
+          <div class="comment-body">{{ comment.comment }}</div>
         </div>
       </div>
       

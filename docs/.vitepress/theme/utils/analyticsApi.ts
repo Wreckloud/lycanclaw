@@ -28,6 +28,12 @@ export interface VisitStartResponse {
 export interface VisitEndPayload {
   visitId: string
   durationMs: number
+  maxScrollPercent: number
+}
+
+export interface WalineIdentityPayload {
+  visitorId: string
+  walineToken: string
 }
 
 async function requestJson<T>(path: string, payload: unknown): Promise<T> {
@@ -62,4 +68,8 @@ export function beaconEndVisit(payload: VisitEndPayload): boolean {
   if (typeof navigator === 'undefined' || !navigator.sendBeacon) return false
   const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' })
   return navigator.sendBeacon(`${getBackendApiBase()}/api/analytics/visit/end`, blob)
+}
+
+export function linkWalineIdentity(payload: WalineIdentityPayload): Promise<void> {
+  return requestJson<void>('/api/analytics/identity/waline', payload)
 }
