@@ -12,7 +12,6 @@ import {
   fetchTrackLyric,
   startRandomFlow,
   playNextFromFlow,
-  fetchFlowState,
   fetchWeeklyTracks,
   type MusicFlowState,
   type MusicLyricLine,
@@ -510,9 +509,6 @@ onMounted(() => {
   if (typeof window === 'undefined') return
 
   void refreshAvailability()
-  void fetchFlowState().then((state) => applyFlowState(state)).catch(() => {
-    // 仅用于初始同步，失败时忽略。
-  })
 
   setupEventListeners()
   syncFromAudioManager()

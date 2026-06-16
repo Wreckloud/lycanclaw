@@ -7,6 +7,7 @@
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRoute, useData } from 'vitepress'
 import { logError } from '../utils/logger'
+import { notifyRecentCommentsUpdated } from '../utils/api'
 import { getWalineServerUrl } from '../utils/runtimePolicy'
 import { syncWalineVisitorIdentity } from '../utils/visitorIdentity'
 
@@ -24,16 +25,15 @@ const walineRef = ref<HTMLElement | null>(null)
 let walineInstance: WalineInstanceLike | null = null
 let cleanupThemeWatcher: (() => void) | null = null
 let cleanupWalineDomWatcher: (() => void) | null = null
+let targetScrollFallbackTimer: number | null = null
+let observedCommentIds = new Set<string>()
+let handledCommentHash = ''
 
 const DEFAULT_AVATAR = '/default.png'
 const ALLOWED_OAUTH_PROVIDERS = new Set(['github', 'qq'])
 
 // 计算当前路径作为评论标识
 const commentPath = computed(() => route.path)
-const isThoughtArticle = computed(() =>
-  /^\/thoughts\/(?!index(?:\.html)?$)(?!tags(?:\.html)?$).+/i.test(route.path)
-)
-
 /**
  * 初始化 Waline 评论系统。
  */
@@ -53,28 +53,26 @@ const initWaline = async () => {
       path: commentPath.value,
       dark: isDark.value ? 'html.dark' : false,
       meta: ['nick', 'mail', 'link'],
-      requiredMeta: ['nick', 'mail'],
+      requiredMeta: [],
       pageSize: 10,
       emoji: [
         'https://unpkg.com/@waline/emojis@1.2.0/bilibili',
       ],
       search: false,
-      reaction: isThoughtArticle.value ? ['/reaction-like.svg'] : false,
+      reaction: false,
       pageview: '.waline-pageview-count',
       comment: true,
       texRenderer: undefined,
       locale: {
         nick: '称谓',
         nickError: '昵称不能少于3个字符',
-        mail: '邮箱',
+        mail: '邮箱（可选）',
         mailError: '请填写正确的邮件地址',
         link: '网址',
         optional: '可选',
         placeholder: '行者,欲留下何言？',
         sofa: '风静人稀，尚无行者留声。',
         submit: '提交',
-        like: '点赞',
-        cancelLike: '取消点赞',
         reply: '回复',
         cancelReply: '取消回复',
         comment: '评论',
@@ -99,8 +97,6 @@ const initWaline = async () => {
         gif: '表情包',
         gifSearchPlaceholder: '搜索表情包',
         replyPlaceholder: '回复 @{at}',
-        reactionTitle: '喜欢这篇随想吗？',
-        reaction0: '喜欢',
       },
       login: 'enable',
       errorHandler: (err: unknown) => {
@@ -169,16 +165,81 @@ const applyWalineDomEnhancements = () => {
 
   const placeholders: Array<[string, string]> = [
     ['.wl-header .wl-nick', '愿世人以何之称'],
-    ['.wl-header .wl-mail', '传信之途用于回应'],
+    ['.wl-header .wl-mail', '传信之途（可选，用于回应）'],
     ['.wl-header .wl-link', '可跳转进汝之博客'],
   ]
   placeholders.forEach(([selector, placeholder]) => {
     root.querySelector<HTMLInputElement>(selector)?.setAttribute('placeholder', placeholder)
   })
+}
 
-  void syncWalineVisitorIdentity().catch((error) => {
-    logError('Comment', '关联 Waline 访客身份失败', error)
-  })
+function currentCommentHash(): string {
+  if (typeof window === 'undefined' || !window.location.hash) return ''
+  try {
+    return decodeURIComponent(window.location.hash.slice(1))
+  } catch {
+    return window.location.hash.slice(1)
+  }
+}
+
+function clearTargetScrollFallback(): void {
+  if (targetScrollFallbackTimer === null) return
+  window.clearTimeout(targetScrollFallbackTimer)
+  targetScrollFallbackTimer = null
+}
+
+function scrollToRequestedComment(): boolean {
+  const root = walineRef.value
+  const commentId = currentCommentHash()
+  if (!root || !commentId || handledCommentHash === commentId) return false
+
+  const target = document.getElementById(commentId)
+  if (!target || !root.contains(target)) return false
+
+  handledCommentHash = commentId
+  clearTargetScrollFallback()
+  target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  target.classList.add('lycan-comment-target')
+  window.setTimeout(() => target.classList.remove('lycan-comment-target'), 1600)
+  return true
+}
+
+function scheduleCommentTargetFallback(): void {
+  clearTargetScrollFallback()
+  if (!currentCommentHash()) return
+
+  targetScrollFallbackTimer = window.setTimeout(() => {
+    targetScrollFallbackTimer = null
+    if (!scrollToRequestedComment()) {
+      walineRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, 1800)
+}
+
+function detectCommentListUpdate(): void {
+  const root = walineRef.value
+  if (!root) return
+
+  const nextIds = new Set(
+    Array.from(root.querySelectorAll<HTMLElement>('.wl-card-item'))
+      .map(item => item.id)
+      .filter(Boolean)
+  )
+  const hasNewComment = observedCommentIds.size > 0
+    && Array.from(nextIds).some(id => !observedCommentIds.has(id))
+  if (hasNewComment) {
+    notifyRecentCommentsUpdated()
+  }
+  observedCommentIds = nextIds
+}
+
+function handleWalineClick(event: Event): void {
+  const target = event.target
+  if (!(target instanceof Element) || !target.closest('.wl-btn.primary')) return
+
+  window.setTimeout(() => {
+    notifyRecentCommentsUpdated()
+  }, 1200)
 }
 
 /**
@@ -189,9 +250,18 @@ const setupWalineDomWatcher = (): (() => void) => {
   if (!root) return () => undefined
 
   applyWalineDomEnhancements()
-  const observer = new MutationObserver(applyWalineDomEnhancements)
+  detectCommentListUpdate()
+  const observer = new MutationObserver(() => {
+    applyWalineDomEnhancements()
+    detectCommentListUpdate()
+    scrollToRequestedComment()
+  })
   observer.observe(root, { childList: true, subtree: true })
-  return () => observer.disconnect()
+  root.addEventListener('click', handleWalineClick, true)
+  return () => {
+    observer.disconnect()
+    root.removeEventListener('click', handleWalineClick, true)
+  }
 }
 
 onMounted(async () => {
@@ -199,9 +269,16 @@ onMounted(async () => {
   await initWaline()
   cleanupThemeWatcher = setupThemeWatcher()
   cleanupWalineDomWatcher = setupWalineDomWatcher()
+  window.addEventListener('hashchange', scheduleCommentTargetFallback)
+  scheduleCommentTargetFallback()
+  void syncWalineVisitorIdentity().catch((error) => {
+    logError('Comment', '关联 Waline 访客身份失败', error)
+  })
 })
 
 onBeforeUnmount(() => {
+  clearTargetScrollFallback()
+  window.removeEventListener('hashchange', scheduleCommentTargetFallback)
   if (cleanupThemeWatcher) {
     cleanupThemeWatcher()
     cleanupThemeWatcher = null
@@ -249,6 +326,24 @@ onBeforeUnmount(() => {
   --waline-box-shadow: none;
   --waline-avatar-radius: 50%;
   --waline-bg-color: transparent;
+}
+
+.waline-container .wl-card-item {
+  scroll-margin-top: 96px;
+}
+
+.waline-container .wl-card-item.lycan-comment-target {
+  animation: lycan-comment-target 1.6s var(--lc-motion-ease-standard);
+}
+
+@keyframes lycan-comment-target {
+  0%,
+  100% {
+    background-color: transparent;
+  }
+  35% {
+    background-color: color-mix(in srgb, var(--vp-c-brand-soft) 48%, transparent);
+  }
 }
 
 .waline-container a[href*="type=weibo"],
@@ -355,7 +450,6 @@ onBeforeUnmount(() => {
 }
 
 .waline-container .wl-actions svg,
-.waline-container .wl-like svg,
 .waline-container .wl-reply svg {
   width: 14px;
   height: 14px;
@@ -377,53 +471,6 @@ onBeforeUnmount(() => {
   border: 1px solid var(--vp-c-divider) !important;
   border-radius: 0 !important;
   line-height: 18px;
-}
-
-.waline-container .wl-reaction {
-  margin: 0 0 1.6rem;
-  padding: 0 0 1.2rem;
-  border-bottom: 1px solid var(--vp-c-divider);
-}
-
-.waline-container .wl-reaction-title {
-  margin-bottom: 8px;
-  color: var(--vp-c-text-2);
-  font-size: 13px;
-}
-
-.waline-container .wl-reaction-list {
-  justify-content: flex-start;
-  gap: 0;
-}
-
-.waline-container .wl-reaction-item {
-  min-width: 64px;
-  margin: 0;
-  padding: 6px 8px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-
-.waline-container .wl-reaction-item:hover,
-.waline-container .wl-reaction-item.active {
-  color: var(--vp-c-brand-1);
-  background: color-mix(in srgb, var(--vp-c-brand-1) 8%, transparent);
-}
-
-.waline-container .wl-reaction-img {
-  width: 28px;
-  height: 28px;
-}
-
-.waline-container .wl-reaction-img img {
-  width: 28px;
-  height: 28px;
-}
-
-.waline-container .wl-reaction-text,
-.waline-container .wl-reaction-votes {
-  font-size: 11px;
 }
 
 .waline-container .wl-quote {
@@ -487,7 +534,6 @@ onBeforeUnmount(() => {
   font-weight: 500;
 }
 
-.waline-container .wl-like,
 .waline-container .wl-reply {
   background: none;
   border: none;
@@ -499,9 +545,12 @@ onBeforeUnmount(() => {
   align-items: center;
 }
 
-.waline-container .wl-like:hover,
 .waline-container .wl-reply:hover {
   color: var(--vp-c-brand-1);
+}
+
+.waline-container .wl-like {
+  display: none !important;
 }
 
 .waline-container .wl-emoji-popup {

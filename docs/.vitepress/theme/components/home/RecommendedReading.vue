@@ -25,7 +25,7 @@ import {
 const isBrowser = typeof window !== 'undefined'
 const INTERACTION_COOLDOWN_MS = 3000
 const NEXT_PREV_COOLDOWN_MS = 1000
-const INDEX_UPDATE_DEBOUNCE_MS = 50
+const INDEX_UPDATE_DEBOUNCE_MS = 90
 const VISIBILITY_THRESHOLD = 0.6
 const VISIBILITY_ROOT_MARGIN = '0px 0px -10% 0px'
 const SLOW_LOADING_HINT_DELAY_MS = 1500
@@ -50,8 +50,6 @@ const isLoading = ref(true)
 const showSlowLoadingHint = ref(false)
 const hasError = ref(false)
 const currentIndex = ref(0)
-const scrollPosition = ref(0)
-const maxScroll = ref(0)
 const isUserInteracting = ref(false)
 const isHovered = ref(false)
 const hasTriggeredVisibleOnce = ref(false)
@@ -65,6 +63,14 @@ const canAutoplay = computed(() =>
   !isHovered.value &&
   !isUserInteracting.value
 )
+const loopedPosts = computed(() => {
+  if (recommendedPosts.value.length <= 1) return recommendedPosts.value
+  const first = recommendedPosts.value[0]
+  const last = recommendedPosts.value.at(-1)
+  return first && last
+    ? [last, ...recommendedPosts.value, first]
+    : recommendedPosts.value
+})
 
 let scrollResetTimer: number | null = null
 let slowLoadingHintTimer: number | null = null
@@ -85,42 +91,70 @@ const spacerWidth = computed(() => {
   return `calc((100% - ${cardWidthPercent}%) / 2)`
 })
 
-const updateCurrentIndex = useDebounceFn(() => {
-  if (!carouselRef.value || recommendedPosts.value.length <= 1) return
+function getRenderedCards(): HTMLElement[] {
+  return carouselRef.value
+    ? Array.from(carouselRef.value.querySelectorAll<HTMLElement>('.post-card'))
+    : []
+}
 
-  const scrollLeft = carouselRef.value.scrollLeft
-  const containerWidth = carouselRef.value.clientWidth
-  const totalWidth = carouselRef.value.scrollWidth
-  const scrollableWidth = totalWidth - containerWidth
-  if (scrollableWidth <= 0) return
+function getCardTargetLeft(card: HTMLElement): number {
+  if (!carouselRef.value) return 0
+  return card.offsetLeft - (carouselRef.value.clientWidth - card.offsetWidth) / 2
+}
 
-  const scrollProgress = scrollLeft / scrollableWidth
-  const maxIndex = recommendedPosts.value.length - 1
-  const newIndex = Math.round(Math.max(0, Math.min(maxIndex, scrollProgress * maxIndex)))
+function logicalIndexFromRendered(index: number): number {
+  const count = recommendedPosts.value.length
+  if (count <= 1) return 0
+  if (index <= 0) return count - 1
+  if (index >= count + 1) return 0
+  return index - 1
+}
 
-  if (currentIndex.value !== newIndex) {
-    currentIndex.value = newIndex
-  }
-
-  scrollPosition.value = scrollLeft
-  maxScroll.value = scrollableWidth
-}, INDEX_UPDATE_DEBOUNCE_MS)
-
-function scrollToCardByProgress(progress: number, smooth = true): void {
-  if (!carouselRef.value || !recommendedPosts.value.length) return
-  const scrollableWidth = carouselRef.value.scrollWidth - carouselRef.value.clientWidth
+function scrollToRenderedCard(index: number, smooth = true): void {
+  if (!carouselRef.value) return
+  const cards = getRenderedCards()
+  const safeIndex = Math.max(0, Math.min(index, cards.length - 1))
+  const card = cards[safeIndex]
+  if (!card) return
   carouselRef.value.scrollTo({
-    left: progress * scrollableWidth,
+    left: getCardTargetLeft(card),
     behavior: smooth ? 'smooth' : 'auto'
   })
 }
+
+const updateCurrentIndex = useDebounceFn(() => {
+  if (!carouselRef.value || recommendedPosts.value.length <= 1) return
+
+  const containerCenter = carouselRef.value.scrollLeft + carouselRef.value.clientWidth / 2
+  const cards = getRenderedCards()
+  if (cards.length === 0) return
+
+  let nearestIndex = 0
+  let nearestDistance = Number.POSITIVE_INFINITY
+  cards.forEach((card, index) => {
+    const cardCenter = card.offsetLeft + card.offsetWidth / 2
+    const distance = Math.abs(cardCenter - containerCenter)
+    if (distance < nearestDistance) {
+      nearestDistance = distance
+      nearestIndex = index
+    }
+  })
+
+  currentIndex.value = logicalIndexFromRendered(nearestIndex)
+
+  const count = recommendedPosts.value.length
+  if (nearestIndex === 0) {
+    scrollToRenderedCard(count, false)
+  } else if (nearestIndex === count + 1) {
+    scrollToRenderedCard(1, false)
+  }
+}, INDEX_UPDATE_DEBOUNCE_MS)
 
 function scrollToCard(index: number, smooth = true): void {
   if (!carouselRef.value || !recommendedPosts.value.length) return
   const safeIndex = Math.max(0, Math.min(index, recommendedPosts.value.length - 1))
   currentIndex.value = safeIndex
-  const maxIndex = Math.max(1, recommendedPosts.value.length - 1)
-  scrollToCardByProgress(safeIndex / maxIndex, smooth)
+  scrollToRenderedCard(recommendedPosts.value.length > 1 ? safeIndex + 1 : safeIndex, smooth)
 }
 
 function clearInteractionResetTimer(): void {
@@ -160,20 +194,20 @@ function scheduleInteractionReset(delayMs = INTERACTION_COOLDOWN_MS): void {
 function prevCard(): void {
   if (shouldDisableAutoplay.value) return
   isUserInteracting.value = true
-  const prevIndex = currentIndex.value <= 0
-    ? recommendedPosts.value.length - 1
-    : currentIndex.value - 1
-  scrollToCard(prevIndex)
+  const targetRenderedIndex = currentIndex.value <= 0
+    ? 0
+    : currentIndex.value
+  scrollToRenderedCard(targetRenderedIndex)
   scheduleInteractionReset(NEXT_PREV_COOLDOWN_MS)
 }
 
 function nextCard(): void {
   if (shouldDisableAutoplay.value) return
   isUserInteracting.value = true
-  const nextIndex = currentIndex.value >= recommendedPosts.value.length - 1
-    ? 0
-    : currentIndex.value + 1
-  scrollToCard(nextIndex)
+  const targetRenderedIndex = currentIndex.value >= recommendedPosts.value.length - 1
+    ? recommendedPosts.value.length + 1
+    : currentIndex.value + 2
+  scrollToRenderedCard(targetRenderedIndex)
   scheduleInteractionReset(NEXT_PREV_COOLDOWN_MS)
 }
 
@@ -222,17 +256,15 @@ function handleKeyDown(e: KeyboardEvent): void {
 
 const { pause: pauseAutoplay, resume: resumeAutoplay } = useIntervalFn(() => {
   if (shouldDisableAutoplay.value || isUserInteracting.value) return
-  const nextIndex = (currentIndex.value + 1) % recommendedPosts.value.length
-  scrollToCard(nextIndex)
+  const targetRenderedIndex = currentIndex.value >= recommendedPosts.value.length - 1
+    ? recommendedPosts.value.length + 1
+    : currentIndex.value + 2
+  scrollToRenderedCard(targetRenderedIndex)
 }, props.autoplaySpeed, { immediate: false })
 
 watch(() => recommendedPosts.value.length, (newCount) => {
-  if (currentIndex.value >= newCount) {
-    currentIndex.value = Math.max(0, newCount - 1)
-    nextTick(() => {
-      scrollToCard(currentIndex.value, false)
-    })
-  }
+  currentIndex.value = 0
+  nextTick(() => scrollToCard(0, false))
 })
 
 watch(isVisible, async (visible) => {
@@ -286,7 +318,6 @@ onMounted(async () => {
 
   nextTick(() => {
     if (!carouselRef.value) return
-    useEventListener(carouselRef.value, 'scroll', handleScroll)
     useEventListener(carouselRef.value, 'touchstart', handleTouchStart)
     useEventListener(carouselRef.value, 'touchend', handleTouchEnd)
     useEventListener(carouselRef.value, 'mouseenter', handleMouseEnter)
@@ -361,9 +392,10 @@ function buildThoughtsTagUrl(tag: string): string {
         style="--anim-delay: 0.15s"
       >
         <!-- 左侧渐变遮罩 -->
-        <div class="lc-fade-mask lc-fade-mask--left" :style="{ 
-          opacity: scrollPosition > 0 && recommendedPosts.length > 1 ? 1 : 0 
-        }"></div>
+        <div
+          class="lc-fade-mask lc-fade-mask--left"
+          :style="{ opacity: recommendedPosts.length > 1 ? 1 : 0 }"
+        ></div>
         
         <!-- 轮播容器 -->
         <div 
@@ -377,8 +409,8 @@ function buildThoughtsTagUrl(tag: string): string {
           }"></div>
           
           <div 
-            v-for="post in recommendedPosts" 
-            :key="post.url" 
+            v-for="(post, loopIndex) in loopedPosts"
+            :key="`${post.url}-${loopIndex}`"
             class="post-card"
             :style="{ 
               flexBasis: cardWidth, 
@@ -417,9 +449,10 @@ function buildThoughtsTagUrl(tag: string): string {
         </div>
         
         <!-- 右侧渐变遮罩 -->
-        <div class="lc-fade-mask lc-fade-mask--right" :style="{ 
-          opacity: scrollPosition < maxScroll - 10 && recommendedPosts.length > 1 ? 1 : 0 
-        }"></div>
+        <div
+          class="lc-fade-mask lc-fade-mask--right"
+          :style="{ opacity: recommendedPosts.length > 1 ? 1 : 0 }"
+        ></div>
       </div>
 
       <!-- 卡片指示器，只有多于1篇文章时才显示 -->

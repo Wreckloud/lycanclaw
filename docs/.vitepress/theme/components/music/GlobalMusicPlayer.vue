@@ -11,6 +11,7 @@ import {
   audioService,
   calculateProgressPercent,
   fetchTrackLyric,
+  fetchTrackWithUrlById,
   formatAudioTime,
   playNextFromFlow,
   startRandomFlow,
@@ -37,7 +38,7 @@ const RESUME_MAX_AGE_MS = 30 * 60 * 1000
 const RESUME_SAVE_INTERVAL_MS = 2000
 const RESUME_END_GUARD_SEC = 3
 const RESUME_FADE_IN_MS = 900
-const READ_COLLAPSE_WIDTH = 960
+const VOLUME_HINT_STORAGE_KEY = 'lycan:global-player-volume-hint-seen'
 const READ_SCROLL_DELTA = 48
 const ROTATE_BASE_DEG_PER_SEC = 18
 const ROTATE_GESTURE_DECAY = 0.92
@@ -87,6 +88,7 @@ const coverAngle = ref(0)
 const gestureSpinVelocity = ref(0)
 const playableSongInfo = ref<AudioSongInfo | null>(null)
 const shouldFadeOnNextPlay = ref(false)
+const showVolumeHint = ref(false)
 
 const unsubscribers: Array<() => void> = []
 let resizeTimer: ReturnType<typeof setTimeout> | null = null
@@ -94,7 +96,6 @@ let resizeHandler: (() => void) | null = null
 let snapTimer: ReturnType<typeof setTimeout> | null = null
 let resumeSaveTimer = 0
 let pageHideHandler: (() => void) | null = null
-let beforeUnloadHandler: (() => void) | null = null
 let visibilityChangeHandler: (() => void) | null = null
 let scrollHandler: (() => void) | null = null
 let scrollRafId: number | null = null
@@ -145,6 +146,20 @@ const panelStyle = computed(() => ({
 const coverTransformStyle = computed(() => ({
   transform: `rotate(${coverAngle.value}deg)`
 }))
+const volumeHintStyle = computed(() => {
+  if (typeof window === 'undefined') return {}
+  const panelWidth = getPanelSize(panelMode.value).width
+  const controlWidth = panelMode.value === 'expanded' ? 26 : 24
+  const panelLeft = position.value.side === 'right'
+    ? getViewportWidth() - panelWidth
+    : 0
+  return {
+    left: `${position.value.side === 'right'
+      ? panelLeft + controlWidth / 2
+      : panelLeft + panelWidth - controlWidth / 2}px`,
+    top: `${position.value.y - 8}px`
+  }
+})
 
 function readLocalStorage(key: string): string | null {
   try {
@@ -170,6 +185,29 @@ function removeLocalStorage(key: string): void {
   }
 }
 
+function hideVolumeHint(): void {
+  showVolumeHint.value = false
+}
+
+function maybeShowVolumeHint(): void {
+  if (
+    typeof window === 'undefined'
+    || !currentSong.value.id
+    || panelMode.value !== 'expanded'
+    || readLocalStorage(VOLUME_HINT_STORAGE_KEY) === 'true'
+    || showVolumeHint.value
+  ) {
+    return
+  }
+
+  showVolumeHint.value = true
+}
+
+function markVolumeHintLearned(): void {
+  writeLocalStorage(VOLUME_HINT_STORAGE_KEY, 'true')
+  hideVolumeHint()
+}
+
 function clearResizeTimer(): void {
   if (!resizeTimer) return
   clearTimeout(resizeTimer)
@@ -188,7 +226,7 @@ function detectDeviceState(): void {
 }
 
 function defaultModeByDevice(): PanelMode {
-  return 'collapsed'
+  return isNarrowScreen.value ? 'immersive' : 'collapsed'
 }
 
 function getViewportWidth(): number {
@@ -542,15 +580,34 @@ async function restoreResumeSnapshot(): Promise<boolean> {
     return false
   }
 
-  playableSongInfo.value = snapshot.songInfo
-  volume.value = Math.max(0, Math.min(Number(snapshot.volume) || DEFAULT_VOLUME, 100))
+  let resumeSongInfo = snapshot.songInfo
+  try {
+    const refreshedTrack = await fetchTrackWithUrlById(normalizeSongId(snapshot.audioId))
+    if (refreshedTrack?.url) {
+      resumeSongInfo = {
+        name: refreshedTrack.name || snapshot.songInfo.name,
+        artist: refreshedTrack.artist || snapshot.songInfo.artist,
+        cover: refreshedTrack.cover || snapshot.songInfo.cover,
+        url: refreshedTrack.url,
+        urlSource: refreshedTrack.urlSource
+      }
+    }
+  } catch {
+    // 刷新播放地址失败时仍可尝试使用短期快照中的地址。
+  }
+
+  playableSongInfo.value = resumeSongInfo
+  const savedVolume = Number(snapshot.volume)
+  volume.value = Number.isFinite(savedVolume)
+    ? Math.max(0, Math.min(savedVolume, 100))
+    : DEFAULT_VOLUME
   audioService.setVolume(volume.value)
   shouldFadeOnNextPlay.value = true
   currentSong.value = {
     id: snapshot.audioId,
-    name: snapshot.songInfo.name,
-    artist: snapshot.songInfo.artist,
-    cover: snapshot.songInfo.cover,
+    name: resumeSongInfo.name,
+    artist: resumeSongInfo.artist,
+    cover: resumeSongInfo.cover,
     isPlaying: false,
     progress: snapshot.duration > 0 ? (snapshot.currentTime / snapshot.duration) * 100 : 0,
     duration: snapshot.duration,
@@ -567,7 +624,7 @@ async function restoreResumeSnapshot(): Promise<boolean> {
   try {
     await audioService.play(
       snapshot.audioId,
-      snapshot.songInfo,
+      resumeSongInfo,
       snapshot.currentTime,
       snapshot.requestContext ?? playbackRequestBySource('global-player'),
       { fadeInMs: RESUME_FADE_IN_MS, retryOnNotAllowed: false }
@@ -577,6 +634,8 @@ async function restoreResumeSnapshot(): Promise<boolean> {
     syncRotationLoop()
   } catch (error) {
     currentSong.value.isPlaying = false
+    audioService.setVolume(volume.value)
+    shouldFadeOnNextPlay.value = true
     syncRotationLoop()
     if (!(error instanceof DOMException && error.name === 'NotAllowedError')) {
       logError('GlobalMusicPlayer', '断点续播失败', error)
@@ -598,6 +657,7 @@ function applySongInfo(info: SongInfo): void {
   }
   isVisible.value = true
   syncRotationLoop()
+  maybeShowVolumeHint()
 }
 
 async function playFromFlowState(state: MusicFlowState): Promise<void> {
@@ -725,16 +785,21 @@ function togglePlay(): void {
 function expandPanel(): void {
   if (panelMode.value === 'expanded') return
   panelMode.value = 'expanded'
-  nextTick(() => ensurePanelInViewport())
+  nextTick(() => {
+    ensurePanelInViewport()
+    maybeShowVolumeHint()
+  })
 }
 
 function collapsePanel(): void {
-  panelMode.value = 'collapsed'
+  hideVolumeHint()
+  panelMode.value = isNarrowScreen.value ? 'immersive' : 'collapsed'
   nextTick(() => ensurePanelInViewport())
 }
 
 function enterImmersiveMode(): void {
   if (panelMode.value === 'immersive') return
+  hideVolumeHint()
   panelMode.value = 'immersive'
   nextTick(() => ensurePanelInViewport())
 }
@@ -742,10 +807,6 @@ function enterImmersiveMode(): void {
 function isReadableArticlePath(): boolean {
   const path = route.path || window.location.pathname
   return /^\/(thoughts|knowledge)\/.+/.test(path) && !path.endsWith('/index.html')
-}
-
-function shouldUseImmersiveCollapse(): boolean {
-  return isTouchDevice.value || isNarrowScreen.value || window.innerWidth <= READ_COLLAPSE_WIDTH
 }
 
 function handleReadingScroll(): void {
@@ -761,7 +822,7 @@ function handleReadingScroll(): void {
   }
 
   if (downwardScrollDistance < READ_SCROLL_DELTA || !isVisible.value || panelMode.value === 'immersive') return
-  if (!isReadableArticlePath() || !shouldUseImmersiveCollapse()) return
+  if (!isNarrowScreen.value && !isReadableArticlePath()) return
   downwardScrollDistance = 0
   enterImmersiveMode()
 }
@@ -976,8 +1037,9 @@ function onCoverGestureMove(point: { x: number; y: number }, nowTs: number, prev
   const deltaX = Math.abs(point.x - coverStartPoint.x)
   const deltaY = Math.abs(point.y - coverStartPoint.y)
 
-  if (coverGestureMode === 'idle' && (deltaY > COVER_GESTURE_THRESHOLD || deltaX > DRAG_CANCEL_THRESHOLD)) {
+  if (coverGestureMode === 'idle' && deltaY > COVER_GESTURE_THRESHOLD && deltaY >= deltaX) {
     coverGestureMode = 'volume'
+    markVolumeHintLearned()
   }
 
   if (coverGestureMode !== 'volume') {
@@ -1216,6 +1278,11 @@ watch(panelMode, () => {
 watch(() => route.path, () => {
   lastScrollY = window.scrollY || document.documentElement.scrollTop || 0
   downwardScrollDistance = 0
+  if (isNarrowScreen.value) {
+    enterImmersiveMode()
+  } else if (!isReadableArticlePath() && panelMode.value === 'immersive') {
+    collapsePanel()
+  }
 })
 
 onMounted(() => {
@@ -1233,6 +1300,11 @@ onMounted(() => {
     clearResizeTimer()
     resizeTimer = setTimeout(() => {
       resizeTimer = null
+      if (isNarrowScreen.value) {
+        enterImmersiveMode()
+      } else if (!isReadableArticlePath() && panelMode.value === 'immersive') {
+        collapsePanel()
+      }
       ensurePanelInViewport()
     }, 80)
   }
@@ -1246,8 +1318,6 @@ onMounted(() => {
 
   pageHideHandler = () => saveResumeSnapshot(true)
   window.addEventListener('pagehide', pageHideHandler)
-  beforeUnloadHandler = () => saveResumeSnapshot(true)
-  window.addEventListener('beforeunload', beforeUnloadHandler)
   visibilityChangeHandler = () => {
     if (document.visibilityState === 'hidden') {
       saveResumeSnapshot(true)
@@ -1260,6 +1330,7 @@ onUnmounted(() => {
   unsubscribers.forEach(unsubscribe => unsubscribe())
   clearResizeTimer()
   clearSnapTimer()
+  hideVolumeHint()
   stopProgressDrag()
   resetPendingControlPress()
   endPanelDrag()
@@ -1278,9 +1349,6 @@ onUnmounted(() => {
   }
   if (pageHideHandler) {
     window.removeEventListener('pagehide', pageHideHandler)
-  }
-  if (beforeUnloadHandler) {
-    window.removeEventListener('beforeunload', beforeUnloadHandler)
   }
   if (visibilityChangeHandler) {
     document.removeEventListener('visibilitychange', visibilityChangeHandler)
@@ -1402,6 +1470,17 @@ onUnmounted(() => {
       </div>
     </div>
   </Transition>
+
+  <Transition name="volume-hint">
+    <div
+      v-if="showVolumeHint && !isImmersive"
+      class="volume-gesture-hint"
+      :class="`side-${position.side}`"
+      :style="volumeHintStyle"
+    >
+      上下滑动唱片可调节音量
+    </div>
+  </Transition>
 </template>
 
 <style scoped>
@@ -1438,12 +1517,12 @@ onUnmounted(() => {
   border-radius: 8px 0 0 8px;
 }
 
-.global-music-player.side-left:not(.is-dragging-panel) {
+.global-music-player.side-left:not(.is-dragging-panel):not(.is-snapping) {
   left: 0 !important;
   right: auto;
 }
 
-.global-music-player.side-right:not(.is-dragging-panel) {
+.global-music-player.side-right:not(.is-dragging-panel):not(.is-snapping) {
   left: auto !important;
   right: 0;
 }
@@ -1778,6 +1857,54 @@ onUnmounted(() => {
 .rail-btn:hover {
   color: var(--vp-c-text-1);
   background-color: color-mix(in srgb, var(--vp-c-bg-mute) 55%, transparent);
+}
+
+.volume-gesture-hint {
+  position: fixed;
+  z-index: 1000;
+  max-width: 168px;
+  padding: 6px 9px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--vp-c-text-2);
+  background: color-mix(in srgb, var(--vp-c-bg-soft) 94%, transparent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  text-align: left;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+}
+
+.volume-gesture-hint::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 3px;
+  height: 58%;
+  border-radius: 2px;
+  background: var(--vp-c-brand-1);
+  transform: translateY(-50%);
+}
+
+.volume-gesture-hint.side-left::before {
+  left: 0;
+}
+
+.volume-gesture-hint.side-right::before {
+  right: 0;
+}
+
+.volume-hint-enter-active,
+.volume-hint-leave-active {
+  transition: opacity var(--lc-motion-duration-fast) var(--lc-motion-ease-standard),
+    transform var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
+}
+
+.volume-hint-enter-from,
+.volume-hint-leave-to {
+  opacity: 0;
+  transform: translate(-50%, calc(-100% + 8px));
 }
 
 .slide-fade-enter-active,

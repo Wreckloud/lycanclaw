@@ -1,5 +1,5 @@
 ---
-title: 猎识印记 - 领域
+title: 领域
 comment: false
 aside: false
 ---
@@ -8,7 +8,6 @@ aside: false
 import KnowledgeTagAtlas from '../.vitepress/theme/components/knowledge/KnowledgeTagAtlas.vue'
 </script>
 
-路途上的思考与总结，留作回望时的坐标。  
-行过的路，未必都记得，但痕迹会替我指引归途。
+途中的捡到的线索、方法与经验，留作回望时的坐标。 行过的路未必都记得，不过循着痕迹就能找到归途。
 
 <KnowledgeTagAtlas />

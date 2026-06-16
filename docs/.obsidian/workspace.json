@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "thoughts/献给狼，献给你.md",
+                "file": "knowledge/后端 Java 基础/第一部分-基础语法.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "献给狼，献给你"
+              "title": "第一部分-基础语法"
             }
           }
         ]
@@ -40,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "thoughts/献给狼，献给你.md",
+                "file": "knowledge/后端 Java 基础/第一部分-基础语法.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "献给狼，献给你 的大纲"
+              "title": "第一部分-基础语法 的大纲"
             }
           },
           {
@@ -80,7 +80,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 343.5
+    "width": 277.5
   },
   "right": {
     "id": "318f4ed2312b0f42",
@@ -155,6 +155,17 @@
   },
   "active": "31f181ae07cf6de7",
   "lastOpenFiles": [
+    "knowledge/后端面试/Java 基础.md",
+    "knowledge/实习实训/CSS 的.md",
+    "knowledge/后端面试/并发编程.md",
+    "knowledge/后端 Java 基础/第二部分-常用 API.md",
+    "knowledge/后端面试/面试问题清单.md",
+    "knowledge/后端 Java 基础/第一部分-面向对象高级.md",
+    "knowledge/后端 Java 基础/第一部分-面向对象基础.md",
+    "knowledge/后端 Java 基础/第一部分-基础语法.md",
+    "knowledge/后端工具库/Docker 容器技术.md",
+    "public/reaction-like.svg",
+    "thoughts/献给狼，献给你.md",
     "thoughts/獠牙下的野蔷薇.md",
     "thoughts/笔记本 Wi-Fi 消失的解决方法.md",
     "thoughts/从一盏灯开始的文明.md",
@@ -163,25 +174,15 @@
     "thoughts/数字世界的构建手册.md",
     "thoughts/我从来都不是一个难相处的人.md",
     "thoughts/我从人间走过.md",
-    "thoughts/献给狼，献给你.md",
     "thoughts/远古卷轴.md",
     "thoughts/index.md",
     "thoughts/叼住时间的尾巴.md",
     "thoughts/电子音乐.md",
-    "knowledge/后端工具库/Docker 容器技术.md",
     "knowledge/后端 微服务基础/远程调用.md",
     "knowledge/后端 微服务基础/微服务基础.md",
     "knowledge/后端 Web 基础/MyBatis Plus 增强框架.md",
     "knowledge/后端 Java 基础/第四部分-多线程.md",
-    "knowledge/后端 Java 基础/第一部分-面向对象高级.md",
-    "knowledge/后端 Java 基础/第一部分-面向对象基础.md",
-    "knowledge/后端 Java 基础/第一部分-基础语法.md",
-    "knowledge/实习实训/SQL 文件导入方式.md",
-    "knowledge/实习实训/Linux 输入输出重定向.md",
     "public/images/文章资源/docker-容器技术",
-    "knowledge/实习实训/Java后端与AI智能体开发全景梳理.md",
-    "knowledge/实习实训/java-restart-log.md",
-    "knowledge/后端工具库/若依框架.md",
     "public/images/文章资源/docker-容器技术/file-20260521144338417.jpg",
     "public/images/文章资源/docker",
     "public/images/文章资源/swagger-与-knife4j-接口文档/file-20260511174025107.jpg",
@@ -196,7 +197,6 @@
     "public/images/文章资源/第一部分-面向对象基础",
     "public/images/文章资源/mybatis-plus-增强框架/file-20260304101703944.jpg",
     "public/images/文章资源/mybatis-plus-增强框架/file-20260304101642267.jpg",
-    "public/images/文章资源/四、代码填空题/file-20260121174008569.jpg",
     "public/images/文章资源/四、代码填空题",
     "public/images/文章资源/五、阅读程序",
     "public/images/文章资源/微服务基础",

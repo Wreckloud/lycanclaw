@@ -238,66 +238,51 @@ class AudioService {
       this.setElementVolume(0);
     }
     
-    // 播放音频
-    const playPromise = this.audioElement.play()
-      .then(() => {
-        if (options.fadeInMs) {
-          this.fadeElementVolumeTo(this.volume, options.fadeInMs);
-        }
-      })
-      .catch(error => {
-        // 处理AbortError - 这是由于play()请求被pause()中断导致的
-        // 这种情况通常发生在快速切换播放/暂停时
-        if (error.name === 'AbortError') {
-          logDebug('audioService', '播放被中断，可能是由于快速切换播放状态');
-          // 不需要向用户显示这个错误，它是正常的交互行为
-          // 但我们需要确保状态是正确的
-          this.isPlaying = false;
-          this.operationState = AudioOperationState.PAUSED;
-          this.operationInProgress = false;
-          
-          // 发送状态更新
-          audioManager.emit('play-state-change', `${audioId}:false`);
-          
-          // 返回一个已解决的Promise，这样外部调用不会收到错误
-          return Promise.resolve();
-        }
-        
-        // 网络错误，尝试重试
-        if (error.name === 'NotAllowedError' && options.retryOnNotAllowed === false) {
-          this.isPlaying = false;
-          this.operationState = AudioOperationState.PAUSED;
-          this.operationInProgress = false;
-          audioManager.emit('play-state-change', `${audioId}:false`);
-          return Promise.reject(error);
-        }
-
-        // 自动播放限制需要用户交互，同一 URL 不应循环重试。
-        this.operationState = AudioOperationState.ERROR;
-        this.operationInProgress = false;
-        return Promise.reject(error);
-      });
-    
-    // 更新状态
-    this.isPlaying = true;
-    this.operationState = AudioOperationState.PLAYING;
-    
-    // 发送播放状态更新
-    audioManager.emit('play-state-change', `${audioId}:true`);
-    
-    // 发送歌曲信息
+    // 断点播放必须先等元数据可用并完成 seek，否则浏览器会先从 0 秒开始。
     const songData = {
       id: audioId,
       name: songInfo.name,
       artist: songInfo.artist,
       cover: songInfo.cover,
-      isPlaying: true,
+      isPlaying: false,
       progress: (this.currentTime / (this.duration || 1)) * 100,
       duration: this.duration,
       currentTime: this.currentTime,
       urlSource: songInfo.urlSource || 'unknown'
     };
     audioManager.emit('song-info-update', JSON.stringify(songData));
+
+    const playPromise = this.prepareStartPosition(startTime)
+      .then(() => this.audioElement!.play())
+      .then(() => {
+        if (options.fadeInMs) {
+          this.fadeElementVolumeTo(this.volume, options.fadeInMs);
+        }
+      })
+      .catch(error => {
+        if (options.fadeInMs) {
+          this.cancelVolumeFade();
+          this.setElementVolume(this.volume);
+        }
+
+        this.isPlaying = false;
+        this.operationInProgress = false;
+        audioManager.emit('play-state-change', `${audioId}:false`);
+
+        if (error.name === 'AbortError') {
+          logDebug('audioService', '播放被中断，可能是由于快速切换播放状态');
+          this.operationState = AudioOperationState.PAUSED;
+          return Promise.reject(error);
+        }
+        
+        if (error.name === 'NotAllowedError' && options.retryOnNotAllowed === false) {
+          this.operationState = AudioOperationState.PAUSED;
+          return Promise.reject(error);
+        }
+
+        this.operationState = AudioOperationState.ERROR;
+        return Promise.reject(error);
+      });
     
     return playPromise;
   }
@@ -408,6 +393,46 @@ class AudioService {
     if (!this.audioElement) return;
     const normalized = Math.max(0, Math.min(volume, 100));
     this.audioElement.volume = normalized / 100;
+  }
+
+  private prepareStartPosition(startTime: number): Promise<void> {
+    if (!this.audioElement || startTime <= 0) {
+      return Promise.resolve();
+    }
+
+    const audio = this.audioElement;
+    const seek = () => {
+      const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+      const target = duration > 0
+        ? Math.min(Math.max(startTime, 0), Math.max(0, duration - 0.1))
+        : Math.max(startTime, 0);
+      audio.currentTime = target;
+      this.currentTime = target;
+    };
+
+    if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) {
+      seek();
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve, reject) => {
+      const cleanup = () => {
+        audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+        audio.removeEventListener('error', handleError);
+      };
+      const handleLoadedMetadata = () => {
+        cleanup();
+        seek();
+        resolve();
+      };
+      const handleError = () => {
+        cleanup();
+        reject(new Error('音频元数据加载失败'));
+      };
+
+      audio.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
+      audio.addEventListener('error', handleError, { once: true });
+    });
   }
 
   private cancelVolumeFade(): void {

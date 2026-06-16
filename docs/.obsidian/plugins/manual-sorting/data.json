@@ -79,7 +79,6 @@
       "knowledge/后端工具库/Logback-日志技术.md"
     ],
     "knowledge/后端面试": [
-      "knowledge/后端面试/面试问题清单.md",
       "knowledge/后端面试/并发编程.md",
       "knowledge/后端面试/Springboot.md",
       "knowledge/后端面试/springMVC.md",
@@ -127,6 +126,7 @@
       "knowledge/前端面试/ES6 - JavaScript 中的继承.md"
     ],
     "knowledge/实习实训": [
+      "knowledge/实习实训/CSS 的.md",
       "knowledge/实习实训/Linux 输入输出重定向.md",
       "knowledge/实习实训/SQL 文件导入方式.md",
       "knowledge/实习实训/record 记录类.md",
@@ -136,6 +136,7 @@
       "projects/index.md"
     ],
     "public": [
+      "public/reaction-like.svg",
       "public/contribution-stats.json",
       "public/images",
       "public/default.png",

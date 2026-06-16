@@ -4,17 +4,41 @@
  * 定义RecentComments组件的交互与展示逻辑。
  */
 
-import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { withBase } from 'vitepress'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRouter, withBase } from 'vitepress'
 import { useIntersectionObserver } from '@vueuse/core'
-import { formatCommentDate, getRecentComments, type RecentComment } from '../../utils/api'
+import {
+  formatCommentDate,
+  getRecentComments,
+  RECENT_COMMENTS_UPDATED_EVENT,
+  type RecentComment
+} from '../../utils/api'
 import { logError } from '../../utils/logger'
 
 const isBrowser = typeof window !== 'undefined'
+const router = useRouter()
 const COMMENT_LIMIT = 7
 const INITIAL_SCROLL_SYNC_DELAY_MS = 100
 const VISIBILITY_THRESHOLD = 0.5
 const VISIBILITY_ROOT_MARGIN = '0px 0px -5% 0px'
+const INDEX_PAGE_TITLES = new Map([
+  ['/', '首页'],
+  ['/index.html', '首页'],
+  ['/knowledge/', '猎识印记'],
+  ['/knowledge/index.html', '猎识印记'],
+  ['/thoughts/', '风絮茸杂'],
+  ['/thoughts/index.html', '风絮茸杂'],
+  ['/projects/', '绝穴密藏'],
+  ['/projects/index.html', '绝穴密藏'],
+  ['/about', '留痕之地'],
+  ['/about.html', '留痕之地']
+])
+
+interface CommentContentPart {
+  type: 'text' | 'emoji'
+  value: string
+  alt?: string
+}
 
 const sectionRef = ref<HTMLElement | null>(null)
 const containerRef = ref<HTMLElement | null>(null)
@@ -22,6 +46,9 @@ const animationTriggerRef = ref<HTMLElement | null>(null)
 const isVisible = ref(false)
 
 const comments = ref<RecentComment[]>([])
+const commentPartsById = computed(() => new Map(
+  comments.value.map(comment => [comment.id, parseCommentContent(comment)])
+))
 const isLoading = ref(true)
 const hasError = ref(false)
 const errorMessage = ref('')
@@ -53,19 +80,106 @@ function decodePathSegment(value: string): string {
   }
 }
 
+function normalizeCommentPath(value: string): string {
+  if (!value) return '/'
+  try {
+    const url = new URL(value, window.location.origin)
+    return url.pathname || '/'
+  } catch {
+    return value.startsWith('/') ? value : `/${value}`
+  }
+}
+
 function getArticleTitle(url: string, articleTitle?: string): string {
+  const normalizedPath = normalizeCommentPath(url)
+  const indexTitle = INDEX_PAGE_TITLES.get(normalizedPath)
+  if (indexTitle) return indexTitle
   if (articleTitle) return articleTitle
-  if (!url) return '未知文章'
-  const path = url.replace(/^\//, '')
+  const path = normalizedPath.replace(/^\//, '')
   if (!path || path === 'index.html') return '首页'
-  if (path === 'about.html') return '留痕之地-关于'
 
   const slug = path.split('/').pop()?.replace(/\.html$/, '') || '未知文章'
   return decodePathSegment(slug).replace(/[-_]/g, ' ')
 }
 
-function getArticleLink(url: string): string {
-  return withBase(url || '/')
+function getArticleLink(comment: RecentComment): string {
+  const path = normalizeCommentPath(comment.path || comment.url)
+  const hash = comment.id ? `#${encodeURIComponent(comment.id)}` : ''
+  return `${withBase(path)}${hash}`
+}
+
+function openComment(comment: RecentComment): void {
+  if (!isBrowser) return
+  void router.go(getArticleLink(comment))
+}
+
+function normalizeWebsite(value?: string): string {
+  const trimmed = value?.trim()
+  if (!trimmed) return ''
+  const candidate = /^[a-z][a-z\d+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+  try {
+    const url = new URL(candidate)
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : ''
+  } catch {
+    return ''
+  }
+}
+
+function appendTextPart(parts: CommentContentPart[], value: string): void {
+  const text = value.replace(/\s+/g, ' ').trim()
+  if (!text) return
+  const previous = parts.at(-1)
+  if (previous?.type === 'text') {
+    previous.value = `${previous.value} ${text}`.trim()
+    return
+  }
+  parts.push({ type: 'text', value: text })
+}
+
+function isSafeImageSource(value: string): boolean {
+  try {
+    const url = new URL(value, window.location.origin)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+function parseCommentContent(comment: RecentComment): CommentContentPart[] {
+  if (!isBrowser || !comment.commentHtml) {
+    return comment.comment ? [{ type: 'text', value: comment.comment }] : []
+  }
+
+  const root = document.createElement('div')
+  root.innerHTML = comment.commentHtml
+  const parts: CommentContentPart[] = []
+
+  const visit = (node: Node): void => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      appendTextPart(parts, node.textContent || '')
+      return
+    }
+    if (!(node instanceof HTMLElement)) return
+
+    if (node.tagName === 'IMG') {
+      const src = node.getAttribute('src')?.trim() || ''
+      if (src && isSafeImageSource(src)) {
+        parts.push({
+          type: 'emoji',
+          value: src,
+          alt: node.getAttribute('alt')?.trim() || '评论表情'
+        })
+      }
+      return
+    }
+
+    node.childNodes.forEach(visit)
+  }
+
+  root.childNodes.forEach(visit)
+  return parts.length > 0
+    ? parts
+    : (comment.comment ? [{ type: 'text', value: comment.comment }] : [])
 }
 
 async function loadComments(forceRefresh = false): Promise<void> {
@@ -111,13 +225,21 @@ onMounted(() => {
   stopObserver = observer.stop
 
   void loadComments()
+  window.addEventListener(RECENT_COMMENTS_UPDATED_EVENT, handleCommentsUpdated)
 })
 
 onBeforeUnmount(() => {
   stopObserver?.()
   stopObserver = null
   cleanupScrollSyncTimer()
+  if (isBrowser) {
+    window.removeEventListener(RECENT_COMMENTS_UPDATED_EVENT, handleCommentsUpdated)
+  }
 })
+
+function handleCommentsUpdated(): void {
+  void loadComments(true)
+}
 </script>
 
 <template>
@@ -144,18 +266,47 @@ onBeforeUnmount(() => {
           class="comment-item"
           :class="{ 'animate-item': isVisible }"
           :style="{ '--item-delay': `${index * 0.08 + 0.3}s` }"
+          role="link"
+          tabindex="0"
+          @click="openComment(comment)"
+          @keydown.enter.prevent="openComment(comment)"
+          @keydown.space.prevent="openComment(comment)"
         >
           <div class="comment-header">
             <div class="comment-user">
-              <span class="nick">{{ comment.nick }}</span>
-              <span class="connector">发表在</span>
-              <a class="article-link" :href="getArticleLink(comment.url)">
-                {{ getArticleTitle(comment.url, comment.articleTitle) }}
+              <a
+                v-if="normalizeWebsite(comment.website)"
+                class="nick nick-link"
+                :href="normalizeWebsite(comment.website)"
+                target="_blank"
+                rel="noopener noreferrer"
+                @click.stop
+              >
+                {{ comment.nick }}
               </a>
+              <span v-else class="nick">{{ comment.nick }}</span>
+              <span class="connector">发表在</span>
+              <span class="article-link">
+                {{ getArticleTitle(comment.path || comment.url, comment.articleTitle) }}
+              </span>
             </div>
             <div class="comment-time">{{ formatCommentDate(comment.createdAt) }}</div>
           </div>
-          <div class="comment-body">{{ comment.comment }}</div>
+          <div class="comment-body">
+            <template
+              v-for="(part, partIndex) in commentPartsById.get(comment.id) || []"
+              :key="`${comment.id}-${partIndex}`"
+            >
+              <span v-if="part.type === 'text'">{{ part.value }}</span>
+              <img
+                v-else
+                class="comment-emoji"
+                :src="part.value"
+                :alt="part.alt"
+                loading="lazy"
+              />
+            </template>
+          </div>
         </div>
       </div>
       
@@ -282,11 +433,11 @@ onBeforeUnmount(() => {
   position: relative;
   height: 330px;
   overflow: hidden;
-  margin-top: 16px;
+  margin-top: 12px;
 }
 
 .comments-content {
-  padding: 20px 0;
+  padding: 12px 0;
   height: 100%;
   overflow-y: auto;
   
@@ -306,26 +457,38 @@ onBeforeUnmount(() => {
 
 /* 评论项 */
 .comment-item {
-  padding: 0.6rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 74px;
+  padding: 0.58rem 0.72rem;
   border-radius: 6px;
   background-color: var(--vp-c-bg-soft);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.48rem;
+  cursor: pointer;
+}
+
+.comment-item:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: -2px;
 }
 
 .comment-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.25rem;
+  align-items: baseline;
+  margin-bottom: 0.38rem;
   font-size: 0.75rem;
   color: var(--vp-c-text-3);
-  line-height: 1.2;
+  line-height: 1.15;
 }
 
 .comment-user {
   display: flex;
-  align-items: center;
-  gap: 0.15rem;
+  align-items: baseline;
+  gap: 0.18rem;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -333,27 +496,24 @@ onBeforeUnmount(() => {
 }
 
 .comment-user .nick {
-  font-weight: 700; /* 加粗用户名 */
+  font-weight: 700;
   color: var(--vp-c-brand);
 }
 
+.nick-link {
+  text-decoration: none;
+}
+
 .comment-user .connector {
-  opacity: 0.8;
+  opacity: 0.72;
 }
 
 .article-link {
   color: var(--vp-c-text-3);
-  text-decoration: none;
-  transition: color var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 100px;
-}
-
-.article-link:hover {
-  color: var(--vp-c-brand);
-  text-decoration: underline;
+  max-width: 150px;
 }
 
 .comment-time {
@@ -365,11 +525,11 @@ onBeforeUnmount(() => {
 }
 
 .comment-body {
-  font-size: 0.85rem;
+  font-size: 0.84rem;
   color: var(--vp-c-text-1);
   word-break: break-word;
-  line-height: 1.4;
-  max-height: 3.5em; /* 显示2.5行 */
+  line-height: 1.34;
+  max-height: 2.68em;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -377,13 +537,14 @@ onBeforeUnmount(() => {
   -webkit-box-orient: vertical;
 }
 
-/* 表情包样式特殊处理 */
-.comment-body :deep(.wl-emoji) {
+.comment-emoji {
   display: inline-block;
-  height: 1.2em;
-  max-height: 1.2em;
+  height: 1.45em;
+  max-height: 1.45em;
   vertical-align: text-bottom;
   width: auto;
+  margin: 0 0.12em;
+  object-fit: contain;
 }
 
 /* 骨架屏样式 */
@@ -511,6 +672,12 @@ onBeforeUnmount(() => {
 
 /* 响应式布局 */
 @media (max-width: 768px) {
+  .comment-item {
+    height: 76px;
+    min-height: 76px;
+    padding: 0.58rem 0.65rem;
+  }
+
   .comment-header {
     font-size: 0.7rem;
   }

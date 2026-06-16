@@ -48,6 +48,12 @@ export function parseDateInput(input: DateInput): Date | null {
   const normalized = cleanDateString(input)
   if (!normalized) return null
 
+  // 带时区的 ISO 时间必须交给原生解析，避免把 UTC 时间误当成本地时间。
+  if (/[zZ]$|[+-]\d{2}:?\d{2}$/.test(normalized)) {
+    const zonedDate = new Date(normalized)
+    return isValidDate(zonedDate) ? zonedDate : null
+  }
+
   // 支持 "YYYY-MM-DD" / "YYYY-MM-DD HH:mm:ss" / ISO 简写。
   const commonMatch = normalized.match(
     /^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2})(?::(\d{2})(?::(\d{2}))?)?)?/

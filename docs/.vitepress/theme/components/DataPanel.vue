@@ -118,6 +118,29 @@ function setRollIndexImmediately(indexRef: { value: number }, durationRef: { val
   indexRef.value = DIGIT_MIDDLE_OFFSET + toDescendingOffset(digit)
 }
 
+const rollPositions = {
+  'hour-tens': [hourTensRollIndex, hourTensRollDurationMs],
+  'hour-units': [hourUnitsRollIndex, hourUnitsRollDurationMs],
+  'minute-tens': [minuteTensRollIndex, minuteTensRollDurationMs],
+  'minute-units': [minuteUnitsRollIndex, minuteUnitsRollDurationMs],
+  'second-tens': [secondTensRollIndex, secondTensRollDurationMs],
+  'second-units': [secondUnitsRollIndex, secondUnitsRollDurationMs]
+} as const
+
+type RollPositionKey = keyof typeof rollPositions
+
+function normalizeRollPosition(key: RollPositionKey): void {
+  const [indexRef, durationRef] = rollPositions[key]
+  if (
+    indexRef.value >= DIGIT_MIDDLE_OFFSET
+    && indexRef.value < DIGIT_MIDDLE_OFFSET + DIGIT_SEQUENCE_SIZE
+  ) {
+    return
+  }
+
+  setRollIndexImmediately(indexRef, durationRef, getDigitFromRollIndex(indexRef.value))
+}
+
 function applyForwardRoll(indexRef: { value: number }, durationRef: { value: number }, nextDigit: number): void {
   const currentDigit = getDigitFromRollIndex(indexRef.value)
   if (currentDigit === nextDigit) {
@@ -153,6 +176,24 @@ watch([hourText, minuteText, secondText], () => {
   updateDiscreteClockDigits()
 })
 
+function clearTimer(): void {
+  if (timer === null) return
+  window.clearTimeout(timer)
+  timer = null
+}
+
+function scheduleTimerTick(): void {
+  updateTimer()
+  const delayUntilNextSecond = 1000 - (Date.now() % 1000) + 16
+  timer = window.setTimeout(scheduleTimerTick, delayUntilNextSecond)
+}
+
+function handleVisibilityChange(): void {
+  if (document.visibilityState !== 'visible') return
+  clearTimer()
+  scheduleTimerTick()
+}
+
 onMounted(() => {
   if (!isBrowser) return
 
@@ -163,16 +204,16 @@ onMounted(() => {
   setRollIndexImmediately(minuteUnitsRollIndex, minuteUnitsRollDurationMs, toDigit(minuteText.value[1] ?? '0'))
   setRollIndexImmediately(secondTensRollIndex, secondTensRollDurationMs, toDigit(secondText.value[0] ?? '0'))
   setRollIndexImmediately(secondUnitsRollIndex, secondUnitsRollDurationMs, toDigit(secondText.value[1] ?? '0'))
-  timer = window.setInterval(updateTimer, 1000)
+  scheduleTimerTick()
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 
   void updateHitokoto()
 })
 
 onBeforeUnmount(() => {
-  if (timer !== null && isBrowser) {
-    clearInterval(timer)
-    timer = null
-  }
+  if (!isBrowser) return
+  clearTimer()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>
 
@@ -193,14 +234,14 @@ onBeforeUnmount(() => {
               <span class="time-unit-group">
                 <span class="time-unit time-unit-fixed time-roll-group" aria-label="时">
                 <span class="time-roll-window">
-                  <span class="time-roll-strip" :style="{ transform: hourTensTransform, transition: hourTensTransition }">
+                  <span class="time-roll-strip" :style="{ transform: hourTensTransform, transition: hourTensTransition }" @transitionend="normalizeRollPosition('hour-tens')">
                     <span v-for="(digit, index) in ROLL_DIGIT_SEQUENCE" :key="`hour-tens-digit-${index}`" class="time-roll-digit">
                       {{ digit }}
                     </span>
                   </span>
                 </span>
                 <span class="time-roll-window">
-                  <span class="time-roll-strip" :style="{ transform: hourUnitsTransform, transition: hourUnitsTransition }">
+                  <span class="time-roll-strip" :style="{ transform: hourUnitsTransform, transition: hourUnitsTransition }" @transitionend="normalizeRollPosition('hour-units')">
                     <span v-for="(digit, index) in ROLL_DIGIT_SEQUENCE" :key="`hour-units-digit-${index}`" class="time-roll-digit">
                       {{ digit }}
                     </span>
@@ -211,14 +252,14 @@ onBeforeUnmount(() => {
               <span class="time-unit-group">
                 <span class="time-unit time-unit-fixed time-roll-group" aria-label="分">
                 <span class="time-roll-window">
-                  <span class="time-roll-strip" :style="{ transform: minuteTensTransform, transition: minuteTensTransition }">
+                  <span class="time-roll-strip" :style="{ transform: minuteTensTransform, transition: minuteTensTransition }" @transitionend="normalizeRollPosition('minute-tens')">
                     <span v-for="(digit, index) in ROLL_DIGIT_SEQUENCE" :key="`minute-tens-digit-${index}`" class="time-roll-digit">
                       {{ digit }}
                     </span>
                   </span>
                 </span>
                 <span class="time-roll-window">
-                  <span class="time-roll-strip" :style="{ transform: minuteUnitsTransform, transition: minuteUnitsTransition }">
+                  <span class="time-roll-strip" :style="{ transform: minuteUnitsTransform, transition: minuteUnitsTransition }" @transitionend="normalizeRollPosition('minute-units')">
                     <span v-for="(digit, index) in ROLL_DIGIT_SEQUENCE" :key="`minute-units-digit-${index}`" class="time-roll-digit">
                       {{ digit }}
                     </span>
@@ -229,14 +270,14 @@ onBeforeUnmount(() => {
               <span class="time-unit-group time-unit-group-last">
                 <span class="time-value time-unit-fixed" aria-label="秒">
                 <span class="time-roll-window">
-                  <span class="time-roll-strip" :style="{ transform: secondTensTransform, transition: secondTensTransition }">
+                  <span class="time-roll-strip" :style="{ transform: secondTensTransform, transition: secondTensTransition }" @transitionend="normalizeRollPosition('second-tens')">
                     <span v-for="(digit, index) in ROLL_DIGIT_SEQUENCE" :key="`second-tens-digit-${index}`" class="time-roll-digit">
                       {{ digit }}
                     </span>
                   </span>
                 </span>
                 <span class="time-roll-window">
-                  <span class="time-roll-strip" :style="{ transform: secondUnitsTransform, transition: secondUnitsTransition }">
+                  <span class="time-roll-strip" :style="{ transform: secondUnitsTransform, transition: secondUnitsTransition }" @transitionend="normalizeRollPosition('second-units')">
                     <span v-for="(digit, index) in ROLL_DIGIT_SEQUENCE" :key="`second-units-digit-${index}`" class="time-roll-digit">
                       {{ digit }}
                     </span>

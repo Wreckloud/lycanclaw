@@ -6,7 +6,11 @@
 import { ref, onMounted, onBeforeUnmount, nextTick, computed, watch } from 'vue'
 import { useData } from 'vitepress'
 import * as echarts from 'echarts/core'
-import { CalendarComponent, VisualMapComponent } from 'echarts/components'
+import {
+  CalendarComponent,
+  TooltipComponent,
+  VisualMapComponent
+} from 'echarts/components'
 import { HeatmapChart } from 'echarts/charts'
 import { CanvasRenderer } from 'echarts/renderers'
 import type { EChartsType } from 'echarts/core'
@@ -18,6 +22,7 @@ import { HEATMAP_CELL_BORDER, HEATMAP_PALETTE } from '../../utils/theme'
 // 按需注册组件
 echarts.use([
   CalendarComponent,
+  TooltipComponent,
   VisualMapComponent,
   HeatmapChart,
   CanvasRenderer
@@ -115,6 +120,7 @@ function getChartOption() {
       cellSize: [14, 18],
       range: [yearRange.value.start, yearRange.value.end],
       itemStyle: {
+        color: heatmapCellBorderColor.value,
         borderWidth: 2,
         borderColor: heatmapCellBorderColor.value
       },

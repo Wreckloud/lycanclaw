@@ -725,46 +725,1144 @@ docker exec mysql cat /etc/os-release
 
 `docker exec` 适合临时查看容器内部状态、排查问题，或者执行少量维护命令。真正长期运行的服务配置，还是应该尽量写在 `docker run` 参数、挂载文件或后续的 Docker Compose 配置中。
 
-
 # build 构建镜像
 
-(以一个简单功能作为构建镜像的演示, 先演示过程, 不做过多解释, 然后再解释其中的细节)
+前面使用的 MySQL、Redis、Nginx 镜像，都是别人已经构建好并发布到镜像仓库中的。
+在实际开发中，我们还需要把自己的项目打包成镜像。这样项目就不再只是一份源代码，而是可以像 MySQL 镜像一样，被 Docker 直接运行。
 
-Dockerfile 没有后缀
+Docker 构建镜像时，主要会读取一个名为 `Dockerfile` 的文件。这个文件中记录了项目使用什么运行环境、需要复制哪些文件、安装哪些依赖，以及容器启动时执行什么命令。
 
-所有Dockerfile第一行都是From, 指明基础镜像, 
+先通过一个简单的 Python Web 服务，把完整过程跑一遍，看看一个项目是怎样被构建成镜像并运行起来的。
 
-WORKDIE /app ,有点像cd, 作为工作目录
+1. 初始化项目
 
-COPY . . 把代码文件拷贝到容器
+创建一个项目目录：
 
-RUN, pip 表示要在镜像中执行
+```bash
+mkdir docker-python-demo
+cd docker-python-demo
+```
 
-EXPOSE 因为代码中占用了, 这里只是声明, 实际运行时还是以-p参数为准
+在项目目录中创建 `main.py`：
 
-`CMD ["python3","main.py"]`每当容器启动时, 容器内部自动执行这些, 一个docker文件里只能写一个CMD.
-同类型的有 ENTRYPOInt, 优先级更高, 不容易被覆盖
+```python
+from flask import Flask
 
-写好之后就可以用 docker build 构建
--t 可以起一个镜像的名字, 名字后面可以加: 指明版本号, 也可以不写
-最后 . 指的是在当前文件夹下构建
-
-然后就可以使用 ducker run -d -p 做一下端口映射 , 把容器内的8000映射到8000.
-
-
-想要把自己的镜像推送到docker hub上, 首先得在docker hub上有一个账号, 记住其用户名. 
-在 docker build时带上自己的用户名:
-例子
-
-然后推送
-docker push 带上自己用户名的镜像
+app = Flask(__name__)
 
 
-# docker 网络
+@app.get("/")
+def index():
+    return "Hello Docker!"
 
-默认是bridge桥接模式, 每个容器内部都分配了一个内部ip, 一般时 172. 17开,
-容器可以通过这个内部子网里, 通过内部IP地址互相访问, 但容器网络与宿主机是隔离的
-可以使用
-docker network create network 创建出子网, 默认情况下创建出的子网也是桥接模式的一种, 然后可以指定容器加入不同的子网, 同一个
 
-(拓展. 为啥需要这些模式 还有哪些模式, 这些究竟是啥)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8000)
+```
+
+这个程序会启动一个简单的 Web 服务，并监听 `8000` 端口。`host="0.0.0.0"` 表示程序监听所有网络接口。
+
+如果只监听默认的 `127.0.0.1`，程序虽然能在容器内部运行，但容器外部可能无法通过端口映射访问它。
+
+接着创建 `requirements.txt`，文件中记录项目依赖：
+
+```text
+flask
+```
+
+最后，在同一目录下创建一个名为 `Dockerfile` 的文件：
+
+```dockerfile
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+EXPOSE 8000
+
+CMD ["python3", "main.py"]
+```
+
+此时项目目录大概是：
+
+```text
+docker-python-demo/
+├── Dockerfile
+├── main.py
+└── requirements.txt
+```
+
+`Dockerfile` 通常就叫做 `Dockerfile`，没有 `.txt`、`.dockerfile` 之类的文件后缀。
+
+2. 构建镜像
+
+在 `Dockerfile` 所在目录执行：
+
+```bash
+docker build -t python-demo:1.0 .
+```
+
+这条命令会读取当前目录中的 `Dockerfile`，然后按照其中的指令构建镜像。
+
+其中：
+
+```bash
+-t python-demo:1.0
+```
+
+用于给镜像设置名称和标签。
+
+- `python-demo`：镜像名称。
+- `1.0`：镜像标签，也可以暂时理解成版本号。
+
+命令最后的：
+
+```bash
+.
+```
+
+表示使用当前目录作为本次构建的上下文。
+
+构建完成后，可以查看本机镜像：
+
+```bash
+docker images
+```
+
+如果列表中出现了 `python-demo`，并且标签为 `1.0`，就说明镜像已经构建成功。
+
+3. 运行自己构建的镜像
+
+镜像构建完成后，就可以像运行 MySQL、Nginx 镜像一样启动它：
+
+```bash
+docker run -d \
+  --name python-demo \
+  -p 8000:8000 \
+  python-demo:1.0
+```
+
+这里：
+
+```bash
+-p 8000:8000
+```
+
+表示把宿主机的 `8000` 端口映射到容器内部的 `8000` 端口。
+
+启动后访问：
+
+```text
+http://服务器地址:8000
+```
+
+如果看到：
+
+```text
+Hello Docker!
+```
+
+就说明这个 Python 项目已经被成功构建成镜像，并通过容器运行起来了。接我们来了解 `Dockerfile` 中的内容。
+
+## Dockerfile
+
+`Dockerfile` 是用来描述镜像构建过程的文本文件。Docker 会按照其中的指令，从上到下逐步构建镜像。
+
+前面项目使用的 `Dockerfile` 如下：
+
+```dockerfile
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+EXPOSE 8000
+
+CMD ["python3", "main.py"]
+```
+
+它所做的事情可以简单概括为：
+
+1. 准备 Python 运行环境。
+2. 设置镜像内的工作目录。
+3. 复制并安装项目依赖。
+4. 复制项目代码。
+5. 声明应用使用的端口。
+6. 设置容器启动时执行的命令。
+
+下面依次看这些指令。
+
+### FROM 指定基础镜像
+
+```dockerfile
+FROM python:3.12-slim
+```
+
+`FROM` 用来指定基础镜像。
+
+这里使用的是包含 Python 3.12 的精简镜像，因此后面可以直接执行 Python 和 pip 命令。
+
+我们构建自己的镜像时，通常不会从完全空白的环境开始，而是选择一个已经包含所需运行环境的镜像作为基础。
+
+如果本地没有这个镜像，Docker 会在构建时自动尝试拉取。
+
+### WORKDIR 设置工作目录
+
+```dockerfile
+WORKDIR /app
+```
+
+`WORKDIR` 用来设置镜像内部的工作目录，可以先把它理解成：
+
+```bash
+cd /app
+```
+
+后面的 `COPY`、`RUN`、`CMD` 等指令，都会以 `/app` 作为当前目录。
+
+如果 `/app` 不存在，Docker 会自动创建。
+
+### COPY 复制文件
+
+`COPY` 用来把构建上下文中的文件复制到镜像内部，基本格式是：
+
+```dockerfile
+COPY 源路径 目标路径
+```
+
+例如：
+
+```dockerfile
+COPY requirements.txt .
+```
+
+前面的 `requirements.txt` 是项目中的文件，后面的 `.` 表示镜像内部当前的工作目录。
+
+由于前面设置了：
+
+```dockerfile
+WORKDIR /app
+```
+
+所以这条指令会把文件复制到：
+
+```text
+/app/requirements.txt
+```
+
+后面还有一条：
+
+```dockerfile
+COPY . .
+```
+
+这里前后两个 `.` 的含义不同：
+
+- 第一个 `.` 表示构建上下文中的全部内容。
+- 第二个 `.` 表示镜像内部当前的工作目录 `/app`。
+
+因此，它表示把项目文件复制到镜像内部的 `/app` 目录。
+
+在示例中先复制依赖文件：
+
+```dockerfile
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+```
+
+安装依赖后，才复制剩余代码：
+
+```dockerfile
+COPY . .
+```
+
+这是为了利用 Docker 的构建缓存。
+
+项目代码可能经常修改，但依赖文件不一定发生变化。只要 `requirements.txt` 没变，重新构建时就可能复用之前安装依赖的结果，不必每次都重新下载。
+
+### RUN 执行构建命令
+
+```dockerfile
+RUN pip install --no-cache-dir -r requirements.txt
+```
+
+`RUN` 用来在构建镜像的过程中执行命令。
+
+这里会在镜像中执行 `pip install`，把项目依赖安装进去。
+
+需要注意，`RUN` 是在执行 `docker build` 时运行的。镜像构建完成后，安装好的依赖已经成为镜像的一部分，启动容器时不会重新安装。
+
+### EXPOSE 声明端口
+
+```dockerfile
+EXPOSE 8000
+```
+
+`EXPOSE` 用来声明镜像中的应用会使用 `8000` 端口。
+
+它只是对镜像端口用途的说明，不会自动把端口开放到宿主机。
+
+真正运行容器时，仍然需要通过 `-p` 建立端口映射：
+
+```bash
+docker run -d -p 8000:8000 python-demo:1.0
+```
+
+### CMD 设置默认启动命令
+
+```dockerfile
+CMD ["python3", "main.py"]
+```
+
+`CMD` 用来设置容器启动时默认执行的命令。
+
+因此运行：
+
+```bash
+docker run python-demo:1.0
+```
+
+容器内部会自动执行：
+
+```bash
+python3 main.py
+```
+
+`CMD` 通常使用这种数组形式，其中命令和参数分别写成独立字符串。一个构建阶段中一般只保留一个 `CMD`。如果写了多个，只有最后一个会生效。
+
+此外，`CMD` 只是默认命令，也可以在运行容器时被其他命令覆盖：
+
+```bash
+docker run --rm python-demo:1.0 python3 --version
+```
+
+这时容器执行的是 `python3 --version`，而不是默认的 `python3 main.py`。
+
+**ENTRYPOINT（拓展）**
+
+除了 `CMD`，Dockerfile 中还有一个相似的指令叫做 `ENTRYPOINT`。
+
+`ENTRYPOINT` 更适合设置镜像固定运行的主程序，而 `CMD` 更适合提供默认命令或默认参数。二者还可以配合使用，但当前这个简单项目只需要使用 `CMD`。
+
+关于它们更具体的覆盖和组合规则，等实际需要自定义容器启动方式时再进一步了解即可。
+
+## docker build 构建镜像
+
+写好 `Dockerfile` 后，可以使用 `docker build` 构建镜像。
+
+基本格式是：
+
+```bash
+docker build -t 镜像名:标签 构建上下文
+```
+
+例如：
+
+```bash
+docker build -t python-demo:1.0 .
+```
+
+这条命令会读取 `Dockerfile`，并构建一个名为 `python-demo:1.0` 的镜像。
+
+### -t 设置镜像名称和标签
+
+```bash
+-t python-demo:1.0
+```
+
+`-t` 是 `--tag` 的简写，用来设置镜像的名称和标签。
+
+其中：
+
+- `python-demo`：镜像名称。
+- `1.0`：是镜像标签，可以用来区分不同版本。
+
+标签不一定必须是数字，也可以写成：
+
+`python-demo:test`
+`python-demo:dev`
+`python-demo:release`
+
+如果不写标签，Docker 会默认使用：
+
+```text
+python-demo:latest
+```
+
+不过 `latest` 只是默认标签，并不代表 Docker 会自动判断它是不是最新版本。实际部署时，通常更推荐明确写出版本：
+
+```bash
+docker build -t python-demo:1.0 .
+```
+
+这样重新部署或回退版本时更加清楚。
+
+### 构建上下文
+
+命令最后的：
+
+```bash
+.
+```
+
+表示把当前目录作为构建上下文。构建上下文可以理解成：Docker 在本次构建中能够使用的文件范围。
+
+例如当前目录为：
+
+```text
+docker-python-demo/
+├── Dockerfile
+├── main.py
+└── requirements.txt
+```
+
+在该目录执行：
+
+```bash
+docker build -t python-demo:1.0 .
+```
+
+Docker 就可以在构建过程中访问这些文件。
+
+Dockerfile 中的：
+
+```dockerfile
+COPY . .
+```
+
+第一个 `.` 指的就是构建上下文中的内容。需要注意，`COPY` 只能复制构建上下文内的文件，不能随意读取宿主机上的其他目录。
+
+构建上下文也可以指定为其他路径：
+
+```bash
+docker build -t python-demo:1.0 /home/project
+```
+
+不过最常见的方式还是先进入项目目录，再执行：
+
+```bash
+docker build -t python-demo:1.0 .
+```
+
+所以最后的 `.` 不是“在当前目录生成镜像”，而是“把当前目录交给 Docker，作为构建时可使用的文件范围”。
+
+### 指定其他 Dockerfile
+
+默认情况下，Docker 会在构建上下文的根目录查找名为 `Dockerfile` 的文件。
+
+如果使用了其他文件名，可以通过 `-f` 指定：
+
+```bash
+docker build \
+  -f Dockerfile.dev \
+  -t python-demo:dev \
+  .
+```
+
+这里使用的是 `Dockerfile.dev`，但构建上下文仍然是最后的 `.`。
+
+### .dockerignore 排除文件
+
+项目目录中可能包含一些不需要参与构建的文件，例如：
+
+```text
+.git
+.idea
+__pycache__
+*.log
+.env
+```
+
+这些文件可能增加构建上下文的大小，也可能被 `COPY . .` 一起复制进镜像。
+
+可以在项目根目录创建 `.dockerignore`：
+
+```text
+.git
+.idea
+__pycache__
+*.pyc
+*.log
+.env
+```
+
+它的作用和 `.gitignore` 类似，用来排除不需要进入构建上下文的文件。
+
+这样做主要是为了：
+
+- 减少构建时需要处理的文件。
+- 避免把缓存、开发工具配置和敏感文件复制进镜像。
+
+真实项目中，通常都应该准备一份合适的 `.dockerignore`。
+
+## 修改代码后重新构建
+
+项目代码或 Dockerfile 修改后，已经构建好的镜像不会自动更新，已经创建的容器也不会自动变化。
+
+需要重新构建镜像：
+
+```bash
+docker build -t python-demo:1.1 .
+```
+
+然后删除原来的容器：
+
+```bash
+docker rm -f python-demo
+```
+
+再使用新镜像创建容器：
+
+```bash
+docker run -d \
+  --name python-demo \
+  -p 8000:8000 \
+  python-demo:1.1
+```
+
+Dockerfile 用来构建镜像，镜像再用来创建容器。因此，修改源代码不会直接改变已经存在的镜像和容器。
+
+## 推送镜像到 Docker Hub
+
+本地构建的镜像默认只保存在当前机器。如果希望其他机器也能通过 `docker pull` 获取镜像，可以将它推送到 Docker Hub。
+
+推送前，需要先登录，：
+
+```bash
+docker login
+```
+
+如果还没有账号，可以先前往 [Docker Hub](https://app.docker.com/signup) 官网注册。注册时需要记住自己的 Docker ID，后面给镜像命名时会用到。
+
+### 镜像名称
+
+推送到 Docker Hub 的镜像通常使用下面的命名方式：
+
+```text
+用户名/仓库名:标签
+```
+
+假设 Docker Hub 用户名是 `wreckloud`，镜像仓库名是 `python-demo`，那么完整镜像名为：
+
+```text
+wreckloud/python-demo:1.0
+```
+
+可以在构建时直接使用这个名称：
+
+```bash
+docker build \
+  -t wreckloud/python-demo:1.0 \
+  .
+```
+
+然后 `docker push` 推送：
+
+```bash
+docker push wreckloud/python-demo:1.0
+```
+
+其他机器就可以 `docker pull` 拉取：
+
+```bash
+docker pull wreckloud/python-demo:1.0
+```
+
+也可以直接运行：
+
+```bash
+docker run -d \
+  -p 8000:8000 \
+  wreckloud/python-demo:1.0
+```
+
+如果本地没有该镜像，Docker 会先自动拉取，再创建容器。
+
+### docker tag 给已有镜像增加名称
+
+如果已经构建了本地镜像：
+
+```text
+python-demo:1.0
+```
+
+但是名称中没有 Docker Hub 用户名，不需要重新构建，可以使用 `docker tag` 增加一个新名称：
+
+```bash
+docker tag \
+  python-demo:1.0 \
+  wreckloud/python-demo:1.0
+```
+
+执行后查看镜像：
+
+```bash
+docker images
+```
+
+可能会看到：
+
+```text
+REPOSITORY                 TAG       IMAGE ID
+python-demo                1.0       abc123
+wreckloud/python-demo      1.0       abc123
+```
+
+两个名称的 `IMAGE ID` 相同，说明它们指向的是同一个镜像。
+
+`docker tag` 不会重新构建镜像，也不会复制一份完整的镜像数据，只是给已有镜像增加一个新的名称和标签。
+
+然后就可以推送：
+
+```bash
+docker push wreckloud/python-demo:1.0
+```
+
+所以推送镜像有两种常见方式。
+
+构建时直接使用完整名称：
+
+```bash
+docker build -t wreckloud/python-demo:1.0 .
+docker push wreckloud/python-demo:1.0
+```
+
+或者先构建普通名称，再添加用于推送的标签：
+
+```bash
+docker build -t python-demo:1.0 .
+
+docker tag \
+  python-demo:1.0 \
+  wreckloud/python-demo:1.0
+
+docker push wreckloud/python-demo:1.0
+```
+
+两种方式最终推送的是同一个镜像。
+
+## 构建流程
+
+构建并运行镜像：
+
+```bash
+docker build \
+  -t wreckloud/python-demo:1.0 \
+  .
+
+docker run -d \
+  --name python-demo \
+  -p 8000:8000 \
+  wreckloud/python-demo:1.0
+```
+
+推送到 Docker Hub：
+
+```bash
+docker login
+
+docker push wreckloud/python-demo:1.0
+```
+
+其他机器拉取并运行：
+
+```bash
+docker pull wreckloud/python-demo:1.0
+
+docker run -d \
+  --name python-demo \
+  -p 8000:8000 \
+  wreckloud/python-demo:1.0
+```
+
+整个过程可以概括成：
+
+```text
+项目代码 + Dockerfile
+          ↓
+      docker build
+          ↓
+        镜像
+       ↙    ↘
+docker run  docker push
+    ↓          ↓
+  容器      Docker Hub
+                 ↓
+             docker pull
+                 ↓
+              其他机器
+```
+
+通过 Dockerfile 和镜像，项目代码、运行环境、依赖和启动方式可以被一起保存。
+
+在其他安装了 Docker 的机器上，只需要拉取镜像并创建容器，就能获得相对一致的运行环境。
+
+# Docker 网络
+
+容器之间经常需要互相访问。
+
+例如，一个后端项目运行在 `backend` 容器中，MySQL 运行在 `mysql` 容器中。后端需要连接 MySQL，这时就要通过 Docker 网络建立通信。
+
+Docker 提供了多种网络模式，其中最常用的是：
+
+* `bridge`：桥接网络，也是普通容器最常用的模式。
+* `host`：容器直接使用宿主机网络。
+* `none`：不给容器配置外部网络。
+
+此外还有 `overlay`、`macvlan` 等网络模式，主要用于跨主机容器通信或特殊网络环境，在此先不展开。
+
+## bridge 桥接网络
+
+不特别指定网络时，Docker 容器默认使用 `bridge` 网络。可以查看 Docker 当前的网络：
+
+```bash
+docker network ls
+```
+
+一般会看到：
+
+```text
+NETWORK ID     NAME      DRIVER
+...            bridge    bridge
+...            host      host
+...            none      null
+```
+
+这里名为 `bridge` 的网络，就是 Docker 默认创建的桥接网络。
+
+在 bridge 模式下，Docker 会为容器分配一个内部 IP。这个 IP 经常类似：
+
+```text
+172.17.0.2
+```
+
+处于同一桥接网络中的容器，可以通过内部网络互相访问。
+
+不过容器内部 IP 是由 Docker 分配的，容器重新创建后可能发生变化，所以实际项目中不应该把它直接写进配置文件。
+
+bridge 网络与宿主机网络相对隔离。容器中的服务如果需要被宿主机或外部机器访问，通常需要通过 `-p` 进行端口映射：
+
+```bash
+docker run -d \
+  --name nginx \
+  -p 8080:80 \
+  nginx
+```
+
+这里访问宿主机的 `8080` 端口，请求会被转发到容器内部的 `80` 端口。
+
+### 自定义 bridge 网络
+
+虽然 Docker 自带一个默认的 `bridge` 网络，但实际项目中更推荐为项目创建自己的网络：
+
+```bash
+docker network create project-network
+```
+
+如果不指定网络驱动，`docker network create` 默认创建的也是 bridge 网络。
+
+查看网络：
+
+```bash
+docker network ls
+```
+
+创建容器时，可以通过 `--network` 指定它加入哪个网络：
+
+```bash
+docker run -d \
+  --name mysql \
+  --network project-network \
+  -e MYSQL_ROOT_PASSWORD=123456 \
+  mysql:8.0
+```
+
+再启动一个后端容器，并加入同一个网络：
+
+```bash
+docker run -d \
+  --name backend \
+  --network project-network \
+  -p 8080:8080 \
+  backend:1.0
+```
+
+此时 `mysql` 和 `backend` 处于同一个自定义网络中，可以直接互相通信。
+
+自定义网络的主要意义是：
+
+* 把同一个项目的容器组织到一起。
+* 让容器之间能够通过名称访问。
+* 隔离不同项目中的容器。
+
+## 通过容器名访问服务
+
+在自定义 bridge 网络中，Docker 提供了内部 DNS。
+
+它可以把容器名解析成对应的内部 IP，因此同一个网络中的容器不需要记住对方不断变化的 IP 地址。
+
+前面的两个容器分别叫：
+
+```text
+backend
+mysql
+```
+
+那么 `backend` 容器连接 MySQL 时，可以把数据库地址写成：
+
+```text
+mysql:3306
+```
+
+例如：
+
+```properties
+spring.datasource.url=jdbc:mysql://mysql:3306/demo
+```
+
+这里的 `mysql` 不是宿主机域名，也不是固定 IP，而是 MySQL 的容器名。
+
+当后端访问：
+
+```text
+mysql
+```
+
+Docker 内部 DNS 会将它解析成 `mysql` 容器当前的内部 IP。
+
+整个过程可以理解为：
+
+```text
+backend 容器访问 mysql:3306
+              ↓
+Docker 内部 DNS 解析 mysql
+              ↓
+找到 mysql 容器的内部 IP
+              ↓
+访问 MySQL 的 3306 端口
+```
+
+因此，在同一个自定义网络中，容器之间通常应该通过容器名访问，而不是直接使用内部 IP。
+
+需要注意，这种自动通过容器名解析的能力是自定义 bridge 网络的重要特性。Docker 默认的 `bridge` 网络不适合依赖容器名进行通信。
+
+## 网络之间的隔离
+
+不同的自定义 bridge 网络默认相互隔离。
+
+例如创建两个网络：
+
+```bash
+docker network create project-a
+docker network create project-b
+```
+
+然后分别启动容器：
+
+```bash
+docker run -d \
+  --name container-a \
+  --network project-a \
+  nginx
+```
+
+```bash
+docker run -d \
+  --name container-b \
+  --network project-b \
+  nginx
+```
+
+`container-a` 和 `container-b` 不在同一个网络中，不能直接通过内部地址或容器名互相访问。
+
+如果某个容器确实需要同时与两个网络中的容器通信，可以让它加入多个网络：
+
+```bash
+docker network connect project-b container-a
+```
+
+这时 `container-a` 同时连接了 `project-a` 和 `project-b`。
+
+可以通过下面的命令查看网络的详细信息：
+
+```bash
+docker network inspect project-a
+```
+
+其中会包含网络的地址范围，以及当前连接到该网络的容器。
+
+## 容器之间需要使用 -p 吗
+
+同一个 Docker 网络中的容器互相访问时，通常不需要使用 `-p`。
+
+例如后端容器通过：
+
+```text
+mysql:3306
+```
+
+访问 MySQL，直接使用的是 MySQL 容器内部监听的 `3306` 端口。
+
+`-p` 的作用是把容器端口发布到宿主机，主要用于宿主机或外部机器访问容器：
+
+```text
+容器访问容器：使用容器名和容器内部端口
+外部访问容器：通常需要通过 -p 发布端口
+```
+
+例如：
+
+```bash
+docker run -d \
+  --name mysql \
+  --network project-network \
+  -e MYSQL_ROOT_PASSWORD=123456 \
+  mysql:8.0
+```
+
+即使没有配置：
+
+```bash
+-p 3306:3306
+```
+
+同一网络中的 `backend` 容器仍然可以通过：
+
+```text
+mysql:3306
+```
+
+连接 MySQL。
+
+但是宿主机上的数据库工具无法通过宿主机的 `3306` 端口连接它。
+
+如果还需要从宿主机访问 MySQL，就要增加端口映射：
+
+```bash
+docker run -d \
+  --name mysql \
+  --network project-network \
+  -p 3306:3306 \
+  -e MYSQL_ROOT_PASSWORD=123456 \
+  mysql:8.0
+```
+
+## host 网络模式
+
+使用 host 模式时，容器直接共享宿主机的网络。
+
+启动方式是：
+
+```bash
+docker run -d \
+  --name nginx \
+  --network host \
+  nginx
+```
+
+在这种模式下，容器没有独立的网络地址，而是直接使用宿主机的网络接口和端口。
+
+如果容器中的 Nginx 监听 `80` 端口，那么它实际占用的就是宿主机的 `80` 端口，可以直接通过下面的地址访问：
+
+```text
+宿主机IP:80
+```
+
+host 模式下不需要使用 `-p`：
+
+```bash
+-p 8080:80
+```
+
+因为容器和宿主机之间已经没有独立端口需要映射。即使写了 `-p`，端口发布也不会按 bridge 模式那样生效。
+
+host 模式常用于：
+
+* 对网络性能比较敏感的程序。
+* 需要监听大量端口的程序。
+* 某些依赖宿主机网络环境的特殊服务。
+* 排查因端口映射或网络隔离导致的问题。
+
+不过它也会减弱容器的网络隔离。
+
+例如，容器中的程序监听宿主机已经被占用的端口时，会直接发生端口冲突。多个 host 模式的容器也不能同时监听同一个宿主机端口。
+
+因此，普通 Web 服务、数据库和中间件仍然更适合使用自定义 bridge 网络。只有确实需要直接使用宿主机网络时，再考虑 host 模式。
+
+## none 网络模式
+
+如果希望容器完全不连接外部网络，可以使用 none 模式：
+
+```bash
+docker run -it \
+  --name isolated \
+  --network none \
+  ubuntu
+```
+
+这种模式下，容器只有本地回环接口，也就是：
+
+```text
+127.0.0.1
+```
+
+容器不能访问外部网络，也不能通过 Docker 网络访问其他容器。
+
+none 模式适合：
+
+* 不需要联网的离线任务。
+* 对网络隔离要求较高的任务。
+* 测试程序在断网环境下的行为。
+
+这里的模式名称是 `none`，不是 `null`。在 `docker network ls` 的输出中，`none` 网络对应的驱动可能显示为 `null`。
+
+## 常用网络命令
+
+查看 Docker 网络：
+
+```bash
+docker network ls
+```
+
+`ls` 也可以写成：
+
+```bash
+docker network list
+```
+
+创建网络：
+
+```bash
+docker network create project-network
+```
+
+不指定驱动时，默认创建 bridge 网络。
+
+也可以明确指定：
+
+```bash
+docker network create \
+  --driver bridge \
+  project-network
+```
+
+查看网络详细信息：
+
+```bash
+docker network inspect project-network
+```
+
+将一个已有容器加入网络：
+
+```bash
+docker network connect project-network 容器名
+```
+
+让容器断开网络：
+
+```bash
+docker network disconnect project-network 容器名
+```
+
+删除网络：
+
+```bash
+docker network rm project-network
+```
+
+`rm` 也可以写成：
+
+```bash
+docker network remove project-network
+```
+
+如果仍有容器连接到这个网络，需要先断开或删除相关容器，才能删除网络。
+
+## 一个完整示例
+
+创建项目网络：
+
+```bash
+docker network create demo-network
+```
+
+启动 MySQL：
+
+```bash
+docker run -d \
+  --name mysql \
+  --network demo-network \
+  -e MYSQL_ROOT_PASSWORD=123456 \
+  -e MYSQL_DATABASE=demo \
+  mysql:8.0
+```
+
+启动后端服务：
+
+```bash
+docker run -d \
+  --name backend \
+  --network demo-network \
+  -p 8080:8080 \
+  backend:1.0
+```
+
+后端中的数据库连接地址应该使用：
+
+```text
+mysql:3306
+```
+
+而不是：
+
+```text
+localhost:3306
+```
+
+因为在 `backend` 容器中，`localhost` 表示 `backend` 容器自己，并不表示 MySQL 容器，也不表示宿主机。
+
+这也是容器网络中最容易混淆的地方：
+
+```text
+localhost
+```
+
+始终表示当前程序所在的网络环境。
+
+后端运行在容器里时：
+
+```text
+localhost = backend 容器自己
+mysql     = 同一自定义网络中的 MySQL 容器
+```
+
+整个网络关系可以理解为：
+
+```text
+外部请求
+    ↓
+宿主机 8080 端口
+    ↓  -p 8080:8080
+backend 容器
+    ↓  mysql:3306
+Docker 内部 DNS
+    ↓
+mysql 容器
+```
+
+在普通的单机 Docker 项目中，最常见的做法就是：
+
+1. 为项目创建一个自定义 bridge 网络。
+2. 把需要互相通信的容器加入同一个网络。
+3. 容器之间使用容器名和内部端口访问。
+4. 只有需要被宿主机或外部访问的服务，才通过 `-p` 发布端口。

@@ -42,8 +42,6 @@
   - 用于文章评论数展示
 - `POST /api/comments`
   - 发布评论（后续可接审核/敏感词）
-- `POST /api/comments/{id}/like`
-  - 评论点赞
 
 返回字段建议：
 
@@ -53,8 +51,7 @@
   "path": "/thoughts/xxx.html",
   "nick": "Wreckloud",
   "content": "....",
-  "createdAt": "2026-05-13T10:00:00Z",
-  "likeCount": 2
+  "createdAt": "2026-05-13T10:00:00Z"
 }
 ```
 

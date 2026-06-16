@@ -1,5 +1,5 @@
 ---
-title: 留痕之地-关于
+title: 关于
 aside: true
 ---
 

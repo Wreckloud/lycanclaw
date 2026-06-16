@@ -82,10 +82,10 @@ export default defineConfig({
     // 导航栏
     nav: [
       { text: '首页', link: '/' },
-      { text: '知识笔记', link: '/knowledge/' },
-      { text: '思考随笔', link: '/thoughts/' },
+      { text: '猎识印记', link: '/knowledge/' },
+      { text: '风絮茸杂', link: '/thoughts/' },
       { text: '绝穴密藏', link: '/projects/' },
-      { text: '关于', link: '/about' }
+      { text: '留痕之地', link: '/about' }
     ],
 
     // 社交链接 - 移除GitHub图标，由随机音乐按钮替代

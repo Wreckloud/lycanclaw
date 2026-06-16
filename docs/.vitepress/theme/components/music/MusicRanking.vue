@@ -4,18 +4,23 @@
  * 定义MusicRanking组件的交互与展示逻辑。
  */
 
-import { ref, onMounted, nextTick } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useIntersectionObserver } from '@vueuse/core'
 import SimpleMusicPlayer from './SimpleMusicPlayer.vue'
 import { fetchWeeklyTracks, type MusicTrack } from '../../utils/music'
 
 // 简化的状态
 const isLoading = ref(true)
 const hasError = ref(false)
+const sectionRef = ref<HTMLElement | null>(null)
 const containerRef = ref<HTMLElement | null>(null)
+const animationTriggerRef = ref<HTMLElement | null>(null)
+const isVisible = ref(false)
 const isAtTop = ref(true)
 const isAtBottom = ref(false)
 
 const musicRanking = ref<MusicTrack[]>([])
+let stopObserver: (() => void) | null = null
 
 // 更新滚动位置和状态
 function updateScrollPosition() {
@@ -54,13 +59,32 @@ async function fetchMusicRanking() {
 // 组件挂载
 onMounted(() => {
   if (typeof window === 'undefined') return
+  const observer = useIntersectionObserver(
+    animationTriggerRef,
+    ([entry]) => {
+      if (!entry?.isIntersecting) return
+      isVisible.value = true
+      observer.stop()
+    },
+    {
+      threshold: 0.5,
+      rootMargin: '0px 0px -5% 0px'
+    }
+  )
+  stopObserver = observer.stop
   fetchMusicRanking()
+})
+
+onBeforeUnmount(() => {
+  stopObserver?.()
+  stopObserver = null
 })
 </script>
 
 <template>
-  <div class="music-ranking-container">
-    <h3 class="ranking-title">歌曲推荐</h3>
+  <div ref="sectionRef" class="music-ranking-container">
+    <div ref="animationTriggerRef" class="animation-trigger"></div>
+    <h3 class="ranking-title" :class="{ 'animate-in': isVisible }">歌曲推荐</h3>
     
     <!-- 加载状态 -->
     <div v-if="isLoading" class="loading-container">加载中...</div>
@@ -72,7 +96,7 @@ onMounted(() => {
     <div v-else-if="musicRanking.length === 0" class="empty-container">暂无听歌记录</div>
     
     <!-- 内容区域 - 添加滚动和遮罩 -->
-    <div v-else class="ranking-wrapper">
+    <div v-else class="ranking-wrapper" :class="{ 'animate-in': isVisible }">
       <!-- 顶部渐变遮罩 -->
       <div class="lc-fade-mask lc-fade-mask--top" :style="{ opacity: isAtTop ? 0 : 1 }"></div>
       
@@ -82,7 +106,13 @@ onMounted(() => {
         class="ranking-scroll-container" 
         @scroll="updateScrollPosition"
       >
-        <div v-for="music in musicRanking" :key="music.id" class="music-item">
+        <div
+          v-for="(music, index) in musicRanking"
+          :key="music.id"
+          class="music-item"
+          :class="{ 'animate-item': isVisible }"
+          :style="{ '--item-delay': `${index * 0.08 + 0.3}s` }"
+        >
           <SimpleMusicPlayer 
             :neteaseid="music.id" 
             :name="music.name"
@@ -103,6 +133,41 @@ onMounted(() => {
 <style scoped>
 .music-ranking-container {
   margin: 1rem 0;
+  position: relative;
+}
+
+.animation-trigger {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.ranking-title,
+.ranking-wrapper {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.music-item {
+  opacity: 0;
+  transform: translateY(15px);
+}
+
+.animate-in {
+  animation: ranking-fade-in var(--lc-motion-duration-slower) var(--lc-motion-ease-standard) forwards;
+}
+
+.animate-item {
+  animation: ranking-fade-in var(--lc-motion-duration-slow) var(--lc-motion-ease-standard) forwards;
+  animation-delay: var(--item-delay);
+}
+
+@keyframes ranking-fade-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .ranking-title {

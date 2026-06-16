@@ -14,22 +14,25 @@ function getCommentEndpoint(): string {
   return `${getBackendApiBase()}/api/comments`
 }
 
-const RECENT_COMMENTS_CACHE_KEY = 'lycan_recent_comments'
-const RECENT_COMMENTS_CACHE_TIME_KEY = 'lycan_recent_comments_time'
-const CACHE_EXPIRATION = 10 * 60 * 1000
+const RECENT_COMMENTS_CACHE_KEY = 'lycan_recent_comments_v3'
+const RECENT_COMMENTS_CACHE_TIME_KEY = 'lycan_recent_comments_time_v3'
+const RECENT_COMMENTS_CACHE_COUNT_KEY = 'lycan_recent_comments_count_v3'
+const CACHE_EXPIRATION = 2 * 60 * 1000
+export const RECENT_COMMENTS_UPDATED_EVENT = 'lycan:recent-comments-updated'
 
 export interface RecentComment {
   id: string
   comment: string
+  commentHtml?: string
   nick: string
+  website?: string
   url: string
   path: string
   articleTitle?: string
   createdAt: string
 }
 
-let isPreloading = false
-let preloadPromise: Promise<RecentComment[]> | null = null
+let pendingRequest: { count: number; promise: Promise<RecentComment[]> } | null = null
 
 function canUseStorage(): boolean {
   if (typeof window === 'undefined') return false
@@ -50,12 +53,20 @@ function readCacheTimestamp(): number | null {
   return Number.isNaN(parsed) ? null : parsed
 }
 
-function getRecentCommentsFromCache(): RecentComment[] | null {
+function getRecentCommentsFromCache(requiredCount: number): RecentComment[] | null {
   if (!canUseStorage()) return null
 
   try {
     const cacheTime = readCacheTimestamp()
     if (!cacheTime || Date.now() - cacheTime > CACHE_EXPIRATION) {
+      return null
+    }
+
+    const cachedRequestCount = Number.parseInt(
+      localStorage.getItem(RECENT_COMMENTS_CACHE_COUNT_KEY) || '',
+      10
+    )
+    if (Number.isNaN(cachedRequestCount) || cachedRequestCount < requiredCount) {
       return null
     }
 
@@ -66,12 +77,13 @@ function getRecentCommentsFromCache(): RecentComment[] | null {
   }
 }
 
-function saveRecentCommentsToCache(comments: RecentComment[]): void {
-  if (!canUseStorage() || comments.length === 0) return
+function saveRecentCommentsToCache(comments: RecentComment[], requestedCount: number): void {
+  if (!canUseStorage()) return
 
   try {
     localStorage.setItem(RECENT_COMMENTS_CACHE_KEY, JSON.stringify(comments))
     localStorage.setItem(RECENT_COMMENTS_CACHE_TIME_KEY, Date.now().toString())
+    localStorage.setItem(RECENT_COMMENTS_CACHE_COUNT_KEY, String(requestedCount))
   } catch {
     // Ignore storage quota / availability errors.
   }
@@ -83,8 +95,16 @@ export function clearCommentsCache(): void {
   try {
     localStorage.removeItem(RECENT_COMMENTS_CACHE_KEY)
     localStorage.removeItem(RECENT_COMMENTS_CACHE_TIME_KEY)
+    localStorage.removeItem(RECENT_COMMENTS_CACHE_COUNT_KEY)
   } catch {
     // Ignore storage availability errors.
+  }
+}
+
+export function notifyRecentCommentsUpdated(): void {
+  clearCommentsCache()
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(RECENT_COMMENTS_UPDATED_EVENT))
   }
 }
 
@@ -113,19 +133,15 @@ function buildCommentCountUrl(path: string): string {
   return `${getCommentEndpoint()}/count?path=${encodeURIComponent(path)}`
 }
 
-export function preloadRecentComments(count: number = 5): void {
-  if (typeof window === 'undefined' || isPreloading) return
-
-  isPreloading = true
+export function preloadRecentComments(count: number = 7): void {
+  if (typeof window === 'undefined') return
 
   const requestIdle =
     window.requestIdleCallback ||
     ((callback: () => void) => setTimeout(() => callback(), 1000))
 
   requestIdle(() => {
-    getRecentComments(count).finally(() => {
-      isPreloading = false
-    })
+    void getRecentComments(count).catch(() => undefined)
   })
 }
 
@@ -137,12 +153,12 @@ export async function getRecentComments(
     clearCommentsCache()
   }
 
-  if (isPreloading && preloadPromise && !forceRefresh) {
-    return preloadPromise
+  if (!forceRefresh && pendingRequest && pendingRequest.count >= count) {
+    return pendingRequest.promise
   }
 
   if (!forceRefresh) {
-    const cached = getRecentCommentsFromCache()
+    const cached = getRecentCommentsFromCache(count)
     if (cached) return cached
   }
 
@@ -150,21 +166,20 @@ export async function getRecentComments(
     try {
       const data = await requestJson<unknown>(buildRecentCommentsUrl(count))
       const comments = parseWalineRecentCommentsResponse<RecentComment>(data)
-      if (comments.length > 0) {
-        saveRecentCommentsToCache(comments)
-      }
+      saveRecentCommentsToCache(comments, count)
       return comments
     } catch (error) {
       logError('commentApi', '获取最新评论失败', error)
-      return []
+      throw error
     }
   })()
 
-  preloadPromise = fetchPromise
+  pendingRequest = { count, promise: fetchPromise }
 
   fetchPromise.finally(() => {
-    preloadPromise = null
-    isPreloading = false
+    if (pendingRequest?.promise === fetchPromise) {
+      pendingRequest = null
+    }
   })
 
   return fetchPromise
