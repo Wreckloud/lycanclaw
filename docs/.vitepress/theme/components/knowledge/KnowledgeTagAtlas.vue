@@ -2,7 +2,7 @@
 /**
  * 猎识印记概念云图。
  *
- * 读取知识笔记构建数据，以 tag 频次生成椭圆形概念云和概览统计。
+ * 读取知识笔记构建数据，以 tag 频次生成椭圆形概念云。
  */
 
 import { computed, onMounted, ref } from 'vue'
@@ -21,18 +21,10 @@ interface CloudTag extends TagStat {
   x: number
   y: number
   size: number
-  opacity: number
-  rotate: number
   zIndex: number
 }
 
-interface RecentContact {
-  name: string
-  count: number
-}
-
 const MAX_CLOUD_TAGS = 56
-const RECENT_RECORD_LIMIT = 8
 const CLOUD_ANCHORS: Array<[number, number]> = [
   [50, 50],
   [34, 42],
@@ -61,10 +53,6 @@ const isLoading = ref(true)
 
 const publishedRecords = computed(() =>
   records.value.filter(record => Array.isArray(record.tags) && record.tags.length > 0)
-)
-
-const totalWords = computed(() =>
-  publishedRecords.value.reduce((total, record) => total + Number(record.wordCount || 0), 0)
 )
 
 const tagStats = computed<TagStat[]>(() => {
@@ -110,51 +98,16 @@ const cloudTags = computed<CloudTag[]>(() => {
     .map((tag, index) => {
       const point = getCloudPoint(tag.name, index, total)
       const size = 0.62 + Math.pow(Math.max(0.03, tag.weight), 0.74) * 3.18
-      const opacity = 0.28 + Math.pow(Math.max(0.03, tag.weight), 0.44) * 0.68
-      const rotate = ((tagHash(tag.name) % 17) - 8) * 1.25
 
       return {
         ...tag,
         x: point[0],
         y: point[1],
         size,
-        opacity,
-        rotate,
         zIndex: MAX_CLOUD_TAGS - index
       }
     })
     .sort((a, b) => a.zIndex - b.zIndex)
-})
-
-const recentContact = computed<RecentContact>(() => {
-  const recentRecords = [...publishedRecords.value]
-    .sort((a, b) => parseRecordTime(b.date) - parseRecordTime(a.date))
-    .slice(0, RECENT_RECORD_LIMIT)
-  const map = new Map<string, { count: number; latestTime: number }>()
-
-  for (const record of recentRecords) {
-    const time = parseRecordTime(record.date)
-    for (const tag of record.tags || []) {
-      const name = tag.trim()
-      if (!name) continue
-
-      const current = map.get(name) || { count: 0, latestTime: 0 }
-      current.count += 1
-      current.latestTime = Math.max(current.latestTime, time)
-      map.set(name, current)
-    }
-  }
-
-  const [name, stat] = Array.from(map.entries()).sort((a, b) =>
-    b[1].count - a[1].count ||
-    b[1].latestTime - a[1].latestTime ||
-    a[0].localeCompare(b[0], 'zh-Hans-CN')
-  )[0] || ['暂无', { count: 0 }]
-
-  return {
-    name,
-    count: stat.count
-  }
 })
 
 const cloudDescription = computed(() =>
@@ -163,12 +116,6 @@ const cloudDescription = computed(() =>
     .map(tag => `${tag.name} ${tag.count} 篇`)
     .join('，')
 )
-
-function formatNumber(value: number): string {
-  if (value >= 10000) return `${(value / 10000).toFixed(1)}w`
-  if (value >= 1000) return `${(value / 1000).toFixed(1)}k`
-  return String(value)
-}
 
 function tagHash(value: string): number {
   return Array.from(value).reduce((hash, char) => {
@@ -190,23 +137,14 @@ function getCloudPoint(name: string, index: number, total: number): [number, num
   ]
 }
 
-function parseRecordTime(value?: string): number {
-  if (!value) return 0
-
-  const direct = Date.parse(value)
-  if (!Number.isNaN(direct)) return direct
-
-  const normalized = Date.parse(value.replace(' ', 'T'))
-  return Number.isNaN(normalized) ? 0 : normalized
-}
-
 function cloudTagStyle(tag: CloudTag): Record<string, string> {
+  const accentRatio = Math.round(18 + tag.weight * 42)
+
   return {
     '--tag-x': `${tag.x.toFixed(2)}%`,
     '--tag-y': `${tag.y.toFixed(2)}%`,
     '--tag-size': `${tag.size.toFixed(2)}rem`,
-    '--tag-opacity': tag.opacity.toFixed(2),
-    '--tag-rotate': `${tag.rotate.toFixed(2)}deg`,
+    '--tag-accent-ratio': `${accentRatio}%`,
     '--tag-z-index': String(tag.zIndex)
   }
 }
@@ -246,24 +184,6 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div class="atlas-stats">
-        <div class="stat-card">
-          <span class="stat-value">{{ publishedRecords.length }}</span>
-          <span class="stat-label">领域笔记</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-value">{{ tagStats.length }}</span>
-          <span class="stat-label">知识标签</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-value">{{ formatNumber(totalWords) }}</span>
-          <span class="stat-label">沉淀字数</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-value stat-value--tag">{{ recentContact.name }}</span>
-          <span class="stat-label">最近接触</span>
-        </div>
-      </div>
     </template>
   </section>
 </template>
@@ -279,46 +199,6 @@ onMounted(async () => {
   color: var(--vp-c-text-2);
   font-style: italic;
   text-align: center;
-}
-
-.atlas-stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1rem;
-  margin: 1.1rem 0 0;
-}
-
-.stat-card {
-  min-width: 0;
-  padding: 1.5rem 0.5rem;
-  border-radius: 8px;
-  background-color: var(--vp-c-bg-soft);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  text-align: center;
-  user-select: none;
-}
-
-.stat-value {
-  display: block;
-  color: var(--vp-c-brand-1);
-  font-size: 1.8rem;
-  line-height: 1;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.stat-label {
-  display: block;
-  margin-top: 0.55rem;
-  color: var(--vp-c-text-2);
-  font-size: 0.82rem;
-}
-
-.stat-value--tag {
-  overflow: hidden;
-  font-size: clamp(1.08rem, 2vw, 1.65rem);
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .tag-cloud-panel {
@@ -344,29 +224,27 @@ onMounted(async () => {
   --tag-x: 50%;
   --tag-y: 50%;
   --tag-size: 1rem;
-  --tag-opacity: 0.7;
-  --tag-rotate: 0deg;
+  --tag-accent-ratio: 36%;
   --tag-z-index: 1;
   position: absolute;
   z-index: var(--tag-z-index);
   top: var(--tag-y);
   left: var(--tag-x);
-  color: var(--vp-c-text-1);
-  opacity: var(--tag-opacity);
+  color: color-mix(in srgb, var(--vp-c-brand-1) var(--tag-accent-ratio), var(--vp-c-text-1));
   font-size: var(--tag-size);
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
-  transform: translate(-50%, -50%) rotate(var(--tag-rotate));
+  text-shadow:
+    0 1px 0 var(--vp-c-bg),
+    1px 0 0 var(--vp-c-bg),
+    -1px 0 0 var(--vp-c-bg);
+  transform: translate(-50%, -50%);
   transform-origin: center;
   user-select: none;
 }
 
 @media (max-width: 959px) {
-  .atlas-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .tag-cloud-panel {
     min-height: 350px;
   }
@@ -382,10 +260,6 @@ onMounted(async () => {
 }
 
 @media (max-width: 480px) {
-  .atlas-stats {
-    grid-template-columns: 1fr 1fr;
-  }
-
   .tag-cloud {
     width: 100%;
     min-height: 250px;

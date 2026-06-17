@@ -337,19 +337,18 @@ onUnmounted(() => {
   color: var(--vp-c-brand);
   font-weight: 600;
   min-height: 2.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
+  display: block;
 }
 
 .dynamic-text {
-  display: inline-block;
+  display: inline;
 }
 
 .cursor {
   display: inline-block;
-  margin-left: 2px;
+  margin-left: 0.04em;
   font-weight: 700;
+  transform: translateX(-0.02em);
   animation: blink 1s infinite;
 }
 

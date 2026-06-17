@@ -58,14 +58,5 @@ export function getBackendApiBase(): string {
 
 export function getWalineServerUrl(): string {
   const backendBase = getBackendApiBase()
-  try {
-    const url = new URL(backendBase)
-    const isLocalHost = url.hostname === '127.0.0.1' || url.hostname === 'localhost'
-    if (isLocalHost && url.port === '8080') {
-      return `${url.protocol}//${url.hostname}:8360`
-    }
-  } catch {
-    // 忽略解析异常，回退到统一路径推导。
-  }
-  return `${backendBase}/waline`
+  return backendBase ? `${backendBase}/waline` : '/waline'
 }

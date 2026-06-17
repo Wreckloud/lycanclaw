@@ -31,6 +31,80 @@ let handledCommentHash = ''
 
 const DEFAULT_AVATAR = '/default.png'
 const ALLOWED_OAUTH_PROVIDERS = new Set(['github', 'qq'])
+const COMMENT_IMAGE_MAX_WIDTH = 1280
+const COMMENT_IMAGE_MAX_HEIGHT = 1280
+const COMMENT_IMAGE_QUALITY = 0.82
+const COMMENT_IMAGE_RAW_MAX_BYTES = 768 * 1024
+
+function readFileAsDataUrl(file: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(reader.error || new Error('图片读取失败'))
+    reader.readAsDataURL(file)
+  })
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error('图片加载失败'))
+    image.src = src
+  })
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob)
+      else reject(new Error('图片压缩失败'))
+    }, type, quality)
+  })
+}
+
+/**
+ * 将评论图片压缩为适合内联保存的尺寸。
+ */
+async function uploadCommentImage(file: File): Promise<string> {
+  if (!file.type.startsWith('image/')) {
+    throw new Error('请选择图片文件')
+  }
+
+  if (file.type === 'image/svg+xml') {
+    throw new Error('暂不支持上传 SVG 图片')
+  }
+
+  if (file.type === 'image/gif') {
+    if (file.size > COMMENT_IMAGE_RAW_MAX_BYTES) {
+      throw new Error('动图请控制在 768KB 以内')
+    }
+    return readFileAsDataUrl(file)
+  }
+
+  const source = await readFileAsDataUrl(file)
+  const image = await loadImage(source)
+  const scale = Math.min(
+    1,
+    COMMENT_IMAGE_MAX_WIDTH / image.naturalWidth,
+    COMMENT_IMAGE_MAX_HEIGHT / image.naturalHeight
+  )
+  const width = Math.max(1, Math.round(image.naturalWidth * scale))
+  const height = Math.max(1, Math.round(image.naturalHeight * scale))
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d')
+
+  if (!context) {
+    return source
+  }
+
+  canvas.width = width
+  canvas.height = height
+  context.drawImage(image, 0, 0, width, height)
+
+  const blob = await canvasToBlob(canvas, 'image/webp', COMMENT_IMAGE_QUALITY)
+  return readFileAsDataUrl(blob)
+}
 
 // 计算当前路径作为评论标识
 const commentPath = computed(() => route.path)
@@ -56,8 +130,9 @@ const initWaline = async () => {
       requiredMeta: [],
       pageSize: 10,
       emoji: [
-        'https://unpkg.com/@waline/emojis@1.2.0/bilibili',
+        'https://cdn.jsdelivr.net/npm/@waline/emojis@1.2.0/bilibili',
       ],
+      imageUploader: uploadCommentImage,
       search: false,
       reaction: false,
       pageview: '.waline-pageview-count',
@@ -68,7 +143,7 @@ const initWaline = async () => {
         nickError: '昵称不能少于3个字符',
         mail: '邮箱（可选）',
         mailError: '请填写正确的邮件地址',
-        link: '网址',
+        link: '网址（可选）',
         optional: '可选',
         placeholder: '行者,欲留下何言？',
         sofa: '风静人稀，尚无行者留声。',
@@ -78,7 +153,7 @@ const initWaline = async () => {
         comment: '评论',
         refresh: '刷新',
         more: '加载更多...',
-        preview: '预览',
+        preview: 'Markdown 预览',
         emoji: '表情',
         uploadImage: '上传图片',
         seconds: '秒前',
@@ -152,6 +227,7 @@ const applyWalineDomEnhancements = () => {
     if (image.dataset.lycanAvatarReady === 'true') return
     image.dataset.lycanAvatarReady = 'true'
     image.draggable = false
+    image.referrerPolicy = 'no-referrer'
     image.addEventListener('error', () => {
       if (image.dataset.lycanAvatarFallback === 'true') return
       image.dataset.lycanAvatarFallback = 'true'
@@ -166,7 +242,7 @@ const applyWalineDomEnhancements = () => {
   const placeholders: Array<[string, string]> = [
     ['.wl-header .wl-nick', '愿世人以何之称'],
     ['.wl-header .wl-mail', '传信之途（可选，用于回应）'],
-    ['.wl-header .wl-link', '可跳转进汝之博客'],
+    ['.wl-header .wl-link', '可跳转进汝之博客（可选）'],
   ]
   placeholders.forEach(([selector, placeholder]) => {
     root.querySelector<HTMLInputElement>(selector)?.setAttribute('placeholder', placeholder)
@@ -551,6 +627,27 @@ onBeforeUnmount(() => {
 
 .waline-container .wl-like {
   display: none !important;
+}
+
+.waline-container .wl-content img:not(.wl-emoji):not(.wl-user-avatar):not([class*="emoji"]),
+.waline-container .wl-preview img:not(.wl-emoji):not([class*="emoji"]) {
+  display: block;
+  width: auto;
+  max-width: min(100%, 560px);
+  max-height: 420px;
+  margin: 8px 0;
+  object-fit: contain;
+}
+
+.waline-container .wl-content .wl-emoji,
+.waline-container .wl-preview .wl-emoji,
+.waline-container img[class*="emoji"] {
+  display: inline-block;
+  width: 1.45em;
+  height: 1.45em;
+  margin: 0 0.08em;
+  vertical-align: -0.32em;
+  object-fit: contain;
 }
 
 .waline-container .wl-emoji-popup {
