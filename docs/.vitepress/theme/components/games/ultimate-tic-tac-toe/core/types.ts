@@ -33,6 +33,16 @@ export interface RuleEvent {
   filledCells: RecordedMove[]
 }
 
+export interface GameMessage {
+  id: string
+  type: 'system' | 'move' | 'chat'
+  player?: Player
+  sender?: Player
+  senderName?: string
+  reportId?: number
+  text: string
+}
+
 export interface GameCoreState {
   board: CellValue[]
   smallBoardStatus: BoardResult[]
@@ -49,6 +59,9 @@ export interface GameCoreState {
   turnReports: TurnReport[]
   lastTurnMoves: RecordedMove[]
   lastRuleEvents: RuleEvent[]
+  messages: GameMessage[]
+  errorMessage: string
+  isMessageInputFocused: boolean
 }
 
 export interface GameSettings {

@@ -13,7 +13,7 @@ const ArticleMetadata = defineAsyncComponent(() => import('./ArticleMetadata.vue
 const { frontmatter } = useData()
 
 // 获取文章标题
-const title = computed(() => frontmatter.value.title || '')
+const title = computed(() => frontmatter.value.hideTitle ? '' : frontmatter.value.title || '')
 
 // 判断是否显示文章统计信息 - 基于是否有创建时间
 const hasCreationDate = computed(() => !!frontmatter.value.date)

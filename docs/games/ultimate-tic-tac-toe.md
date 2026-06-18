@@ -1,7 +1,7 @@
 ---
-title: 九宫叠阵
 comment: false
 aside: false
+hideTitle: true
 ---
 
 <script setup>

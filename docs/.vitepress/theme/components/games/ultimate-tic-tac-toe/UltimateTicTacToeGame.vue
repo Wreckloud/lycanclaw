@@ -1,18 +1,13 @@
 <template>
-  <section class="utt-shell">
-    <header class="utt-hero">
-      <p class="utt-eyebrow">Ultimate Tic-Tac-Toe</p>
-      <h1>九宫叠阵</h1>
-      <p>九个棋盘互相牵引。落子不只是抢三连，也是把对手送往哪里。</p>
-    </header>
-
-    <div class="utt-layout">
-      <section class="utt-board-card" aria-label="九宫叠阵棋盘">
-        <div class="utt-board" :class="{ 'utt-board-finished': isFinished }">
+  <section class="utt-game-page">
+    <div class="utt-app">
+      <section class="utt-game-area" aria-label="九宫叠阵棋盘">
+        <div class="utt-board">
           <div
             v-for="bigIndex in boardIndexes"
             :key="bigIndex"
             class="utt-small-board"
+            :data-big-index="bigIndex"
             :class="getSmallBoardClass(bigIndex)"
           >
             <button
@@ -24,6 +19,10 @@
               :disabled="!canPlayCell(bigIndex, smallIndex)"
               :aria-label="`${formatBigBoardIndex(bigIndex)} 棋盘 ${formatSmallCellPosition(smallIndex)}`"
               @click="handleCellClick(bigIndex, smallIndex)"
+              @mouseenter="showNextBoardPreview(bigIndex, smallIndex)"
+              @mouseleave="clearNextBoardPreview"
+              @focus="showNextBoardPreview(bigIndex, smallIndex)"
+              @blur="clearNextBoardPreview"
             >
               {{ getCellMark(bigIndex, smallIndex) }}
             </button>
@@ -31,40 +30,46 @@
             <div
               v-if="state.smallBoardWinningLines[bigIndex]"
               class="utt-win-line"
-              :class="`utt-win-line-${state.smallBoardWinningLines[bigIndex]?.join('-')}`"
+              :class="[
+                `utt-win-line-${state.smallBoardWinningLines[bigIndex]?.join('-')}`,
+                state.smallBoardStatus[bigIndex] === X ? 'utt-win-line-blue' : 'utt-win-line-red'
+              ]"
             />
           </div>
+
+          <div
+            v-if="previewFrameStyle"
+            class="utt-preview-frame"
+            :class="{
+              'utt-preview-frame-visible': isPreviewFrameVisible,
+              'utt-preview-frame-free': isPreviewFrameFree
+            }"
+            :style="previewFrameStyle"
+          />
         </div>
       </section>
 
-      <aside class="utt-side">
-        <section class="utt-panel utt-status-panel">
-          <div>
-            <p class="utt-panel-label">当前局势</p>
-            <h2>{{ statusTitle }}</h2>
-            <p>{{ statusText }}</p>
-          </div>
-          <div class="utt-status-tags">
-            <span>{{ getGameModeName(settings.gameMode) }}</span>
-            <span>{{ getDifficultyName(settings.aiDifficulty) }}</span>
-            <span>{{ state.moveHistory.length }} 手</span>
-          </div>
-        </section>
+      <aside class="utt-side-panel">
+        <section class="utt-game-menu">
+          <h2 class="utt-panel-title utt-menu-panel-title">对局菜单</h2>
 
-        <section class="utt-panel">
-          <h2>对局设置</h2>
-          <label class="utt-control">
-            <span>模式</span>
-            <select v-model="settings.gameMode" @change="handleModeChange">
+          <label class="utt-menu-control">
+            <span class="utt-menu-label">对战模式</span>
+            <select v-model="settings.gameMode" class="utt-menu-select" @change="handleModeChange">
               <option value="human-vs-ai">人机对战</option>
               <option value="local">本地对战</option>
-              <option value="online">在线对战（预留）</option>
+              <option value="online">在线对战</option>
             </select>
           </label>
 
-          <label class="utt-control">
-            <span>电脑强度</span>
-            <select v-model="settings.aiDifficulty" @change="handleDifficultyChange">
+          <label class="utt-menu-control">
+            <span class="utt-menu-label">电脑难度</span>
+            <select
+              v-model="settings.aiDifficulty"
+              class="utt-menu-select"
+              :disabled="settings.gameMode !== 'human-vs-ai'"
+              @change="handleDifficultyChange"
+            >
               <option value="adaptive">自适应</option>
               <option value="normal">普通</option>
               <option value="hard">困难</option>
@@ -72,51 +77,73 @@
             </select>
           </label>
 
-          <p class="utt-help">{{ difficultyDescription }}</p>
-
-          <div class="utt-actions">
-            <button type="button" class="utt-primary-btn" @click="restartGame">再开一局</button>
-            <button type="button" class="utt-ghost-btn" @click="handleResignOrRematch">{{ resignButtonText }}</button>
-          </div>
+          <button type="button" class="utt-menu-button" @click="isRulesOpen = true">游戏规则</button>
+          <button
+            type="button"
+            class="utt-menu-button"
+            :class="isFinished ? 'utt-menu-button-primary' : 'utt-menu-button-danger'"
+            @click="handleResignOrRematch"
+          >
+            {{ resignButtonText }}
+          </button>
         </section>
 
-        <section class="utt-panel">
-          <h2>电脑思路</h2>
-          <div v-if="isThinking" class="utt-thinking">电脑正在搜索局面。</div>
-          <div v-else-if="latestAIAnalysis" class="utt-ai-grid">
-            <span>深度 {{ latestAIAnalysis.completedDepth }}/{{ latestAIAnalysis.targetDepth }}</span>
-            <span>{{ latestAIAnalysis.calculationTimeMs }}ms</span>
-            <span>{{ latestAIAnalysis.tactic }}</span>
-            <span>节点 {{ latestAIAnalysis.nodeCount }}</span>
-          </div>
-          <p v-else class="utt-muted">电脑落子后会显示搜索深度、战术和候选评分。</p>
-        </section>
+        <section class="utt-log-panel">
+          <h2 class="utt-panel-title">对局记录</h2>
 
-        <section class="utt-panel utt-log-panel">
-          <h2>对局记录</h2>
-          <ol class="utt-log">
-            <li v-for="item in visibleLog" :key="item.id">
-              <strong>{{ item.title }}</strong>
-              <span>{{ item.text }}</span>
+          <ul ref="logRef" class="utt-game-log">
+            <li
+              v-for="(message, index) in state.messages"
+              :key="message.id"
+              class="utt-log-message"
+              :class="getMessageClass(message)"
+              :style="{ opacity: getMessageOpacity(index) }"
+            >
+              {{ message.text }}
             </li>
-          </ol>
+          </ul>
+
+          <form class="utt-message-input" @submit.prevent="handleSendMessage">
+            <input
+              v-model="messageDraft"
+              type="text"
+              :placeholder="messagePlaceholder"
+              :class="{ 'utt-input-error': !state.isMessageInputFocused && state.errorMessage }"
+              @focus="handleMessageFocus"
+              @blur="handleMessageBlur"
+            >
+            <button type="submit">发送</button>
+          </form>
         </section>
       </aside>
+    </div>
+
+    <div v-if="isRulesOpen" class="utt-rules-dialog" role="dialog" aria-modal="true" aria-label="游戏规则">
+      <div class="utt-rules-card">
+        <h2>游戏规则</h2>
+        <p>游戏由 9 个小棋盘组成，每个小棋盘都是一个 3×3 井字棋。</p>
+        <p>玩家落子后，通常会把对手送到对应编号的小棋盘。例如下在第 1 格，对手下一步通常要去 1 号小棋盘。</p>
+        <p>下在中心格时，对手下一步可以自由选择任意可落子的棋盘。</p>
+        <p>当玩家在某个小棋盘里完成三连，该小棋盘会被该玩家控制。控制权一旦确定，不会因为后续落子改变。</p>
+        <p>被控制的小棋盘如果还没满，仍然可以继续落子。只有小棋盘满格时，才会触发满格结算。</p>
+        <p>如果满格的小棋盘有控制者，控制者会获得入口奖励：所有通向该小棋盘的空入口都会自动填入控制者的棋子；已有棋子的入口不变。随后控制者的对手获得自由落子。</p>
+        <p>如果小棋盘满格但无人控制，则记为平局，不触发入口奖励。</p>
+        <p>当一方控制的大棋盘位置连成三连时，该方赢得整局游戏。</p>
+        <button type="button" class="utt-menu-button" @click="isRulesOpen = false">知道了</button>
+      </div>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { createAdaptiveProfileFromReports } from './core/adaptive'
 import { chooseAIMoveWithDeadline } from './core/ai'
 import type { AIWorkerResponse } from './core/ai.worker'
-import { createTurnReport, getMoveQualityText } from './core/report'
+import { createTurnReport } from './core/report'
 import { applyMoveImmutable, forceWinnerByResign } from './core/reducer'
 import {
   createInitialGameState,
-  getDifficultyName,
-  getGameModeName,
   loadAdaptiveProfile,
   loadGameSettings,
   saveAdaptiveProfile,
@@ -130,105 +157,112 @@ import {
   getEffectiveNextBoard,
   getInvalidMoveReason,
   getMarkText,
+  getOpponent,
   getPlayerName,
+  isBoardFull,
   isPlayer
 } from './core/rules'
-import { EMPTY, O, X, type AIDecision, type AIDecisionAnalysis, type GameCoreState, type GameMove, type GameSettings, type Player } from './core/types'
-
-interface LogItem {
-  id: string
-  title: string
-  text: string
-}
+import {
+  DRAW,
+  EMPTY,
+  O,
+  X,
+  type AIDecision,
+  type AIDecisionAnalysis,
+  type GameCoreState,
+  type GameMessage,
+  type GameMove,
+  type GameSettings,
+  type Player
+} from './core/types'
 
 const boardIndexes = Array.from({ length: 9 }, (_, index) => index)
 const settings = ref<GameSettings>(loadGameSettings())
 const adaptiveProfile = ref(loadAdaptiveProfile())
 const state = ref<GameCoreState>(createInitialGameState(settings.value))
-const systemLog = ref<LogItem[]>([
-  {
-    id: 'start',
-    title: '新的对局',
-    text: '蓝方先手。中心格会让对手自由选择棋盘。'
-  }
-])
-const errorMessage = ref('')
 const isThinking = ref(false)
 const worker = ref<Worker | null>(null)
+const isRulesOpen = ref(false)
+const messageDraft = ref('')
+const activePreviewTarget = ref<PreviewTarget | null>(null)
+const lastPreviewTarget = ref<PreviewTarget | null>(null)
+const logRef = ref<HTMLElement | null>(null)
 let requestId = 0
+let aiRequestTimer: number | null = null
+
+type PreviewTarget =
+  | {
+      type: 'board'
+      boardIndex: number
+    }
+  | {
+      type: 'free'
+    }
 
 const isFinished = computed(() => state.value.winner !== EMPTY)
-const latestAIAnalysis = computed<AIDecisionAnalysis | null>(() => {
-  return [...state.value.turnReports].reverse().find((report) => report.aiDecision)?.aiDecision ?? null
-})
+const resignButtonText = computed(() => (isFinished.value ? '再来一把！' : '投降'))
+const isPreviewFrameVisible = computed(() => activePreviewTarget.value !== null)
+const isPreviewFrameFree = computed(() => (activePreviewTarget.value ?? lastPreviewTarget.value)?.type === 'free')
+const previewFrameStyle = computed<Record<string, string> | null>(() => {
+  const target = activePreviewTarget.value ?? lastPreviewTarget.value
+  if (!target) return null
 
-const difficultyDescription = computed(() => {
-  switch (settings.value.aiDifficulty) {
-    case 'normal':
-      return '普通模式：适合休闲对局，电脑会防守基础威胁。'
-    case 'hard':
-      return '困难模式：适合认真挑战，电脑较少犯错。'
-    case 'nightmare':
-      return '噩梦模式：电脑不放水，尽量选择 deadline 内的最优手。'
-    case 'adaptive':
-      return '自适应模式：默认推荐，会根据玩家最近几手表现动态调整强度。'
-  }
-})
-
-const statusTitle = computed(() => {
-  if (state.value.winner === X) return '蓝方获胜'
-  if (state.value.winner === O) return '红方获胜'
-  if (isThinking.value) return '电脑思考中'
-
-  return `${getPlayerName(state.value.currentPlayer, state.value)} 行动`
-})
-
-const statusText = computed(() => {
-  if (state.value.winner === X || state.value.winner === O) {
-    return `${getPlayerName(state.value.winner, state.value)} 赢下了整局。`
+  if (target.type === 'free') {
+    return {
+      left: 'calc(var(--utt-board-padding) - var(--utt-indicator-offset) - var(--utt-indicator-width))',
+      top: 'calc(var(--utt-board-padding) - var(--utt-indicator-offset) - var(--utt-indicator-width))',
+      width: 'calc(100% - var(--utt-board-padding) - var(--utt-board-padding) + var(--utt-indicator-offset) + var(--utt-indicator-offset) + var(--utt-indicator-width) + var(--utt-indicator-width))',
+      height: 'calc(100% - var(--utt-board-padding) - var(--utt-board-padding) + var(--utt-indicator-offset) + var(--utt-indicator-offset) + var(--utt-indicator-width) + var(--utt-indicator-width))'
+    }
   }
 
-  if (errorMessage.value) return errorMessage.value
+  const col = target.boardIndex % 3
+  const row = Math.floor(target.boardIndex / 3)
+  const boardSize = 'calc((100% - var(--utt-board-padding) - var(--utt-board-padding) - var(--utt-board-gap) - var(--utt-board-gap)) / 3)'
+  const step = `calc(${boardSize} + var(--utt-board-gap))`
+  const colOffset = repeatCssAddition(step, col)
+  const rowOffset = repeatCssAddition(step, row)
 
-  const nextBoard = getEffectiveNextBoard(state.value)
-  if (nextBoard === null) return '当前可自由选择任意未满棋盘。'
-
-  return `必须在 ${formatBigBoardIndex(nextBoard)} 棋盘落子。`
+  return {
+    left: `calc(var(--utt-board-padding)${colOffset} - var(--utt-indicator-offset) - var(--utt-indicator-width))`,
+    top: `calc(var(--utt-board-padding)${rowOffset} - var(--utt-indicator-offset) - var(--utt-indicator-width))`,
+    width: `calc(${boardSize} + var(--utt-indicator-offset) + var(--utt-indicator-offset) + var(--utt-indicator-width) + var(--utt-indicator-width))`,
+    height: `calc(${boardSize} + var(--utt-indicator-offset) + var(--utt-indicator-offset) + var(--utt-indicator-width) + var(--utt-indicator-width))`
+  }
 })
+const messagePlaceholder = computed(() => {
+  if (state.value.isMessageInputFocused) return ''
+  if (state.value.errorMessage) return state.value.errorMessage
 
-const resignButtonText = computed(() => {
-  return isFinished.value ? '清空记录' : '投降'
-})
-
-const visibleLog = computed<LogItem[]>(() => {
-  const reportLog = state.value.turnReports.slice(-8).map((report) => ({
-    id: `turn-${report.id}`,
-    title: `${report.actor.name} · ${getMoveQualityText(report.evaluation.quality)}`,
-    text: report.summary
-  }))
-
-  return [...systemLog.value, ...reportLog].slice(-10)
+  return '输入消息...'
 })
 
 onMounted(() => {
   worker.value = new Worker(new URL('./core/ai.worker.ts', import.meta.url), { type: 'module' })
   worker.value.addEventListener('message', handleWorkerMessage)
   requestAIMoveIfNeeded()
+  scrollLogToBottom()
 })
 
 onBeforeUnmount(() => {
+  clearAIRequestTimer()
   worker.value?.removeEventListener('message', handleWorkerMessage)
   worker.value?.terminate()
 })
 
+watch(
+  () => state.value.messages.length,
+  () => scrollLogToBottom()
+)
+
 function handleCellClick(bigIndex: number, smallIndex: number): void {
   if (isThinking.value || isAITurn(state.value)) {
-    errorMessage.value = '电脑正在思考，先让它把这一步走完。'
+    setError(`${getPlayerName(state.value.currentPlayer, state.value)}正在思考。`)
     return
   }
 
   if (!canPlayCell(bigIndex, smallIndex)) {
-    errorMessage.value = getInvalidMoveReason(state.value, bigIndex, smallIndex)
+    setError(getInvalidMoveReason(state.value, bigIndex, smallIndex))
     return
   }
 
@@ -251,21 +285,44 @@ function playMove(move: GameMove, aiDecision: AIDecisionAnalysis | null = null):
   const movePlayer = beforeState.currentPlayer
   const report = createTurnReport(beforeState, nextState, movePlayer, move.bigIndex, move.smallIndex, aiDecision)
   nextState.turnReports = [...nextState.turnReports, report]
+  nextState.messages.push(createMoveMessage(nextState, movePlayer, move, report.id))
+  nextState.errorMessage = ''
   state.value = nextState
-  errorMessage.value = ''
+  clearNextBoardPreview()
 
   if (!report.actor.isAI) {
     adaptiveProfile.value = createAdaptiveProfileFromReports(adaptiveProfile.value, nextState.turnReports)
     saveAdaptiveProfile(adaptiveProfile.value)
   }
 
-  requestAIMoveIfNeeded()
+  scheduleAIMoveIfNeeded()
+}
+
+function scheduleAIMoveIfNeeded(): void {
+  clearAIRequestTimer()
+  if (!isAITurn(state.value) || state.value.winner !== EMPTY) return
+
+  // 先让玩家落子渲染出来，再进入电脑搜索，避免同一帧里连续显示两步。
+  void nextTick(() => {
+    aiRequestTimer = window.setTimeout(() => {
+      aiRequestTimer = null
+      requestAIMoveIfNeeded()
+    }, 180)
+  })
+}
+
+function clearAIRequestTimer(): void {
+  if (aiRequestTimer === null) return
+  window.clearTimeout(aiRequestTimer)
+  aiRequestTimer = null
 }
 
 function requestAIMoveIfNeeded(): void {
+  clearAIRequestTimer()
   if (!isAITurn(state.value) || state.value.winner !== EMPTY || isThinking.value) return
 
   isThinking.value = true
+  setError(`${getPlayerName(state.value.currentPlayer, state.value)}正在思考。`)
   const nextRequestId = requestId + 1
   requestId = nextRequestId
 
@@ -302,12 +359,14 @@ function applyAIDecision(responseId: number, decision: AIDecision): void {
   if (!isAITurn(state.value)) return
 
   if (decision.resign) {
-    state.value = forceWinnerByResign(state.value, O)
-    systemLog.value.push({
-      id: `resign-${Date.now()}`,
-      title: '电脑认输',
+    const nextState = forceWinnerByResign(state.value, O)
+    nextState.errorMessage = ''
+    nextState.messages.push({
+      id: `ai-resign-${Date.now()}`,
+      type: 'system',
       text: '局势已经没有可见反打点，红方选择投降。'
     })
+    state.value = nextState
     return
   }
 
@@ -326,56 +385,100 @@ function getCellMark(bigIndex: number, smallIndex: number): string {
 
 function getCellClass(bigIndex: number, smallIndex: number): Record<string, boolean> {
   const value = state.value.board[getCellIndex(bigIndex, smallIndex)]
-  const isLastMove = state.value.lastTurnMoves.some((move) => move.bigIndex === bigIndex && move.smallIndex === smallIndex)
+  const lastTurnMove = state.value.lastTurnMoves.find((move) => move.bigIndex === bigIndex && move.smallIndex === smallIndex)
+  const canPlay = canPlayCell(bigIndex, smallIndex)
 
   return {
     'utt-cell-x': value === X,
     'utt-cell-o': value === O,
-    'utt-cell-last': isLastMove,
-    'utt-cell-playable': canPlayCell(bigIndex, smallIndex)
+    'utt-cell-last-move': Boolean(lastTurnMove),
+    'utt-cell-last-turn-manual': lastTurnMove?.source === 'manual',
+    'utt-cell-last-turn-auto': lastTurnMove?.source === 'auto',
+    'utt-cell-disabled': !canPlay,
+    'utt-hoverable-x': canPlay && state.value.currentPlayer === X,
+    'utt-hoverable-o': canPlay && state.value.currentPlayer === O
   }
 }
 
 function getSmallBoardClass(bigIndex: number): Record<string, boolean> {
   const status = state.value.smallBoardStatus[bigIndex]
-  const nextBoard = getEffectiveNextBoard(state.value)
+  const boardFull = isBoardFull(state.value, bigIndex)
+  const effectiveNextBoard = getEffectiveNextBoard(state.value)
+  const isPlayableBoard = state.value.winner === EMPTY && !boardFull && (effectiveNextBoard === null || effectiveNextBoard === bigIndex)
+  const isLockedBoard = state.value.winner === EMPTY && !boardFull && !isPlayableBoard
+  const hasBigBoardWinner = state.value.winner === X || state.value.winner === O
+  const bigBoardWinningLine = state.value.bigBoardWinningLine ?? []
 
   return {
-    'utt-small-board-active': state.value.winner === EMPTY && (nextBoard === null || nextBoard === bigIndex),
-    'utt-small-board-locked': state.value.winner === EMPTY && nextBoard !== null && nextBoard !== bigIndex,
-    'utt-small-board-x': status === X,
-    'utt-small-board-o': status === O,
-    'utt-small-board-draw': status !== EMPTY && !isPlayer(status)
+    'utt-small-board-full': boardFull,
+    'utt-small-board-locked': isLockedBoard,
+    'utt-small-board-claimed-x': status === X,
+    'utt-small-board-claimed-o': status === O,
+    'utt-small-board-draw': status === DRAW,
+    'utt-small-board-big-win': hasBigBoardWinner && bigBoardWinningLine.includes(bigIndex),
+    'utt-small-board-big-dimmed': hasBigBoardWinner && !bigBoardWinningLine.includes(bigIndex)
   }
+}
+
+function showNextBoardPreview(bigIndex: number, smallIndex: number): void {
+  clearNextBoardPreview()
+  if (!canPlayCell(bigIndex, smallIndex)) return
+
+  const result = applyMoveImmutable(state.value, { bigIndex, smallIndex })
+  if (!result.success || result.state.winner !== EMPTY) return
+
+  const targetBoard = getEffectiveNextBoard(result.state)
+  if (targetBoard === null) {
+    setPreviewTarget({ type: 'free' })
+    return
+  }
+
+  setPreviewTarget({ type: 'board', boardIndex: targetBoard })
+}
+
+function clearNextBoardPreview(): void {
+  activePreviewTarget.value = null
+}
+
+function setPreviewTarget(target: PreviewTarget): void {
+  activePreviewTarget.value = target
+  lastPreviewTarget.value = target
+}
+
+function repeatCssAddition(value: string, times: number): string {
+  return Array.from({ length: times }, () => ` + ${value}`).join('')
 }
 
 function restartGame(): void {
   isThinking.value = false
+  clearAIRequestTimer()
   requestId += 1
   state.value = createInitialGameState(settings.value)
-  errorMessage.value = ''
-  systemLog.value = [
-    {
-      id: `restart-${Date.now()}`,
-      title: '新的对局',
-      text: `${getGameModeName(settings.value.gameMode)} · ${getDifficultyName(settings.value.aiDifficulty)}。`
-    }
-  ]
+  clearNextBoardPreview()
   requestAIMoveIfNeeded()
 }
 
 function handleResignOrRematch(): void {
+  clearAIRequestTimer()
+
   if (isFinished.value) {
     restartGame()
     return
   }
 
-  state.value = forceWinnerByResign(state.value, state.value.currentPlayer)
-  systemLog.value.push({
+  const loser = state.value.currentPlayer
+  const winner = getOpponent(loser)
+  const confirmed = window.confirm(`${getPlayerName(loser, state.value)} 确定要投降吗？`)
+  if (!confirmed) return
+
+  const nextState = forceWinnerByResign(state.value, loser)
+  nextState.errorMessage = ''
+  nextState.messages.push({
     id: `human-resign-${Date.now()}`,
-    title: '主动投降',
-    text: `${getPlayerName(state.value.currentPlayer, state.value)} 交出了这一局。`
+    type: 'system',
+    text: `${getPlayerName(loser, nextState)} 选择投降，${getPlayerName(winner, nextState)} 赢得了本局。`
   })
+  state.value = nextState
 }
 
 function handleModeChange(): void {
@@ -385,315 +488,802 @@ function handleModeChange(): void {
     return
   }
 
+  if (!confirmRestart('切换对战模式会重新开始当前对局，确定要切换吗？')) {
+    settings.value.gameMode = state.value.gameMode
+    return
+  }
+
   saveGameSettings(settings.value)
   restartGame()
 }
 
 function handleDifficultyChange(): void {
+  if (!confirmRestart('切换电脑玩家难度会重新开始当前对局，确定要切换吗？')) {
+    settings.value.aiDifficulty = state.value.aiDifficulty
+    return
+  }
+
   saveGameSettings(settings.value)
   restartGame()
+}
+
+function handleMessageFocus(): void {
+  state.value.errorMessage = ''
+  state.value.isMessageInputFocused = true
+}
+
+function handleMessageBlur(): void {
+  state.value.isMessageInputFocused = false
+}
+
+function handleSendMessage(): void {
+  const text = messageDraft.value.trim()
+  if (!text) return
+
+  state.value.errorMessage = ''
+  const sender = state.value.currentPlayer
+  const message: GameMessage = {
+    id: `chat-${Date.now()}-${state.value.messages.length}`,
+    type: 'chat',
+    sender,
+    senderName: getPlayerName(sender, state.value),
+    text: `${getPlayerName(sender, state.value)} 说：${text}`
+  }
+  state.value.messages.push(message)
+  messageDraft.value = ''
+}
+
+function getMessageClass(message: GameMessage): Record<string, boolean> {
+  return {
+    'utt-log-message-system': message.type === 'system',
+    'utt-log-message-blue': message.player === X || message.sender === X,
+    'utt-log-message-red': message.player === O || message.sender === O
+  }
+}
+
+function getMessageOpacity(index: number): number {
+  const distanceFromLatest = state.value.messages.length - 1 - index
+
+  return Math.max(0.35, 1 - distanceFromLatest * 0.15)
+}
+
+function createMoveMessage(nextState: GameCoreState, movePlayer: Player, move: GameMove, reportId: number): GameMessage {
+  const playerName = getPlayerName(movePlayer, nextState)
+  let text = `${playerName} 下在了 ${formatBigBoardIndex(move.bigIndex)} 棋盘的第 ${formatSmallCellPosition(move.smallIndex)} 格`
+
+  if (nextState.lastRuleEvents.length > 0) {
+    const mainEvent = nextState.lastRuleEvents[0]
+
+    if (mainEvent.owner === DRAW) {
+      text += `\n${formatBigBoardIndex(mainEvent.boardIndex)} 棋盘平局了`
+    } else if (isPlayer(mainEvent.owner)) {
+      text += `\n${formatBigBoardIndex(mainEvent.boardIndex)} 棋盘满格，${getPlayerName(mainEvent.owner, nextState)}获得入口奖励，填充了 ${mainEvent.filledCount} 个入口`
+      text += `\n${getPlayerName(getOpponent(mainEvent.owner), nextState)} 获得自由落子。`
+    }
+
+    if (nextState.lastRuleEvents.length > 1) {
+      text += `\n由于连锁反应，另外 ${nextState.lastRuleEvents.length - 1} 个棋盘也被结算了。`
+    }
+  }
+
+  if (isPlayer(nextState.winner)) {
+    text += `\n${getPlayerName(nextState.winner, nextState)} 赢得了整局游戏。`
+  } else if (nextState.winner === DRAW) {
+    text += '\n整局游戏平局。'
+  } else if (nextState.nextBoard === null) {
+    text += `\n${getPlayerName(nextState.currentPlayer, nextState)} 可自由选择棋盘`
+  } else {
+    text += `\n轮到 ${getPlayerName(nextState.currentPlayer, nextState)} 在 ${formatBigBoardIndex(nextState.nextBoard)} 棋盘落子`
+  }
+
+  return {
+    id: `move-${Date.now()}-${reportId}`,
+    type: 'move',
+    player: movePlayer,
+    reportId,
+    text
+  }
+}
+
+function confirmRestart(message: string): boolean {
+  if (state.value.winner !== EMPTY || state.value.moveHistory.length === 0) return true
+
+  return window.confirm(message)
+}
+
+function setError(message: string): void {
+  state.value.errorMessage = message
+  scrollLogToBottom()
+}
+
+function scrollLogToBottom(): void {
+  void nextTick(() => {
+    if (!logRef.value) return
+    logRef.value.scrollTop = logRef.value.scrollHeight
+  })
 }
 </script>
 
 <style scoped>
-.utt-shell {
-  margin: 2rem 0 4rem;
+.utt-game-page {
+  width: min(1480px, calc(100vw - 24px));
+  margin: 0 0 4rem 50%;
+  transform: translateX(-50%);
 }
 
-.utt-hero {
-  margin-bottom: 1.5rem;
-  padding: 1.2rem 0;
-  border-bottom: 1px solid var(--vp-c-divider);
+:global(.VPDoc:has(.utt-game-page)) {
+  padding-top: 16px;
 }
 
-.utt-eyebrow {
-  margin: 0 0 0.35rem;
-  color: var(--vp-c-brand-1);
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+:global(.VPDoc:has(.utt-game-page) .container),
+:global(.VPDoc:has(.utt-game-page) .content),
+:global(.VPDoc:has(.utt-game-page) .content-container) {
+  max-width: none;
 }
 
-.utt-hero h1 {
-  margin: 0;
-  font-size: clamp(2rem, 5vw, 4rem);
-  line-height: 1;
-  letter-spacing: -0.05em;
+:global(.VPDoc:has(.utt-game-page) .content) {
+  padding-left: 12px;
+  padding-right: 12px;
 }
 
-.utt-hero p:last-child {
-  margin: 0.75rem 0 0;
-  color: var(--vp-c-text-2);
-}
+.utt-app {
+  --utt-panel-width: clamp(300px, 23vw, 340px);
+  --utt-game-gap: clamp(14px, 1.6vw, 24px);
 
-.utt-layout {
   display: grid;
-  grid-template-columns: minmax(360px, 1fr) 340px;
-  gap: 1.2rem;
+  grid-template-columns: minmax(0, 1fr) var(--utt-panel-width);
   align-items: stretch;
+  gap: var(--utt-game-gap);
+  height: min(840px, calc(100vh - 112px));
+  min-height: 0;
 }
 
-.utt-board-card,
-.utt-panel {
-  background:
-    linear-gradient(135deg, rgba(22, 163, 70, 0.08), transparent 44%),
-    var(--vp-c-bg-soft);
-}
-
-.utt-board-card {
-  padding: clamp(0.7rem, 2vw, 1.4rem);
+.utt-game-area {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .utt-board {
+  --utt-board-padding: 8px;
+  --utt-board-gap: 8px;
+  --utt-indicator-color: #16a346;
+  --utt-indicator-width: 3px;
+  --utt-indicator-offset: 2px;
+  --utt-indicator-mask: rgba(255, 255, 255, 0.08);
+  --utt-indicator-glow:
+    0 0 0 1px color-mix(in srgb, var(--utt-indicator-color) 42%, transparent),
+    0 0 12px color-mix(in srgb, var(--utt-indicator-color) 22%, transparent);
+  --utt-claim-x-color: #2563eb;
+  --utt-claim-o-color: #dc2626;
+  --utt-claim-draw-color: #555;
+  --utt-claim-x-overlay: rgba(37, 99, 235, 0.08);
+  --utt-claim-o-overlay: rgba(220, 38, 38, 0.08);
+  --utt-claim-draw-overlay: rgba(0, 0, 0, 0.08);
+  --utt-board-bg: #d9dee6;
+  --utt-small-board-bg: #eef1f5;
+  --utt-small-board-border: #b5bdc9;
+  --utt-cell-bg: #ffffff;
+  --utt-cell-text: #1f2933;
+
+  position: relative;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: clamp(0.35rem, 1vw, 0.65rem);
-  width: min(100%, 720px);
-  aspect-ratio: 1;
+  grid-template-rows: repeat(3, 1fr);
+  gap: var(--utt-board-gap);
+  width: min(100%, calc(100vh - 112px));
+  max-width: 860px;
+  aspect-ratio: 1 / 1;
   margin: 0 auto;
+  padding: var(--utt-board-padding);
+  background: var(--utt-board-bg);
+  border: 2px solid var(--utt-board-bg);
+}
+
+:root.dark .utt-board {
+  --utt-indicator-color: #12500b;
+  --utt-indicator-mask: rgba(255, 255, 255, 0.1);
+  --utt-board-bg: color-mix(in srgb, var(--vp-c-bg) 62%, #303030);
+  --utt-small-board-bg: color-mix(in srgb, #bdbdbd 18%, var(--vp-c-bg-soft));
+  --utt-small-board-border: color-mix(in srgb, #5f5f5f 74%, var(--vp-c-divider));
+  --utt-cell-bg: color-mix(in srgb, #f8f8f8 8%, var(--vp-c-bg));
+  --utt-cell-text: var(--vp-c-text-1);
 }
 
 .utt-small-board {
   position: relative;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
   gap: 3px;
   padding: 4px;
-  background: rgba(125, 125, 125, 0.12);
-  box-shadow: inset 0 0 0 1px rgba(125, 125, 125, 0.18);
   overflow: hidden;
+  background: var(--utt-small-board-bg);
+  border: 3px solid var(--utt-small-board-border);
   transition:
-    opacity var(--lc-motion-duration-fast) var(--lc-motion-ease-standard),
-    background var(--lc-motion-duration-fast) var(--lc-motion-ease-standard),
-    box-shadow var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
-}
-
-.utt-small-board-active {
-  box-shadow:
-    inset 0 0 0 1px rgba(22, 163, 70, 0.34),
-    0 0 0 1px rgba(22, 163, 70, 0.08);
+    border-color 0.16s ease,
+    background-color 0.16s ease,
+    box-shadow 0.16s ease,
+    opacity 0.16s ease,
+    filter 0.16s ease;
 }
 
 .utt-small-board-locked {
-  opacity: 0.48;
-}
-
-.utt-small-board-x {
-  background: rgba(62, 117, 255, 0.12);
-}
-
-.utt-small-board-o {
-  background: rgba(255, 84, 84, 0.11);
-}
-
-.utt-small-board-draw {
   opacity: 0.62;
 }
 
-.utt-cell {
-  min-width: 0;
-  aspect-ratio: 1;
-  border: 0;
-  background: rgba(255, 255, 255, 0.035);
-  color: var(--vp-c-text-1);
-  font-weight: 900;
-  font-size: clamp(1rem, 3vw, 1.8rem);
-  cursor: not-allowed;
+.utt-small-board-claimed-x {
+  --utt-claim-color: var(--utt-claim-x-color);
+  --utt-claim-overlay: var(--utt-claim-x-overlay);
+  border-color: var(--utt-claim-color);
+  box-shadow:
+    0 0 0 2px rgba(37, 99, 235, 0.18),
+    inset 0 0 0 1px rgba(37, 99, 235, 0.22);
+}
+
+.utt-small-board-claimed-o {
+  --utt-claim-color: var(--utt-claim-o-color);
+  --utt-claim-overlay: var(--utt-claim-o-overlay);
+  border-color: var(--utt-claim-color);
+  box-shadow:
+    0 0 0 2px rgba(220, 38, 38, 0.18),
+    inset 0 0 0 1px rgba(220, 38, 38, 0.22);
+}
+
+.utt-small-board-draw {
+  --utt-claim-color: var(--utt-claim-draw-color);
+  --utt-claim-overlay: var(--utt-claim-draw-overlay);
+  border-color: var(--utt-claim-color);
+  box-shadow:
+    0 0 0 2px rgba(85, 85, 85, 0.18),
+    inset 0 0 0 1px rgba(85, 85, 85, 0.24);
+}
+
+.utt-small-board-claimed-x::before,
+.utt-small-board-claimed-o::before,
+.utt-small-board-draw::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: var(--utt-claim-overlay);
+}
+
+.utt-small-board-full {
+  opacity: 0.76;
+  filter: saturate(0.72) brightness(0.9);
+}
+
+.utt-preview-frame {
+  position: absolute;
+  z-index: 8;
+  border: var(--utt-indicator-width) solid var(--utt-indicator-color);
+  background: var(--utt-indicator-mask);
+  box-shadow: var(--utt-indicator-glow);
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.98);
+  transform-origin: center;
   transition:
-    background var(--lc-motion-duration-fast) var(--lc-motion-ease-standard),
-    color var(--lc-motion-duration-fast) var(--lc-motion-ease-standard),
-    transform var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
+    left var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
+    top var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
+    width var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
+    height var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
+    opacity var(--lc-motion-duration-fast) var(--lc-motion-ease-standard),
+    transform var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis);
 }
 
-.utt-cell-playable {
+.utt-preview-frame-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.utt-preview-frame-free.utt-preview-frame-visible {
+  animation: utt-preview-expand var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis);
+}
+
+@keyframes utt-preview-expand {
+  from {
+    transform: scale(0.94);
+  }
+
+  to {
+    transform: scale(1);
+  }
+}
+
+.utt-small-board-big-win {
+  opacity: 1;
+  filter: none;
+}
+
+.utt-small-board-big-dimmed {
+  opacity: 0.52;
+  filter: saturate(0.55) brightness(0.82);
+}
+
+.utt-small-board-big-dimmed::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+  background: rgba(245, 245, 245, 0.25);
+}
+
+.utt-cell {
+  position: relative;
+  z-index: 1;
+  padding: 0;
+  border: 0;
+  background: var(--utt-cell-bg);
+  color: var(--utt-cell-text);
+  font-size: clamp(18px, 4vw, 28px);
+  font-weight: 800;
   cursor: pointer;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease,
+    transform 0.08s ease;
 }
 
-.utt-cell-playable:hover {
-  background: rgba(22, 163, 70, 0.14);
-  transform: translateY(-1px);
+.utt-cell:hover {
+  background: #eeeeee;
+}
+
+:root.dark .utt-cell:hover {
+  background: color-mix(in srgb, var(--vp-c-bg-soft) 70%, #eeeeee 12%);
+}
+
+.utt-hoverable-x:hover {
+  background: #eff6ff;
+}
+
+.utt-hoverable-o:hover {
+  background: #fff5f5;
+}
+
+:root.dark .utt-hoverable-x:hover {
+  background: rgba(37, 99, 235, 0.18);
+}
+
+:root.dark .utt-hoverable-o:hover {
+  background: rgba(220, 38, 38, 0.18);
 }
 
 .utt-cell-x {
-  color: #5b7dff;
+  color: #2563eb;
 }
 
 .utt-cell-o {
-  color: #ff6a6a;
+  color: #dc2626;
 }
 
-.utt-cell-last {
-  background: rgba(22, 163, 70, 0.22);
+.utt-cell-disabled {
+  cursor: not-allowed;
+}
+
+.utt-cell-disabled:hover {
+  background: var(--utt-cell-bg);
+}
+
+.utt-cell-last-move {
+  background: #dbeafe;
+}
+
+.utt-cell-o.utt-cell-last-move {
+  background: #fee2e2;
+}
+
+:root.dark .utt-cell-last-move {
+  background: rgba(37, 99, 235, 0.22);
+}
+
+:root.dark .utt-cell-o.utt-cell-last-move {
+  background: rgba(220, 38, 38, 0.22);
+}
+
+.utt-cell-last-move:hover,
+.utt-cell-last-move.utt-cell-disabled:hover {
+  background-color: #dbeafe;
+}
+
+.utt-cell-o.utt-cell-last-move:hover,
+.utt-cell-o.utt-cell-last-move.utt-cell-disabled:hover {
+  background-color: #fee2e2;
+}
+
+:root.dark .utt-cell-last-move:hover,
+:root.dark .utt-cell-last-move.utt-cell-disabled:hover {
+  background-color: rgba(37, 99, 235, 0.22);
+}
+
+:root.dark .utt-cell-o.utt-cell-last-move:hover,
+:root.dark .utt-cell-o.utt-cell-last-move.utt-cell-disabled:hover {
+  background-color: rgba(220, 38, 38, 0.22);
+}
+
+.utt-cell-last-turn-auto::after {
+  content: "";
+  position: absolute;
+  right: 5px;
+  top: 5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.45);
+  pointer-events: none;
 }
 
 .utt-win-line {
   position: absolute;
   left: 50%;
   top: 50%;
-  z-index: 2;
-  width: 76%;
-  height: 4px;
-  background: var(--vp-c-brand-1);
-  transform-origin: center;
+  z-index: 4;
+  width: 74%;
+  height: 5px;
+  border-radius: 999px;
   pointer-events: none;
+  transform-origin: center;
 }
 
-.utt-win-line-0-1-2 { top: 17%; transform: translate(-50%, -50%); }
+.utt-win-line-blue {
+  background: #2563eb;
+}
+
+.utt-win-line-red {
+  background: #dc2626;
+}
+
+.utt-win-line-0-1-2 { top: 16.666%; transform: translate(-50%, -50%); }
 .utt-win-line-3-4-5 { top: 50%; transform: translate(-50%, -50%); }
-.utt-win-line-6-7-8 { top: 83%; transform: translate(-50%, -50%); }
-.utt-win-line-0-3-6 { left: 17%; transform: translate(-50%, -50%) rotate(90deg); }
+.utt-win-line-6-7-8 { top: 83.333%; transform: translate(-50%, -50%); }
+.utt-win-line-0-3-6 { left: 16.666%; transform: translate(-50%, -50%) rotate(90deg); }
 .utt-win-line-1-4-7 { left: 50%; transform: translate(-50%, -50%) rotate(90deg); }
-.utt-win-line-2-5-8 { left: 83%; transform: translate(-50%, -50%) rotate(90deg); }
+.utt-win-line-2-5-8 { left: 83.333%; transform: translate(-50%, -50%) rotate(90deg); }
 .utt-win-line-0-4-8 { width: 104%; transform: translate(-50%, -50%) rotate(45deg); }
 .utt-win-line-2-4-6 { width: 104%; transform: translate(-50%, -50%) rotate(-45deg); }
 
-.utt-side {
+.utt-side-panel {
+  width: var(--utt-panel-width);
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
-  min-width: 0;
+  min-height: 0;
+  max-height: 100%;
 }
 
-.utt-panel {
-  padding: 1rem;
-}
-
-.utt-panel h2 {
-  margin: 0 0 0.75rem;
-  font-size: 1rem;
-}
-
-.utt-panel p {
-  margin: 0;
-  color: var(--vp-c-text-2);
-  line-height: 1.65;
-}
-
-.utt-panel-label {
-  margin-bottom: 0.35rem !important;
-  color: var(--vp-c-brand-1) !important;
-  font-size: 0.76rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-}
-
-.utt-status-panel {
-  display: grid;
-  gap: 0.85rem;
-}
-
-.utt-status-tags,
-.utt-actions,
-.utt-ai-grid {
+.utt-game-menu {
+  flex: 0 0 auto;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
+  flex-direction: column;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--vp-c-divider);
 }
 
-.utt-status-tags span,
-.utt-ai-grid span {
-  padding: 0.28rem 0.48rem;
-  color: var(--vp-c-text-2);
-  background: rgba(125, 125, 125, 0.1);
-  font-size: 0.78rem;
+.utt-log-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.utt-control {
-  display: grid;
-  gap: 0.35rem;
-  margin-bottom: 0.7rem;
-  color: var(--vp-c-text-2);
-  font-size: 0.86rem;
+.utt-panel-title {
+  margin: 0 0 12px;
+  color: var(--vp-c-text-1);
+  font-size: 18px;
+  text-align: left;
 }
 
-.utt-control select {
+.utt-menu-panel-title {
+  display: block;
+}
+
+.utt-menu-control,
+.utt-menu-button {
   width: 100%;
-  padding: 0.5rem 0.65rem;
+  min-height: 38px;
+  margin-bottom: 8px;
   border: 1px solid var(--vp-c-divider);
-  background: var(--vp-c-bg);
+  background: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-1);
+  font-size: 14px;
+}
+
+.utt-menu-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 0 0 12px;
+  text-align: left;
+}
+
+.utt-menu-label {
+  flex: 0 0 auto;
   color: var(--vp-c-text-1);
 }
 
-.utt-help,
-.utt-muted {
-  font-size: 0.84rem;
-}
-
-.utt-primary-btn,
-.utt-ghost-btn {
-  flex: 1;
-  min-height: 38px;
+.utt-menu-select {
+  width: 120px;
+  height: 36px;
+  padding: 0 8px;
   border: 0;
-  padding: 0 0.8rem;
-  font-weight: 800;
+  border-left: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+  font-size: 14px;
   cursor: pointer;
 }
 
-.utt-primary-btn {
-  background: var(--vp-c-brand-1);
-  color: #fff;
+.utt-menu-select:disabled {
+  color: var(--vp-c-text-3);
+  cursor: not-allowed;
 }
 
-.utt-ghost-btn {
-  background: rgba(125, 125, 125, 0.12);
-  color: var(--vp-c-text-1);
+.utt-menu-select:focus {
+  outline: 0;
 }
 
-.utt-thinking {
-  color: var(--vp-c-brand-1);
+.utt-menu-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  cursor: pointer;
 }
 
-.utt-log {
-  display: grid;
-  gap: 0.7rem;
-  max-height: 330px;
+.utt-menu-button:hover,
+.utt-menu-control:hover {
+  background: color-mix(in srgb, var(--vp-c-bg-soft) 82%, var(--vp-c-brand-1) 8%);
+}
+
+.utt-menu-button-danger {
+  border-color: #dc2626;
+  color: #dc2626;
+}
+
+.utt-menu-button-primary {
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+.utt-game-log {
+  flex: 1 1 auto;
+  min-height: 0;
   margin: 0;
   padding: 0;
-  overflow: auto;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   list-style: none;
 }
 
-.utt-log li {
-  display: grid;
-  gap: 0.25rem;
-  padding-bottom: 0.65rem;
-  border-bottom: 1px dashed var(--vp-c-divider);
+.utt-game-log .utt-log-message:first-child {
+  margin-top: auto;
 }
 
-.utt-log strong {
+.utt-log-message {
+  margin-bottom: 10px;
+  padding: 0 10px;
+  background: var(--vp-c-bg-soft);
   color: var(--vp-c-text-1);
-  font-size: 0.86rem;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: left;
+  white-space: pre-line;
 }
 
-.utt-log span {
+.utt-log-message-system {
   color: var(--vp-c-text-2);
-  font-size: 0.82rem;
-  line-height: 1.55;
 }
 
-@media (max-width: 960px) {
-  .utt-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .utt-side {
-    grid-row: 2;
-  }
+.utt-log-message-blue {
+  border-left: 4px solid #2563eb;
 }
 
-@media (max-width: 640px) {
-  .utt-shell {
-    margin-top: 1rem;
+.utt-log-message-red {
+  border-left: 4px solid #dc2626;
+}
+
+.utt-message-input {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--vp-c-divider);
+}
+
+.utt-message-input input {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+  font-size: 14px;
+}
+
+.utt-message-input input:focus {
+  outline: 0;
+}
+
+.utt-message-input button {
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-1);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.utt-message-input input.utt-input-error::placeholder {
+  color: #dc2626;
+}
+
+.utt-rules-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.32);
+}
+
+.utt-rules-card {
+  width: min(560px, 100%);
+  max-height: min(720px, 90vh);
+  overflow-y: auto;
+  padding: 22px;
+  background: var(--vp-c-bg);
+  border: 2px solid var(--vp-c-text-1);
+}
+
+.utt-rules-card h2 {
+  margin: 0 0 14px;
+  font-size: 20px;
+}
+
+.utt-rules-card p {
+  margin: 0 0 12px;
+  color: var(--vp-c-text-2);
+  font-size: 14px;
+  line-height: 1.7;
+  text-align: left;
+}
+
+@media (max-width: 768px) {
+  .utt-game-page {
+    --utt-mobile-nav-height: 64px;
+
+    width: calc(100vw - 24px);
+    height: calc(100dvh - var(--utt-mobile-nav-height) - 8px - env(safe-area-inset-bottom));
+    margin-top: 0;
+    margin-bottom: 0;
+    overflow: hidden;
+  }
+
+  .utt-app {
+    display: flex;
+    height: 98%;
+    min-height: 0;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .utt-game-area {
+    width: 100%;
+    max-width: 560px;
+    flex: 0 0 auto;
   }
 
   .utt-board {
-    gap: 0.32rem;
+    --utt-board-padding: 6px;
+    --utt-board-gap: 6px;
+    width: clamp(210px, min(92vw, calc(100dvh - var(--utt-mobile-nav-height) - 250px)), 410px);
+    max-width: none;
+    padding: var(--utt-board-padding);
   }
 
   .utt-small-board {
     gap: 2px;
     padding: 3px;
+    border-width: 3px;
+  }
+
+  .utt-cell {
+    font-size: clamp(18px, 6vw, 28px);
+  }
+
+  .utt-side-panel {
+    width: 100%;
+    max-width: 560px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .utt-game-menu {
+    width: 100%;
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+  }
+
+  .utt-menu-panel-title {
+    display: none;
+  }
+
+  .utt-menu-control {
+    min-height: 40px;
+    display: block;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .utt-menu-label {
+    display: none;
+  }
+
+  .utt-menu-select {
+    width: 100%;
+    height: 40px;
+    padding: 0 6px;
+    border: 1px solid var(--vp-c-divider);
+    background: var(--vp-c-bg-soft);
+    font-size: 13px;
+    text-align: center;
+  }
+
+  .utt-menu-button {
+    min-height: 40px;
+    justify-content: center;
+    margin: 0;
+    padding: 0 6px;
+    font-size: 13px;
+  }
+
+  .utt-log-panel {
+    width: 100%;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .utt-panel-title {
+    margin: 0 0 6px;
+    font-size: 16px;
+  }
+
+  .utt-game-log {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .utt-message-input {
+    margin-top: 6px;
+    padding-top: 6px;
+  }
+
+  .utt-message-input input,
+  .utt-message-input button {
+    height: 40px;
   }
 }
 </style>

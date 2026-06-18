@@ -38,7 +38,16 @@ export function createInitialGameState(settings: Partial<GameSettings> = {}): Ga
     moveHistory: [],
     turnReports: [],
     lastTurnMoves: [],
-    lastRuleEvents: []
+    lastRuleEvents: [],
+    messages: [
+      {
+        id: `start-${Date.now()}`,
+        type: 'system',
+        text: `新的对局开始了，X（蓝方）先手。当前模式：${getGameModeName(mergedSettings.gameMode)}，电脑玩家难度：${getDifficultyName(mergedSettings.aiDifficulty)}。`
+      }
+    ],
+    errorMessage: '',
+    isMessageInputFocused: false
   }
 }
 
@@ -59,7 +68,10 @@ export function cloneGameCoreState(state: GameCoreState): GameCoreState {
     lastRuleEvents: state.lastRuleEvents.map((event) => ({
       ...event,
       filledCells: event.filledCells.map((move) => ({ ...move }))
-    }))
+    })),
+    messages: state.messages.map((message) => ({ ...message })),
+    errorMessage: state.errorMessage,
+    isMessageInputFocused: state.isMessageInputFocused
   }
 }
 
@@ -74,7 +86,10 @@ export function cloneGameSearchState(state: GameCoreState): GameCoreState {
     moveHistory: [],
     turnReports: [],
     lastTurnMoves: [],
-    lastRuleEvents: []
+    lastRuleEvents: [],
+    messages: [],
+    errorMessage: '',
+    isMessageInputFocused: false
   }
 }
 

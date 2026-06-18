@@ -39,13 +39,15 @@ const shouldShowComment = computed(() => {
   
   return (isArticlePage || isAboutPage) && !disableComment
 })
+
+const shouldShowPostTitle = computed(() => !frontmatter.value.hideTitle)
 </script>
 
 <template>
   <Layout>
     <!-- 文章标题区域 -->
     <template #doc-before>
-      <PostTitle />
+      <PostTitle v-if="shouldShowPostTitle" />
     </template>
 
     <template #doc-footer-before>
