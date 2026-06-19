@@ -1,4 +1,4 @@
-import { resolveAIProfile } from './adaptive'
+import { resolveAIProfile, type ResolvedAIProfile } from './adaptive'
 import { evaluateState } from './evaluate'
 import { applyMoveMutable } from './reducer'
 import { cloneGameSearchState } from './state'
@@ -20,6 +20,14 @@ interface TableEntry {
   flag: 'exact' | 'lower' | 'upper'
 }
 
+type PositionState = AIDecisionAnalysis['positionState']
+type RootSelection = 'best_score' | 'random_top_candidate' | 'adaptive_soft_candidate' | 'adaptive_delayed_finish'
+type ScoredRootMove = {
+  move: GameMove
+  score: number
+  selection: RootSelection
+}
+
 const DEFAULT_DEADLINE_MS = 900
 
 export function chooseAIMoveWithDeadline(
@@ -31,7 +39,10 @@ export function chooseAIMoveWithDeadline(
 ): AIDecision {
   const startedAt = now()
   const profile = resolveAIProfile(difficulty, adaptiveProfile)
+  const effectiveDeadlineMs = profile.deadlineMs ?? deadlineMs
   const legalMoves = getLegalMoves(state)
+  const positionScore = evaluateState(state, aiPlayer)
+  const positionState = getPositionState(positionScore)
   const baseAnalysis: AIDecisionAnalysis = {
     difficulty,
     completedDepth: 0,
@@ -45,6 +56,7 @@ export function chooseAIMoveWithDeadline(
     selection: 'none',
     chosenScore: null,
     adaptiveLevel: profile.adaptiveLevel,
+    positionState,
     topCandidates: []
   }
 
@@ -61,7 +73,7 @@ export function chooseAIMoveWithDeadline(
   }
 
   const immediateWin = findImmediateWinningMove(state, legalMoves, aiPlayer)
-  if (immediateWin) {
+  if (immediateWin && canUseImmediateWin(state, difficulty, positionState)) {
     return {
       move: immediateWin,
       resign: false,
@@ -79,12 +91,25 @@ export function chooseAIMoveWithDeadline(
   }
 
   const tacticalMoves = getTacticalMoves(state, legalMoves, aiPlayer)
-  let bestMove = tacticalMoves.moves[0] ?? legalMoves[0]
+  let searchMoves = tacticalMoves.moves
+  let tactic = tacticalMoves.tactic
+  let delayedFinish = false
+
+  if (immediateWin && shouldDelayAdaptiveFinish(state, difficulty, positionState)) {
+    const safeNonFinishingMoves = getSafeNonFinishingMoves(state, tacticalMoves.moves, aiPlayer)
+    if (safeNonFinishingMoves.length > 0) {
+      searchMoves = safeNonFinishingMoves
+      tactic = 'adaptive_delay_finish'
+      delayedFinish = true
+    }
+  }
+
+  let bestMove = searchMoves[0] ?? legalMoves[0]
   let bestScore = -Infinity
   let bestCandidates: Array<{ move: GameMove; score: number }> = []
   const context: SearchContext = {
     aiPlayer,
-    deadlineAt: startedAt + deadlineMs,
+    deadlineAt: startedAt + effectiveDeadlineMs,
     nodeCount: 0,
     transpositionHits: 0,
     table: new Map(),
@@ -93,15 +118,15 @@ export function chooseAIMoveWithDeadline(
 
   for (let depth = 1; depth <= profile.targetDepth; depth += 1) {
     try {
-      const scoredMoves = scoreRootMoves(state, tacticalMoves.moves, depth, context)
+      const scoredMoves = scoreRootMoves(state, searchMoves, depth, context)
       if (scoredMoves.length === 0) break
 
       bestCandidates = scoredMoves
-      const picked = pickScoredMove(scoredMoves, profile.randomness, profile.candidatePool)
+      const picked = pickMoveForProfile(scoredMoves, profile, positionState)
       bestMove = picked.move
       bestScore = picked.score
       baseAnalysis.completedDepth = depth
-      baseAnalysis.selection = picked.selection
+      baseAnalysis.selection = delayedFinish ? 'adaptive_delayed_finish' : picked.selection
       baseAnalysis.chosenScore = picked.score
     } catch (error) {
       if (error instanceof DeadlineExceededError) break
@@ -116,10 +141,10 @@ export function chooseAIMoveWithDeadline(
     resign,
     analysis: {
       ...baseAnalysis,
-      candidateMoveCount: tacticalMoves.moves.length,
+      candidateMoveCount: searchMoves.length,
       nodeCount: context.nodeCount,
       transpositionHits: context.transpositionHits,
-      tactic: tacticalMoves.tactic,
+      tactic,
       calculationTimeMs: Math.round(now() - startedAt),
       topCandidates: bestCandidates.slice(0, 5).map((item) => ({
         ...item.move,
@@ -134,9 +159,9 @@ function scoreRootMoves(
   moves: GameMove[],
   depth: number,
   context: SearchContext
-): Array<{ move: GameMove; score: number; selection: 'best_score' | 'random_top_candidate' }> {
+): ScoredRootMove[] {
   const orderedMoves = orderMoves(state, moves, context.aiPlayer, true, context.maxBranching)
-  const scoredMoves: Array<{ move: GameMove; score: number; selection: 'best_score' | 'random_top_candidate' }> = []
+  const scoredMoves: ScoredRootMove[] = []
 
   for (const move of orderedMoves) {
     assertDeadline(context)
@@ -266,11 +291,39 @@ function findImmediateWinningMove(state: GameCoreState, legalMoves: GameMove[], 
   return null
 }
 
+function canUseImmediateWin(state: GameCoreState, difficulty: AIDifficulty, positionState: PositionState): boolean {
+  if (difficulty !== 'adaptive') return true
+  if (state.moveHistory.length >= 45) return true
+
+  return positionState !== 'ahead' && positionState !== 'crushing'
+}
+
+function shouldDelayAdaptiveFinish(state: GameCoreState, difficulty: AIDifficulty, positionState: PositionState): boolean {
+  return !canUseImmediateWin(state, difficulty, positionState)
+}
+
+function getSafeNonFinishingMoves(state: GameCoreState, moves: GameMove[], aiPlayer: Player): GameMove[] {
+  const opponent = getOpponent(aiPlayer)
+  const safeMoves: GameMove[] = []
+
+  for (const move of moves) {
+    const nextState = cloneGameSearchState(state)
+    applyMoveMutable(nextState, move.bigIndex, move.smallIndex)
+
+    if (nextState.winner !== EMPTY) continue
+    if (findImmediateWinningMove(nextState, getLegalMoves(nextState), opponent)) continue
+
+    safeMoves.push(move)
+  }
+
+  return safeMoves
+}
+
 function pickScoredMove(
-  scoredMoves: Array<{ move: GameMove; score: number }>,
+  scoredMoves: ScoredRootMove[],
   randomness: number,
   candidatePool: number
-): { move: GameMove; score: number; selection: 'best_score' | 'random_top_candidate' } {
+): ScoredRootMove {
   if (randomness <= 0 || Math.random() > randomness) {
     return {
       ...scoredMoves[0],
@@ -287,11 +340,56 @@ function pickScoredMove(
   }
 }
 
-function shouldAIResign(state: GameCoreState, score: number, completedDepth: number): boolean {
-  if (state.moveHistory.length < 28) return false
-  if (completedDepth < 3) return false
+function pickMoveForProfile(
+  scoredMoves: ScoredRootMove[],
+  profile: ResolvedAIProfile,
+  positionState: PositionState
+): ScoredRootMove {
+  if (profile.pressureStyle !== 'adaptive' || !profile.softenWhenAhead || positionState === 'behind' || positionState === 'close') {
+    return pickScoredMove(scoredMoves, profile.randomness, profile.candidatePool)
+  }
 
-  return score < -180_000
+  const softened = pickAdaptiveSoftMove(scoredMoves, positionState)
+  if (softened) return softened
+
+  return pickScoredMove(scoredMoves, profile.randomness, profile.candidatePool)
+}
+
+function pickAdaptiveSoftMove(scoredMoves: ScoredRootMove[], positionState: PositionState): ScoredRootMove | null {
+  const best = scoredMoves[0]
+  if (!best) return null
+
+  const windowSize = positionState === 'crushing' ? 6 : 4
+  const startIndex = positionState === 'crushing' ? 2 : 1
+  const maxDrop = positionState === 'crushing' ? 30_000 : 12_000
+  const minScore = Math.max(0, best.score - maxDrop)
+  const candidates = scoredMoves
+    .slice(startIndex, windowSize)
+    .filter((item) => item.score >= minScore)
+
+  if (candidates.length === 0) return null
+
+  const picked = candidates[Math.floor(Math.random() * candidates.length)]
+
+  return {
+    ...picked,
+    selection: 'adaptive_soft_candidate'
+  }
+}
+
+function shouldAIResign(state: GameCoreState, score: number, completedDepth: number): boolean {
+  if (state.moveHistory.length < 45) return false
+  if (completedDepth < 5) return false
+
+  return score <= -990_000
+}
+
+function getPositionState(score: number): PositionState {
+  if (score <= -10_000) return 'behind'
+  if (score <= 12_000) return 'close'
+  if (score <= 45_000) return 'ahead'
+
+  return 'crushing'
 }
 
 function getMoveOrderingBonus(state: GameCoreState, move: GameMove, aiPlayer: Player): number {

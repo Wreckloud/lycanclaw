@@ -8,11 +8,12 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
 export const SETTINGS_STORAGE_KEY = 'lycan:utt:settings'
 export const ADAPTIVE_PROFILE_STORAGE_KEY = 'lycan:utt:adaptive-profile'
 
-export function createInitialGameState(settings: Partial<GameSettings> = {}): GameCoreState {
+export function createInitialGameState(settings: Partial<GameSettings> = {}, options: { started?: boolean } = {}): GameCoreState {
   const mergedSettings = {
     ...DEFAULT_GAME_SETTINGS,
     ...settings
   }
+  const isStarted = options.started ?? false
 
   return {
     board: Array.from({ length: 81 }, () => EMPTY),
@@ -25,27 +26,22 @@ export function createInitialGameState(settings: Partial<GameSettings> = {}): Ga
     bigBoardWinningLine: null,
     gameMode: mergedSettings.gameMode,
     aiDifficulty: mergedSettings.aiDifficulty,
+    isStarted,
     players: {
       [X]: {
         sideName: '蓝方',
-        name: '你'
+        name: '蓝方 X'
       },
       [O]: {
         sideName: '红方',
-        name: mergedSettings.gameMode === 'human-vs-ai' ? '电脑' : '对手'
+        name: '红方 O'
       }
     },
     moveHistory: [],
     turnReports: [],
     lastTurnMoves: [],
     lastRuleEvents: [],
-    messages: [
-      {
-        id: `start-${Date.now()}`,
-        type: 'system',
-        text: `新的对局开始了，X（蓝方）先手。当前模式：${getGameModeName(mergedSettings.gameMode)}，电脑玩家难度：${getDifficultyName(mergedSettings.aiDifficulty)}。`
-      }
-    ],
+    messages: isStarted ? createStartMessages(mergedSettings) : [],
     errorMessage: '',
     isMessageInputFocused: false
   }
@@ -125,7 +121,7 @@ export function loadAdaptiveProfile(): AdaptiveProfile {
     const parsed = JSON.parse(raw) as Partial<AdaptiveProfile>
 
     return {
-      level: clampNumber(parsed.level ?? 0.5, 0, 1),
+      level: clampNumber(parsed.level ?? 0.32, 0.12, 0.9),
       recentQuality: Array.isArray(parsed.recentQuality) ? parsed.recentQuality.slice(-12) : [],
       updatedAt: typeof parsed.updatedAt === 'number' ? parsed.updatedAt : Date.now()
     }
@@ -165,10 +161,27 @@ export function getGameModeName(gameMode: GameMode): string {
 
 function createDefaultAdaptiveProfile(): AdaptiveProfile {
   return {
-    level: 0.5,
+    level: 0.32,
     recentQuality: [],
     updatedAt: Date.now()
   }
+}
+
+function createStartMessages(settings: GameSettings) {
+  const modeLine = settings.gameMode === 'human-vs-ai'
+    ? `${getGameModeName(settings.gameMode)} ${getDifficultyName(settings.aiDifficulty)} 难度`
+    : getGameModeName(settings.gameMode)
+
+  return [
+    {
+      id: `start-${Date.now()}`,
+      type: 'system' as const,
+      text: [
+        modeLine,
+        '蓝方 X 先手'
+      ].join('\n')
+    }
+  ]
 }
 
 function normalizeGameMode(value: unknown): GameMode {

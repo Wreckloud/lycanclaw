@@ -70,6 +70,7 @@ export function getBoardResult(cells: CellValue[]): { status: BoardResult; winni
 }
 
 export function canMove(state: GameCoreState, bigIndex: number, smallIndex: number): boolean {
+  if (!state.isStarted) return false
   if (state.winner !== EMPTY) return false
   if (bigIndex < 0 || bigIndex > 8 || smallIndex < 0 || smallIndex > 8) return false
   if (isBoardFull(state, bigIndex)) return false
@@ -95,27 +96,28 @@ export function getLegalMoves(state: GameCoreState): Array<{ bigIndex: number; s
 }
 
 export function getInvalidMoveReason(state: GameCoreState, bigIndex: number, smallIndex: number): string {
-  if (state.winner !== EMPTY) return '这一局已经结束，可以再开一局。'
-  if (isBoardFull(state, bigIndex)) return `${formatBigBoardIndex(bigIndex)} 棋盘已经结束。`
-  if (state.board[getCellIndex(bigIndex, smallIndex)] !== EMPTY) return '这个格子已经有棋子了。'
+  if (!state.isStarted) return '请先开始游戏'
+  if (state.winner !== EMPTY) return '这一局已经结束'
+  if (isBoardFull(state, bigIndex)) return `${formatBigBoardIndex(bigIndex)} 棋盘已结束`
+  if (state.board[getCellIndex(bigIndex, smallIndex)] !== EMPTY) return '这个格子已有棋子'
 
   const effectiveNextBoard = getEffectiveNextBoard(state)
   if (effectiveNextBoard !== null && effectiveNextBoard !== bigIndex) {
-    return `当前必须在 ${formatBigBoardIndex(effectiveNextBoard)} 棋盘落子。`
+    return `请去 ${formatBigBoardIndex(effectiveNextBoard)} 棋盘`
   }
 
-  return '这一步不能下。'
+  return '这一步不能下'
 }
 
 export function formatBigBoardIndex(bigIndex: number): string {
-  return `${bigIndex + 1} 号`
+  return `${bigIndex + 1}号`
 }
 
 export function formatSmallCellPosition(smallIndex: number): string {
   const row = Math.floor(smallIndex / 3) + 1
   const col = (smallIndex % 3) + 1
 
-  return `(${row}, ${col})`
+  return `${row}行${col}列`
 }
 
 export function getMarkText(value: BoardResult): string {

@@ -44,9 +44,10 @@ const ROTATE_BASE_DEG_PER_SEC = 18
 const ROTATE_GESTURE_DECAY = 0.92
 const ROTATE_GESTURE_GAIN = 120
 const VOLUME_SWIPE_GAIN = 0.32
+const COVER_GESTURE_MODE_CHANGE_GUARD_MS = 280
 
 type PanelMode = 'immersive' | 'collapsed' | 'expanded'
-type PlayerSide = 'left' | 'right'
+type PlayerSide = 'left'
 
 interface ResumeSnapshot {
   version: 1
@@ -118,6 +119,8 @@ let coverGestureMode: 'idle' | 'volume' = 'idle'
 let coverStartPoint = { x: 0, y: 0 }
 let coverLastPoint = { x: 0, y: 0 }
 let coverLastTs = 0
+let suppressCoverGestureUntil = 0
+let playbackToggleLocked = false
 
 let rotationRafId: number | null = null
 let lastRotationTs = 0
@@ -148,15 +151,9 @@ const coverTransformStyle = computed(() => ({
 }))
 const volumeHintStyle = computed(() => {
   if (typeof window === 'undefined') return {}
-  const panelWidth = getPanelSize(panelMode.value).width
-  const controlWidth = panelMode.value === 'expanded' ? 26 : 24
-  const panelLeft = position.value.side === 'right'
-    ? getViewportWidth() - panelWidth
-    : 0
+  const coverCenter = panelMode.value === 'expanded' ? 43 : 29
   return {
-    left: `${position.value.side === 'right'
-      ? panelLeft + controlWidth / 2
-      : panelLeft + panelWidth - controlWidth / 2}px`,
+    left: `${coverCenter}px`,
     top: `${position.value.y - 8}px`
   }
 })
@@ -229,10 +226,6 @@ function defaultModeByDevice(): PanelMode {
   return isNarrowScreen.value ? 'immersive' : 'collapsed'
 }
 
-function getViewportWidth(): number {
-  return window.innerWidth
-}
-
 function getPanelSize(mode: PanelMode): { width: number; height: number } {
   if (mode === 'immersive') {
     return { width: 24, height: 58 }
@@ -251,10 +244,8 @@ function clampPanelYToViewport(nextY: number, mode: PanelMode): number {
 }
 
 function clampPanelPosition(nextX: number, nextY: number, mode: PanelMode): { x: number; y: number } {
-  const size = getPanelSize(mode)
-  const maxX = Math.max(PANEL_GAP, getViewportWidth() - size.width - PANEL_GAP)
   return {
-    x: Math.min(Math.max(PANEL_GAP, nextX), maxX),
+    x: PANEL_GAP,
     y: clampPanelYToViewport(nextY, mode)
   }
 }
@@ -293,14 +284,9 @@ function loadPanelPosition(mode: PanelMode): void {
   }
 
   try {
-    const parsed = JSON.parse(raw) as { x?: number; y?: number; side?: 'left' | 'right' }
-    const side = parsed.side === 'right' ? 'right' : 'left'
-    const clamped = clampPanelPosition(Number(parsed.x ?? PANEL_GAP), Number(parsed.y ?? PANEL_GAP), mode)
-    const size = getPanelSize(mode)
-    const edgeX = side === 'right'
-      ? Math.max(PANEL_GAP, getViewportWidth() - size.width - PANEL_GAP)
-      : PANEL_GAP
-    position.value = { x: edgeX, y: clamped.y, side }
+    const parsed = JSON.parse(raw) as { y?: number }
+    const clamped = clampPanelPosition(PANEL_GAP, Number(parsed.y ?? PANEL_GAP), mode)
+    position.value = { x: PANEL_GAP, y: clamped.y, side: 'left' }
   } catch {
     const size = getPanelSize(mode)
     const initialY = Math.max(PANEL_GAP, window.innerHeight - size.height - 92)
@@ -309,30 +295,19 @@ function loadPanelPosition(mode: PanelMode): void {
 }
 
 function ensurePanelInViewport(animate = true): void {
-  const clamped = clampPanelPosition(position.value.x, position.value.y, panelMode.value)
-  const size = getPanelSize(panelMode.value)
-  const edgeX = position.value.side === 'right'
-    ? Math.max(PANEL_GAP, getViewportWidth() - size.width - PANEL_GAP)
-    : PANEL_GAP
+  const clamped = clampPanelPosition(PANEL_GAP, position.value.y, panelMode.value)
   if (animate) animatePanelSnap()
-  position.value = { ...position.value, x: edgeX, y: clamped.y }
+  position.value = { x: PANEL_GAP, y: clamped.y, side: 'left' }
   savePanelPosition()
 }
 
 function snapToHorizontalEdge(): void {
-  const size = getPanelSize(panelMode.value)
-  const centerX = position.value.x + size.width / 2
-  const viewportWidth = getViewportWidth()
-  const snapRight = centerX > viewportWidth / 2
-  const targetX = snapRight
-    ? Math.max(PANEL_GAP, viewportWidth - size.width - PANEL_GAP)
-    : PANEL_GAP
-  const clamped = clampPanelPosition(targetX, position.value.y, panelMode.value)
+  const clamped = clampPanelPosition(PANEL_GAP, position.value.y, panelMode.value)
   animatePanelSnap()
   position.value = {
-    x: clamped.x,
+    x: PANEL_GAP,
     y: clamped.y,
-    side: snapRight ? 'right' : 'left'
+    side: 'left'
   }
   savePanelPosition()
 }
@@ -345,6 +320,16 @@ function pointerFromTouch(event: TouchEvent): { x: number; y: number } | null {
   const touch = event.touches?.[0] || event.changedTouches?.[0]
   if (!touch) return null
   return { x: touch.clientX, y: touch.clientY }
+}
+
+function preventCancelableDefault(event: Event): void {
+  if (event.cancelable) {
+    event.preventDefault()
+  }
+}
+
+function suppressCoverGestureTemporarily(): void {
+  suppressCoverGestureUntil = Date.now() + COVER_GESTURE_MODE_CHANGE_GUARD_MS
 }
 
 function blockClickAfterDrag(): boolean {
@@ -752,6 +737,12 @@ async function closePlayer(): Promise<void> {
 
 function togglePlay(): void {
   if (blockClickAfterDrag() || !currentSong.value.id) return
+  if (playbackToggleLocked) return
+  playbackToggleLocked = true
+  window.setTimeout(() => {
+    playbackToggleLocked = false
+  }, 320)
+
   const status = audioService.getPlayingStatus()
   const isActiveAudio = status.audioId === currentSong.value.id
   if (currentSong.value.isPlaying || (isActiveAudio && status.isPlaying)) {
@@ -778,6 +769,7 @@ function togglePlay(): void {
     shouldFadeOnNextPlay.value = false
     syncRotationLoop()
   }).catch(error => {
+    if (error instanceof Error && error.message === 'AUDIO_BUSY') return
     logError('GlobalMusicPlayer', '恢复播放失败', error)
   })
 }
@@ -864,7 +856,7 @@ function onPanelDragTouchMove(event: TouchEvent): void {
   if (!isDraggingPanel) return
   const pointer = pointerFromTouch(event)
   if (!pointer) return
-  event.preventDefault()
+  preventCancelableDefault(event)
   const nextX = pointer.x - panelPointerOffsetX
   const nextY = pointer.y - panelPointerOffsetY
   const clamped = clampPanelPosition(nextX, nextY, panelMode.value)
@@ -955,7 +947,7 @@ function onControlPressTouchMove(event: TouchEvent): void {
     beginPanelDragFromPoint(point, source)
     onPanelDragTouchMove(event)
   }
-  event.preventDefault()
+  preventCancelableDefault(event)
 }
 
 function handleControlPressRelease(): void {
@@ -1018,7 +1010,10 @@ function finishCoverGesture(source: 'mouse' | 'touch', shouldToggleWhenIdle = tr
   clearCoverGestureListeners(source)
   if (!isCoverGestureActive) return
 
-  const shouldToggle = shouldToggleWhenIdle && coverGestureMode === 'idle' && !blockClickAfterDrag()
+  const shouldToggle = shouldToggleWhenIdle
+    && coverGestureMode === 'idle'
+    && Date.now() >= suppressCoverGestureUntil
+    && !blockClickAfterDrag()
   isCoverGestureActive = false
   coverGestureMode = 'idle'
 
@@ -1070,7 +1065,7 @@ function onCoverMouseMove(event: MouseEvent): void {
 function onCoverTouchMove(event: TouchEvent): void {
   const point = pointerFromTouch(event)
   if (!point) return
-  onCoverGestureMove(point, performance.now(), () => event.preventDefault())
+  onCoverGestureMove(point, performance.now(), () => preventCancelableDefault(event))
 }
 
 function onCoverMouseUp(): void {
@@ -1084,6 +1079,7 @@ function onCoverTouchEnd(): void {
 function onCoverMouseDown(event: MouseEvent): void {
   if (!currentSong.value.id) return
   if (blockClickAfterDrag()) return
+  if (Date.now() < suppressCoverGestureUntil) return
 
   isCoverGestureActive = true
   coverGestureMode = 'idle'
@@ -1099,6 +1095,7 @@ function onCoverMouseDown(event: MouseEvent): void {
 function onCoverTouchStart(event: TouchEvent): void {
   if (!currentSong.value.id) return
   if (blockClickAfterDrag()) return
+  if (Date.now() < suppressCoverGestureUntil) return
 
   const point = pointerFromTouch(event)
   if (!point) return
@@ -1145,7 +1142,7 @@ function updateProgressFromMouse(event: MouseEvent): void {
 
 function updateProgressFromTouch(event: TouchEvent): void {
   if (!isDraggingProgress.value || !progressBarRef.value) return
-  event.preventDefault()
+  preventCancelableDefault(event)
   const percent = calculateProgressPercent(event, progressBarRef.value)
   currentSong.value.progress = percent * 100
 }
@@ -1272,6 +1269,7 @@ function syncWithStoredSong(): boolean {
 }
 
 watch(panelMode, () => {
+  suppressCoverGestureTemporarily()
   nextTick(() => ensurePanelInViewport())
 })
 
@@ -1504,7 +1502,6 @@ onUnmounted(() => {
 
 .global-music-player.is-snapping {
   transition: left var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
-    right var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
     top var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
     width var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
     height var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
@@ -1512,19 +1509,9 @@ onUnmounted(() => {
     transform var(--lc-motion-duration-fast) var(--lc-motion-ease-out);
 }
 
-.global-music-player.side-right {
-  flex-direction: row-reverse;
-  border-radius: 8px 0 0 8px;
-}
-
 .global-music-player.side-left:not(.is-dragging-panel):not(.is-snapping) {
   left: 0 !important;
   right: auto;
-}
-
-.global-music-player.side-right:not(.is-dragging-panel):not(.is-snapping) {
-  left: auto !important;
-  right: 0;
 }
 
 .global-music-player.mode-immersive {
@@ -1670,10 +1657,6 @@ onUnmounted(() => {
   animation: panel-slide-in var(--lc-motion-duration-normal) var(--lc-motion-ease-out);
 }
 
-.global-music-player.side-right .detail-panel {
-  animation-name: panel-slide-in-right;
-}
-
 .header-row {
   display: flex;
   align-items: flex-start;
@@ -1757,16 +1740,12 @@ onUnmounted(() => {
 }
 
 .side-controls {
+  position: relative;
   flex-shrink: 0;
   border-left: 1px solid color-mix(in srgb, var(--vp-c-divider) 70%, transparent);
   background-color: color-mix(in srgb, var(--vp-c-bg-soft) 86%, var(--vp-c-bg-alt));
   touch-action: none;
   user-select: none;
-}
-
-.global-music-player.side-right .side-controls {
-  border-right: 1px solid color-mix(in srgb, var(--vp-c-divider) 70%, transparent);
-  border-left: 0;
 }
 
 .side-controls.collapsed,
@@ -1813,15 +1792,28 @@ onUnmounted(() => {
   stroke-linejoin: round;
 }
 
-.global-music-player.side-right .collapsed-expand svg,
-.global-music-player.side-right .rail-btn:nth-child(2) svg {
-  transform: scaleX(-1);
-}
-
 .side-controls.collapsed:hover .collapsed-expand,
 .side-controls.immersive:hover .collapsed-expand {
   color: var(--vp-c-text-1);
   background-color: color-mix(in srgb, var(--vp-c-bg-mute) 55%, transparent);
+}
+
+.side-controls.collapsed:hover::after,
+.side-controls.immersive:hover::after {
+  content: '拖动可调整位置';
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  width: max-content;
+  max-width: 140px;
+  padding: 5px 7px;
+  color: var(--vp-c-text-2);
+  background: color-mix(in srgb, var(--vp-c-bg-soft) 94%, transparent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  font-size: 0.7rem;
+  line-height: 1.3;
+  transform: translateY(-50%);
+  pointer-events: none;
 }
 
 .rail-btn {
@@ -1891,10 +1883,6 @@ onUnmounted(() => {
   left: 0;
 }
 
-.volume-gesture-hint.side-right::before {
-  right: 0;
-}
-
 .volume-hint-enter-active,
 .volume-hint-leave-active {
   transition: opacity var(--lc-motion-duration-fast) var(--lc-motion-ease-standard),
@@ -1920,26 +1908,10 @@ onUnmounted(() => {
   transform: translateX(-20px);
 }
 
-.global-music-player.side-right.slide-fade-enter-from,
-.global-music-player.side-right.slide-fade-leave-to {
-  transform: translateX(20px);
-}
-
 @keyframes panel-slide-in {
   from {
     opacity: 0;
     transform: translateX(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes panel-slide-in-right {
-  from {
-    opacity: 0;
-    transform: translateX(8px);
   }
   to {
     opacity: 1;

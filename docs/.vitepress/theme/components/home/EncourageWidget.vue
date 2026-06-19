@@ -5,7 +5,7 @@
  */
 
 import { ref, onMounted, onUnmounted, watch } from 'vue'
-import { useDebounceFn, useThrottleFn } from '@vueuse/core'
+import { useDebounceFn } from '@vueuse/core'
 import { logError } from '../../utils/logger'
 import { beaconSettleEncouragement, settleEncouragement } from '../../utils/encouragementApi'
 import { getVisitorId } from '../../utils/visitorIdentity'
@@ -13,6 +13,8 @@ import {
   ENCOURAGE_MESSAGE_COLORS,
   ENCOURAGE_PARTICLE_COLORS
 } from '../../utils/theme'
+import { resolveEncourageCopy, type ActiveDrawerCopy } from './encourageCopy'
+import { disposeEncourageParticles, queueEncourageParticleBurst } from './encourageParticles'
 
 type PointerEventLike = MouseEvent | TouchEvent
 type TimerHandle = ReturnType<typeof setTimeout>
@@ -49,15 +51,16 @@ const props = withDefaults(
 const internalAnimatedCount = ref(0)
 const DRAWER_CLOSE_MS = 3000
 const COMBO_RESET_MS = 3000
-const PARTICLE_THROTTLE_MS = 200
 const HINT_DISPLAY_DELAY_S = 20
 const HINT_AUTO_CLOSE_S = 7
 const OBSERVER_SETUP_DELAY_MS = 200
 const ENCOURAGEMENT_SETTLE_DELAY_MS = 1200
+const MAX_ACTIVE_FLOATING_MESSAGES = 36
 
 const encourageCount = ref(0)
 const isDrawerVisible = ref(false)
 const drawerMessage = ref('')
+const activeDrawerCopy = ref<ActiveDrawerCopy | null>(null)
 const widgetRef = ref<HTMLElement | null>(null)
 const showClickHint = ref(false)
 let observerInstance: IntersectionObserver | null = null
@@ -69,17 +72,6 @@ let isSettlementInFlight = false
 const hasClickedInSession = ref(false)
 const hasHoveredInSession = ref(false)
 const isHovered = ref(false)
-
-const encourageMessages: Record<number, string> = {
-  1: '收到催更了',
-  5: '别戳啦！已经在动笔了',
-  10: '嗷呜——深夜码字...',
-  20: '咕——要过劳死了……',
-  30: '再催试试看？(咧牙)',
-  45: '你是想逼我咬你一口？',
-  90: '哼，我不伺候了!',
-  200: '真有耐心...但没用!',
-}
 
 const activeMessages = ref<FloatingMessage[]>([])
 let messageIdCounter = 0
@@ -119,22 +111,6 @@ function clearSettleTimer(): void {
   if (!settleTimer) return
   clearTimeout(settleTimer)
   settleTimer = null
-}
-
-function getEncourageMessage(count: number): string {
-  const thresholds = Object.keys(encourageMessages)
-    .map(Number)
-    .sort((a, b) => a - b)
-
-  let selectedThreshold = 1
-  for (const threshold of thresholds) {
-    if (count >= threshold) {
-      selectedThreshold = threshold
-    } else {
-      break
-    }
-  }
-  return encourageMessages[selectedThreshold]
 }
 
 function getClientPoint(event: PointerEventLike): ClientPoint | null {
@@ -182,6 +158,9 @@ function showFloatingMessage(event: PointerEventLike, count: number): void {
   }
 
   activeMessages.value.push(messageObj)
+  if (activeMessages.value.length > MAX_ACTIVE_FLOATING_MESSAGES) {
+    activeMessages.value = activeMessages.value.slice(-MAX_ACTIVE_FLOATING_MESSAGES)
+  }
 
   setTimeout(() => {
     const msgIndex = activeMessages.value.findIndex((m) => m.id === id)
@@ -194,150 +173,6 @@ function showFloatingMessage(event: PointerEventLike, count: number): void {
       activeMessages.value = activeMessages.value.filter((m) => m.id !== id)
     }, 500)
   }, 1500)
-}
-
-function createParticles(event: PointerEventLike): void {
-  if (!event) return
-  const point = getClientPoint(event)
-  if (!point) return
-
-  let particles = 36
-  if (window.innerWidth <= 768) {
-    particles = 24
-  }
-
-  const canvas = document.createElement('canvas')
-  const maybeCtx = canvas.getContext('2d')
-
-  if (!maybeCtx) {
-    logError('EncourageWidget', '无法创建 Canvas 上下文')
-    return
-  }
-  const ctx = maybeCtx
-
-  const viewportWidth = window.innerWidth
-  const viewportHeight = window.innerHeight
-
-  canvas.className = 'particle-canvas'
-  canvas.width = viewportWidth
-  canvas.height = viewportHeight
-  canvas.style.position = 'fixed'
-  canvas.style.left = '0'
-  canvas.style.top = '0'
-  canvas.style.width = '100vw'
-  canvas.style.height = '100vh'
-  canvas.style.pointerEvents = 'none'
-  canvas.style.zIndex = '9999'
-  document.body.appendChild(canvas)
-  const x = point.x
-  const y = point.y
-
-  const particlesArray: Array<{
-    x: number
-    y: number
-    vx: number
-    vy: number
-    size: number
-    color: string
-    alpha: number
-    rotation: number
-    rotationSpeed: number
-  }> = []
-  
-  function drawStar(
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    size: number,
-    color: string
-  ): void {
-    ctx.save()
-    ctx.beginPath()
-    ctx.fillStyle = color
-    
-    const spikes = 5
-    const outerRadius = size
-    const innerRadius = size * 0.4
-    
-    for (let i = 0; i < spikes * 2; i++) {
-      const radius = i % 2 === 0 ? outerRadius : innerRadius
-      const angle = (Math.PI * i) / spikes - Math.PI / 2
-      const pointX = x + Math.cos(angle) * radius
-      const pointY = y + Math.sin(angle) * radius
-      
-      if (i === 0) {
-        ctx.moveTo(pointX, pointY)
-      } else {
-        ctx.lineTo(pointX, pointY)
-      }
-    }
-    
-    ctx.closePath()
-    ctx.fill()
-    ctx.restore()
-  }
-  
-  // 生成粒子
-  for (let i = 0; i < particles; i++) {
-    const size = Math.random() * 6 + 4
-    const color = ENCOURAGE_PARTICLE_COLORS[Math.floor(Math.random() * ENCOURAGE_PARTICLE_COLORS.length)]
-    const angle = Math.random() * Math.PI * 2
-    const velocity = Math.random() * 2.5 + 1.8
-    const vx = Math.cos(angle) * velocity
-    const vy = Math.sin(angle) * velocity - 2
-
-    particlesArray.push({
-      x,
-      y,
-      vx,
-      vy,
-      size,
-      color,
-      alpha: 1,
-      rotation: 0,
-      rotationSpeed: (Math.random() * 0.8 - 0.4) * Math.PI / 180 * 12
-    })
-  }
-
-  const startTime = performance.now()
-  const duration = 1300
-
-  function animate() {
-    const elapsed = performance.now() - startTime
-
-    if (elapsed < duration) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-      for (let i = 0; i < particlesArray.length; i++) {
-        const p = particlesArray[i]
-
-        p.x += p.vx
-        p.y += p.vy
-        p.vy += 0.08
-        p.vx *= 0.99
-        p.rotation += p.rotationSpeed
-
-        const progress = elapsed / duration
-        p.alpha = 1 - Math.pow(progress, 1.5)
-
-        ctx.globalAlpha = p.alpha
-        ctx.save()
-        ctx.translate(p.x, p.y)
-        ctx.rotate(p.rotation)
-
-        drawStar(ctx, 0, 0, p.size, p.color)
-
-        ctx.restore()
-        ctx.globalAlpha = 1
-      }
-
-      requestAnimationFrame(animate)
-    } else {
-      canvas.remove()
-    }
-  }
-
-  animate()
 }
 
 function resetComboTimer(): void {
@@ -384,30 +219,33 @@ function scheduleEncouragementSettle(): void {
   }, ENCOURAGEMENT_SETTLE_DELAY_MS)
 }
 
-const encourageUpdateThrottled = useThrottleFn((event: PointerEventLike) => {
+function encourageUpdate(event: PointerEventLike): void {
   encourageCount.value++
   pendingEncouragementDelta++
   scheduleEncouragementSettle()
-  const text = getEncourageMessage(encourageCount.value)
+  const point = getClientPoint(event)
+  const copyResult = resolveEncourageCopy(encourageCount.value, activeDrawerCopy.value)
+  activeDrawerCopy.value = copyResult.activeCopy
 
   showFloatingMessage(event, encourageCount.value)
-  createParticlesThrottled(event)
-  drawerMessage.value = text
+  if (point) {
+    queueEncourageParticleBurst({
+      ...point,
+      comboCount: encourageCount.value,
+      colors: ENCOURAGE_PARTICLE_COLORS
+    })
+  }
+
+  drawerMessage.value = copyResult.message
 
   isDrawerVisible.value = true
   setTimer('drawer', () => {
     isDrawerVisible.value = false
-  }, DRAWER_CLOSE_MS)
+  }, Math.max(DRAWER_CLOSE_MS, copyResult.durationMs))
 
   resetComboTimer()
   hideClickHint()
   hasClickedInSession.value = true
-}, 80)
-
-const createParticlesThrottled = useThrottleFn(createParticles, PARTICLE_THROTTLE_MS)
-
-function encourageUpdate(event: PointerEventLike): void {
-  encourageUpdateThrottled(event)
 }
 
 function setupIntersectionObserver(): void {
@@ -478,6 +316,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('pagehide', handlePageHide)
   flushEncouragement(true)
+  disposeEncourageParticles()
   clearAllTimers()
   if (observerInstance) {
     observerInstance.disconnect()
@@ -487,6 +326,7 @@ onUnmounted(() => {
 
 function handlePageHide(): void {
   flushEncouragement(true)
+  disposeEncourageParticles()
 }
 </script>
 
@@ -636,13 +476,18 @@ function handlePageHide(): void {
 }
 
 .drawer-content {
-  padding: 0 0.5rem;
-  font-size: 1.1rem;
+  padding: 0 0.6rem;
+  font-size: clamp(0.78rem, 0.72rem + 0.25vw, 1rem);
+  line-height: 1.35;
   width: 100%;
+  max-width: calc(100% - 1rem);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+  white-space: normal;
 }
 
 /* 点击提示样式 */

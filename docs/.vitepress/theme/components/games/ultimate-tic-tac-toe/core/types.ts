@@ -54,6 +54,7 @@ export interface GameCoreState {
   bigBoardWinningLine: number[] | null
   gameMode: GameMode
   aiDifficulty: AIDifficulty
+  isStarted: boolean
   players: Record<Player, PlayerInfo>
   moveHistory: RecordedMove[]
   turnReports: TurnReport[]
@@ -98,6 +99,7 @@ export interface AIDecisionAnalysis {
   selection: string
   chosenScore: number | null
   adaptiveLevel: number
+  positionState: 'behind' | 'close' | 'ahead' | 'crushing'
   topCandidates: AITopCandidate[]
 }
 
@@ -125,6 +127,8 @@ export interface TurnReport {
     after: number
     delta: number
     quality: MoveQuality
+    moveRank: number
+    movePercentile: number
     opponentBefore: number
     opponentAfter: number
     opponentDelta: number

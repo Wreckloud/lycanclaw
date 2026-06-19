@@ -17,22 +17,24 @@ export interface ResolvedAIProfile {
   candidatePool: number
   maxBranching: number
   adaptiveLevel: number
+  deadlineMs: number
+  pressureStyle: 'fixed' | 'adaptive'
+  softenWhenAhead: boolean
 }
 
 export function createAdaptiveProfileFromReports(previous: AdaptiveProfile, reports: TurnReport[]): AdaptiveProfile {
-  const humanQualities = reports
-    .filter((report) => !report.actor.isAI)
-    .map((report) => report.evaluation.quality)
-    .slice(-12)
+  const humanReports = reports.filter((report) => !report.actor.isAI)
+  if (humanReports.length === 0) return previous
 
-  if (humanQualities.length === 0) return previous
-
-  const average = humanQualities.reduce((sum, quality) => sum + QUALITY_SCORES[quality], 0) / humanQualities.length
-  const nextLevel = clamp(previous.level * 0.58 + average * 0.42, 0, 1)
+  const recentReports = humanReports.slice(-8)
+  const recentScore = averageReportScore(recentReports)
+  const gameScore = averageReportScore(humanReports)
+  const targetLevel = (recentScore * 0.55) + (gameScore * 0.3) + (previous.level * 0.15)
+  const nextLevel = clamp((previous.level * 0.72) + (targetLevel * 0.28), 0.12, 0.9)
 
   return {
     level: nextLevel,
-    recentQuality: humanQualities,
+    recentQuality: recentReports.map((report) => report.evaluation.quality),
     updatedAt: Date.now()
   }
 }
@@ -44,7 +46,10 @@ export function resolveAIProfile(difficulty: AIDifficulty, adaptiveProfile: Adap
       randomness: 0.14,
       candidatePool: 3,
       maxBranching: 12,
-      adaptiveLevel: 0.35
+      adaptiveLevel: 0.35,
+      deadlineMs: 700,
+      pressureStyle: 'fixed',
+      softenWhenAhead: false
     }
   }
 
@@ -53,30 +58,54 @@ export function resolveAIProfile(difficulty: AIDifficulty, adaptiveProfile: Adap
       targetDepth: 4,
       randomness: 0.05,
       candidatePool: 2,
-      maxBranching: 16,
-      adaptiveLevel: 0.68
+      maxBranching: 18,
+      adaptiveLevel: 0.68,
+      deadlineMs: 1000,
+      pressureStyle: 'fixed',
+      softenWhenAhead: false
     }
   }
 
   if (difficulty === 'nightmare') {
     return {
-      targetDepth: 5,
+      targetDepth: 6,
       randomness: 0,
       candidatePool: 1,
-      maxBranching: 22,
-      adaptiveLevel: 1
+      maxBranching: 28,
+      adaptiveLevel: 1,
+      deadlineMs: 1500,
+      pressureStyle: 'fixed',
+      softenWhenAhead: false
     }
   }
 
-  const level = clamp(adaptiveProfile.level, 0, 1)
+  const level = clamp(adaptiveProfile.level, 0.12, 0.9)
+  const isStrong = level >= 0.85
+  const isMiddle = level >= 0.55
 
   return {
-    targetDepth: level > 0.72 ? 5 : level > 0.42 ? 4 : 3,
-    randomness: level > 0.72 ? 0.03 : level > 0.42 ? 0.08 : 0.16,
-    candidatePool: level > 0.72 ? 1 : level > 0.42 ? 2 : 3,
-    maxBranching: level > 0.72 ? 20 : level > 0.42 ? 16 : 12,
-    adaptiveLevel: level
+    targetDepth: isStrong ? 5 : isMiddle ? 4 : 3,
+    randomness: isStrong ? 0.08 : isMiddle ? 0.14 : 0.22,
+    candidatePool: isStrong ? 2 : isMiddle ? 3 : 4,
+    maxBranching: isStrong ? 20 : isMiddle ? 16 : 12,
+    adaptiveLevel: level,
+    deadlineMs: isStrong ? 1100 : isMiddle ? 900 : 750,
+    pressureStyle: 'adaptive',
+    softenWhenAhead: true
   }
+}
+
+function averageReportScore(reports: TurnReport[]): number {
+  if (reports.length === 0) return 0.32
+
+  const total = reports.reduce((sum, report) => {
+    const percentile = report.evaluation.movePercentile
+    if (Number.isFinite(percentile)) return sum + percentile
+
+    return sum + QUALITY_SCORES[report.evaluation.quality]
+  }, 0)
+
+  return total / reports.length
 }
 
 function clamp(value: number, min: number, max: number): number {

@@ -2,7 +2,13 @@
   <section class="utt-game-page">
     <div class="utt-app">
       <section class="utt-game-area" aria-label="九宫叠阵棋盘">
-        <div class="utt-board">
+        <div
+          class="utt-board"
+          :class="{ 'utt-board-closed': isGameClosed }"
+          @touchmove="handleBoardTouchMove"
+          @touchend="handleBoardTouchEnd"
+          @touchcancel="handleBoardTouchCancel"
+        >
           <div
             v-for="bigIndex in boardIndexes"
             :key="bigIndex"
@@ -15,14 +21,18 @@
               :key="smallIndex"
               class="utt-cell"
               :class="getCellClass(bigIndex, smallIndex)"
+              :style="getCellStyle(bigIndex, smallIndex)"
+              :data-big-index="bigIndex"
+              :data-small-index="smallIndex"
               type="button"
-              :disabled="!canPlayCell(bigIndex, smallIndex)"
+              :aria-disabled="!canPlayCell(bigIndex, smallIndex)"
               :aria-label="`${formatBigBoardIndex(bigIndex)} 棋盘 ${formatSmallCellPosition(smallIndex)}`"
               @click="handleCellClick(bigIndex, smallIndex)"
+              @touchstart="handleCellTouchStart(bigIndex, smallIndex, $event)"
               @mouseenter="showNextBoardPreview(bigIndex, smallIndex)"
-              @mouseleave="clearNextBoardPreview"
+              @mouseleave="scheduleClearNextBoardPreview"
               @focus="showNextBoardPreview(bigIndex, smallIndex)"
-              @blur="clearNextBoardPreview"
+              @blur="scheduleClearNextBoardPreview"
             >
               {{ getCellMark(bigIndex, smallIndex) }}
             </button>
@@ -62,7 +72,7 @@
             </select>
           </label>
 
-          <label class="utt-menu-control">
+          <label v-if="settings.gameMode === 'human-vs-ai'" class="utt-menu-control">
             <span class="utt-menu-label">电脑难度</span>
             <select
               v-model="settings.aiDifficulty"
@@ -76,15 +86,26 @@
               <option value="nightmare">噩梦</option>
             </select>
           </label>
+          <div v-else class="utt-menu-control">
+            <span class="utt-menu-label">当前棋手</span>
+            <button
+              type="button"
+              class="utt-turn-button"
+              :class="currentTurnButtonClass"
+              disabled
+            >
+              {{ currentTurnLabel }}
+            </button>
+          </div>
 
           <button type="button" class="utt-menu-button" @click="isRulesOpen = true">游戏规则</button>
           <button
             type="button"
             class="utt-menu-button"
-            :class="isFinished ? 'utt-menu-button-primary' : 'utt-menu-button-danger'"
+            :class="primaryActionClass"
             @click="handleResignOrRematch"
           >
-            {{ resignButtonText }}
+            {{ primaryActionText }}
           </button>
         </section>
 
@@ -99,7 +120,19 @@
               :class="getMessageClass(message)"
               :style="{ opacity: getMessageOpacity(index) }"
             >
-              {{ message.text }}
+              <span
+                v-for="(line, lineIndex) in splitMessageLines(message.text)"
+                :key="`${message.id}-${lineIndex}`"
+                class="utt-log-line"
+              >
+                <span
+                  v-for="(part, partIndex) in splitMessageLineParts(line)"
+                  :key="`${message.id}-${lineIndex}-${partIndex}`"
+                  :class="part.player === X ? 'utt-log-line-blue' : part.player === O ? 'utt-log-line-red' : ''"
+                >
+                  {{ part.text }}
+                </span>
+              </span>
             </li>
           </ul>
 
@@ -177,6 +210,16 @@ import {
 } from './core/types'
 
 const boardIndexes = Array.from({ length: 9 }, (_, index) => index)
+const PLAYER_MOVE_SETTLE_DELAY_MS = 360
+const AI_MIN_THINKING_MS = 820
+const AUTO_FILL_BASE_DELAY_MS = 220
+const AUTO_FILL_STEP_DELAY_MS = 180
+const AUTO_FILL_ANIMATION_MS = 780
+const AFTER_AUTO_FILL_PAUSE_MS = 260
+const PREVIEW_SHOW_DELAY_MS = 70
+const PREVIEW_HIDE_DELAY_MS = 160
+const TOUCH_PREVIEW_COMMIT_MS = 280
+const TOUCH_PREVIEW_MOVE_THRESHOLD = 8
 const settings = ref<GameSettings>(loadGameSettings())
 const adaptiveProfile = ref(loadAdaptiveProfile())
 const state = ref<GameCoreState>(createInitialGameState(settings.value))
@@ -189,6 +232,19 @@ const lastPreviewTarget = ref<PreviewTarget | null>(null)
 const logRef = ref<HTMLElement | null>(null)
 let requestId = 0
 let aiRequestTimer: number | null = null
+let aiDecisionApplyTimer: number | null = null
+let aiThinkingStartedAt = 0
+let previewTimer: number | null = null
+let previewHideTimer: number | null = null
+let touchPreviewState: {
+  startedAt: number
+  startX: number
+  startY: number
+  bigIndex: number
+  smallIndex: number
+  moved: boolean
+} | null = null
+let suppressCellClickUntil = 0
 
 type PreviewTarget =
   | {
@@ -199,8 +255,29 @@ type PreviewTarget =
       type: 'free'
     }
 
+interface MessageLinePart {
+  text: string
+  player: Player | null
+}
+
 const isFinished = computed(() => state.value.winner !== EMPTY)
-const resignButtonText = computed(() => (isFinished.value ? '再来一把！' : '投降'))
+const isAwaitingStart = computed(() => !state.value.isStarted)
+const isGameClosed = computed(() => isAwaitingStart.value || isFinished.value)
+const primaryActionText = computed(() => {
+  if (isAwaitingStart.value) return '开始游戏!'
+  return isFinished.value ? '再来一把' : '投降'
+})
+const primaryActionClass = computed(() => ({
+  'utt-menu-button-primary': isAwaitingStart.value || isFinished.value,
+  'utt-menu-button-danger': !isAwaitingStart.value && !isFinished.value
+}))
+const currentTurnLabel = computed(() => {
+  return getPlayerName(state.value.currentPlayer, state.value)
+})
+const currentTurnButtonClass = computed(() => ({
+  'utt-turn-button-x': state.value.isStarted && state.value.currentPlayer === X,
+  'utt-turn-button-o': state.value.isStarted && state.value.currentPlayer === O
+}))
 const isPreviewFrameVisible = computed(() => activePreviewTarget.value !== null)
 const isPreviewFrameFree = computed(() => (activePreviewTarget.value ?? lastPreviewTarget.value)?.type === 'free')
 const previewFrameStyle = computed<Record<string, string> | null>(() => {
@@ -234,7 +311,7 @@ const messagePlaceholder = computed(() => {
   if (state.value.isMessageInputFocused) return ''
   if (state.value.errorMessage) return state.value.errorMessage
 
-  return '输入消息...'
+  return '输入消息'
 })
 
 onMounted(() => {
@@ -245,7 +322,9 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  clearNextBoardPreview()
   clearAIRequestTimer()
+  clearAIDecisionApplyTimer()
   worker.value?.removeEventListener('message', handleWorkerMessage)
   worker.value?.terminate()
 })
@@ -256,8 +335,13 @@ watch(
 )
 
 function handleCellClick(bigIndex: number, smallIndex: number): void {
+  if (Date.now() < suppressCellClickUntil) return
+  playCellFromInput(bigIndex, smallIndex)
+}
+
+function playCellFromInput(bigIndex: number, smallIndex: number): void {
   if (isThinking.value || isAITurn(state.value)) {
-    setError(`${getPlayerName(state.value.currentPlayer, state.value)}正在思考。`)
+    setError(`${getPlayerName(state.value.currentPlayer, state.value)} 正在思考`)
     return
   }
 
@@ -269,7 +353,63 @@ function handleCellClick(bigIndex: number, smallIndex: number): void {
   playMove({ bigIndex, smallIndex })
 }
 
+function handleCellTouchStart(bigIndex: number, smallIndex: number, event: TouchEvent): void {
+  preventCancelableDefault(event)
+  const touch = event.touches[0] ?? event.changedTouches[0]
+  if (!touch) return
+
+  touchPreviewState = {
+    startedAt: Date.now(),
+    startX: touch.clientX,
+    startY: touch.clientY,
+    bigIndex,
+    smallIndex,
+    moved: false
+  }
+  showNextBoardPreviewNow(bigIndex, smallIndex)
+}
+
+function handleBoardTouchMove(event: TouchEvent): void {
+  if (!touchPreviewState) return
+  preventCancelableDefault(event)
+  const touch = event.touches[0] ?? event.changedTouches[0]
+  if (!touch) return
+
+  const distance = Math.hypot(touch.clientX - touchPreviewState.startX, touch.clientY - touchPreviewState.startY)
+  if (distance > TOUCH_PREVIEW_MOVE_THRESHOLD) {
+    touchPreviewState.moved = true
+  }
+
+  const target = getTouchCellTarget(touch)
+  if (!target) return
+  if (target.bigIndex === touchPreviewState.bigIndex && target.smallIndex === touchPreviewState.smallIndex) return
+
+  touchPreviewState.bigIndex = target.bigIndex
+  touchPreviewState.smallIndex = target.smallIndex
+  showNextBoardPreviewNow(target.bigIndex, target.smallIndex)
+}
+
+function handleBoardTouchEnd(event: TouchEvent): void {
+  if (!touchPreviewState) return
+  preventCancelableDefault(event)
+  const stateAtEnd = touchPreviewState
+  touchPreviewState = null
+  suppressCellClickUntil = Date.now() + 350
+  scheduleClearNextBoardPreview()
+
+  const longPressed = Date.now() - stateAtEnd.startedAt > TOUCH_PREVIEW_COMMIT_MS
+  if (stateAtEnd.moved || longPressed) return
+  playCellFromInput(stateAtEnd.bigIndex, stateAtEnd.smallIndex)
+}
+
+function handleBoardTouchCancel(event: TouchEvent): void {
+  preventCancelableDefault(event)
+  touchPreviewState = null
+  scheduleClearNextBoardPreview()
+}
+
 function canPlayCell(bigIndex: number, smallIndex: number): boolean {
+  if (!state.value.isStarted) return false
   if (settings.value.gameMode === 'online') return false
   if (isAITurn(state.value)) return false
 
@@ -301,13 +441,14 @@ function playMove(move: GameMove, aiDecision: AIDecisionAnalysis | null = null):
 function scheduleAIMoveIfNeeded(): void {
   clearAIRequestTimer()
   if (!isAITurn(state.value) || state.value.winner !== EMPTY) return
+  const delayMs = getPostMoveDelay(state.value)
 
-  // 先让玩家落子渲染出来，再进入电脑搜索，避免同一帧里连续显示两步。
+  // 等本次落子和入口奖励动画完成后再进入电脑搜索，避免连续闪跳。
   void nextTick(() => {
     aiRequestTimer = window.setTimeout(() => {
       aiRequestTimer = null
       requestAIMoveIfNeeded()
-    }, 180)
+    }, delayMs)
   })
 }
 
@@ -317,12 +458,20 @@ function clearAIRequestTimer(): void {
   aiRequestTimer = null
 }
 
+function clearAIDecisionApplyTimer(): void {
+  if (aiDecisionApplyTimer === null) return
+  window.clearTimeout(aiDecisionApplyTimer)
+  aiDecisionApplyTimer = null
+}
+
 function requestAIMoveIfNeeded(): void {
   clearAIRequestTimer()
-  if (!isAITurn(state.value) || state.value.winner !== EMPTY || isThinking.value) return
+  clearAIDecisionApplyTimer()
+  if (!state.value.isStarted || !isAITurn(state.value) || state.value.winner !== EMPTY || isThinking.value) return
 
   isThinking.value = true
-  setError(`${getPlayerName(state.value.currentPlayer, state.value)}正在思考。`)
+  aiThinkingStartedAt = Date.now()
+  setError(`${getPlayerName(state.value.currentPlayer, state.value)} 正在思考`)
   const nextRequestId = requestId + 1
   requestId = nextRequestId
 
@@ -355,6 +504,16 @@ function handleWorkerMessage(event: MessageEvent<AIWorkerResponse>): void {
 
 function applyAIDecision(responseId: number, decision: AIDecision): void {
   if (responseId !== requestId) return
+  const remainingDelay = AI_MIN_THINKING_MS - (Date.now() - aiThinkingStartedAt)
+  if (remainingDelay > 0) {
+    clearAIDecisionApplyTimer()
+    aiDecisionApplyTimer = window.setTimeout(() => {
+      aiDecisionApplyTimer = null
+      applyAIDecision(responseId, decision)
+    }, remainingDelay)
+    return
+  }
+
   isThinking.value = false
   if (!isAITurn(state.value)) return
 
@@ -364,7 +523,8 @@ function applyAIDecision(responseId: number, decision: AIDecision): void {
     nextState.messages.push({
       id: `ai-resign-${Date.now()}`,
       type: 'system',
-      text: '局势已经没有可见反打点，红方选择投降。'
+      player: O,
+      text: '红方 O 投降\n蓝方 X 赢得本局。'
     })
     state.value = nextState
     return
@@ -376,7 +536,7 @@ function applyAIDecision(responseId: number, decision: AIDecision): void {
 }
 
 function isAITurn(currentState: GameCoreState): boolean {
-  return currentState.gameMode === 'human-vs-ai' && currentState.currentPlayer === O && currentState.winner === EMPTY
+  return currentState.isStarted && currentState.gameMode === 'human-vs-ai' && currentState.currentPlayer === O && currentState.winner === EMPTY
 }
 
 function getCellMark(bigIndex: number, smallIndex: number): string {
@@ -400,16 +560,41 @@ function getCellClass(bigIndex: number, smallIndex: number): Record<string, bool
   }
 }
 
+function getCellStyle(bigIndex: number, smallIndex: number): Record<string, string> {
+  const autoIndex = state.value.lastTurnMoves.findIndex(
+    (move) => move.source === 'auto' && move.bigIndex === bigIndex && move.smallIndex === smallIndex
+  )
+
+  return autoIndex >= 0
+    ? { '--utt-auto-fill-delay': `${AUTO_FILL_BASE_DELAY_MS + (autoIndex * AUTO_FILL_STEP_DELAY_MS)}ms` }
+    : {}
+}
+
+function getPostMoveDelay(currentState: GameCoreState): number {
+  const autoFillCount = currentState.lastRuleEvents.reduce((total, event) => total + event.filledCount, 0)
+  if (autoFillCount === 0) return PLAYER_MOVE_SETTLE_DELAY_MS
+
+  return Math.max(
+    PLAYER_MOVE_SETTLE_DELAY_MS,
+    AUTO_FILL_BASE_DELAY_MS
+      + (Math.max(0, autoFillCount - 1) * AUTO_FILL_STEP_DELAY_MS)
+      + AUTO_FILL_ANIMATION_MS
+      + AFTER_AUTO_FILL_PAUSE_MS
+  )
+}
+
 function getSmallBoardClass(bigIndex: number): Record<string, boolean> {
   const status = state.value.smallBoardStatus[bigIndex]
   const boardFull = isBoardFull(state.value, bigIndex)
   const effectiveNextBoard = getEffectiveNextBoard(state.value)
-  const isPlayableBoard = state.value.winner === EMPTY && !boardFull && (effectiveNextBoard === null || effectiveNextBoard === bigIndex)
-  const isLockedBoard = state.value.winner === EMPTY && !boardFull && !isPlayableBoard
+  const isGameActive = state.value.isStarted && state.value.winner === EMPTY
+  const isPlayableBoard = isGameActive && !boardFull && (effectiveNextBoard === null || effectiveNextBoard === bigIndex)
+  const isLockedBoard = isGameActive && !boardFull && !isPlayableBoard
   const hasBigBoardWinner = state.value.winner === X || state.value.winner === O
   const bigBoardWinningLine = state.value.bigBoardWinningLine ?? []
 
   return {
+    'utt-small-board-active': isPlayableBoard,
     'utt-small-board-full': boardFull,
     'utt-small-board-locked': isLockedBoard,
     'utt-small-board-claimed-x': status === X,
@@ -421,9 +606,24 @@ function getSmallBoardClass(bigIndex: number): Record<string, boolean> {
 }
 
 function showNextBoardPreview(bigIndex: number, smallIndex: number): void {
-  clearNextBoardPreview()
+  clearPreviewTimer()
+  clearPreviewHideTimer()
   if (!canPlayCell(bigIndex, smallIndex)) return
 
+  previewTimer = window.setTimeout(() => {
+    previewTimer = null
+    resolveNextBoardPreview(bigIndex, smallIndex)
+  }, PREVIEW_SHOW_DELAY_MS)
+}
+
+function showNextBoardPreviewNow(bigIndex: number, smallIndex: number): void {
+  clearPreviewTimer()
+  clearPreviewHideTimer()
+  if (!canPlayCell(bigIndex, smallIndex)) return
+  resolveNextBoardPreview(bigIndex, smallIndex)
+}
+
+function resolveNextBoardPreview(bigIndex: number, smallIndex: number): void {
   const result = applyMoveImmutable(state.value, { bigIndex, smallIndex })
   if (!result.success || result.state.winner !== EMPTY) return
 
@@ -436,8 +636,31 @@ function showNextBoardPreview(bigIndex: number, smallIndex: number): void {
   setPreviewTarget({ type: 'board', boardIndex: targetBoard })
 }
 
+function scheduleClearNextBoardPreview(): void {
+  clearPreviewTimer()
+  clearPreviewHideTimer()
+  previewHideTimer = window.setTimeout(() => {
+    previewHideTimer = null
+    activePreviewTarget.value = null
+  }, PREVIEW_HIDE_DELAY_MS)
+}
+
 function clearNextBoardPreview(): void {
+  clearPreviewTimer()
+  clearPreviewHideTimer()
   activePreviewTarget.value = null
+}
+
+function clearPreviewTimer(): void {
+  if (previewTimer === null) return
+  window.clearTimeout(previewTimer)
+  previewTimer = null
+}
+
+function clearPreviewHideTimer(): void {
+  if (previewHideTimer === null) return
+  window.clearTimeout(previewHideTimer)
+  previewHideTimer = null
 }
 
 function setPreviewTarget(target: PreviewTarget): void {
@@ -449,26 +672,55 @@ function repeatCssAddition(value: string, times: number): string {
   return Array.from({ length: times }, () => ` + ${value}`).join('')
 }
 
-function restartGame(): void {
+function preventCancelableDefault(event: Event): void {
+  if (event.cancelable) {
+    event.preventDefault()
+  }
+}
+
+function getTouchCellTarget(touch: Touch): GameMove | null {
+  const element = document.elementFromPoint(touch.clientX, touch.clientY)
+  const cell = element?.closest<HTMLElement>('.utt-cell')
+  if (!cell) return null
+
+  const bigIndex = Number(cell.dataset.bigIndex)
+  const smallIndex = Number(cell.dataset.smallIndex)
+  if (!Number.isInteger(bigIndex) || !Number.isInteger(smallIndex)) return null
+  if (bigIndex < 0 || bigIndex > 8 || smallIndex < 0 || smallIndex > 8) return null
+  return { bigIndex, smallIndex }
+}
+
+function resetGameToReady(): void {
   isThinking.value = false
   clearAIRequestTimer()
+  clearAIDecisionApplyTimer()
   requestId += 1
   state.value = createInitialGameState(settings.value)
+  clearNextBoardPreview()
+}
+
+function startGame(): void {
+  isThinking.value = false
+  clearAIRequestTimer()
+  clearAIDecisionApplyTimer()
+  requestId += 1
+  state.value = createInitialGameState(settings.value, { started: true })
   clearNextBoardPreview()
   requestAIMoveIfNeeded()
 }
 
 function handleResignOrRematch(): void {
   clearAIRequestTimer()
+  clearAIDecisionApplyTimer()
 
-  if (isFinished.value) {
-    restartGame()
+  if (!state.value.isStarted || isFinished.value) {
+    startGame()
     return
   }
 
   const loser = state.value.currentPlayer
   const winner = getOpponent(loser)
-  const confirmed = window.confirm(`${getPlayerName(loser, state.value)} 确定要投降吗？`)
+  const confirmed = window.confirm(`${getPlayerName(loser, state.value)}\n确认投降`)
   if (!confirmed) return
 
   const nextState = forceWinnerByResign(state.value, loser)
@@ -476,35 +728,26 @@ function handleResignOrRematch(): void {
   nextState.messages.push({
     id: `human-resign-${Date.now()}`,
     type: 'system',
-    text: `${getPlayerName(loser, nextState)} 选择投降，${getPlayerName(winner, nextState)} 赢得了本局。`
+    player: loser,
+    text: `${getPlayerName(loser, nextState)} 投降\n${getPlayerName(winner, nextState)} 赢得本局。`
   })
   state.value = nextState
 }
 
 function handleModeChange(): void {
   if (settings.value.gameMode === 'online') {
-    window.alert('在线对战模式先预留，后续接入房间和后端后再开启。')
-    settings.value.gameMode = state.value.gameMode
-    return
-  }
-
-  if (!confirmRestart('切换对战模式会重新开始当前对局，确定要切换吗？')) {
+    window.alert('在线对战暂未开放\n后续接入房间后开启')
     settings.value.gameMode = state.value.gameMode
     return
   }
 
   saveGameSettings(settings.value)
-  restartGame()
+  resetGameToReady()
 }
 
 function handleDifficultyChange(): void {
-  if (!confirmRestart('切换电脑玩家难度会重新开始当前对局，确定要切换吗？')) {
-    settings.value.aiDifficulty = state.value.aiDifficulty
-    return
-  }
-
   saveGameSettings(settings.value)
-  restartGame()
+  resetGameToReady()
 }
 
 function handleMessageFocus(): void {
@@ -527,7 +770,7 @@ function handleSendMessage(): void {
     type: 'chat',
     sender,
     senderName: getPlayerName(sender, state.value),
-    text: `${getPlayerName(sender, state.value)} 说：${text}`
+    text: `${getPlayerName(sender, state.value)} 说\n${text}`
   }
   state.value.messages.push(message)
   messageDraft.value = ''
@@ -541,6 +784,41 @@ function getMessageClass(message: GameMessage): Record<string, boolean> {
   }
 }
 
+function splitMessageLines(text: string): string[] {
+  return text.split('\n')
+}
+
+function splitMessageLineParts(line: string): MessageLinePart[] {
+  const parts: MessageLinePart[] = []
+  const pattern = /(蓝方 X|红方 O)/g
+  let lastIndex = 0
+
+  for (const match of line.matchAll(pattern)) {
+    if (match.index === undefined) continue
+    if (match.index > lastIndex) {
+      parts.push({
+        text: line.slice(lastIndex, match.index),
+        player: null
+      })
+    }
+
+    parts.push({
+      text: match[0],
+      player: match[0] === '蓝方 X' ? X : O
+    })
+    lastIndex = match.index + match[0].length
+  }
+
+  if (lastIndex < line.length) {
+    parts.push({
+      text: line.slice(lastIndex),
+      player: null
+    })
+  }
+
+  return parts.length > 0 ? parts : [{ text: line, player: null }]
+}
+
 function getMessageOpacity(index: number): number {
   const distanceFromLatest = state.value.messages.length - 1 - index
 
@@ -549,50 +827,63 @@ function getMessageOpacity(index: number): number {
 
 function createMoveMessage(nextState: GameCoreState, movePlayer: Player, move: GameMove, reportId: number): GameMessage {
   const playerName = getPlayerName(movePlayer, nextState)
-  let text = `${playerName} 下在了 ${formatBigBoardIndex(move.bigIndex)} 棋盘的第 ${formatSmallCellPosition(move.smallIndex)} 格`
+  const directEvent = nextState.lastRuleEvents.find((event) => event.boardIndex === move.bigIndex)
+  const hasOwnedDirectEvent = directEvent && isPlayer(directEvent.owner)
+  const lines = [
+    `${playerName} 下在 ${formatBigBoardIndex(move.bigIndex)} 棋盘 ${formatMoveCellText(move.smallIndex)}`
+  ]
+
+  if (directEvent) {
+    lines.push(`填满了 ${formatBigBoardIndex(directEvent.boardIndex)} 棋盘`)
+  }
 
   if (nextState.lastRuleEvents.length > 0) {
     const mainEvent = nextState.lastRuleEvents[0]
 
     if (mainEvent.owner === DRAW) {
-      text += `\n${formatBigBoardIndex(mainEvent.boardIndex)} 棋盘平局了`
+      lines.push(`${formatBigBoardIndex(mainEvent.boardIndex)} 棋盘平局`)
     } else if (isPlayer(mainEvent.owner)) {
-      text += `\n${formatBigBoardIndex(mainEvent.boardIndex)} 棋盘满格，${getPlayerName(mainEvent.owner, nextState)}获得入口奖励，填充了 ${mainEvent.filledCount} 个入口`
-      text += `\n${getPlayerName(getOpponent(mainEvent.owner), nextState)} 获得自由落子。`
+      lines.push(`由于 ${getPlayerName(mainEvent.owner, nextState)} 控制了 ${formatBigBoardIndex(mainEvent.boardIndex)} 棋盘`)
+      lines.push(`使用其棋子填充 ${mainEvent.filledCount} 格入口`)
+      lines.push(`并让 ${getPlayerName(getOpponent(mainEvent.owner), nextState)} 自由落子`)
     }
 
     if (nextState.lastRuleEvents.length > 1) {
-      text += `\n由于连锁反应，另外 ${nextState.lastRuleEvents.length - 1} 个棋盘也被结算了。`
+      lines.push(`连锁结算 ${nextState.lastRuleEvents.length - 1} 个`)
     }
   }
 
   if (isPlayer(nextState.winner)) {
-    text += `\n${getPlayerName(nextState.winner, nextState)} 赢得了整局游戏。`
+    lines.push(`${getPlayerName(nextState.winner, nextState)} 赢得整局。`)
   } else if (nextState.winner === DRAW) {
-    text += '\n整局游戏平局。'
+    lines.push('整局游戏平局。')
+  } else if (hasOwnedDirectEvent) {
+    // 满格结算已经说明了自由落子，避免对局记录重复展示。
   } else if (nextState.nextBoard === null) {
-    text += `\n${getPlayerName(nextState.currentPlayer, nextState)} 可自由选择棋盘`
+    lines.push(`${getPlayerName(nextState.currentPlayer, nextState)} 自由落子`)
   } else {
-    text += `\n轮到 ${getPlayerName(nextState.currentPlayer, nextState)} 在 ${formatBigBoardIndex(nextState.nextBoard)} 棋盘落子`
+    lines.push(`轮到 ${getPlayerName(nextState.currentPlayer, nextState)} 去 ${formatBigBoardIndex(nextState.nextBoard)} 棋盘`)
   }
 
   return {
     id: `move-${Date.now()}-${reportId}`,
-    type: 'move',
+    type: nextState.lastRuleEvents.length > 0 ? 'system' : 'move',
     player: movePlayer,
     reportId,
-    text
+    text: lines.join('\n')
   }
 }
 
-function confirmRestart(message: string): boolean {
-  if (state.value.winner !== EMPTY || state.value.moveHistory.length === 0) return true
+function formatMoveCellText(smallIndex: number): string {
+  const row = Math.floor(smallIndex / 3) + 1
+  const col = (smallIndex % 3) + 1
 
-  return window.confirm(message)
+  return `(${row},${col})`
 }
 
 function setError(message: string): void {
   state.value.errorMessage = message
+  state.value.isMessageInputFocused = false
   scrollLogToBottom()
 }
 
@@ -649,7 +940,7 @@ function scrollLogToBottom(): void {
 .utt-board {
   --utt-board-padding: 8px;
   --utt-board-gap: 8px;
-  --utt-indicator-color: #16a346;
+  --utt-indicator-color: #12500b;
   --utt-indicator-width: 3px;
   --utt-indicator-offset: 2px;
   --utt-indicator-mask: rgba(255, 255, 255, 0.08);
@@ -662,10 +953,10 @@ function scrollLogToBottom(): void {
   --utt-claim-x-overlay: rgba(37, 99, 235, 0.08);
   --utt-claim-o-overlay: rgba(220, 38, 38, 0.08);
   --utt-claim-draw-overlay: rgba(0, 0, 0, 0.08);
-  --utt-board-bg: #d9dee6;
-  --utt-small-board-bg: #eef1f5;
-  --utt-small-board-border: #b5bdc9;
-  --utt-cell-bg: #ffffff;
+  --utt-board-bg: #cbd2dc;
+  --utt-small-board-bg: #e3e7ed;
+  --utt-small-board-border: #aab4c2;
+  --utt-cell-bg: #fafafa;
   --utt-cell-text: #1f2933;
 
   position: relative;
@@ -680,12 +971,21 @@ function scrollLogToBottom(): void {
   padding: var(--utt-board-padding);
   background: var(--utt-board-bg);
   border: 2px solid var(--utt-board-bg);
+  touch-action: none;
+}
+
+.utt-board-closed {
+  filter: none;
+}
+
+.utt-board-closed .utt-small-board:not(.utt-small-board-big-win) {
+  opacity: 0.78;
+  filter: saturate(0.72);
 }
 
 :root.dark .utt-board {
-  --utt-indicator-color: #12500b;
   --utt-indicator-mask: rgba(255, 255, 255, 0.1);
-  --utt-board-bg: color-mix(in srgb, var(--vp-c-bg) 62%, #303030);
+  --utt-board-bg: color-mix(in srgb, var(--vp-c-bg) 66%, #303030);
   --utt-small-board-bg: color-mix(in srgb, #bdbdbd 18%, var(--vp-c-bg-soft));
   --utt-small-board-border: color-mix(in srgb, #5f5f5f 74%, var(--vp-c-divider));
   --utt-cell-bg: color-mix(in srgb, #f8f8f8 8%, var(--vp-c-bg));
@@ -711,7 +1011,16 @@ function scrollLogToBottom(): void {
 }
 
 .utt-small-board-locked {
-  opacity: 0.62;
+  opacity: 0.38;
+  filter: saturate(0.55) brightness(0.88);
+}
+
+.utt-small-board-active {
+  border-color: color-mix(in srgb, var(--utt-small-board-border) 56%, var(--vp-c-text-1));
+  background: color-mix(in srgb, var(--utt-small-board-bg) 82%, var(--vp-c-bg) 18%);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--vp-c-text-1) 14%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--vp-c-text-1) 8%, transparent);
 }
 
 .utt-small-board-claimed-x {
@@ -855,10 +1164,12 @@ function scrollLogToBottom(): void {
 }
 
 .utt-cell-x {
+  --utt-auto-mark-color: #2563eb;
   color: #2563eb;
 }
 
 .utt-cell-o {
+  --utt-auto-mark-color: #dc2626;
   color: #dc2626;
 }
 
@@ -916,6 +1227,47 @@ function scrollLogToBottom(): void {
   border-radius: 999px;
   background: rgba(17, 24, 39, 0.45);
   pointer-events: none;
+  animation: utt-auto-fill-dot 0.5s ease both;
+  animation-delay: var(--utt-auto-fill-delay, 0ms);
+}
+
+.utt-cell-last-turn-auto {
+  animation: utt-auto-fill-cell 0.78s var(--lc-motion-ease-standard, cubic-bezier(0.22, 1, 0.36, 1)) both;
+  animation-delay: var(--utt-auto-fill-delay, 0ms);
+}
+
+@keyframes utt-auto-fill-cell {
+  0%,
+  45% {
+    color: transparent;
+    transform: scale(0.92);
+    box-shadow: inset 0 0 0 2px transparent;
+  }
+
+  72% {
+    color: transparent;
+    transform: scale(1.05);
+    box-shadow: inset 0 0 0 2px var(--utt-indicator-color);
+  }
+
+  100% {
+    color: var(--utt-auto-mark-color);
+    transform: scale(1);
+    box-shadow: inset 0 0 0 0 transparent;
+  }
+}
+
+@keyframes utt-auto-fill-dot {
+  0%,
+  58% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .utt-win-line {
@@ -1029,6 +1381,27 @@ function scrollLogToBottom(): void {
   outline: 0;
 }
 
+.utt-turn-button {
+  width: 120px;
+  height: 36px;
+  padding: 0 8px;
+  border: 0;
+  border-left: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-2);
+  font-size: 14px;
+  text-align: left;
+  cursor: default;
+}
+
+.utt-turn-button-x {
+  color: #2563eb;
+}
+
+.utt-turn-button-o {
+  color: #dc2626;
+}
+
 .utt-menu-button {
   display: flex;
   align-items: center;
@@ -1039,17 +1412,25 @@ function scrollLogToBottom(): void {
 
 .utt-menu-button:hover,
 .utt-menu-control:hover {
-  background: color-mix(in srgb, var(--vp-c-bg-soft) 82%, var(--vp-c-brand-1) 8%);
+  background: color-mix(in srgb, var(--vp-c-bg-soft) 82%, var(--vp-c-text-1) 6%);
 }
 
 .utt-menu-button-danger {
-  border-color: #dc2626;
-  color: #dc2626;
+  border-color: #9f1d1d;
+  color: #9f1d1d;
 }
 
 .utt-menu-button-primary {
-  border-color: #2563eb;
-  color: #2563eb;
+  border-color: #1d4fb8;
+  color: #1d4fb8;
+}
+
+.utt-menu-button-danger:hover {
+  background: rgba(220, 38, 38, 0.08);
+}
+
+.utt-menu-button-primary:hover {
+  background: rgba(37, 99, 235, 0.08);
 }
 
 .utt-game-log {
@@ -1088,6 +1469,18 @@ function scrollLogToBottom(): void {
 
 .utt-log-message-red {
   border-left: 4px solid #dc2626;
+}
+
+.utt-log-line {
+  display: block;
+}
+
+.utt-log-line-blue {
+  color: #2563eb;
+}
+
+.utt-log-line-red {
+  color: #dc2626;
 }
 
 .utt-message-input {
@@ -1244,6 +1637,15 @@ function scrollLogToBottom(): void {
     width: 100%;
     height: 40px;
     padding: 0 6px;
+    border: 1px solid var(--vp-c-divider);
+    background: var(--vp-c-bg-soft);
+    font-size: 13px;
+    text-align: center;
+  }
+
+  .utt-turn-button {
+    width: 100%;
+    height: 40px;
     border: 1px solid var(--vp-c-divider);
     background: var(--vp-c-bg-soft);
     font-size: 13px;

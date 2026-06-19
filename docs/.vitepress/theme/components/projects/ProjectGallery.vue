@@ -11,8 +11,8 @@
         <h2>{{ project.title }}</h2>
         <p>{{ project.description }}</p>
       </div>
-      <div class="project-tags">
-        <span v-for="tag in project.tags" :key="tag">{{ tag }}</span>
+      <div class="project-board" aria-hidden="true">
+        <span v-for="index in 9" :key="index"></span>
       </div>
     </a>
   </section>
@@ -24,16 +24,14 @@ interface ProjectItem {
   kicker: string
   description: string
   link: string
-  tags: string[]
 }
 
 const projects: ProjectItem[] = [
   {
     title: '九宫叠阵',
     kicker: 'Strategy Game',
-    description: '一个大型井字棋变体。九个小棋盘彼此牵引，电脑会根据你的表现调整强度。',
-    link: '/games/ultimate-tic-tac-toe',
-    tags: ['开发中', '人机', '策略棋']
+    description: '九个小棋盘彼此牵引，落子不只是抢三连，也是决定把对手送往哪里。',
+    link: '/games/ultimate-tic-tac-toe'
   }
 ]
 </script>
@@ -48,34 +46,14 @@ const projects: ProjectItem[] = [
 .project-card {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) 150px;
   gap: 1rem;
-  min-height: 168px;
-  padding: 1.25rem;
+  min-height: 136px;
+  padding: 1rem 1.1rem;
   overflow: hidden;
   color: inherit;
-  background:
-    linear-gradient(135deg, rgba(22, 163, 70, 0.13), transparent 42%),
-    linear-gradient(315deg, rgba(66, 73, 135, 0.12), transparent 48%),
-    var(--vp-c-bg-soft);
+  background: var(--vp-c-bg-soft);
   text-decoration: none;
-  transition:
-    transform var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis),
-    background var(--lc-motion-duration-normal) var(--lc-motion-ease-standard);
-}
-
-.project-card::before {
-  content: "";
-  position: absolute;
-  inset: auto 0 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--vp-c-brand-1), transparent);
-  opacity: 0.72;
-}
-
-.project-card:hover {
-  transform: translateY(-2px);
-  color: inherit;
 }
 
 .project-kicker {
@@ -94,25 +72,31 @@ const projects: ProjectItem[] = [
 }
 
 .project-card p {
-  max-width: 560px;
-  margin: 0.75rem 0 0;
+  max-width: 620px;
+  margin: 0.55rem 0 0;
   color: var(--vp-c-text-2);
-  line-height: 1.7;
+  line-height: 1.55;
 }
 
-.project-tags {
-  display: flex;
-  flex-wrap: wrap;
-  align-content: flex-end;
-  justify-content: flex-end;
-  gap: 0.45rem;
+.project-board {
+  position: absolute;
+  right: 1.4rem;
+  top: 50%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  width: 104px;
+  height: 104px;
+  padding: 8px;
+  border: 2px solid color-mix(in srgb, #5f5f5f 74%, var(--vp-c-divider));
+  background: color-mix(in srgb, var(--vp-c-bg-soft) 78%, #303030 12%);
+  opacity: 0.18;
+  transform: translateY(-50%) rotate(-13deg);
 }
 
-.project-tags span {
-  padding: 0.28rem 0.52rem;
-  color: var(--vp-c-text-2);
-  background: rgba(125, 125, 125, 0.12);
-  font-size: 0.78rem;
+.project-board span {
+  border: 1px solid color-mix(in srgb, #5f5f5f 74%, var(--vp-c-divider));
+  background: var(--vp-c-bg);
 }
 
 @media (max-width: 640px) {
@@ -120,8 +104,10 @@ const projects: ProjectItem[] = [
     grid-template-columns: 1fr;
   }
 
-  .project-tags {
-    justify-content: flex-start;
+  .project-board {
+    right: -0.6rem;
+    width: 88px;
+    height: 88px;
   }
 }
 </style>
