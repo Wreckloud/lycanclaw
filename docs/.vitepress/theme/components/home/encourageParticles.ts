@@ -211,12 +211,12 @@ function drawStar(
 }
 
 function getParticleCount(comboCount: number, isMobile: boolean): number {
-  const base = isMobile ? 12 : 24
-  const max = isMobile ? 42 : 96
-  const growth = isMobile ? 1.75 : 4.2
-  const scaled = Math.floor((base + (Math.sqrt(comboCount) * growth)) * performanceScale)
+  const min = isMobile ? 1 : 2
+  const max = isMobile ? 24 : 36
+  const growthProgress = Math.min(1, Math.pow(Math.max(1, comboCount) / 300, 0.72))
+  const scaled = Math.floor((min + ((max - min) * growthProgress)) * performanceScale)
 
-  return clamp(scaled, base, max)
+  return clamp(scaled, min, max)
 }
 
 function trimParticles(): void {

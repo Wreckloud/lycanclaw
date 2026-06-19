@@ -425,7 +425,7 @@ function playMove(move: GameMove, aiDecision: AIDecisionAnalysis | null = null):
   const movePlayer = beforeState.currentPlayer
   const report = createTurnReport(beforeState, nextState, movePlayer, move.bigIndex, move.smallIndex, aiDecision)
   nextState.turnReports = [...nextState.turnReports, report]
-  nextState.messages.push(createMoveMessage(nextState, movePlayer, move, report.id))
+  nextState.messages.push(...createMoveMessages(nextState, movePlayer, move, report.id))
   nextState.errorMessage = ''
   state.value = nextState
   clearNextBoardPreview()
@@ -770,7 +770,7 @@ function handleSendMessage(): void {
     type: 'chat',
     sender,
     senderName: getPlayerName(sender, state.value),
-    text: `${getPlayerName(sender, state.value)} 说\n${text}`
+    text: `${getPlayerName(sender, state.value)} 说：${text}`
   }
   state.value.messages.push(message)
   messageDraft.value = ''
@@ -779,8 +779,9 @@ function handleSendMessage(): void {
 function getMessageClass(message: GameMessage): Record<string, boolean> {
   return {
     'utt-log-message-system': message.type === 'system',
-    'utt-log-message-blue': message.player === X || message.sender === X,
-    'utt-log-message-red': message.player === O || message.sender === O
+    'utt-log-message-chat': message.type === 'chat',
+    'utt-log-message-blue': message.type === 'move' && message.player === X,
+    'utt-log-message-red': message.type === 'move' && message.player === O
   }
 }
 
@@ -825,52 +826,76 @@ function getMessageOpacity(index: number): number {
   return Math.max(0.35, 1 - distanceFromLatest * 0.15)
 }
 
-function createMoveMessage(nextState: GameCoreState, movePlayer: Player, move: GameMove, reportId: number): GameMessage {
+function createMoveMessages(nextState: GameCoreState, movePlayer: Player, move: GameMove, reportId: number): GameMessage[] {
   const playerName = getPlayerName(movePlayer, nextState)
   const directEvent = nextState.lastRuleEvents.find((event) => event.boardIndex === move.bigIndex)
-  const hasOwnedDirectEvent = directEvent && isPlayer(directEvent.owner)
-  const lines = [
+  const moveLines = [
     `${playerName} 下在 ${formatBigBoardIndex(move.bigIndex)} 棋盘 ${formatMoveCellText(move.smallIndex)}`
   ]
-
-  if (directEvent) {
-    lines.push(`填满了 ${formatBigBoardIndex(directEvent.boardIndex)} 棋盘`)
-  }
+  const messages: GameMessage[] = [
+    {
+      id: `move-${Date.now()}-${reportId}`,
+      type: 'move',
+      player: movePlayer,
+      reportId,
+      text: moveLines.join('\n')
+    }
+  ]
 
   if (nextState.lastRuleEvents.length > 0) {
+    const systemLines: string[] = []
     const mainEvent = nextState.lastRuleEvents[0]
 
+    if (directEvent) {
+      systemLines.push(`填满了 ${formatBigBoardIndex(directEvent.boardIndex)} 棋盘`)
+    }
+
     if (mainEvent.owner === DRAW) {
-      lines.push(`${formatBigBoardIndex(mainEvent.boardIndex)} 棋盘平局`)
+      systemLines.push(`${formatBigBoardIndex(mainEvent.boardIndex)} 棋盘平局`)
     } else if (isPlayer(mainEvent.owner)) {
-      lines.push(`由于 ${getPlayerName(mainEvent.owner, nextState)} 控制了 ${formatBigBoardIndex(mainEvent.boardIndex)} 棋盘`)
-      lines.push(`使用其棋子填充 ${mainEvent.filledCount} 格入口`)
-      lines.push(`并让 ${getPlayerName(getOpponent(mainEvent.owner), nextState)} 自由落子`)
+      systemLines.push(`由于 ${getPlayerName(mainEvent.owner, nextState)} 控制了 ${formatBigBoardIndex(mainEvent.boardIndex)} 棋盘`)
+      systemLines.push(`使用其棋子填充 ${mainEvent.filledCount} 格入口`)
+      systemLines.push(`并让 ${getPlayerName(getOpponent(mainEvent.owner), nextState)} 自由落子`)
     }
 
     if (nextState.lastRuleEvents.length > 1) {
-      lines.push(`连锁结算 ${nextState.lastRuleEvents.length - 1} 个`)
+      systemLines.push(`连锁结算 ${nextState.lastRuleEvents.length - 1} 个`)
     }
+
+    if (isPlayer(nextState.winner) || nextState.winner === DRAW) {
+      appendResultOrNextTurn(systemLines, nextState)
+    } else if (mainEvent.owner === DRAW) {
+      appendNextTurn(systemLines, nextState)
+    }
+    messages.push({
+      id: `system-${Date.now()}-${reportId}`,
+      type: 'system',
+      reportId,
+      text: systemLines.join('\n')
+    })
+    return messages
   }
 
+  appendResultOrNextTurn(moveLines, nextState)
+  messages[0].text = moveLines.join('\n')
+  return messages
+}
+
+function appendResultOrNextTurn(lines: string[], nextState: GameCoreState): void {
   if (isPlayer(nextState.winner)) {
     lines.push(`${getPlayerName(nextState.winner, nextState)} 赢得整局。`)
   } else if (nextState.winner === DRAW) {
     lines.push('整局游戏平局。')
-  } else if (hasOwnedDirectEvent) {
-    // 满格结算已经说明了自由落子，避免对局记录重复展示。
-  } else if (nextState.nextBoard === null) {
+  } else {
+    appendNextTurn(lines, nextState)
+  }
+}
+
+function appendNextTurn(lines: string[], nextState: GameCoreState): void {
+  if (nextState.nextBoard === null) {
     lines.push(`${getPlayerName(nextState.currentPlayer, nextState)} 自由落子`)
   } else {
     lines.push(`轮到 ${getPlayerName(nextState.currentPlayer, nextState)} 去 ${formatBigBoardIndex(nextState.nextBoard)} 棋盘`)
-  }
-
-  return {
-    id: `move-${Date.now()}-${reportId}`,
-    type: nextState.lastRuleEvents.length > 0 ? 'system' : 'move',
-    player: movePlayer,
-    reportId,
-    text: lines.join('\n')
   }
 }
 
@@ -1461,6 +1486,13 @@ function scrollLogToBottom(): void {
 
 .utt-log-message-system {
   color: var(--vp-c-text-2);
+}
+
+.utt-log-message-chat {
+  margin-bottom: 6px;
+  padding-inline: 0;
+  background: transparent;
+  line-height: 1.35;
 }
 
 .utt-log-message-blue {
