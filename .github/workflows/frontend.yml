@@ -1,0 +1,68 @@
+name: Validate and deploy frontend
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.11.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate
+        run: |
+          pnpm run typecheck
+          pnpm run lint
+          pnpm run check:theme
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Configure SSH
+        if: github.ref == 'refs/heads/master'
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+
+      - name: Upload release
+        if: github.ref == 'refs/heads/master'
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          RELEASE_ID: ${{ github.sha }}
+        run: |
+          remote="$DEPLOY_USER@$DEPLOY_HOST"
+          release_dir="/srv/lycanclaw/frontend/releases/$RELEASE_ID"
+          ssh "$remote" "mkdir -p '$release_dir' /srv/lycanclaw/shared"
+          rsync -az --delete -e ssh docs/.vitepress/dist/ "$remote:$release_dir/"
+          ssh "$remote" "/srv/lycanclaw/bin/activate-frontend '$RELEASE_ID'"

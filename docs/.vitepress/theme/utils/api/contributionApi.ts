@@ -2,22 +2,11 @@
  * contributionApi.ts：
  * 提供contributionApi相关的通用工具能力。
  */
-import { getBackendApiBase } from '../runtimePolicy'
-
 export interface DailyContributionRecord {
   date: string
   additions: number
   deletions: number
   total: number
-}
-
-interface ApiResponse<T> {
-  success: boolean
-  data: T | null
-  error?: {
-    code: string
-    message: string
-  } | null
 }
 
 interface DailyContributionResponse {
@@ -34,7 +23,7 @@ const contributionMemoryCache = new Map<string, { expiresAt: number; payload: Da
 
 function buildDailyContributionsUrl(days?: number): string {
   const query = typeof days === 'number' && days > 0 ? `?days=${Math.floor(days)}` : ''
-  return `${getBackendApiBase()}/api/contributions/daily${query}`
+  return `/contribution-stats.json${query}`
 }
 
 function getContributionCacheKey(days?: number): string {
@@ -74,13 +63,20 @@ export async function fetchDailyContributionPayload(days?: number): Promise<Dail
     throw new Error(`加载日贡献数据失败: ${response.status}`)
   }
 
-  const payload = (await response.json()) as ApiResponse<DailyContributionResponse>
-  if (!payload?.success || !payload.data || !Array.isArray(payload.data.data)) {
-    throw new Error(payload?.error?.message || '日贡献接口返回格式错误')
+  const payload = (await response.json()) as DailyContributionResponse
+  if (!payload || !Array.isArray(payload.data)) {
+    throw new Error('日贡献静态数据格式错误')
   }
 
-  writeContributionCache(cacheKey, payload.data)
-  return payload.data
+  const normalizedDays = typeof days === 'number' && days > 0 ? Math.floor(days) : payload.days
+  const normalizedPayload = {
+    ...payload,
+    days: Math.min(normalizedDays, payload.data.length),
+    data: payload.data.slice(-normalizedDays)
+  }
+
+  writeContributionCache(cacheKey, normalizedPayload)
+  return normalizedPayload
 }
 
 export async function fetchDailyContributions(days?: number): Promise<DailyContributionRecord[]> {

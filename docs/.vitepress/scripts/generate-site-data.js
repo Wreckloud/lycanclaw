@@ -5,6 +5,7 @@ import fs from 'fs'
 import path from 'path'
 import matter from 'gray-matter'
 import { fileURLToPath } from 'url'
+import { execFileSync } from 'child_process'
 
 // 统计字数的函数
 function countWord(data) {
@@ -359,11 +360,83 @@ function generateKnowledgeStats(knowledgeDir, publicDir, docsDir) {
   console.log(`成功更新知识笔记数据，共 ${stats.length} 篇笔记`)
 }
 
+function generateContributionStats(repoDir, publicDir) {
+  console.log('开始生成贡献热力图数据...')
+
+  const days = 365
+  const scope = ['docs/thoughts', 'docs/knowledge']
+  const endDate = new Date()
+  const startDate = new Date(endDate)
+  startDate.setDate(startDate.getDate() - (days - 1))
+
+  const formatDate = (date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  const dailyMap = new Map()
+  for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+    dailyMap.set(formatDate(date), { additions: 0, deletions: 0 })
+  }
+
+  const output = execFileSync('git', [
+    '-C', repoDir,
+    'log',
+    `--since=${formatDate(startDate)}`,
+    '--numstat',
+    '--pretty=format:@@DATE@@%ad',
+    '--date=short',
+    '--',
+    ...scope
+  ], { encoding: 'utf-8' })
+
+  let currentDate = null
+  for (const line of output.split(/\r?\n/)) {
+    if (line.startsWith('@@DATE@@')) {
+      currentDate = line.slice('@@DATE@@'.length).trim()
+      continue
+    }
+    if (!currentDate || !dailyMap.has(currentDate)) continue
+
+    const match = line.match(/^(\d+|-)\s+(\d+|-)\s+/)
+    if (!match) continue
+
+    const bucket = dailyMap.get(currentDate)
+    bucket.additions += match[1] === '-' ? 0 : Number.parseInt(match[1], 10)
+    bucket.deletions += match[2] === '-' ? 0 : Number.parseInt(match[2], 10)
+  }
+
+  const data = Array.from(dailyMap, ([date, counts]) => ({
+    date,
+    additions: counts.additions,
+    deletions: counts.deletions,
+    total: counts.additions + counts.deletions
+  }))
+
+  fs.writeFileSync(
+    path.join(publicDir, 'contribution-stats.json'),
+    JSON.stringify({
+      generatedAt: new Date().toISOString(),
+      timezone: 'Asia/Shanghai',
+      metric: '新增+删除',
+      days,
+      scope,
+      data
+    }, null, 2),
+    'utf-8'
+  )
+
+  console.log(`成功生成贡献热力图数据，共 ${data.length} 天`)
+}
+
 // 主函数
 async function main() {
   try {
     const __dirname = path.dirname(fileURLToPath(import.meta.url))
     const docsDir = path.resolve(__dirname, '../../')
+    const repoDir = path.resolve(docsDir, '..')
     const thoughtsDir = path.join(docsDir, 'thoughts')
     const knowledgeDir = path.join(docsDir, 'knowledge')
     const publicDir = path.join(docsDir, 'public')
@@ -385,6 +458,8 @@ async function main() {
     
     // 处理知识笔记数据
     generateKnowledgeStats(knowledgeDir, publicDir, docsDir)
+
+    generateContributionStats(repoDir, publicDir)
     
     console.log('所有数据生成完成')
   } catch (error) {

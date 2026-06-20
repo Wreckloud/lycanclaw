@@ -145,7 +145,7 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 
 ### 后端迁移建议顺序
 
-1. 统一网关：后端提供 `/api/recommendations`、`/api/music`、`/api/contributions`
+1. 统一网关：后端提供 `/api/recommendations` 与 `/api/music`，贡献热力图使用构建期静态 JSON
 2. 评论发布继续走 Waline，评论/阅读统计统一走后端 `/api/*`
 3. 前端仅修改 `runtimePolicy` 与各 `*Api` 文件，不动组件
 
@@ -187,7 +187,7 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 - `pnpm run build`：验证数据生成 + VitePress 构建完整链路
 - `pnpm run lint`：验证主题层代码规范（禁组件直连 fetch / 禁新增 any / 限制 console）
 - `pnpm run check:theme`：验证主题架构约束（theme 不新增 JS、组件强制 TS、组件禁直连 fetch）
-- `pnpm run generate-contributions`：生成热力图日贡献数据（Git 历史 `add + del`）
+- `pnpm run generate-data`：生成文章、知识统计和 Git 日贡献静态数据
 
 ## Git 忽略约定
 
@@ -204,3 +204,11 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 ## 前后端接口草案
 
 - 见根目录 `BACKEND_API_DESIGN.md`
+
+## 发布流程
+
+- 双击 `update-blog.bat`：生成数据、提交并推送当前分支。
+- 开发分支推送只执行 GitHub Actions 检查，不发布正式站。
+- `master` 推送通过检查后自动发布到国内服务器。
+- Netlify继续从 `master` 构建备用站，并固定访问 `https://wreckloud.com` 后端。
+- GitHub Actions所需 Secrets 与服务器目录配置见后端仓库 `deploy/README.md`。
