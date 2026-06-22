@@ -201,14 +201,10 @@ LycanClaw 是我的个人内容站，用来长期整理技术笔记、项目记�
 - 也可通过运行时配置覆盖（页面注入 `window.__LYCAN_CONFIG`）：
   - `backendApiBase`
 
-## 前后端接口草案
-
-- 见根目录 `BACKEND_API_DESIGN.md`
-
 ## 发布流程
 
 - 双击 `update-blog.bat`：生成数据、提交并推送当前分支。
 - 开发分支推送只执行 GitHub Actions 检查，不发布正式站。
 - `master` 推送通过检查后自动发布到国内服务器。
 - Netlify继续从 `master` 构建备用站，并固定访问 `https://wreckloud.com` 后端。
-- GitHub Actions所需 Secrets 与服务器目录配置见后端仓库 `deploy/README.md`。
+- GitHub Actions所需 Secrets 与服务器目录配置见后端仓库 `doc/DEPLOYMENT.md`。
