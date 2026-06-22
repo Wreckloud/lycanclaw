@@ -1,12 +1,21 @@
 node_modules/
 cache/
 dist/
+.cache/
+.vite/
+.netlify/
+coverage/
 docs/.vitepress/cache/
 docs/.vitepress/dist/
 
 # local temp
 *.log
 *.tmp
+*.pid
+*.tsbuildinfo
+.eslintcache
+logs/
+.runlogs/
 .env.local
 .env.*.local
 docs/drafts/
