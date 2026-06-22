@@ -3,7 +3,8 @@
  * 提供recommendedApi相关的通用工具能力。
  */
 import { getBackendApiBase } from '../runtimePolicy'
-import { logError } from '../logger'
+
+const REQUEST_TIMEOUT_MS = 4000
 
 export interface RecommendedPost {
   url: string
@@ -72,22 +73,18 @@ function parseRecommendationResponse(payload: unknown): RecommendedPost[] {
 }
 
 export async function fetchRecommendedPosts(maxPosts: number): Promise<RecommendedPost[]> {
-  try {
-    const response = await fetch(buildRecommendationsUrl(maxPosts), {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-
-    if (!response.ok) {
-      throw new Error(`请求失败: ${response.status}`)
+  const response = await fetch(buildRecommendationsUrl(maxPosts), {
+    method: 'GET',
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    headers: {
+      'Content-Type': 'application/json'
     }
+  })
 
-    const payload = (await response.json()) as unknown
-    return parseRecommendationResponse(payload).slice(0, maxPosts)
-  } catch (error) {
-    logError('recommendedApi', '加载推荐文章数据失败', error)
-    return []
+  if (!response.ok) {
+    throw new Error(`请求失败: ${response.status}`)
   }
+
+  const payload = (await response.json()) as unknown
+  return parseRecommendationResponse(payload).slice(0, maxPosts)
 }

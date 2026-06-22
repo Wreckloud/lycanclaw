@@ -1,22 +1,9 @@
-/**
- * pageViewApi.ts：
- * 提供pageViewApi相关的通用工具能力。
- */
-import { parseWalinePageViewResponse } from './apiResponseParser'
-import { logError } from '../logger'
 import { getBackendApiBase } from '../runtimePolicy'
-
-function getArticleEndpoint(): string {
-  return `${getBackendApiBase()}/api/stats/pageview`
-}
-
-const PAGEVIEW_CACHE_PREFIX = 'lycan_pageview_'
-const PAGEVIEW_CACHE_TIME_SUFFIX = '_time'
-const CACHE_EXPIRATION = 30 * 60 * 1000
+import { logError } from '../logger'
 
 const VISIT_RECORD_PREFIX = 'lycan_visit_record_'
 const VISIT_RECORD_EXPIRATION = 30 * 60 * 1000
-
+const REQUEST_TIMEOUT_MS = 5000
 const updatingPaths = new Set<string>()
 
 function canUseStorage(): boolean {
@@ -28,186 +15,57 @@ function canUseStorage(): boolean {
   }
 }
 
-function parseStoredInt(value: string | null): number | null {
-  if (!value) return null
-  const parsed = Number.parseInt(value, 10)
-  return Number.isNaN(parsed) ? null : parsed
-}
-
-function getPageViewCacheKey(path: string): string {
-  return `${PAGEVIEW_CACHE_PREFIX}${path}`
-}
-
-function getVisitRecordKey(path: string): string {
-  return `${VISIT_RECORD_PREFIX}${path}`
-}
-
-async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    mode: 'cors',
-    credentials: 'omit',
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers || {})
-    }
-  })
-
-  if (!response.ok) {
-    throw new Error(`请求失败: ${response.status}`)
-  }
-
-  if (response.status === 204) {
-    return null as T
-  }
-
-  return (await response.json()) as T
-}
-
-function buildGetPageViewUrl(path: string): string {
-  return `${getArticleEndpoint()}?path=${encodeURIComponent(path)}`
-}
-
-function savePageViewToCache(path: string, count: number): void {
-  if (!canUseStorage() || !count) return
-
-  try {
-    const key = getPageViewCacheKey(path)
-    localStorage.setItem(key, count.toString())
-    localStorage.setItem(`${key}${PAGEVIEW_CACHE_TIME_SUFFIX}`, Date.now().toString())
-  } catch {
-    // Ignore storage availability errors.
-  }
-}
-
-function clearPageViewCache(path: string): void {
-  if (!canUseStorage()) return
-
-  try {
-    const key = getPageViewCacheKey(path)
-    localStorage.removeItem(key)
-    localStorage.removeItem(`${key}${PAGEVIEW_CACHE_TIME_SUFFIX}`)
-  } catch {
-    // Ignore storage availability errors.
-  }
-}
-
-export function getPageViewFromCache(path: string): number | null {
-  if (!canUseStorage()) return null
-
-  try {
-    const key = getPageViewCacheKey(path)
-    const cachedValue = parseStoredInt(localStorage.getItem(key))
-    if (cachedValue === null) return null
-
-    const cacheTime = parseStoredInt(localStorage.getItem(`${key}${PAGEVIEW_CACHE_TIME_SUFFIX}`))
-    if (!cacheTime) return null
-
-    if (Date.now() - cacheTime > CACHE_EXPIRATION) {
-      clearPageViewCache(path)
-      return null
-    }
-
-    return cachedValue
-  } catch {
-    return null
-  }
-}
-
-function shouldUpdateVisit(path: string): boolean {
+function shouldRecordVisit(path: string): boolean {
   if (!canUseStorage()) return true
-
   try {
-    const recordKey = getVisitRecordKey(path)
+    const key = `${VISIT_RECORD_PREFIX}${path}`
     const now = Date.now()
-    const lastVisit = parseStoredInt(localStorage.getItem(recordKey))
-
-    if (!lastVisit || now - lastVisit > VISIT_RECORD_EXPIRATION) {
-      localStorage.setItem(recordKey, now.toString())
-      return true
-    }
-
-    return false
+    const previous = Number.parseInt(localStorage.getItem(key) || '', 10)
+    return !Number.isFinite(previous) || now - previous > VISIT_RECORD_EXPIRATION
   } catch {
     return true
   }
 }
 
-function resolvePath(path?: string): string {
-  if (path) return path
-  if (typeof window === 'undefined') return ''
-  return window.location.pathname
-}
-
-export async function getPageView(path?: string, fallbackValue: number = 0): Promise<number> {
-  const currentPath = resolvePath(path)
-  if (!currentPath) return fallbackValue
-
-  const cachedCount = getPageViewFromCache(currentPath)
-  if (cachedCount !== null) {
-    return cachedCount
-  }
-
+function markVisitRecorded(path: string): void {
+  if (!canUseStorage()) return
   try {
-    const data = await requestJson<unknown>(buildGetPageViewUrl(currentPath), {
-      method: 'GET'
-    })
-    const count = parseWalinePageViewResponse(data)
-
-    if (count > 0) {
-      savePageViewToCache(currentPath, count)
-      return count
-    }
-
-    return fallbackValue
-  } catch (error) {
-    logError('pageViewApi', '获取页面浏览量失败', error)
-    return fallbackValue
+    localStorage.setItem(`${VISIT_RECORD_PREFIX}${path}`, Date.now().toString())
+  } catch {
   }
 }
 
-export async function updatePageView(path?: string): Promise<boolean> {
-  const currentPath = resolvePath(path)
-  if (!currentPath) return false
+interface ApiResponseEnvelope<T> {
+  data?: T
+}
 
-  if (!shouldUpdateVisit(currentPath)) {
-    return false
+export async function updatePageView(path: string): Promise<number | null> {
+  const normalizedPath = path.trim()
+  if (!normalizedPath || updatingPaths.has(normalizedPath) || !shouldRecordVisit(normalizedPath)) {
+    return null
   }
 
-  if (updatingPaths.has(currentPath)) {
-    return false
-  }
-
+  updatingPaths.add(normalizedPath)
   try {
-    updatingPaths.add(currentPath)
-
-    const data = await requestJson<unknown>(getArticleEndpoint(), {
+    const response = await fetch(`${getBackendApiBase()}/api/stats/pageview`, {
       method: 'POST',
-      body: JSON.stringify({ path: currentPath })
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ path: normalizedPath })
     })
-
-    const count = parseWalinePageViewResponse(data)
-    if (count > 0) {
-      savePageViewToCache(currentPath, count)
-      return true
+    if (!response.ok) {
+      throw new Error(`请求失败: ${response.status}`)
     }
-
-    return false
+    const payload = await response.json() as ApiResponseEnvelope<unknown>
+    if (typeof payload.data !== 'number') return null
+    markVisitRecorded(normalizedPath)
+    return Math.max(0, payload.data)
   } catch (error) {
     logError('pageViewApi', '更新页面浏览量失败', error)
-    return false
+    return null
   } finally {
-    updatingPaths.delete(currentPath)
+    updatingPaths.delete(normalizedPath)
   }
-}
-
-export async function getAndUpdatePageView(
-  path?: string,
-  fallbackValue: number = 0
-): Promise<number> {
-  const currentPath = resolvePath(path)
-  if (!currentPath) return fallbackValue
-
-  await updatePageView(currentPath)
-  return getPageView(currentPath, fallbackValue)
 }

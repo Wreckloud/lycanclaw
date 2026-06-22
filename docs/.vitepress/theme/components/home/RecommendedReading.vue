@@ -373,7 +373,7 @@ function buildThoughtsTagUrl(tag: string): string {
 
     <!-- 加载中状态：只在组件可见时显示 -->
     <div v-if="isLoading && isVisible" class="loading">
-      <p>{{ showSlowLoadingHint ? '正在生成推荐快照...' : '加载中...' }}</p>
+      <p>{{ showSlowLoadingHint ? '推荐服务响应较慢...' : '加载中...' }}</p>
     </div>
 
     <!-- 错误状态：只在组件可见时显示 -->

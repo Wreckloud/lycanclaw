@@ -5,6 +5,7 @@
 // API 域统一导出入口。
 export * from './apiProxyPolicy'
 export * from './apiResponseParser'
+export * from './articleMetricsApi'
 export * from './commentApi'
 export * from './contributionApi'
 export * from './pageViewApi'
