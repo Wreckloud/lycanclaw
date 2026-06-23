@@ -75,10 +75,7 @@ function parseRecommendationResponse(payload: unknown): RecommendedPost[] {
 export async function fetchRecommendedPosts(maxPosts: number): Promise<RecommendedPost[]> {
   const response = await fetch(buildRecommendationsUrl(maxPosts), {
     method: 'GET',
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    headers: {
-      'Content-Type': 'application/json'
-    }
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
   })
 
   if (!response.ok) {

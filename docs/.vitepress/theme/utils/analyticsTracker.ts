@@ -1,6 +1,6 @@
 /**
  * analyticsTracker.ts：
- * 在 VitePress 路由变化时记录核心页面访问，并按页面可见时间结算停留时长。
+ * 在 VitePress 路由变化时记录公开页面访问，并按页面可见时间结算停留时长。
  */
 import { logError } from './logger'
 import { beaconEndVisit, endVisit, startVisit } from './analyticsApi'
@@ -8,8 +8,6 @@ import { getVisitorId } from './visitorIdentity'
 
 const MAX_DURATION_MS = 30 * 60 * 1000
 const ROUTE_START_DELAY_MS = 80
-
-type PageType = 'home' | 'core' | 'article'
 
 interface ActiveVisit {
   visitId: string
@@ -42,23 +40,10 @@ function isArticlePath(path: string): boolean {
 }
 
 function isTrackablePath(path: string): boolean {
-  if (path.startsWith('/admin') || path.startsWith('/api') || path.startsWith('/assets')) return false
-  return path === '/'
-    || path === '/index.html'
-    || path === '/about'
-    || path === '/about.html'
-    || path === '/thoughts/'
-    || path === '/thoughts/index.html'
-    || path === '/knowledge/'
-    || path === '/knowledge/index.html'
-    || path === '/projects/'
-    || path === '/projects/index.html'
-    || isArticlePath(path)
-}
-
-function inferPageType(path: string): PageType {
-  if (path === '/' || path === '/index.html') return 'home'
-  return isArticlePath(path) ? 'article' : 'core'
+  if (!path || path.length > 512 || /[\u0000-\u001F\u007F]/.test(path) || path.includes('\\') || path.includes('//')) return false
+  if (path.split('/').some((segment) => segment === '.' || segment === '..')) return false
+  if (/^\/(admin|api|assets|\.vitepress)(\/|$)/i.test(path)) return false
+  return !/\.(?:js|css|map|json|xml|txt|ico|png|jpe?g|gif|svg|webp|avif|bmp|wasm|woff2?|ttf|otf|eot|mp3|wav|ogg|flac|m4a|mp4|webm|pdf|zip|gz)$/i.test(path)
 }
 
 function currentTitle(path: string): string {
@@ -145,8 +130,7 @@ async function startTrackableVisit(path: string): Promise<void> {
       path: normalized,
       title: currentTitle(normalized),
       referrer: document.referrer || '',
-      visitorId: getVisitorId(),
-      pageType: inferPageType(normalized)
+      visitorId: getVisitorId()
     })
 
     if (sequence !== visitSequence) {

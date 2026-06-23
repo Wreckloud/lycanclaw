@@ -6,7 +6,6 @@ export interface ArticleMetric {
   path: string
   pageviewCount: number
   commentCount: number
-  syncedAt: string | null
 }
 
 interface ApiResponseEnvelope<T> {
@@ -20,19 +19,13 @@ function normalizeMetric(value: unknown, fallbackPath = ''): ArticleMetric {
   return {
     path: typeof record.path === 'string' ? record.path : fallbackPath,
     pageviewCount: typeof record.pageviewCount === 'number' ? Math.max(0, record.pageviewCount) : 0,
-    commentCount: typeof record.commentCount === 'number' ? Math.max(0, record.commentCount) : 0,
-    syncedAt: typeof record.syncedAt === 'string' ? record.syncedAt : null
+    commentCount: typeof record.commentCount === 'number' ? Math.max(0, record.commentCount) : 0
   }
 }
 
-async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
+async function requestJson<T>(url: string): Promise<T> {
   const response = await fetch(url, {
-    ...init,
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers || {})
-    }
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
   })
   if (!response.ok) {
     throw new Error(`请求失败: ${response.status}`)
@@ -50,16 +43,4 @@ export async function fetchArticleMetric(path: string): Promise<ArticleMetric> {
     `${getBackendApiBase()}/api/article-metrics?path=${encodeURIComponent(normalizedPath)}`
   )
   return normalizeMetric(data, normalizedPath)
-}
-
-export async function fetchArticleMetrics(paths: string[]): Promise<ArticleMetric[]> {
-  const normalizedPaths = [...new Set(paths.map((path) => path.trim()).filter(Boolean))]
-  if (normalizedPaths.length === 0) return []
-  const data = await requestJson<unknown[]>(`${getBackendApiBase()}/api/article-metrics/batch`, {
-    method: 'POST',
-    body: JSON.stringify({ paths: normalizedPaths })
-  })
-  return Array.isArray(data)
-    ? data.map((metric, index) => normalizeMetric(metric, normalizedPaths[index] || ''))
-    : []
 }

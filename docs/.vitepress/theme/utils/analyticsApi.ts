@@ -18,7 +18,6 @@ export interface VisitStartPayload {
   title: string
   referrer: string
   visitorId: string
-  pageType: string
 }
 
 export interface VisitStartResponse {

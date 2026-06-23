@@ -136,14 +136,21 @@ function checkNeedsUpdate(jsonPath, filePaths, baseDir, relativePathPrefix = '')
   return { needsUpdate: false, existingData }
 }
 
-// 从内容中提取日期
-function extractDate(content, frontmatter) {
-  // 直接从文件内容中提取原始日期字符串
-  const dateMatch = content.match(/date:\s*(['"]?)([^\n]+)\1/)
-  const originalDate = dateMatch && dateMatch[2] ? dateMatch[2].trim() : null
-  
-  // 确保有日期信息
-  return originalDate || frontmatter.date || new Date().toISOString()
+// 内容日期只允许一种格式，避免前后端分别维护兼容解析。
+function extractDate(content, filePath) {
+  const dateLine = content.match(/^date:\s*(.+?)\s*$/m)
+  if (!dateLine) {
+    throw new Error(`缺少 date 属性: ${filePath}`)
+  }
+
+  const date = dateLine[1].trim().replace(/^(['"])(.*)\1$/, '$2')
+  const match = date.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/)
+  const isoLocal = date.replace(' ', 'T')
+  const parsedDate = new Date(`${isoLocal}Z`)
+  if (!match || Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 19) !== isoLocal) {
+    throw new Error(`date 必须使用 YYYY-MM-DD HH:mm:ss: ${filePath}`)
+  }
+  return date
 }
 
 // 处理博客文章数据
@@ -188,7 +195,7 @@ function generatePostsData(thoughtsDir, publicDir, docsDir) {
     })
     
     // 提取日期
-    const date = extractDate(content, frontmatter)
+    const date = extractDate(content, filePath)
     
     // 确保tags是数组格式
     if (frontmatter.tags && typeof frontmatter.tags === 'string') {
@@ -214,7 +221,7 @@ function generatePostsData(thoughtsDir, publicDir, docsDir) {
       url: '/thoughts/' + file.replace('.md', '.html'),
       frontmatter: {
         ...frontmatter,
-        // 确保日期是原始字符串
+        // 构建产物统一使用固定日期格式
         date
       },
       content: markdownContent,
@@ -223,47 +230,7 @@ function generatePostsData(thoughtsDir, publicDir, docsDir) {
     }
   })
   
-  // 按日期排序（从新到旧）
-  posts.sort((a, b) => {
-    if (!a.frontmatter.date) return 1
-    if (!b.frontmatter.date) return -1
-    
-    // 处理可能带引号的日期字符串
-    const dateStrA = String(a.frontmatter.date).replace(/^['"]|['"]$/g, '')
-    const dateStrB = String(b.frontmatter.date).replace(/^['"]|['"]$/g, '')
-    
-    // 提取年月日时分秒
-    const getDateParts = (dateStr) => {
-      const match = dateStr.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/)
-      if (match) {
-        return {
-          year: parseInt(match[1], 10),
-          month: parseInt(match[2], 10),
-          day: parseInt(match[3], 10),
-          hour: parseInt(match[4], 10),
-          minute: parseInt(match[5], 10),
-          second: parseInt(match[6], 10)
-        }
-      }
-      return null
-    }
-    
-    const datePartsA = getDateParts(dateStrA)
-    const datePartsB = getDateParts(dateStrB)
-    
-    // 如果无法解析日期，则使用Date对象比较
-    if (!datePartsA || !datePartsB) {
-      return new Date(dateStrB) - new Date(dateStrA)
-    }
-    
-    // 按年、月、日、时、分、秒依次比较
-    if (datePartsA.year !== datePartsB.year) return datePartsB.year - datePartsA.year
-    if (datePartsA.month !== datePartsB.month) return datePartsB.month - datePartsA.month
-    if (datePartsA.day !== datePartsB.day) return datePartsB.day - datePartsA.day
-    if (datePartsA.hour !== datePartsB.hour) return datePartsB.hour - datePartsA.hour
-    if (datePartsA.minute !== datePartsB.minute) return datePartsB.minute - datePartsA.minute
-    return datePartsB.second - datePartsA.second
-  })
+  posts.sort((a, b) => b.frontmatter.date.localeCompare(a.frontmatter.date))
   
   // 将数据写入JSON文件
   fs.writeFileSync(
@@ -305,39 +272,24 @@ function generateKnowledgeStats(knowledgeDir, publicDir, docsDir) {
   const stats = []
   
   mdFilePaths.forEach(filePath => {
-    try {
-      const content = fs.readFileSync(filePath, 'utf-8')
-      
-      // 使用gray-matter解析frontmatter
-      const { data: frontmatter, content: markdownContent } = matter(content)
-      
-      // 获取publish状态，默认为true
-      const isPublish = frontmatter.publish !== undefined ? frontmatter.publish : true
-      
-      // 只处理publish为true的文章
-      if (!isPublish) {
-        return
-      }
-      
-      // 提取日期
-      const date = extractDate(content, frontmatter)
-      
-      // 计算字数
-      const wordCount = countWord(markdownContent)
-      
-      // 获取相对路径
-      const relativePath = path.relative(docsDir, filePath).replace(/\\/g, '/')
-      
-      stats.push({
-        title: frontmatter.title || path.basename(filePath, '.md'),
-        date,
-        wordCount,
-        tags: normalizeTags(frontmatter.tags),
-        relativePath // 用于调试和文件变更检测
-      })
-    } catch (err) {
-      console.error(`处理知识笔记文件失败: ${filePath}`, err)
+    const content = fs.readFileSync(filePath, 'utf-8')
+    const { data: frontmatter, content: markdownContent } = matter(content)
+    const isPublish = frontmatter.publish !== undefined ? frontmatter.publish : true
+    if (!isPublish) {
+      return
     }
+
+    const date = extractDate(content, filePath)
+    const wordCount = countWord(markdownContent)
+    const relativePath = path.relative(docsDir, filePath).replace(/\\/g, '/')
+
+    stats.push({
+      title: frontmatter.title || path.basename(filePath, '.md'),
+      date,
+      wordCount,
+      tags: normalizeTags(frontmatter.tags),
+      relativePath // 用于调试和文件变更检测
+    })
   })
   
   // 检查是否有有效数据

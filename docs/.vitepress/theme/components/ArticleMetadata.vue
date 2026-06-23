@@ -42,11 +42,22 @@ const fetchArticleMetrics = async () => {
   pageviewCount.value = '--'
   commentCount.value = '--'
   const currentPagePath = window.location.pathname
+  let hasUpdatedPageview = false
+
+  // 快照查询与浏览量上报并行；上报返回的新计数优先于旧快照。
+  void updatePageView(currentPagePath).then((count) => {
+    if (count !== null && requestId === metricsRequestId && window.location.pathname === currentPagePath) {
+      hasUpdatedPageview = true
+      pageviewCount.value = count.toString()
+    }
+  })
 
   try {
     const metric = await fetchArticleMetric(currentPagePath)
     if (requestId !== metricsRequestId || window.location.pathname !== currentPagePath) return
-    pageviewCount.value = metric.pageviewCount.toString()
+    if (!hasUpdatedPageview) {
+      pageviewCount.value = metric.pageviewCount.toString()
+    }
     commentCount.value = metric.commentCount.toString()
   } catch (error) {
     logError('ArticleMetadata', '获取文章指标失败', error)
@@ -56,12 +67,6 @@ const fetchArticleMetrics = async () => {
     }
   }
 
-  if (requestId !== metricsRequestId || window.location.pathname !== currentPagePath) return
-  void updatePageView(currentPagePath).then((count) => {
-    if (count !== null && requestId === metricsRequestId && window.location.pathname === currentPagePath) {
-      pageviewCount.value = count.toString()
-    }
-  })
 }
 
 let pageViewUpdateTimeout: ReturnType<typeof setTimeout> | null = null

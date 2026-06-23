@@ -1,6 +1,6 @@
 ---
 title: Vue 封装逻辑函数
-date: 2025-06-18T19:46:36
+date: 2025-06-18 19:46:36
 description: 这是一篇新文章!
 publish: true
 tags:
