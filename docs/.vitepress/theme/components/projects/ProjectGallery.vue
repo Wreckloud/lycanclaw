@@ -7,6 +7,7 @@
       :href="project.link"
     >
       <div class="project-card-main">
+        <p class="project-kicker">{{ project.kicker }}</p>
         <h2>{{ project.title }}</h2>
       </div>
       <div class="project-board" aria-hidden="true">
@@ -19,12 +20,14 @@
 <script setup lang="ts">
 interface ProjectItem {
   title: string
+  kicker: string
   link: string
 }
 
 const projects: ProjectItem[] = [
   {
     title: '九宫叠阵',
+    kicker: 'Strategy Game',
     link: '/games/ultimate-tic-tac-toe'
   }
 ]
@@ -48,6 +51,15 @@ const projects: ProjectItem[] = [
   color: inherit;
   background: var(--vp-c-bg-soft);
   text-decoration: none;
+}
+
+.project-kicker {
+  margin: 0 0 0.35rem;
+  color: var(--vp-c-brand-1);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .project-card h2 {
