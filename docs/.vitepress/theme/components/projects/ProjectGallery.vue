@@ -7,9 +7,7 @@
       :href="project.link"
     >
       <div class="project-card-main">
-        <p class="project-kicker">{{ project.kicker }}</p>
         <h2>{{ project.title }}</h2>
-        <p>{{ project.description }}</p>
       </div>
       <div class="project-board" aria-hidden="true">
         <span v-for="index in 9" :key="index"></span>
@@ -21,16 +19,12 @@
 <script setup lang="ts">
 interface ProjectItem {
   title: string
-  kicker: string
-  description: string
   link: string
 }
 
 const projects: ProjectItem[] = [
   {
     title: '九宫叠阵',
-    kicker: 'Strategy Game',
-    description: '九个小棋盘彼此牵引，落子不只是抢三连，也是决定把对手送往哪里。',
     link: '/games/ultimate-tic-tac-toe'
   }
 ]
@@ -56,26 +50,10 @@ const projects: ProjectItem[] = [
   text-decoration: none;
 }
 
-.project-kicker {
-  margin: 0 0 0.35rem;
-  color: var(--vp-c-brand-1);
-  font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
 .project-card h2 {
   margin: 0;
   font-size: clamp(1.6rem, 4vw, 2.5rem);
   line-height: 1.05;
-}
-
-.project-card p {
-  max-width: 620px;
-  margin: 0.55rem 0 0;
-  color: var(--vp-c-text-2);
-  line-height: 1.55;
 }
 
 .project-board {
