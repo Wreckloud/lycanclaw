@@ -81,7 +81,7 @@ const getPlayerUrl = (): string => {
       allowfullscreen="true"
     ></iframe>
     <div v-else class="video-placeholder">
-      <div class="loading-text">视频加载中...</div>
+      <div class="loading-text">视频加载中…</div>
     </div>
   </div>
 </template>

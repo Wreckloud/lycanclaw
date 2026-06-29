@@ -56,6 +56,19 @@ const animationStarted = ref(false)
 let stopVisibilityObserver: (() => void) | null = null
 let stopTopSectionSync: (() => void) | null = null
 let stopResizeListener: (() => void) | null = null
+let animationDelayTimer: ReturnType<typeof setTimeout> | null = null
+let animationFrameId: number | null = null
+
+function clearAnimationSchedule(): void {
+  if (animationDelayTimer !== null) {
+    clearTimeout(animationDelayTimer)
+    animationDelayTimer = null
+  }
+  if (animationFrameId !== null) {
+    cancelAnimationFrame(animationFrameId)
+    animationFrameId = null
+  }
+}
 
 function formatNumber(num: number | null | undefined): string {
   if (num === undefined || num === null) return '0'
@@ -99,21 +112,24 @@ function animateNumbers() {
       stats.animatedThoughtsWords = Math.round(easeProgress * targetThoughtsWords)
       
       if (currentFrame < totalFrames) {
-        requestAnimationFrame(animate)
+        animationFrameId = requestAnimationFrame(animate)
       } else {
         stats.animatedCurrentMonthPosts = targetCurrentMonthPosts
         stats.animatedTotalPostsCount = targetTotalPostsCount
         stats.animatedThoughtsWords = targetThoughtsWords
+        animationFrameId = null
       }
     }
     
-    requestAnimationFrame(animate)
+    animationFrameId = requestAnimationFrame(animate)
   }
 }
 
 function delayedAnimateNumbers(delay = NUMBER_ANIMATION_DELAY_MS) {
   if (!animationStarted.value) {
-    setTimeout(() => {
+    clearAnimationSchedule()
+    animationDelayTimer = setTimeout(() => {
+      animationDelayTimer = null
       animateNumbers()
     }, delay)
   }
@@ -208,6 +224,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  clearAnimationSchedule()
   stopVisibilityObserver?.()
   stopVisibilityObserver = null
   stopTopSectionSync?.()
@@ -227,7 +244,7 @@ onBeforeUnmount(() => {
     
     <!-- 加载中状态：只在组件可见时显示 -->
     <div v-if="isLoading && isVisible" class="loading">
-      <p>加载中...</p>
+      <p>加载中…</p>
     </div>
     
     <!-- 错误状态：只在组件可见时显示 -->

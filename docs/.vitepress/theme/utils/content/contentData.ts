@@ -62,9 +62,5 @@ export async function fetchPublishedThoughtPosts(withBase: BasePathResolver): Pr
 }
 
 export async function fetchKnowledgeStats(withBase: BasePathResolver): Promise<KnowledgeStatRecord[]> {
-  try {
-    return await fetchJson<KnowledgeStatRecord[]>(withBase, '/knowledge-stats.json')
-  } catch {
-    return []
-  }
+  return fetchJson<KnowledgeStatRecord[]>(withBase, '/knowledge-stats.json')
 }

@@ -111,18 +111,18 @@ async function requestJson<T>(url: string): Promise<T> {
   const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
   try {
-  const response = await fetch(url, {
-    method: 'GET',
-    mode: 'cors',
-    credentials: 'omit',
-    signal: controller.signal
-  })
+    const response = await fetch(url, {
+      method: 'GET',
+      mode: 'cors',
+      credentials: 'omit',
+      signal: controller.signal
+    })
 
-  if (!response.ok) {
-    throw new Error(`请求失败: ${response.status}`)
-  }
+    if (!response.ok) {
+      throw new Error(`请求失败: ${response.status}`)
+    }
 
-  return (await response.json()) as T
+    return (await response.json()) as T
   } finally {
     window.clearTimeout(timeoutId)
   }

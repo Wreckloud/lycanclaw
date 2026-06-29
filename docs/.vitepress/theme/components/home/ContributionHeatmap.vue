@@ -171,7 +171,9 @@ function performScrollAnimation() {
   container.scrollLeft = 0
   
   // 稍微延迟后滚动到最右侧，产生动画效果
-  setTimeout(() => {
+  clearScrollAnimationTimer()
+  scrollAnimationTimer = setTimeout(() => {
+    scrollAnimationTimer = null
     const latestContainer = containerRef.value
     if (!latestContainer) return
     const targetScroll = latestContainer.scrollWidth - latestContainer.clientWidth
@@ -249,7 +251,7 @@ watch(isDark, (newVal, oldVal) => {
     chartInstance.value.setOption(getChartOption(), true)
     nextTick(() => updateScrollPosition())
   }
-}, { immediate: false });
+}, { immediate: false })
 
 // 处理窗口大小变化
 function handleResize() {
@@ -264,6 +266,13 @@ function handleResize() {
 // 保存需要清理的资源
 let cleanupObserver: (() => void) | null = null
 let wheelListener: ((event: WheelEvent) => void) | null = null
+let scrollAnimationTimer: ReturnType<typeof setTimeout> | null = null
+
+function clearScrollAnimationTimer(): void {
+  if (scrollAnimationTimer === null) return
+  clearTimeout(scrollAnimationTimer)
+  scrollAnimationTimer = null
+}
 
 async function loadAndInitHeatmap() {
   if (isRequested.value) return
@@ -339,6 +348,7 @@ onMounted(() => {
 // 组件卸载时清理资源
 onBeforeUnmount(() => {
   if (isBrowser) {
+    clearScrollAnimationTimer()
     // 清理观察器
     if (cleanupObserver) {
       cleanupObserver()
@@ -365,7 +375,7 @@ onBeforeUnmount(() => {
     
     <!-- 加载中状态：只在组件可见时显示 -->
     <div v-if="isLoading && isVisible" class="loading">
-      <p>加载中...</p>
+      <p>加载中…</p>
     </div>
     
     <!-- 错误状态：只在组件可见时显示 -->

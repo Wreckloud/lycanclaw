@@ -76,6 +76,8 @@ let scrollResetTimer: number | null = null
 let slowLoadingHintTimer: number | null = null
 let stopVisibilityObserver: (() => void) | null = null
 let stopTopSectionSync: (() => void) | null = null
+let stopCarouselListeners: Array<() => void> = []
+let isUnmounted = false
 
 const cardWidth = computed(() => {
   if (recommendedPosts.value.length === 1) return '100%'
@@ -167,6 +169,11 @@ function clearSlowLoadingHintTimer(): void {
   if (slowLoadingHintTimer === null) return
   clearTimeout(slowLoadingHintTimer)
   slowLoadingHintTimer = null
+}
+
+function cleanupCarouselListeners(): void {
+  stopCarouselListeners.forEach((stop) => stop())
+  stopCarouselListeners = []
 }
 
 function startSlowLoadingHintTimer(): void {
@@ -317,20 +324,25 @@ onMounted(async () => {
   await fetchPosts()
 
   nextTick(() => {
-    if (!carouselRef.value) return
-    useEventListener(carouselRef.value, 'touchstart', handleTouchStart)
-    useEventListener(carouselRef.value, 'touchend', handleTouchEnd)
-    useEventListener(carouselRef.value, 'mouseenter', handleMouseEnter)
-    useEventListener(carouselRef.value, 'mouseleave', handleMouseLeave)
-    useEventListener(window, 'keydown', handleKeyDown)
+    if (isUnmounted || !carouselRef.value) return
+    cleanupCarouselListeners()
+    stopCarouselListeners = [
+      useEventListener(carouselRef.value, 'touchstart', handleTouchStart),
+      useEventListener(carouselRef.value, 'touchend', handleTouchEnd),
+      useEventListener(carouselRef.value, 'mouseenter', handleMouseEnter),
+      useEventListener(carouselRef.value, 'mouseleave', handleMouseLeave),
+      useEventListener(window, 'keydown', handleKeyDown)
+    ]
     updateCurrentIndex()
   })
 })
 
 onBeforeUnmount(() => {
+  isUnmounted = true
   pauseAutoplay()
   clearInteractionResetTimer()
   clearSlowLoadingHintTimer()
+  cleanupCarouselListeners()
   stopVisibilityObserver?.()
   stopVisibilityObserver = null
   stopTopSectionSync?.()
@@ -373,7 +385,7 @@ function buildThoughtsTagUrl(tag: string): string {
 
     <!-- 加载中状态：只在组件可见时显示 -->
     <div v-if="isLoading && isVisible" class="loading">
-      <p>{{ showSlowLoadingHint ? '推荐服务响应较慢...' : '加载中...' }}</p>
+      <p>{{ showSlowLoadingHint ? '推荐服务响应较慢…' : '加载中…' }}</p>
     </div>
 
     <!-- 错误状态：只在组件可见时显示 -->

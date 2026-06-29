@@ -12,7 +12,7 @@ import {
   estimateReadMinutes,
   type ThoughtPost
 } from '../utils/content'
-import { formatDateCn } from '../utils/time'
+import { formatDateCn, parseDateInput } from '../utils/time'
 import { logError } from '../utils/logger'
 
 const isBrowser = typeof window !== 'undefined'
@@ -252,8 +252,8 @@ async function loadThoughtPosts(): Promise<void> {
     .filter((post): post is ThoughtPostSummary => post !== null)
 
   normalized.sort((a, b) => {
-    const left = new Date(a.date).getTime()
-    const right = new Date(b.date).getTime()
+    const left = parseDateInput(a.date)?.getTime() || 0
+    const right = parseDateInput(b.date)?.getTime() || 0
     if (right !== left) return right - left
     return a.title.localeCompare(b.title, 'zh-Hans-CN')
   })
@@ -312,7 +312,7 @@ function getPostExcerpt(post: ThoughtPostSummary): string {
 function normalizeFrontmatter(post: ThoughtPostSummary): NormalizedFrontmatter {
   const title = typeof post.title === 'string' && post.title.trim()
     ? post.title
-      : '未命名文章'
+    : '未命名文章'
   const date = typeof post.date === 'string' ? post.date : ''
   const tags = Array.isArray(post.tags)
     ? post.tags.filter((tag): tag is string => typeof tag === 'string' && !!tag.trim())
@@ -336,7 +336,7 @@ function onTagClick(tag: string): void {
     
     <!-- 加载中状态：只在组件可见且正在加载时显示 -->
     <div v-if="isLoading && isVisible" class="loading">
-      <p>加载中...</p>
+      <p>加载中…</p>
     </div>
     
     <!-- 错误状态：只在组件可见且有错误时显示 -->

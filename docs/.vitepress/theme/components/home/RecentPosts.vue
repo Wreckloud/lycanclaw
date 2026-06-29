@@ -111,7 +111,7 @@ function buildThoughtsTagUrl(tag: string): string {
     
     <!-- 加载中状态：只在组件可见时显示 -->
     <div v-if="isLoading && isVisible" class="loading">
-      <p>加载中...</p>
+      <p>加载中…</p>
     </div>
     
     <!-- 错误状态：只在组件可见时显示 -->
