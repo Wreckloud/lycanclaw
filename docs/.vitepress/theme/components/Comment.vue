@@ -35,6 +35,8 @@ const COMMENT_IMAGE_MAX_HEIGHT = 1280
 const COMMENT_IMAGE_QUALITY = 0.82
 const COMMENT_IMAGE_RAW_MAX_BYTES = 768 * 1024
 const COMMENT_IMAGE_COMPRESSED_MAX_BYTES = 1_500_000
+const AVATAR_FALLBACK_DELAY_MS = 800
+const avatarFallbackTimers = new Set<number>()
 
 function readFileAsDataUrl(file: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -218,18 +220,37 @@ const applyWalineDomEnhancements = () => {
   root.querySelectorAll<HTMLImageElement>(
     '.wl-user img, .wl-avatar img, img.wl-avatar, .wl-login-info img'
   ).forEach((image) => {
-    if (image.dataset.lycanAvatarReady === 'true') return
-    image.dataset.lycanAvatarReady = 'true'
     image.draggable = false
     image.referrerPolicy = 'no-referrer'
-    image.addEventListener('error', () => {
-      if (image.dataset.lycanAvatarFallback === 'true') return
-      image.dataset.lycanAvatarFallback = 'true'
-      image.src = DEFAULT_AVATAR
-    })
-    if (!image.getAttribute('src')) {
-      image.dataset.lycanAvatarFallback = 'true'
-      image.src = DEFAULT_AVATAR
+
+    if (image.dataset.lycanAvatarReady !== 'true') {
+      image.dataset.lycanAvatarReady = 'true'
+      image.addEventListener('error', () => {
+        if (isDefaultAvatarSource(image.getAttribute('src') || '')) return
+        image.dataset.lycanAvatarFallback = 'true'
+        image.src = DEFAULT_AVATAR
+      })
+    }
+
+    const source = image.getAttribute('src')?.trim() || ''
+    if (source) {
+      if (!isDefaultAvatarSource(source)) {
+        image.dataset.lycanAvatarFallback = 'false'
+      }
+      return
+    }
+
+    if (image.dataset.lycanAvatarPendingFallback !== 'true') {
+      image.dataset.lycanAvatarPendingFallback = 'true'
+      const timer = window.setTimeout(() => {
+        avatarFallbackTimers.delete(timer)
+        image.dataset.lycanAvatarPendingFallback = 'false'
+        if (!image.getAttribute('src')?.trim()) {
+          image.dataset.lycanAvatarFallback = 'true'
+          image.src = DEFAULT_AVATAR
+        }
+      }, AVATAR_FALLBACK_DELAY_MS)
+      avatarFallbackTimers.add(timer)
     }
   })
 
@@ -241,6 +262,15 @@ const applyWalineDomEnhancements = () => {
   placeholders.forEach(([selector, placeholder]) => {
     root.querySelector<HTMLInputElement>(selector)?.setAttribute('placeholder', placeholder)
   })
+}
+
+function isDefaultAvatarSource(source: string): boolean {
+  if (!source) return false
+  try {
+    return new URL(source, window.location.origin).pathname === DEFAULT_AVATAR
+  } catch {
+    return source === DEFAULT_AVATAR
+  }
 }
 
 function currentCommentHash(): string {
@@ -256,6 +286,11 @@ function clearTargetScrollFallback(): void {
   if (targetScrollFallbackTimer === null) return
   window.clearTimeout(targetScrollFallbackTimer)
   targetScrollFallbackTimer = null
+}
+
+function clearAvatarFallbackTimers(): void {
+  avatarFallbackTimers.forEach((timer) => window.clearTimeout(timer))
+  avatarFallbackTimers.clear()
 }
 
 function scrollToRequestedComment(): boolean {
@@ -326,7 +361,7 @@ const setupWalineDomWatcher = (): (() => void) => {
     detectCommentListUpdate()
     scrollToRequestedComment()
   })
-  observer.observe(root, { childList: true, subtree: true })
+  observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] })
   root.addEventListener('click', handleWalineClick, true)
   return () => {
     observer.disconnect()
@@ -348,6 +383,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   clearTargetScrollFallback()
+  clearAvatarFallbackTimers()
   window.removeEventListener('hashchange', scheduleCommentTargetFallback)
   if (cleanupThemeWatcher) {
     cleanupThemeWatcher()
