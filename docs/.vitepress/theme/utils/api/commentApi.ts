@@ -3,10 +3,7 @@
  * 提供commentApi相关的通用工具能力。
  */
 import { formatRecentCommentTime } from '../time/timeDisplayPolicy'
-import {
-  parseWalineCommentCountResponse,
-  parseWalineRecentCommentsResponse
-} from './apiResponseParser'
+import { parseWalineRecentCommentsResponse } from './apiResponseParser'
 import { logError } from '../logger'
 import { getBackendApiBase } from '../runtimePolicy'
 
@@ -18,6 +15,7 @@ const RECENT_COMMENTS_CACHE_KEY = 'lycan_recent_comments_v3'
 const RECENT_COMMENTS_CACHE_TIME_KEY = 'lycan_recent_comments_time_v3'
 const RECENT_COMMENTS_CACHE_COUNT_KEY = 'lycan_recent_comments_count_v3'
 const CACHE_EXPIRATION = 2 * 60 * 1000
+const REQUEST_TIMEOUT_MS = 5000
 export const RECENT_COMMENTS_UPDATED_EVENT = 'lycan:recent-comments-updated'
 
 export interface RecentComment {
@@ -109,13 +107,15 @@ export function notifyRecentCommentsUpdated(): void {
 }
 
 async function requestJson<T>(url: string): Promise<T> {
+  const controller = new AbortController()
+  const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+
+  try {
   const response = await fetch(url, {
     method: 'GET',
-    headers: {
-      'Content-Type': 'application/json'
-    },
     mode: 'cors',
-    credentials: 'omit'
+    credentials: 'omit',
+    signal: controller.signal
   })
 
   if (!response.ok) {
@@ -123,14 +123,13 @@ async function requestJson<T>(url: string): Promise<T> {
   }
 
   return (await response.json()) as T
+  } finally {
+    window.clearTimeout(timeoutId)
+  }
 }
 
 function buildRecentCommentsUrl(count: number): string {
   return `${getCommentEndpoint()}/recent?limit=${count}&_t=${Date.now()}`
-}
-
-function buildCommentCountUrl(path: string): string {
-  return `${getCommentEndpoint()}/count?path=${encodeURIComponent(path)}`
 }
 
 export function preloadRecentComments(count: number = 7): void {
@@ -176,25 +175,17 @@ export async function getRecentComments(
 
   pendingRequest = { count, promise: fetchPromise }
 
-  fetchPromise.finally(() => {
+  void fetchPromise.then(() => {
+    if (pendingRequest?.promise === fetchPromise) {
+      pendingRequest = null
+    }
+  }, () => {
     if (pendingRequest?.promise === fetchPromise) {
       pendingRequest = null
     }
   })
 
   return fetchPromise
-}
-
-export async function getCommentCount(path: string): Promise<number> {
-  if (!path) return 0
-
-  try {
-    const data = await requestJson<unknown>(buildCommentCountUrl(path))
-    return parseWalineCommentCountResponse(data)
-  } catch (error) {
-    logError('commentApi', '获取评论数失败', error)
-    return 0
-  }
 }
 
 export function formatCommentDate(dateString: string): string {

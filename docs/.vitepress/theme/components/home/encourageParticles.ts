@@ -41,6 +41,7 @@ let slowFrameStreak = 0
 export function queueEncourageParticleBurst(request: ParticleBurstRequest): void {
   if (typeof window === 'undefined' || typeof document === 'undefined') return
   if (document.visibilityState === 'hidden') return
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
   burstQueue.push(request)
   if (burstQueue.length > MAX_BURST_QUEUE) {

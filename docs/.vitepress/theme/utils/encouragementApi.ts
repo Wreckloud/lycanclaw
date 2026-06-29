@@ -16,31 +16,44 @@ interface ApiResponse<T> {
 export interface EncouragementSettlePayload {
   delta: number
   visitorId: string
-  path: string
-  title: string
 }
 
-async function postSettle(payload: EncouragementSettlePayload): Promise<void> {
-  const response = await fetch(`${getBackendApiBase()}/api/encouragement/settle`, {
-    method: 'POST',
-    mode: 'cors',
-    credentials: 'omit',
-    keepalive: true,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  })
+export interface EncouragementSettleResponse {
+  delta: number
+}
 
-  if (!response.ok) {
-    throw new Error(`催更结算失败: ${response.status}`)
-  }
+async function postSettle(payload: EncouragementSettlePayload): Promise<EncouragementSettleResponse> {
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), 5000)
 
-  const body = (await response.json()) as ApiResponse<unknown>
-  if (!body.success) {
-    throw new Error(body.error?.message || '催更结算失败')
+  try {
+    const response = await fetch(`${getBackendApiBase()}/api/encouragement/settle`, {
+      method: 'POST',
+      mode: 'cors',
+      credentials: 'omit',
+      keepalive: true,
+      signal: controller.signal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+
+    if (!response.ok) {
+      throw new Error(`催更结算失败: ${response.status}`)
+    }
+
+    const body = (await response.json()) as ApiResponse<EncouragementSettleResponse>
+    if (!body.success) {
+      throw new Error(body.error?.message || '催更结算失败')
+    }
+    return body.data
+  } finally {
+    window.clearTimeout(timeout)
   }
 }
 
-export function settleEncouragement(payload: EncouragementSettlePayload): Promise<void> {
+export function settleEncouragement(
+  payload: EncouragementSettlePayload
+): Promise<EncouragementSettleResponse> {
   return postSettle(payload)
 }
 

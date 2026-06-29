@@ -1,6 +1,6 @@
 /**
- * audioUi.ts：
- * 提供audioUi相关的通用工具能力。
+ * 音频界面计算工具。
+ * 提供时间格式化和进度条位置换算。
  */
 function clamp(value: number, min = 0, max = 1): number {
   return Math.max(min, Math.min(max, value))

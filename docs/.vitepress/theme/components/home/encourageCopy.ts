@@ -1,9 +1,8 @@
-export type EncourageMessageSource = 'normal' | 'combo100' | 'combo200' | 'combo300' | 'milestone'
+type EncourageMessageSource = 'normal' | 'combo100' | 'combo200' | 'combo300' | 'milestone'
 
 export interface ActiveDrawerCopy {
   message: string
   holdUntilCount: number
-  source: EncourageMessageSource
 }
 
 export interface EncourageCopyResult {
@@ -78,7 +77,7 @@ const milestoneMessages: Record<number, string> = {
 export function resolveEncourageCopy(count: number, activeCopy: ActiveDrawerCopy | null): EncourageCopyResult {
   const milestone = milestoneMessages[count]
   if (milestone) {
-    return createResult(milestone, count, 'milestone', getMilestoneHold(count))
+    return createResult(milestone, count, getMilestoneHold(count))
   }
 
   if (activeCopy && count <= activeCopy.holdUntilCount) {
@@ -92,19 +91,17 @@ export function resolveEncourageCopy(count: number, activeCopy: ActiveDrawerCopy
   const source = getPoolSource(count)
   const message = pickMessage(createMessagePool(count))
 
-  return createResult(message, count, source, getRandomHold(source))
+  return createResult(message, count, getRandomHold(source))
 }
 
 function createResult(
   message: string,
   count: number,
-  source: EncourageMessageSource,
   holdClicks: number
 ): EncourageCopyResult {
   const activeCopy = {
     message,
-    holdUntilCount: count + holdClicks,
-    source
+    holdUntilCount: count + holdClicks
   }
 
   return {

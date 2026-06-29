@@ -1,6 +1,6 @@
 /**
- * audioService.ts：
- * 提供audioService相关的通用工具能力。
+ * 浏览器全局音频服务。
+ * 持有唯一 Audio 元素并负责加载、播放、暂停、拖动和音量控制。
  */
 import audioManager from './audioManager';
 import { addCorsProxy } from '../api/apiProxyPolicy';
@@ -107,8 +107,9 @@ class AudioService {
       
       // 发送歌曲结束事件
       if (this.currentAudioId) {
-        audioManager.handlePlaybackCompleted(this.currentAudioId);
         audioManager.emit('song-ended', this.currentAudioId);
+        // 下一首决策需要读取当前来源，事件派发后再清理播放请求。
+        audioManager.handlePlaybackCompleted(this.currentAudioId);
         audioManager.emit('play-state-change', `${this.currentAudioId}:false`);
       }
     });
@@ -123,8 +124,6 @@ class AudioService {
       // 发送播放失败状态
       if (this.currentAudioId) {
         audioManager.emit('play-state-change', `${this.currentAudioId}:false`);
-        // 触发音频错误事件，让组件可以处理
-        audioManager.emit('audio-error', this.currentAudioId);
       }
     });
     
@@ -334,6 +333,15 @@ class AudioService {
     } catch (error) {
       logError('audioService', '设置播放位置时出错', error);
     }
+  }
+
+  // 只有目标歌曲仍是全局音频元素当前歌曲时，才允许修改播放进度。
+  public seekCurrentAudio(audioId: string, time: number): boolean {
+    if (!audioId || audioId !== this.currentAudioId) {
+      return false;
+    }
+    this.seek(time);
+    return true;
   }
   
   // 设置音量

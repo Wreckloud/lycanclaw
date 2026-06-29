@@ -13,7 +13,7 @@ import { syncWalineVisitorIdentity } from '../utils/visitorIdentity'
 
 // 获取当前路由和主题模式
 const route = useRoute()
-const { isDark } = useData()
+const { isDark, page } = useData()
 
 // Waline实例引用
 interface WalineInstanceLike {
@@ -30,11 +30,11 @@ let observedCommentIds = new Set<string>()
 let handledCommentHash = ''
 
 const DEFAULT_AVATAR = '/default.png'
-const ALLOWED_OAUTH_PROVIDERS = new Set(['github', 'qq'])
 const COMMENT_IMAGE_MAX_WIDTH = 1280
 const COMMENT_IMAGE_MAX_HEIGHT = 1280
 const COMMENT_IMAGE_QUALITY = 0.82
 const COMMENT_IMAGE_RAW_MAX_BYTES = 768 * 1024
+const COMMENT_IMAGE_COMPRESSED_MAX_BYTES = 1_500_000
 
 function readFileAsDataUrl(file: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -95,7 +95,7 @@ async function uploadCommentImage(file: File): Promise<string> {
   const context = canvas.getContext('2d')
 
   if (!context) {
-    return source
+    throw new Error('当前浏览器无法压缩图片')
   }
 
   canvas.width = width
@@ -103,11 +103,22 @@ async function uploadCommentImage(file: File): Promise<string> {
   context.drawImage(image, 0, 0, width, height)
 
   const blob = await canvasToBlob(canvas, 'image/webp', COMMENT_IMAGE_QUALITY)
+  if (blob.size > COMMENT_IMAGE_COMPRESSED_MAX_BYTES) {
+    throw new Error('压缩后的图片请控制在 1.5MB 以内')
+  }
   return readFileAsDataUrl(blob)
 }
 
-// 计算当前路径作为评论标识
-const commentPath = computed(() => route.path)
+function stableCommentPath(relativePath?: string): string {
+  if (!relativePath) {
+    const path = route.path.split('#')[0].split('?')[0]
+    return path.startsWith('/') ? path : `/${path}`
+  }
+  return `/${relativePath.replace(/^\//, '').replace(/\.md$/, '.html')}`
+}
+
+// Waline 的评论路径必须稳定，避免 SPA 跳转和刷新时路径编码差异导致看不到评论。
+const commentPath = computed(() => stableCommentPath(page.value.relativePath))
 /**
  * 初始化 Waline 评论系统。
  */
@@ -127,7 +138,7 @@ const initWaline = async () => {
       path: commentPath.value,
       dark: isDark.value ? 'html.dark' : false,
       meta: ['nick', 'mail', 'link'],
-      requiredMeta: [],
+      requiredMeta: ['nick'],
       pageSize: 10,
       emoji: [
         'https://cdn.jsdelivr.net/npm/@waline/emojis@1.2.0/bilibili',
@@ -135,17 +146,16 @@ const initWaline = async () => {
       imageUploader: uploadCommentImage,
       search: false,
       reaction: false,
-      pageview: '.waline-pageview-count',
       comment: true,
       texRenderer: undefined,
       locale: {
         nick: '称谓',
-        nickError: '昵称不能少于3个字符',
-        mail: '邮箱（可选）',
+        nickError: '请填写称谓',
+        mail: '邮箱',
         mailError: '请填写正确的邮件地址',
-        link: '网址（可选）',
+        link: '网址',
         optional: '可选',
-        placeholder: '行者,欲留下何言？',
+        placeholder: '行者，欲留下何言？',
         sofa: '风静人稀，尚无行者留声。',
         submit: '提交',
         reply: '回复',
@@ -201,25 +211,9 @@ const setupThemeWatcher = (): (() => void) => {
   return () => observer.disconnect()
 }
 
-const oauthProviderFromHref = (href: string): string => {
-  if (!href) return ''
-  try {
-    return new URL(href, window.location.origin).searchParams.get('type')?.toLowerCase() ?? ''
-  } catch {
-    return ''
-  }
-}
-
 const applyWalineDomEnhancements = () => {
   const root = walineRef.value
   if (!root) return
-
-  root.querySelectorAll<HTMLAnchorElement>('a[href*="oauth"]').forEach((link) => {
-    const provider = oauthProviderFromHref(link.getAttribute('href') ?? '')
-    if (provider && !ALLOWED_OAUTH_PROVIDERS.has(provider)) {
-      link.remove()
-    }
-  })
 
   root.querySelectorAll<HTMLImageElement>(
     '.wl-user img, .wl-avatar img, img.wl-avatar, .wl-login-info img'
@@ -240,9 +234,9 @@ const applyWalineDomEnhancements = () => {
   })
 
   const placeholders: Array<[string, string]> = [
-    ['.wl-header .wl-nick', '愿世人以何之称'],
-    ['.wl-header .wl-mail', '传信之途（可选，用于回应）'],
-    ['.wl-header .wl-link', '可跳转进汝之博客（可选）'],
+    ['.wl-header .wl-nick', '行者该以何名被记住'],
+    ['.wl-header .wl-mail', '用于回信归巢所循的旧路'],
+    ['.wl-header .wl-link', '通往你领地的入口'],
   ]
   placeholders.forEach(([selector, placeholder]) => {
     root.querySelector<HTMLInputElement>(selector)?.setAttribute('placeholder', placeholder)
@@ -422,15 +416,6 @@ onBeforeUnmount(() => {
   }
 }
 
-.waline-container a[href*="type=weibo"],
-.waline-container a[href*="type=twitter"],
-.waline-container a[href*="type=facebook"],
-.waline-container a[href*="type%3Dweibo"],
-.waline-container a[href*="type%3Dtwitter"],
-.waline-container a[href*="type%3Dfacebook"] {
-  display: none !important;
-}
-
 /* 适配暗黑模式 */
 .waline-container .wl-card {
   position: relative;
@@ -534,19 +519,7 @@ onBeforeUnmount(() => {
 
 .waline-container .wl-admin-actions,
 .waline-container .wl-comment-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.waline-container .wl-admin-actions button,
-.waline-container .wl-comment-status button {
-  min-width: 42px;
-  min-height: 26px;
-  padding: 3px 8px !important;
-  border: 1px solid var(--vp-c-divider) !important;
-  border-radius: 0 !important;
-  line-height: 18px;
+  display: none !important;
 }
 
 .waline-container .wl-quote {
@@ -557,7 +530,7 @@ onBeforeUnmount(() => {
 .waline-container .wl-panel {
   margin-bottom: 16px;
   border: 1px solid var(--waline-border-color) !important;
-  border-radius: 0 !important;
+  border-radius: 3px !important;
   box-shadow: none !important;
 }
 
@@ -590,7 +563,7 @@ onBeforeUnmount(() => {
 .waline-container .wl-footer .wl-action {
   padding: 4px;
   cursor: pointer;
-  border-radius: 0;
+  border-radius: 3px;
   color: var(--vp-c-text-2);
 }
 
@@ -654,7 +627,7 @@ onBeforeUnmount(() => {
   position: absolute;
   z-index: 100;
   border: 1px solid var(--waline-border-color);
-  border-radius: 0;
+  border-radius: 3px;
   background-color: var(--vp-c-bg-soft) !important;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   max-height: 300px;
@@ -665,7 +638,7 @@ onBeforeUnmount(() => {
   position: absolute;
   z-index: 100;
   border: 1px solid var(--waline-border-color);
-  border-radius: 0;
+  border-radius: 3px;
   background-color: var(--vp-c-bg-soft) !important;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   max-height: 300px;
@@ -687,7 +660,7 @@ onBeforeUnmount(() => {
 
 .waline-container .wl-emoji-item:hover {
   background-color: var(--vp-c-bg-alt) !important;
-  border-radius: 0;
+  border-radius: 3px;
 }
 
 .waline-container .wl-footer .wl-action[title="Markdown Guide"] {
@@ -706,6 +679,7 @@ onBeforeUnmount(() => {
 .waline-container .wl-input,
 .waline-container .wl-editor {
   border: none !important;
+  border-radius: 3px !important;
 }
 
 /* 响应式调整 */

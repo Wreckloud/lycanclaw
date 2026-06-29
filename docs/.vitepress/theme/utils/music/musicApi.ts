@@ -1,6 +1,6 @@
 /**
- * musicApi.ts：
- * 提供musicApi相关的通用工具能力。
+ * 音乐后端 API。
+ * 统一歌曲查询、会话播放流和歌词请求。
  */
 import { getBackendApiBase } from '../runtimePolicy'
 
@@ -17,8 +17,7 @@ export interface MusicTrackWithUrl extends MusicTrack {
   trial: boolean
 }
 
-export interface MusicQueueItem {
-  queueId: string
+export interface MusicPlaybackItem {
   id: string
   name: string
   artist: string
@@ -26,21 +25,11 @@ export interface MusicQueueItem {
   url: string
   source: string
   urlSource: string
-  priority: number
-  enqueuedAt: string
-}
-
-export interface MusicQueueSnapshot {
-  current: MusicQueueItem | null
-  queueSize: number
-  nextPreview: MusicQueueItem[]
 }
 
 export interface MusicFlowState {
   mode: 'idle' | 'random' | 'about-sequence' | 'interrupt-single'
-  current: MusicQueueItem | null
-  queueSize: number
-  nextPreview: MusicQueueItem[]
+  current: MusicPlaybackItem | null
 }
 
 export interface MusicLyricLine {
@@ -67,21 +56,14 @@ interface ApiResponse<T> {
 
 interface WeeklyRankingResponse {
   limit: number
-  uid: string
   tracks: MusicTrack[]
 }
 
-interface TrackUrlResponse {
-  id: string
+interface TrackDetailWithUrlResponse extends MusicTrack {
   url: string
   level: string
   source: string
   trial: boolean
-}
-
-interface TrackDetailWithUrlResponse extends MusicTrackWithUrl {
-  level: string
-  source: string
 }
 
 interface AboutSequenceStartRequest {
@@ -114,11 +96,19 @@ function buildUrl(path: string, params: Record<string, string | number> = {}): s
 }
 
 const PLAYBACK_SESSION_STORAGE_KEY = 'lycan:playback-session-id'
+const PLAYBACK_SESSION_PATTERN = /^[A-Za-z0-9_-]{16,96}$/
+const REQUEST_TIMEOUT_MS = 8_000
 let memoryPlaybackSessionId = ''
 
 function buildPlaybackSessionId(): string {
-  const random = Math.random().toString(36).slice(2)
+  const random = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID().replace(/-/g, '')
+    : Math.random().toString(36).slice(2) + Date.now().toString(36)
   return `lycan-${Date.now().toString(36)}-${random}`
+}
+
+function isValidPlaybackSessionId(value: string | null): value is string {
+  return value !== null && PLAYBACK_SESSION_PATTERN.test(value.trim())
 }
 
 function resolvePlaybackSessionId(): string {
@@ -126,11 +116,11 @@ function resolvePlaybackSessionId(): string {
     return buildPlaybackSessionId()
   }
   try {
-    const existing = window.localStorage.getItem(PLAYBACK_SESSION_STORAGE_KEY)
-    if (existing && existing.trim()) return existing.trim()
+    const existing = window.sessionStorage.getItem(PLAYBACK_SESSION_STORAGE_KEY)
+    if (isValidPlaybackSessionId(existing)) return existing.trim()
     const created = memoryPlaybackSessionId || buildPlaybackSessionId()
     memoryPlaybackSessionId = created
-    window.localStorage.setItem(PLAYBACK_SESSION_STORAGE_KEY, created)
+    window.sessionStorage.setItem(PLAYBACK_SESSION_STORAGE_KEY, created)
     return created
   } catch {
     if (!memoryPlaybackSessionId) memoryPlaybackSessionId = buildPlaybackSessionId()
@@ -138,51 +128,50 @@ function resolvePlaybackSessionId(): string {
   }
 }
 
-async function requestJson<T>(path: string, params: Record<string, string | number> = {}): Promise<T> {
-  const response = await fetch(buildUrl(path, params), {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Lycan-Playback-Session': resolvePlaybackSessionId()
-    }
-  })
-
-  if (!response.ok) {
-    throw new Error(`音乐后端请求失败: ${response.status}`)
+async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController()
+  const timeoutId = globalThis.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  try {
+    return await fetch(url, { ...init, signal: controller.signal })
+  } finally {
+    globalThis.clearTimeout(timeoutId)
   }
+}
 
-  const payload = (await response.json()) as ApiResponse<T>
-  if (!payload?.success || !payload.data) {
-    throw new Error(payload?.error?.message || '音乐后端返回数据异常')
+async function parseApiResponse<T>(response: Response): Promise<T> {
+  let payload: ApiResponse<T> | null = null
+  try {
+    payload = (await response.json()) as ApiResponse<T>
+  } catch {
+    throw new Error(`音乐后端返回了无效响应: ${response.status}`)
   }
-
+  if (!response.ok || !payload.success || payload.data === null || payload.data === undefined) {
+    throw new Error(payload.error?.message || `音乐后端请求失败: ${response.status}`)
+  }
   return payload.data
 }
 
+async function requestJson<T>(path: string, params: Record<string, string | number> = {}): Promise<T> {
+  const response = await fetchWithTimeout(buildUrl(path, params), { method: 'GET' })
+  return parseApiResponse<T>(response)
+}
+
 async function requestPostJson<T>(path: string, body?: object): Promise<T> {
-  const response = await fetch(buildUrl(path), {
+  const headers: Record<string, string> = {
+    'X-Lycan-Playback-Session': resolvePlaybackSessionId()
+  }
+  if (body) headers['Content-Type'] = 'application/json'
+  const response = await fetchWithTimeout(buildUrl(path), {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Lycan-Playback-Session': resolvePlaybackSessionId()
-    },
+    headers,
     body: body ? JSON.stringify(body) : undefined
   })
-  if (!response.ok) {
-    throw new Error(`音乐后端请求失败: ${response.status}`)
-  }
-  const data = (await response.json()) as ApiResponse<T>
-  if (!data.success || !data.data) {
-    throw new Error(data?.error?.message || '音乐后端返回数据异常')
-  }
-  return data.data
+  return parseApiResponse<T>(response)
 }
 
 export async function fetchWeeklyTracks(options: {
-  uid?: string
   limit?: number
   coverSize?: string
-  withTimestamp?: boolean
 } = {}): Promise<MusicTrack[]> {
   const { limit = 20, coverSize = '120y120' } = options
   const payload = await requestJson<WeeklyRankingResponse>('/api/music/ranking/weekly', { limit })
@@ -219,13 +208,6 @@ export async function fetchTrackWithUrlById(
   }
 }
 
-export async function fetchTrackUrlById(id: string): Promise<string | null> {
-  if (!id) return null
-  const payload = await requestJson<TrackUrlResponse>('/api/music/track/url', { id })
-  if (!payload?.url) return null
-  return normalizeHttps(payload.url)
-}
-
 export async function startRandomFlow(): Promise<MusicFlowState> {
   return requestPostJson<MusicFlowState>('/api/music/flow/start-random')
 }
@@ -242,10 +224,6 @@ export async function interruptSingleFlow(songId: string, source: string): Promi
 
 export async function playNextFromFlow(): Promise<MusicFlowState> {
   return requestPostJson<MusicFlowState>('/api/music/flow/next')
-}
-
-export async function fetchFlowState(): Promise<MusicFlowState> {
-  return requestJson<MusicFlowState>('/api/music/flow/state')
 }
 
 export async function stopFlow(): Promise<MusicFlowState> {

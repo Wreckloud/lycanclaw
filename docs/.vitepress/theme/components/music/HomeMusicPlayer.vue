@@ -15,19 +15,18 @@ import {
   fetchWeeklyTracks,
   type MusicFlowState,
   type MusicLyricLine,
-  type MusicQueueItem
+  type MusicPlaybackItem
 } from '../../utils/music'
 import { logError } from '../../utils/logger'
 
 const defaultCoverUrl = '/images/首页/default-cover.png'
 const UI_SYNC_DELAY_MS = 50
 const NEXT_SONG_DELAY_MS = 350
-const LYRIC_DELAY_MS = -500
+const LYRIC_ADVANCE_MS = 500
 const HOME_PLAYBACK_REQUEST = {
   source: 'home-random',
   priority: 1,
-  allowInterrupt: true,
-  resumeInterrupted: false
+  allowInterrupt: true
 } as const
 
 interface CurrentSongInfo {
@@ -138,7 +137,7 @@ function updateLyricCursor(currentTimeSec: number): void {
     return
   }
 
-  const currentMs = Math.max(0, Math.floor(currentTimeSec * 1000) - LYRIC_DELAY_MS)
+  const currentMs = Math.max(0, Math.floor(currentTimeSec * 1000) + LYRIC_ADVANCE_MS)
   let left = 0
   let right = lyricLines.value.length - 1
   let index = -1
@@ -213,7 +212,7 @@ function syncFromAudioManager(): void {
   updateLyricCursor(currentTime.value)
 }
 
-function toAudioSongInfo(item: MusicQueueItem) {
+function toAudioSongInfo(item: MusicPlaybackItem) {
   return {
     name: item.name,
     artist: item.artist,
@@ -223,7 +222,7 @@ function toAudioSongInfo(item: MusicQueueItem) {
   }
 }
 
-async function playQueueItem(item: MusicQueueItem): Promise<boolean> {
+async function playPlaybackItem(item: MusicPlaybackItem): Promise<boolean> {
   if (!item?.id) return false
 
   isLoading.value = true
@@ -258,7 +257,7 @@ async function applyFlowState(state: MusicFlowState, fallbackNext = false): Prom
     return
   }
 
-  const played = await playQueueItem(state.current)
+  const played = await playPlaybackItem(state.current)
   if (!played && fallbackNext) {
     schedule(() => {
       void playNextSong()
@@ -298,6 +297,7 @@ async function playNextSong(): Promise<void> {
 
 function stopCurrentSongPlayback(): void {
   if (!currentSongInfo.value.id) return
+  if (!isCurrentAudioLoaded()) return
   audioService.pause()
   audioManager.pauseCurrent(currentSongInfo.value.id)
 }
@@ -363,8 +363,12 @@ function handleButtonClick() {
   })
 }
 
+function isCurrentAudioLoaded(): boolean {
+  return audioService.getPlayingStatus().audioId === currentSongInfo.value.id
+}
+
 function startDrag(e: MouseEvent | TouchEvent) {
-  if (!duration.value || !showTitle.value) return
+  if (!duration.value || !showTitle.value || !isCurrentAudioLoaded()) return
 
   isDragging.value = true
   if (e.type === 'touchstart') {
@@ -406,17 +410,17 @@ function stopDrag() {
 
   if (!isDragging.value) return
   isDragging.value = false
-  audioService.seek(currentTime.value)
+  audioService.seekCurrentAudio(currentSongInfo.value.id, currentTime.value)
 }
 
 function setProgress(e: MouseEvent) {
-  if (!showTitle.value || isDragging.value) return
+  if (!showTitle.value || isDragging.value || !isCurrentAudioLoaded()) return
 
   const progressBar = progressBarRef.value || (e.currentTarget as HTMLElement)
   const percent = calculateProgressPercent(e, progressBar)
   progress.value = percent * 100
   currentTime.value = percent * duration.value
-  audioService.seek(currentTime.value)
+  audioService.seekCurrentAudio(currentSongInfo.value.id, currentTime.value)
 }
 
 const neteaseLink = computed(() => {
@@ -665,7 +669,7 @@ onUnmounted(() => {
             :class="{ 'animate-in': isVisible }"
             style="--anim-delay: 0.3s"
           >
-            只有"下一首"的播放器。<br />错过了?——等它再次路过你耳边吧，狼不回头。
+            只有「下一首」的播放器。<br />错过了？——等它再次路过你耳边吧，狼不回头。
           </p>
         </Transition>
       </div>

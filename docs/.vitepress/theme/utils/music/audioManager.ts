@@ -1,6 +1,6 @@
 /**
- * audioManager.ts：
- * 提供audioManager相关的通用工具能力。
+ * 全局音频协调器。
+ * 维护当前歌曲快照，并按播放优先级决定是否允许切换音频。
  */
 import { logError } from '../logger'
 
@@ -20,20 +20,12 @@ export interface PlaybackRequestContext {
   source?: string
   priority?: number
   allowInterrupt?: boolean
-  resumeInterrupted?: boolean
 }
 
 interface NormalizedPlaybackRequest {
   source: string
   priority: number
   allowInterrupt: boolean
-  resumeInterrupted: boolean
-}
-
-interface InterruptedPlaybackSnapshot {
-  audioId: string
-  currentTime: number
-  request: NormalizedPlaybackRequest
 }
 
 function normalizeRequest(
@@ -42,18 +34,14 @@ function normalizeRequest(
   return {
     source: request.source?.trim() || 'default',
     priority: Number.isFinite(request.priority) ? Math.max(1, Number(request.priority)) : 1,
-    allowInterrupt: request.allowInterrupt !== false,
-    resumeInterrupted: request.resumeInterrupted !== false
+    allowInterrupt: request.allowInterrupt !== false
   }
 }
 
 class AudioEventBus {
   private currentPlayingId = ''
-  private lastPlayedId = ''
   private currentSongInfo: SongInfo | null = null
   private currentRequest: NormalizedPlaybackRequest | null = null
-  private interruptedStack: InterruptedPlaybackSnapshot[] = []
-  private registeredPlayers: Set<string> = new Set()
   private listeners: Map<string, Array<(data: string) => void>> = new Map()
 
   on(event: string, callback: (data: string) => void): () => void {
@@ -78,16 +66,8 @@ class AudioEventBus {
       this.handleSongInfoUpdate(data)
     } else if (event === 'play-state-change') {
       this.handlePlayStateChange(data)
-    } else if (event === 'audio-error') {
-      this.handlePlaybackCompleted(data)
     } else if (event === 'progress-update') {
       this.handleProgressUpdate(data)
-    } else if (event === 'register-player') {
-      this.registeredPlayers.add(data)
-    } else if (event === 'unregister-player') {
-      this.registeredPlayers.delete(data)
-    } else if (event === 'player-closed') {
-      this.handlePlaybackCompleted(data)
     }
 
     const eventListeners = this.listeners.get(event)
@@ -104,7 +84,6 @@ class AudioEventBus {
 
       if (songInfo.isPlaying) {
         this.currentPlayingId = songInfo.id
-        this.lastPlayedId = songInfo.id
       }
     } catch (error) {
       logError('audioManager', '解析歌曲信息失败', error)
@@ -171,51 +150,17 @@ class AudioEventBus {
         return false
       }
 
-      this.saveInterruptedSnapshot(activeAudioId, activeRequest, audioId)
       this.emit('audio-pause', activeAudioId)
     }
 
     this.currentPlayingId = audioId
     this.currentRequest = nextRequest
-    this.lastPlayedId = audioId
     this.emit('current-audio-changed', audioId)
     return true
   }
 
-  private saveInterruptedSnapshot(
-    interruptedAudioId: string,
-    interruptedRequest: NormalizedPlaybackRequest,
-    incomingAudioId: string
-  ): void {
-    if (!interruptedRequest.resumeInterrupted) return
-    if (!this.currentSongInfo || !this.currentSongInfo.isPlaying) return
-    if (this.currentSongInfo.id !== interruptedAudioId) return
-    if (interruptedAudioId === incomingAudioId) return
-
-    const snapshot: InterruptedPlaybackSnapshot = {
-      audioId: interruptedAudioId,
-      currentTime: this.currentSongInfo.currentTime,
-      request: interruptedRequest
-    }
-
-    this.interruptedStack = this.interruptedStack.filter(item => item.audioId !== interruptedAudioId)
-    this.interruptedStack.push(snapshot)
-  }
-
-  setCurrentPlaying(audioId: string): void {
-    this.requestPlayback(audioId, {
-      source: 'legacy',
-      priority: 1,
-      allowInterrupt: true,
-      resumeInterrupted: false
-    })
-  }
-
   pauseCurrent(audioId?: string): void {
     if (!audioId || audioId === this.currentPlayingId) {
-      if (this.currentPlayingId) {
-        this.lastPlayedId = this.currentPlayingId
-      }
       this.currentPlayingId = ''
       this.currentRequest = null
 
@@ -229,7 +174,6 @@ class AudioEventBus {
     this.currentPlayingId = ''
     this.currentRequest = null
     this.currentSongInfo = null
-    this.interruptedStack = []
   }
 
   handlePlaybackCompleted(audioId: string): void {
@@ -241,25 +185,6 @@ class AudioEventBus {
       if (this.currentSongInfo?.id === audioId) {
         this.currentSongInfo.isPlaying = false
       }
-    }
-
-    this.restoreInterruptedPlayback(audioId)
-  }
-
-  private restoreInterruptedPlayback(completedAudioId: string): void {
-    while (this.interruptedStack.length > 0) {
-      const snapshot = this.interruptedStack.pop()
-      if (!snapshot) return
-      if (snapshot.audioId === completedAudioId) continue
-      if (snapshot.audioId === this.currentPlayingId) continue
-
-      const payload = JSON.stringify({
-        audioId: snapshot.audioId,
-        currentTime: snapshot.currentTime,
-        request: snapshot.request
-      })
-      this.emit('resume-playback', payload)
-      return
     }
   }
 
@@ -276,10 +201,6 @@ class AudioEventBus {
     return this.currentPlayingId
   }
 
-  getLastPlayedId(): string {
-    return this.lastPlayedId
-  }
-
   getCurrentSongInfo(): SongInfo | null {
     return this.currentSongInfo
   }
@@ -292,18 +213,6 @@ class AudioEventBus {
     if (!this.currentSongInfo) return
     this.emit('song-info-update', JSON.stringify(this.currentSongInfo))
     this.emit('play-state-change', `${this.currentSongInfo.id}:${this.currentSongInfo.isPlaying}`)
-  }
-
-  registerPlayer(audioId: string): void {
-    this.emit('register-player', audioId)
-  }
-
-  unregisterPlayer(audioId: string): void {
-    this.emit('unregister-player', audioId)
-  }
-
-  getRegisteredPlayers(): string[] {
-    return Array.from(this.registeredPlayers)
   }
 }
 

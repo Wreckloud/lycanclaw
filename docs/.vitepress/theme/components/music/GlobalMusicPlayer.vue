@@ -30,7 +30,7 @@ const DRAG_CANCEL_THRESHOLD = 8
 const COVER_GESTURE_THRESHOLD = 6
 const NAV_SAFE_TOP = 65
 const DEFAULT_VOLUME = 50
-const LYRIC_DELAY_MS = -500
+const LYRIC_ADVANCE_MS = 500
 const VOLUME_STORAGE_KEY = 'lycan:global-player-volume'
 const POSITION_STORAGE_KEY = 'lycan:global-player-position'
 const RESUME_STORAGE_KEY = 'lycan:global-player-resume-snapshot'
@@ -48,6 +48,7 @@ const COVER_GESTURE_MODE_CHANGE_GUARD_MS = 280
 
 type PanelMode = 'immersive' | 'collapsed' | 'expanded'
 type PlayerSide = 'left'
+type PointerPoint = { x: number; y: number }
 
 interface ResumeSnapshot {
   version: 1
@@ -102,6 +103,7 @@ let scrollHandler: (() => void) | null = null
 let scrollRafId: number | null = null
 let lastScrollY = 0
 let downwardScrollDistance = 0
+let lyricRequestSequence = 0
 
 let isDraggingPanel = false
 let panelPointerOffsetX = 0
@@ -112,12 +114,12 @@ let suppressClickUntil = 0
 let isPendingControlPress = false
 let controlPressSource: 'mouse' | 'touch' | 'none' = 'none'
 let controlPressMoved = false
-let controlPressPoint = { x: 0, y: 0 }
-let controlLastPoint = { x: 0, y: 0 }
+let controlPressPoint: PointerPoint = { x: 0, y: 0 }
+let controlLastPoint: PointerPoint = { x: 0, y: 0 }
 let isCoverGestureActive = false
 let coverGestureMode: 'idle' | 'volume' = 'idle'
-let coverStartPoint = { x: 0, y: 0 }
-let coverLastPoint = { x: 0, y: 0 }
+let coverStartPoint: PointerPoint = { x: 0, y: 0 }
+let coverLastPoint: PointerPoint = { x: 0, y: 0 }
 let coverLastTs = 0
 let suppressCoverGestureUntil = 0
 let playbackToggleLocked = false
@@ -243,7 +245,8 @@ function clampPanelYToViewport(nextY: number, mode: PanelMode): number {
   return Math.min(Math.max(nextY, minY), maxY)
 }
 
-function clampPanelPosition(nextX: number, nextY: number, mode: PanelMode): { x: number; y: number } {
+function clampPanelPosition(nextY: number, mode: PanelMode): PointerPoint {
+  // 悬浮播放器固定贴左侧，只保存纵向位置，避免移动端遮挡正文。
   return {
     x: PANEL_GAP,
     y: clampPanelYToViewport(nextY, mode)
@@ -285,7 +288,7 @@ function loadPanelPosition(mode: PanelMode): void {
 
   try {
     const parsed = JSON.parse(raw) as { y?: number }
-    const clamped = clampPanelPosition(PANEL_GAP, Number(parsed.y ?? PANEL_GAP), mode)
+    const clamped = clampPanelPosition(Number(parsed.y ?? PANEL_GAP), mode)
     position.value = { x: PANEL_GAP, y: clamped.y, side: 'left' }
   } catch {
     const size = getPanelSize(mode)
@@ -295,14 +298,14 @@ function loadPanelPosition(mode: PanelMode): void {
 }
 
 function ensurePanelInViewport(animate = true): void {
-  const clamped = clampPanelPosition(PANEL_GAP, position.value.y, panelMode.value)
+  const clamped = clampPanelPosition(position.value.y, panelMode.value)
   if (animate) animatePanelSnap()
   position.value = { x: PANEL_GAP, y: clamped.y, side: 'left' }
   savePanelPosition()
 }
 
 function snapToHorizontalEdge(): void {
-  const clamped = clampPanelPosition(PANEL_GAP, position.value.y, panelMode.value)
+  const clamped = clampPanelPosition(position.value.y, panelMode.value)
   animatePanelSnap()
   position.value = {
     x: PANEL_GAP,
@@ -312,11 +315,11 @@ function snapToHorizontalEdge(): void {
   savePanelPosition()
 }
 
-function pointerFromMouse(event: MouseEvent): { x: number; y: number } {
+function pointerFromMouse(event: MouseEvent): PointerPoint {
   return { x: event.clientX, y: event.clientY }
 }
 
-function pointerFromTouch(event: TouchEvent): { x: number; y: number } | null {
+function pointerFromTouch(event: TouchEvent): PointerPoint | null {
   const touch = event.touches?.[0] || event.changedTouches?.[0]
   if (!touch) return null
   return { x: touch.clientX, y: touch.clientY }
@@ -426,31 +429,27 @@ function playbackRequestBySource(source: string | undefined) {
     return {
       source: 'home-random',
       priority: 1,
-      allowInterrupt: true,
-      resumeInterrupted: false
+      allowInterrupt: true
     }
   }
   if (source === 'about-ranking') {
     return {
       source: 'about-ranking',
       priority: 2,
-      allowInterrupt: true,
-      resumeInterrupted: false
+      allowInterrupt: true
     }
   }
   if (source === 'interrupt-single') {
     return {
       source: 'interrupt-single',
       priority: 3,
-      allowInterrupt: true,
-      resumeInterrupted: false
+      allowInterrupt: true
     }
   }
   return {
     source: source || 'global-player',
     priority: 3,
-    allowInterrupt: true,
-    resumeInterrupted: false
+    allowInterrupt: true
   }
 }
 
@@ -460,7 +459,7 @@ function updateLyricCursor(currentTimeSec: number): void {
     return
   }
 
-  const currentMs = Math.max(0, Math.floor(currentTimeSec * 1000) - LYRIC_DELAY_MS)
+  const currentMs = Math.max(0, Math.floor(currentTimeSec * 1000) + LYRIC_ADVANCE_MS)
   let left = 0
   let right = lyricLines.value.length - 1
   let index = -1
@@ -479,6 +478,7 @@ function updateLyricCursor(currentTimeSec: number): void {
 }
 
 async function loadLyricForCurrentSong(songId: string): Promise<void> {
+  const requestSequence = ++lyricRequestSequence
   const targetId = normalizeSongId(songId)
   lyricLines.value = []
   currentLyricIndex.value = -1
@@ -487,6 +487,10 @@ async function loadLyricForCurrentSong(songId: string): Promise<void> {
   try {
     const lyric = await fetchTrackLyric(targetId)
     if (!lyric?.hasLyric || !lyric.lines.length) {
+      return
+    }
+    // 切歌过程中旧请求可能晚返回，必须确认仍是当前歌曲。
+    if (requestSequence !== lyricRequestSequence || normalizeSongId(currentSong.value.id) !== targetId) {
       return
     }
     lyricLines.value = lyric.lines
@@ -754,8 +758,7 @@ function togglePlay(): void {
   const requestContext = audioManager.getCurrentRequest() ?? {
     source: 'global-player',
     priority: 3,
-    allowInterrupt: true,
-    resumeInterrupted: false
+    allowInterrupt: true
   }
 
   void audioService.play(
@@ -772,6 +775,10 @@ function togglePlay(): void {
     if (error instanceof Error && error.message === 'AUDIO_BUSY') return
     logError('GlobalMusicPlayer', '恢复播放失败', error)
   })
+}
+
+function isCurrentAudioLoaded(): boolean {
+  return audioService.getPlayingStatus().audioId === currentSong.value.id
 }
 
 function expandPanel(): void {
@@ -824,7 +831,7 @@ function onWindowScroll(): void {
   scrollRafId = requestAnimationFrame(handleReadingScroll)
 }
 
-function beginPanelDragFromPoint(point: { x: number; y: number }, source: 'mouse' | 'touch'): void {
+function beginPanelDragFromPoint(point: PointerPoint, source: 'mouse' | 'touch'): void {
   isDraggingPanel = true
   isPanelDragging.value = true
   draggedInGesture = false
@@ -845,9 +852,8 @@ function beginPanelDragFromPoint(point: { x: number; y: number }, source: 'mouse
 
 function onPanelDragMouseMove(event: MouseEvent): void {
   if (!isDraggingPanel) return
-  const nextX = event.clientX - panelPointerOffsetX
   const nextY = event.clientY - panelPointerOffsetY
-  const clamped = clampPanelPosition(nextX, nextY, panelMode.value)
+  const clamped = clampPanelPosition(nextY, panelMode.value)
   position.value = { ...position.value, x: clamped.x, y: clamped.y }
   draggedInGesture = true
 }
@@ -857,9 +863,8 @@ function onPanelDragTouchMove(event: TouchEvent): void {
   const pointer = pointerFromTouch(event)
   if (!pointer) return
   preventCancelableDefault(event)
-  const nextX = pointer.x - panelPointerOffsetX
   const nextY = pointer.y - panelPointerOffsetY
-  const clamped = clampPanelPosition(nextX, nextY, panelMode.value)
+  const clamped = clampPanelPosition(nextY, panelMode.value)
   position.value = { ...position.value, x: clamped.x, y: clamped.y }
   draggedInGesture = true
 }
@@ -899,7 +904,7 @@ function resetPendingControlPress(): void {
   controlPressSource = 'none'
 }
 
-function beginPendingControlPress(point: { x: number; y: number }, source: 'mouse' | 'touch'): void {
+function beginPendingControlPress(point: PointerPoint, source: 'mouse' | 'touch'): void {
   resetPendingControlPress()
   isPendingControlPress = true
   controlPressSource = source
@@ -917,7 +922,7 @@ function beginPendingControlPress(point: { x: number; y: number }, source: 'mous
   document.addEventListener('touchend', onControlPressTouchEnd)
 }
 
-function controlPressDistance(next: { x: number; y: number }): number {
+function controlPressDistance(next: PointerPoint): number {
   const dx = next.x - controlPressPoint.x
   const dy = next.y - controlPressPoint.y
   return Math.hypot(dx, dy)
@@ -1026,7 +1031,7 @@ function finishCoverGesture(source: 'mouse' | 'touch', shouldToggleWhenIdle = tr
   syncRotationLoop()
 }
 
-function onCoverGestureMove(point: { x: number; y: number }, nowTs: number, preventTouchDefault: () => void): void {
+function onCoverGestureMove(point: PointerPoint, nowTs: number, preventTouchDefault: () => void): void {
   if (!isCoverGestureActive) return
 
   const deltaX = Math.abs(point.x - coverStartPoint.x)
@@ -1111,15 +1116,15 @@ function onCoverTouchStart(event: TouchEvent): void {
 }
 
 function setProgress(event: MouseEvent): void {
-  if (!currentSong.value.id || !currentSong.value.duration) return
+  if (!currentSong.value.id || !currentSong.value.duration || !isCurrentAudioLoaded()) return
   const progressBar = progressBarRef.value ?? (event.currentTarget as HTMLElement | null)
   if (!progressBar) return
   const percent = calculateProgressPercent(event, progressBar)
-  audioService.seek(percent * currentSong.value.duration)
+  audioService.seekCurrentAudio(currentSong.value.id, percent * currentSong.value.duration)
 }
 
 function startProgressDrag(event: MouseEvent | TouchEvent): void {
-  if (!currentSong.value.id || !currentSong.value.duration) return
+  if (!currentSong.value.id || !currentSong.value.duration || !isCurrentAudioLoaded()) return
   isDraggingProgress.value = true
 
   if (event.type === 'touchstart') {
@@ -1156,7 +1161,7 @@ function stopProgressDrag(): void {
   if (!isDraggingProgress.value || !currentSong.value.duration) return
   isDraggingProgress.value = false
   const targetTime = (currentSong.value.progress / 100) * currentSong.value.duration
-  audioService.seek(targetTime)
+  audioService.seekCurrentAudio(currentSong.value.id, targetTime)
 }
 
 function setupEventListeners(): void {
@@ -1229,7 +1234,7 @@ function setupEventListeners(): void {
     audioManager.on('current-audio-changed', id => {
       if (!id || id === currentSong.value.id) return
       const info = audioManager.getCurrentSongInfo()
-      if (!info) return
+      if (!info || info.id !== id) return
       applySongInfo(info)
       if (panelMode.value !== 'expanded' && panelMode.value !== 'immersive') {
         panelMode.value = defaultModeByDevice()

@@ -35,7 +35,7 @@ const INDEX_PAGE_TITLES = new Map([
 ])
 
 interface CommentContentPart {
-  type: 'text' | 'emoji'
+  type: 'text' | 'emoji' | 'image'
   value: string
   alt?: string
 }
@@ -136,40 +136,81 @@ function appendTextPart(parts: CommentContentPart[], value: string): void {
   parts.push({ type: 'text', value: text })
 }
 
-function isSafeImageSource(value: string): boolean {
+function stripInlineMarkdown(value: string): string {
+  return value
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\[([^\]]+)]\([^)]+\)/g, '$1')
+    .replace(/(\*\*|__)(.*?)\1/g, '$2')
+    .replace(/(\*|_)(.*?)\1/g, '$2')
+    .replace(/~~(.*?)~~/g, '$1')
+}
+
+function appendPreviewTextPart(parts: CommentContentPart[], value: string): void {
+  appendTextPart(parts, stripInlineMarkdown(value))
+}
+
+function isTrustedEmojiSource(value: string): boolean {
   try {
     const url = new URL(value, window.location.origin)
-    return url.protocol === 'http:' || url.protocol === 'https:'
+    if (url.origin === window.location.origin) return true
+    return url.hostname === 'cdn.jsdelivr.net'
+      && url.pathname.startsWith('/npm/@waline/emojis@')
   } catch {
     return false
   }
 }
 
+function appendImagePart(parts: CommentContentPart[], source: string, alt: string): void {
+  if (source && isTrustedEmojiSource(source)) {
+    parts.push({ type: 'emoji', value: source, alt })
+    return
+  }
+  parts.push({ type: 'image', value: '图片', alt: alt || '图片' })
+}
+
+function appendMarkdownPreviewParts(parts: CommentContentPart[], value: string): void {
+  const imagePattern = /!\[([^\]]*)](?:\(([^)\s]+)(?:\s+["'][^"']*["'])?\))?/g
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+
+  while ((match = imagePattern.exec(value)) !== null) {
+    appendPreviewTextPart(parts, value.slice(lastIndex, match.index))
+    appendImagePart(parts, match[2]?.trim() || '', match[1]?.trim() || '图片')
+    lastIndex = match.index + match[0].length
+  }
+
+  appendPreviewTextPart(parts, value.slice(lastIndex))
+}
+
 function parseCommentContent(comment: RecentComment): CommentContentPart[] {
   if (!isBrowser || !comment.commentHtml) {
-    return comment.comment ? [{ type: 'text', value: comment.comment }] : []
+    const fallbackParts: CommentContentPart[] = []
+    appendMarkdownPreviewParts(fallbackParts, comment.comment || '')
+    return fallbackParts
   }
 
   const root = document.createElement('div')
-  root.innerHTML = comment.commentHtml
+  // 先把图片地址改成普通数据属性，解析过程中不会触发外部资源请求。
+  root.innerHTML = comment.commentHtml.replace(
+    /\ssrc\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi,
+    ' data-lycan-src=$1'
+  ).replace(
+    /\ssrcset\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi,
+    ''
+  )
   const parts: CommentContentPart[] = []
 
   const visit = (node: Node): void => {
     if (node.nodeType === Node.TEXT_NODE) {
-      appendTextPart(parts, node.textContent || '')
+      appendMarkdownPreviewParts(parts, node.textContent || '')
       return
     }
     if (!(node instanceof HTMLElement)) return
 
     if (node.tagName === 'IMG') {
-      const src = node.getAttribute('src')?.trim() || ''
-      if (src && isSafeImageSource(src)) {
-        parts.push({
-          type: 'emoji',
-          value: src,
-          alt: node.getAttribute('alt')?.trim() || '评论表情'
-        })
-      }
+      const source = node.getAttribute('data-lycan-src')?.trim() || ''
+      const alt = node.getAttribute('alt')?.trim() || '表情'
+      appendImagePart(parts, source, alt)
       return
     }
 
@@ -177,9 +218,11 @@ function parseCommentContent(comment: RecentComment): CommentContentPart[] {
   }
 
   root.childNodes.forEach(visit)
-  return parts.length > 0
-    ? parts
-    : (comment.comment ? [{ type: 'text', value: comment.comment }] : [])
+  if (parts.length > 0) return parts
+
+  const fallbackParts: CommentContentPart[] = []
+  appendMarkdownPreviewParts(fallbackParts, comment.comment || '')
+  return fallbackParts
 }
 
 async function loadComments(forceRefresh = false): Promise<void> {
@@ -299,12 +342,19 @@ function handleCommentsUpdated(): void {
             >
               <span v-if="part.type === 'text'">{{ part.value }}</span>
               <img
-                v-else
+                v-else-if="part.type === 'emoji'"
                 class="comment-emoji"
                 :src="part.value"
                 :alt="part.alt"
                 loading="lazy"
+                referrerpolicy="no-referrer"
               />
+              <span
+                v-else
+                class="comment-image-placeholder"
+                aria-label="评论图片"
+                :title="part.alt || '图片'"
+              >[图片]</span>
             </template>
           </div>
         </div>
@@ -537,13 +587,21 @@ function handleCommentsUpdated(): void {
   -webkit-box-orient: vertical;
 }
 
+.comment-image-placeholder {
+  display: inline-block;
+  margin: 0 0.16em;
+  padding: 0 0.32em;
+  color: var(--vp-c-text-2);
+  background: var(--vp-c-bg-soft);
+  font-size: 0.9em;
+}
+
 .comment-emoji {
   display: inline-block;
-  height: 1.45em;
-  max-height: 1.45em;
-  vertical-align: text-bottom;
   width: auto;
+  height: 1.45em;
   margin: 0 0.12em;
+  vertical-align: text-bottom;
   object-fit: contain;
 }
 

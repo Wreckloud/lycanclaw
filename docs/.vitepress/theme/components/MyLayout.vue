@@ -56,7 +56,7 @@ const shouldShowPostTitle = computed(() => !frontmatter.value.hideTitle)
     
     <!-- 评论区域 -->
     <template #doc-after>
-      <Comment v-if="shouldShowComment" />
+      <Comment v-if="shouldShowComment" :key="page.relativePath" />
     </template>
 
     <!-- 页脚数据面板 -->

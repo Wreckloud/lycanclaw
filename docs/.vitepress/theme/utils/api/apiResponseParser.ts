@@ -18,13 +18,6 @@ export function parseWalineRecentCommentsResponse<T = unknown>(payload: unknown)
   return Array.isArray(envelope.data) ? (envelope.data as T[]) : []
 }
 
-// 解析评论数响应数据。
-export function parseWalineCommentCountResponse(payload: unknown): number {
-  if (!payload || typeof payload !== 'object') return 0
-  const envelope = payload as ApiResponseEnvelope<unknown>
-  return typeof envelope.data === 'number' ? envelope.data : 0
-}
-
 // 解析阅读量响应数据。
 export function parseWalinePageViewResponse(payload: unknown): number {
   if (!payload || typeof payload !== 'object') return 0

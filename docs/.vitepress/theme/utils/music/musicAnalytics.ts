@@ -21,17 +21,20 @@ interface ActiveListen {
   listenedMs: number
   durationMs: number
   playingSince: number | null
+  lastSubmittedMs: number
 }
 
 let activeListen: ActiveListen | null = null
 
-function createSessionId(audioId: string): string {
-  const random = Math.random().toString(36).slice(2, 10)
-  return `${audioId}-${Date.now().toString(36)}-${random}`
+function createSessionId(): string {
+  const random = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID().replace(/-/g, '')
+    : Math.random().toString(36).slice(2) + Date.now().toString(36)
+  return `listen-${random}`
 }
 
 function normalizeSongId(audioId: string): string {
-  return audioId.replace(/^(netease|url|player)-/, '')
+  return audioId.replace(/^(netease|url|player)-/, '').slice(0, 64)
 }
 
 function accruePlayingTime(): void {
@@ -62,6 +65,8 @@ function payload(completed: boolean) {
 function settle(completed = false, beacon = false): void {
   const body = payload(completed)
   if (!body || body.listenedMs <= 0) return
+  if (!completed && activeListen && body.listenedMs <= activeListen.lastSubmittedMs) return
+  if (activeListen) activeListen.lastSubmittedMs = body.listenedMs
   const url = `${getBackendApiBase()}/api/music/analytics/settle`
   if (beacon && navigator.sendBeacon) {
     navigator.sendBeacon(url, new Blob([JSON.stringify(body)], { type: 'application/json' }))
@@ -83,7 +88,7 @@ function startOrUpdateListen(info: SongInfo): void {
     settle(false)
     const request = audioManager.getCurrentRequest()
     activeListen = {
-      listenSessionId: createSessionId(info.id),
+      listenSessionId: createSessionId(),
       audioId: info.id,
       songId: normalizeSongId(info.id),
       songName: info.name,
@@ -93,7 +98,8 @@ function startOrUpdateListen(info: SongInfo): void {
       pagePath: window.location.pathname,
       listenedMs: 0,
       durationMs: Math.max(0, info.duration * 1000),
-      playingSince: info.isPlaying ? Date.now() : null
+      playingSince: info.isPlaying ? Date.now() : null,
+      lastSubmittedMs: 0
     }
     return
   }

@@ -240,7 +240,6 @@ onBeforeUnmount(() => {
       <div class="stats-grid">
         <div class="encourage-widget-container" style="--anim-delay: 0.1s">
           <encourage-widget 
-            :post-count="stats.currentMonthPosts" 
             :animated-count="stats.animatedCurrentMonthPosts"
           />
         </div>

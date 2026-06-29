@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * SimpleMusicPlayer.vue：
- * 定义SimpleMusicPlayer组件的交互与展示逻辑。
+ * 文章与关于页的内嵌单曲播放器。
+ * 复用全局音频元素，并按来源接入后端播放流。
  */
 
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -14,7 +14,8 @@ import {
   interruptSingleFlow,
   startAboutSequenceFlow,
   calculateProgressPercent,
-  formatAudioTime
+  formatAudioTime,
+  type MusicFlowState
 } from '../../utils/music'
 import { logError } from '../../utils/logger'
 import type { SongInfo } from '../../utils/music'
@@ -43,7 +44,7 @@ const PLAY_TOGGLE_DEBOUNCE_MS = 200
 
 const props = withDefaults(defineProps<Props>(), {
   name: '',
-  artist: '未知艺术家',
+  artist: '未知歌手',
   cover: '',
   url: '',
   autoplay: false,
@@ -94,8 +95,7 @@ const neteaseLink = computed(() => (
 const playbackRequest = computed(() => ({
   source: props.playbackSource,
   priority: props.playbackPriority,
-  allowInterrupt: props.allowInterrupt,
-  resumeInterrupted: false
+  allowInterrupt: props.allowInterrupt
 }))
 
 function playbackRequestBySource(source: string | undefined) {
@@ -103,32 +103,28 @@ function playbackRequestBySource(source: string | undefined) {
     return {
       source: 'home-random',
       priority: 1,
-      allowInterrupt: true,
-      resumeInterrupted: false
+      allowInterrupt: true
     }
   }
   if (source === 'about-ranking') {
     return {
       source: 'about-ranking',
       priority: 2,
-      allowInterrupt: true,
-      resumeInterrupted: false
+      allowInterrupt: true
     }
   }
   if (source === 'article-embed') {
     return {
       source: 'article-embed',
       priority: 3,
-      allowInterrupt: true,
-      resumeInterrupted: false
+      allowInterrupt: true
     }
   }
   if (source === 'interrupt-single') {
     return {
       source: 'interrupt-single',
       priority: 3,
-      allowInterrupt: true,
-      resumeInterrupted: false
+      allowInterrupt: true
     }
   }
   return playbackRequest.value
@@ -184,8 +180,12 @@ function pausePlay(): void {
   emitPlayState(false)
 }
 
+function isCurrentAudioLoaded(): boolean {
+  return audioService.getPlayingStatus().audioId === audioId.value
+}
+
 function resetProgress(): void {
-  audioService.seek(0)
+  audioService.seekCurrentAudio(audioId.value, 0)
   resetVisualProgress()
 }
 
@@ -203,7 +203,7 @@ function updateProgressFromTouch(event: TouchEvent): void {
 }
 
 function startDrag(event: MouseEvent | TouchEvent): void {
-  if (!isAudioReady.value) return
+  if (!isAudioReady.value || !isCurrentAudioLoaded()) return
   isDragging.value = true
 
   if (event.type === 'touchstart') {
@@ -219,19 +219,19 @@ function startDrag(event: MouseEvent | TouchEvent): void {
 }
 
 function stopDrag(): void {
+  clearDragListeners()
   if (!isDragging.value) return
   isDragging.value = false
-  audioService.seek(currentTime.value)
-  clearDragListeners()
+  audioService.seekCurrentAudio(audioId.value, currentTime.value)
 }
 
 function setProgress(event: MouseEvent): void {
-  if (!isAudioReady.value || isDragging.value) return
+  if (!isAudioReady.value || isDragging.value || !isCurrentAudioLoaded()) return
   const progressBar = progressBarRef.value ?? (event.currentTarget as HTMLElement | null)
   if (!progressBar) return
   const percent = calculateProgressPercent(event, progressBar)
   setCurrentProgress(percent)
-  audioService.seek(currentTime.value)
+  audioService.seekCurrentAudio(audioId.value, currentTime.value)
 }
 
 function retryLoadAudio(): void {
@@ -253,7 +253,7 @@ async function fetchNeteaseMusicInfo(id: string): Promise<boolean> {
 
     songInfo.value = {
       name: track.name,
-      artist: track.artist || '未知艺术家',
+      artist: track.artist || '未知歌手',
       cover: track.cover,
       url: track.url,
       urlSource: track.urlSource
@@ -342,18 +342,7 @@ function togglePlay(): void {
   }, PLAY_TOGGLE_DEBOUNCE_MS)
 }
 
-async function playFromFlowState(state: {
-  mode?: string
-  current: {
-    id: string
-    name: string
-    artist: string
-    cover: string
-    url: string
-    source: string
-    urlSource?: string
-  } | null
-}): Promise<void> {
+async function playFromFlowState(state: MusicFlowState): Promise<void> {
   if (!state.current) {
     isPlaying.value = false
     emitPlayState(false)
@@ -451,7 +440,7 @@ function setupEventListeners(): void {
     if (id !== audioId.value) return
     const time = Number.parseFloat(timeStr)
     if (Number.isNaN(time)) return
-    audioService.seek(time)
+    if (!audioService.seekCurrentAudio(audioId.value, time)) return
     currentTime.value = time
     progress.value = duration.value > 0 ? (time / duration.value) * 100 : 0
   }))
@@ -490,34 +479,6 @@ function setupEventListeners(): void {
     }
   }))
 
-  unsubscribers.push(audioManager.on('resume-playback', payload => {
-    try {
-      const parsed = JSON.parse(payload) as {
-        audioId?: string
-        currentTime?: number
-      }
-      if (!parsed.audioId || parsed.audioId !== audioId.value) return
-      if (!songInfo.value.url) return
-
-      const resumeTime = typeof parsed.currentTime === 'number'
-        ? Math.max(0, parsed.currentTime)
-        : currentTime.value
-
-      void audioService.play(audioId.value, songInfo.value, resumeTime, playbackRequest.value)
-        .then(() => {
-          isPlaying.value = true
-          sendSongInfoToGlobalPlayer()
-        })
-        .catch(error => {
-          if (error instanceof Error && error.message === 'PLAYBACK_DENIED') {
-            return
-          }
-          logError('SimpleMusicPlayer', '恢复被打断歌曲失败', error)
-        })
-    } catch (error) {
-      logError('SimpleMusicPlayer', '解析恢复播放事件失败', error)
-    }
-  }))
 }
 
 onMounted(() => {
@@ -536,7 +497,6 @@ onMounted(() => {
     stopVisibilityObserver.value = observer.stop
   }
 
-  audioManager.registerPlayer(audioId.value)
   setupEventListeners()
 
   const currentSongInfo = audioManager.getCurrentSongInfo()
@@ -557,7 +517,6 @@ onUnmounted(() => {
   clearDragListeners()
   stopVisibilityObserver.value?.()
   unsubscribers.forEach(unsubscribe => unsubscribe())
-  audioManager.unregisterPlayer(audioId.value)
 })
 
 watch(

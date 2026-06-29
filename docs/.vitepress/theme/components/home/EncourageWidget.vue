@@ -1,11 +1,9 @@
 <script setup lang="ts">
 /**
- * EncourageWidget.vue：
- * 定义EncourageWidget组件的交互与展示逻辑。
+ * 首页催更组件：展示本月更新数，并将连续点击按固定时间窗口批量结算。
  */
 
-import { ref, onMounted, onUnmounted, watch } from 'vue'
-import { useDebounceFn } from '@vueuse/core'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { logError } from '../../utils/logger'
 import { beaconSettleEncouragement, settleEncouragement } from '../../utils/encouragementApi'
 import { getVisitorId } from '../../utils/visitorIdentity'
@@ -16,7 +14,7 @@ import {
 import { resolveEncourageCopy, type ActiveDrawerCopy } from './encourageCopy'
 import { disposeEncourageParticles, queueEncourageParticleBurst } from './encourageParticles'
 
-type PointerEventLike = MouseEvent | TouchEvent
+type ActivationEvent = MouseEvent | TouchEvent | KeyboardEvent
 type TimerHandle = ReturnType<typeof setTimeout>
 type TimerKey = 'drawer' | 'comboReset' | 'hintDisplay' | 'hintAutoClose' | 'observerSetup'
 
@@ -37,18 +35,9 @@ interface ClientPoint {
   y: number
 }
 
-const props = withDefaults(
-  defineProps<{
-    postCount?: number
-    animatedCount?: number
-  }>(),
-  {
-    postCount: 0,
-    animatedCount: 0
-  }
-)
-
-const internalAnimatedCount = ref(0)
+const props = defineProps<{
+  animatedCount: number
+}>()
 const DRAWER_CLOSE_MS = 3000
 const COMBO_RESET_MS = 3000
 const HINT_DISPLAY_DELAY_S = 20
@@ -75,14 +64,7 @@ const isHovered = ref(false)
 
 const activeMessages = ref<FloatingMessage[]>([])
 let messageIdCounter = 0
-
-watch(
-  () => props.animatedCount,
-  (newValue) => {
-    internalAnimatedCount.value = newValue
-  },
-  { immediate: true }
-)
+const floatingMessageTimers = new Set<TimerHandle>()
 
 function clearTimer(key: TimerKey): void {
   if (!timers[key]) return
@@ -105,6 +87,16 @@ function clearAllTimers(): void {
   clearTimer('hintAutoClose')
   clearTimer('observerSetup')
   clearSettleTimer()
+  floatingMessageTimers.forEach(clearTimeout)
+  floatingMessageTimers.clear()
+}
+
+function setFloatingMessageTimer(callback: () => void, delayMs: number): void {
+  const timer = setTimeout(() => {
+    floatingMessageTimers.delete(timer)
+    callback()
+  }, delayMs)
+  floatingMessageTimers.add(timer)
 }
 
 function clearSettleTimer(): void {
@@ -113,21 +105,27 @@ function clearSettleTimer(): void {
   settleTimer = null
 }
 
-function getClientPoint(event: PointerEventLike): ClientPoint | null {
+function getClientPoint(event: ActivationEvent): ClientPoint | null {
   if ('touches' in event) {
     const touch = event.touches[0]
     if (!touch) return null
     return { x: touch.clientX, y: touch.clientY }
   }
-  return { x: event.clientX, y: event.clientY }
+  if ('clientX' in event) {
+    return { x: event.clientX, y: event.clientY }
+  }
+  const target = getEventTargetElement(event)
+  if (!target) return null
+  const rect = target.getBoundingClientRect()
+  return { x: rect.left + (rect.width / 2), y: rect.top + (rect.height / 2) }
 }
 
-function getEventTargetElement(event: PointerEventLike): HTMLElement | null {
+function getEventTargetElement(event: ActivationEvent): HTMLElement | null {
   const target = event.currentTarget
   return target instanceof HTMLElement ? target : null
 }
 
-function showFloatingMessage(event: PointerEventLike, count: number): void {
+function showFloatingMessage(event: ActivationEvent, count: number): void {
   if (!event || !event.currentTarget) return
   const targetElement = getEventTargetElement(event)
   const point = getClientPoint(event)
@@ -162,14 +160,14 @@ function showFloatingMessage(event: PointerEventLike, count: number): void {
     activeMessages.value = activeMessages.value.slice(-MAX_ACTIVE_FLOATING_MESSAGES)
   }
 
-  setTimeout(() => {
+  setFloatingMessageTimer(() => {
     const msgIndex = activeMessages.value.findIndex((m) => m.id === id)
     if (msgIndex !== -1) {
       activeMessages.value[msgIndex].opacity = 0
       activeMessages.value[msgIndex].scale = 1.2 * sizeVariation
     }
 
-    setTimeout(() => {
+    setFloatingMessageTimer(() => {
       activeMessages.value = activeMessages.value.filter((m) => m.id !== id)
     }, 500)
   }, 1500)
@@ -186,40 +184,49 @@ function resetComboTimer(): void {
 function buildEncouragementPayload(delta: number) {
   return {
     delta,
-    visitorId: getVisitorId(),
-    path: '/',
-    title: '首页催更'
+    visitorId: getVisitorId()
   }
 }
 
 function flushEncouragement(useBeacon = false): void {
-  if (pendingEncouragementDelta <= 0 || isSettlementInFlight) return
+  if (pendingEncouragementDelta <= 0 || (isSettlementInFlight && !useBeacon)) return
+  const hadInFlightRequest = isSettlementInFlight
   const delta = pendingEncouragementDelta
   pendingEncouragementDelta = 0
   clearSettleTimer()
 
   const payload = buildEncouragementPayload(delta)
-  if (useBeacon && beaconSettleEncouragement(payload)) return
+  if (useBeacon) {
+    if (beaconSettleEncouragement(payload)) return
+    if (hadInFlightRequest) {
+      pendingEncouragementDelta += delta
+      return
+    }
+  }
 
   isSettlementInFlight = true
-  settleEncouragement(payload).catch((error) => {
+  let settled = false
+  settleEncouragement(payload).then(() => {
+    settled = true
+  }).catch((error) => {
+    // 失败后等待下一次点击或页面离开再提交，避免离线状态下循环重试。
     pendingEncouragementDelta += delta
     logError('EncourageWidget', '催更结算失败', error)
   }).finally(() => {
     isSettlementInFlight = false
-    if (pendingEncouragementDelta > 0) scheduleEncouragementSettle()
+    if (settled && pendingEncouragementDelta > 0) scheduleEncouragementSettle()
   })
 }
 
 function scheduleEncouragementSettle(): void {
-  clearSettleTimer()
+  if (settleTimer || isSettlementInFlight) return
   settleTimer = setTimeout(() => {
     settleTimer = null
     flushEncouragement(false)
   }, ENCOURAGEMENT_SETTLE_DELAY_MS)
 }
 
-function encourageUpdate(event: PointerEventLike): void {
+function encourageUpdate(event: ActivationEvent): void {
   encourageCount.value++
   pendingEncouragementDelta++
   scheduleEncouragementSettle()
@@ -289,22 +296,14 @@ function formatNumber(num: number | null | undefined): string {
   }
 }
 
-const handleMouseEnterDebounced = useDebounceFn(() => {
+function handleMouseEnter(): void {
   isHovered.value = true
   hasHoveredInSession.value = true
   clearTimer('hintDisplay')
-}, 50)
-
-const handleMouseLeaveDebounced = useDebounceFn(() => {
-  isHovered.value = false
-}, 50)
-
-function handleMouseEnter(): void {
-  handleMouseEnterDebounced()
 }
 
 function handleMouseLeave(): void {
-  handleMouseLeaveDebounced()
+  isHovered.value = false
 }
 
 onMounted(() => {
@@ -337,8 +336,13 @@ function handlePageHide(): void {
     @mouseenter="handleMouseEnter"
     @mouseleave="handleMouseLeave"
     ref="widgetRef"
+    role="button"
+    tabindex="0"
+    aria-label="点击催更"
+    @keydown.enter.prevent="encourageUpdate"
+    @keydown.space.prevent="encourageUpdate"
   >
-    <div class="stats-value">{{ formatNumber(internalAnimatedCount) }}<span class="plus-mark">+</span></div>
+    <div class="stats-value">{{ formatNumber(props.animatedCount) }}<span class="plus-mark">+</span></div>
     <div class="stats-label">本月更新</div>
     
     <!-- 抽屉组件 -->
@@ -401,12 +405,15 @@ function handlePageHide(): void {
   user-select: none;
   position: relative;
   overflow: hidden;
-  will-change: transform; /* 提示浏览器这个元素将会变化 */
-  transform: translateZ(0); /* 启用硬件加速 */
 }
 
 .clickable-area {
   cursor: pointer;
+}
+
+.clickable-area:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 3px;
 }
 
 .stats-value {
@@ -471,8 +478,6 @@ function handlePageHide(): void {
   font-weight: 600;
   text-align: center;
   z-index: 10; /* 提高抽屉的z-index */
-  will-change: transform; /* 提示浏览器这个元素将会变化 */
-  transform: translateZ(0); /* 启用硬件加速 */
 }
 
 .drawer-content {

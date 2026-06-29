@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * MusicRanking.vue：
- * 定义MusicRanking组件的交互与展示逻辑。
+ * 关于页听歌排行。
+ * 展示配置账号最近一周的前五首歌曲。
  */
 
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
@@ -41,7 +41,6 @@ async function fetchMusicRanking() {
   try {
     musicRanking.value = await fetchWeeklyTracks({
       limit: 5,
-      withTimestamp: false,
       coverSize: '120y120'
     })
   } catch (error) {
@@ -87,7 +86,7 @@ onBeforeUnmount(() => {
     <h3 class="ranking-title" :class="{ 'animate-in': isVisible }">歌曲推荐</h3>
     
     <!-- 加载状态 -->
-    <div v-if="isLoading" class="loading-container">加载中...</div>
+    <div v-if="isLoading" class="loading-container">加载中…</div>
     
     <!-- 错误状态 -->
     <div v-else-if="hasError" class="error-container">加载失败</div>

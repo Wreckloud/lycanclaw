@@ -23,7 +23,6 @@ const formattedDate = computed(() =>
 const wordCount = ref(0)
 const readTime = ref(0)
 const pageviewCount = ref('--')
-const commentCount = ref('--')
 const isLoading = ref(true)
 let metricsRequestId = 0
 
@@ -40,7 +39,6 @@ const fetchArticleMetrics = async () => {
   const requestId = ++metricsRequestId
   isLoading.value = true
   pageviewCount.value = '--'
-  commentCount.value = '--'
   const currentPagePath = window.location.pathname
   let hasUpdatedPageview = false
 
@@ -58,7 +56,6 @@ const fetchArticleMetrics = async () => {
     if (!hasUpdatedPageview) {
       pageviewCount.value = metric.pageviewCount.toString()
     }
-    commentCount.value = metric.commentCount.toString()
   } catch (error) {
     logError('ArticleMetadata', '获取文章指标失败', error)
   } finally {
@@ -138,13 +135,6 @@ defineOptions({
             <path d="M512 298.666667c-164.266667 0-313.6 95.573333-413.866667 249.6 100.266667 154.026667 249.6 249.6 413.866667 249.6 164.266667 0 313.6-95.573333 413.866667-249.6-100.266667-154.026667-249.6-249.6-413.866667-249.6z m0 416c-91.733333 0-166.4-74.666667-166.4-166.4s74.666667-166.4 166.4-166.4 166.4 74.666667 166.4 166.4-74.666667 166.4-166.4 166.4z m0-265.6c-55.466667 0-99.2 43.733333-99.2 99.2s43.733333 99.2 99.2 99.2 99.2-43.733333 99.2-99.2-43.733333-99.2-99.2-99.2z" fill="#9a9a9a" p-id="11579"></path>
           </svg>
           <span>浏览: <span :class="{ 'loading-placeholder': isLoading }">{{ pageviewCount }}</span></span>
-        </div>
-
-        <div class="metadata-stats-item">
-          <svg class="icon" viewBox="0 0 1024 1024" width="14" height="14" aria-hidden="true">
-            <path d="M170.7 170.7h682.6A85.3 85.3 0 0 1 938.7 256v426.7a85.3 85.3 0 0 1-85.4 85.3H426.7L256 896V768h-85.3a85.3 85.3 0 0 1-85.4-85.3V256a85.3 85.3 0 0 1 85.4-85.3z" fill="#9a9a9a" />
-          </svg>
-          <span>评论: <span :class="{ 'loading-placeholder': isLoading }">{{ commentCount }}</span></span>
         </div>
 
       </div>
