@@ -8,7 +8,7 @@ export type Player = typeof X | typeof O
 export type BoardResult = typeof EMPTY | typeof X | typeof O | typeof DRAW
 
 export type GameMode = 'human-vs-ai' | 'local' | 'online'
-export type AIDifficulty = 'normal' | 'hard' | 'nightmare' | 'adaptive'
+export type AIDifficulty = 'easy' | 'normal' | 'hard' | 'nightmare'
 
 export interface PlayerInfo {
   sideName: string

@@ -21,7 +21,7 @@ interface TableEntry {
 }
 
 type PositionState = AIDecisionAnalysis['positionState']
-type RootSelection = 'best_score' | 'random_top_candidate' | 'adaptive_soft_candidate'
+type RootSelection = 'best_score' | 'random_top_candidate' | 'softened_candidate'
 type ScoredRootMove = {
   move: GameMove
   score: number
@@ -29,6 +29,12 @@ type ScoredRootMove = {
 }
 
 const DEFAULT_DEADLINE_MS = 900
+const POSITION_STATE_ORDER: Record<PositionState, number> = {
+  behind: 0,
+  close: 1,
+  ahead: 2,
+  crushing: 3
+}
 
 export function chooseAIMoveWithDeadline(
   state: GameCoreState,
@@ -307,27 +313,27 @@ function pickMoveForProfile(
   profile: ResolvedAIProfile,
   positionState: PositionState
 ): ScoredRootMove {
-  if (profile.pressureStyle !== 'adaptive' || !profile.softenWhenAhead || positionState === 'behind' || positionState === 'close') {
-    return pickScoredMove(scoredMoves, profile.randomness, profile.candidatePool)
-  }
-
-  const softened = pickAdaptiveSoftMove(scoredMoves, positionState)
+  const softened = pickSoftenedMove(scoredMoves, profile, positionState)
   if (softened) return softened
 
   return pickScoredMove(scoredMoves, profile.randomness, profile.candidatePool)
 }
 
-function pickAdaptiveSoftMove(scoredMoves: ScoredRootMove[], positionState: PositionState): ScoredRootMove | null {
+function pickSoftenedMove(
+  scoredMoves: ScoredRootMove[],
+  profile: ResolvedAIProfile,
+  positionState: PositionState
+): ScoredRootMove | null {
+  const softening = profile.softening
+  if (!softening.enabled) return null
+  if (POSITION_STATE_ORDER[positionState] < POSITION_STATE_ORDER[softening.minPositionState]) return null
+
   const best = scoredMoves[0]
   if (!best) return null
 
-  const windowSize = positionState === 'crushing' ? 6 : 4
-  const startIndex = positionState === 'crushing' ? 2 : 1
-  const maxDrop = positionState === 'crushing' ? 18_000 : 8_000
-  const safeFloor = positionState === 'crushing' ? 0 : -3_000
-  const minScore = Math.max(safeFloor, best.score - maxDrop)
+  const minScore = Math.max(softening.safeFloor, best.score - softening.maxScoreDrop)
   const candidates = scoredMoves
-    .slice(startIndex, windowSize)
+    .slice(softening.startIndex, softening.windowSize)
     .filter((item) => item.score >= minScore)
 
   if (candidates.length === 0) return null
@@ -336,7 +342,7 @@ function pickAdaptiveSoftMove(scoredMoves: ScoredRootMove[], positionState: Posi
 
   return {
     ...picked,
-    selection: 'adaptive_soft_candidate'
+    selection: 'softened_candidate'
   }
 }
 

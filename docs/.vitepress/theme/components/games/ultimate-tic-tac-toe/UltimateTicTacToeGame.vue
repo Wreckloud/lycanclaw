@@ -73,17 +73,6 @@
             </span>
           </div>
 
-          <div
-            v-if="settlementCue"
-            :key="settlementCue.id"
-            class="utt-settlement-cue"
-            :class="`utt-settlement-cue-${settlementCue.tone}`"
-          >
-            <strong>{{ settlementCue.title }}</strong>
-            <span>{{ settlementCue.detail }}</span>
-            <span class="utt-settlement-cue-reward">{{ settlementCue.reward }}</span>
-            <em>{{ settlementCue.outcome }}</em>
-          </div>
         </div>
       </section>
 
@@ -108,7 +97,7 @@
               :disabled="settings.gameMode !== 'human-vs-ai'"
               @change="handleDifficultyChange"
             >
-              <option value="adaptive">自适应</option>
+              <option value="easy">简单</option>
               <option value="normal">普通</option>
               <option value="hard">困难</option>
               <option value="nightmare">噩梦</option>
@@ -299,22 +288,10 @@ interface MessageLinePart {
   player: Player | null
 }
 
-type SettlementTone = 'blue' | 'red' | 'draw'
-
 interface PreviewRewardCell {
   bigIndex: number
   smallIndex: number
   player: Player
-}
-
-interface SettlementCue {
-  id: string
-  boardIndex: number
-  tone: SettlementTone
-  title: string
-  detail: string
-  reward: string
-  outcome: string
 }
 
 const isFinished = computed(() => state.value.winner !== EMPTY)
@@ -365,7 +342,7 @@ const previewFrameStyle = computed<Record<string, string> | null>(() => {
   }
 })
 const previewHintLines = computed(() => activePreviewTarget.value?.hintLines ?? [])
-const settlementCue = computed<SettlementCue | null>(() => createSettlementCue(state.value))
+const settlementBoardIndex = computed(() => state.value.lastRuleEvents[0]?.boardIndex ?? null)
 const messagePlaceholder = computed(() => {
   if (state.value.isMessageInputFocused) return ''
   if (state.value.errorMessage) return state.value.errorMessage
@@ -664,13 +641,13 @@ function getSmallBoardClass(bigIndex: number): Record<string, boolean> {
   const isLockedBoard = isGameActive && !boardFull && !isPlayableBoard
   const hasBigBoardWinner = state.value.winner === X || state.value.winner === O
   const bigBoardWinningLine = state.value.bigBoardWinningLine ?? []
-  const currentSettlementCue = settlementCue.value
+  const currentSettlementBoardIndex = settlementBoardIndex.value
 
   return {
     'utt-small-board-active': isPlayableBoard,
     'utt-small-board-full': boardFull,
     'utt-small-board-locked': isLockedBoard,
-    'utt-small-board-settled': currentSettlementCue?.boardIndex === bigIndex,
+    'utt-small-board-settled': currentSettlementBoardIndex === bigIndex,
     'utt-small-board-claimed-x': status === X,
     'utt-small-board-claimed-o': status === O,
     'utt-small-board-draw': status === DRAW,
@@ -789,46 +766,6 @@ function getDisplayPlayerName(player: Player, currentState: GameCoreState): stri
   }
 
   return getPlayerName(player, currentState)
-}
-
-function createSettlementCue(currentState: GameCoreState): SettlementCue | null {
-  const event = currentState.lastRuleEvents[0]
-  if (!event) return null
-
-  if (event.owner === DRAW) {
-    return {
-      id: `settlement-${currentState.moveHistory.length}-${event.boardIndex}-draw`,
-      boardIndex: event.boardIndex,
-      tone: 'draw',
-      title: `${formatBigBoardIndex(event.boardIndex)} 棋盘已填满`,
-      detail: '无人控制，记为平局',
-      reward: '不触发入口奖励',
-      outcome: formatSettlementOutcome(currentState)
-    }
-  }
-
-  if (!isPlayer(event.owner)) return null
-
-  const owner = event.owner
-  const tone: SettlementTone = owner === X ? 'blue' : 'red'
-
-  return {
-    id: `settlement-${currentState.moveHistory.length}-${event.boardIndex}-${owner}-${event.filledCount}`,
-    boardIndex: event.boardIndex,
-    tone,
-    title: `${formatBigBoardIndex(event.boardIndex)} 棋盘已填满`,
-    detail: `${getPlayerName(owner, currentState)} 控制该棋盘`,
-    reward: `入口奖励 ${event.filledCount} 格`,
-    outcome: formatSettlementOutcome(currentState)
-  }
-}
-
-function formatSettlementOutcome(currentState: GameCoreState): string {
-  if (isPlayer(currentState.winner)) return `${getPlayerName(currentState.winner, currentState)} 赢得整局`
-  if (currentState.winner === DRAW) return '整局游戏平局'
-  if (currentState.nextBoard === null) return `${getPlayerName(currentState.currentPlayer, currentState)} 自由落子`
-
-  return `轮到 ${getPlayerName(currentState.currentPlayer, currentState)} 去 ${formatBigBoardIndex(currentState.nextBoard)} 棋盘`
 }
 
 function repeatCssAddition(value: string, times: number): string {
@@ -980,7 +917,6 @@ function triggerDebugSettlement(owner: Player, shouldWinGame: boolean): void {
   }
 
   state.value = debugState
-  void nextTick(() => playMove({ bigIndex: DEBUG_SETTLEMENT_BOARD_INDEX, smallIndex: DEBUG_SETTLEMENT_MOVE_INDEX }))
 }
 
 function triggerDebugDrawSettlement(): void {
@@ -993,7 +929,6 @@ function triggerDebugDrawSettlement(): void {
   }
 
   state.value = debugState
-  void nextTick(() => playMove({ bigIndex: DEBUG_SETTLEMENT_BOARD_INDEX, smallIndex: DEBUG_SETTLEMENT_MOVE_INDEX }))
 }
 
 function prepareDebugState(): void {
@@ -1015,7 +950,7 @@ function createDebugBaseState(currentPlayer: Player): GameCoreState {
     {
       id: `debug-${Date.now()}`,
       type: 'system',
-      text: '调试局面：下一步将触发满盘结算动画。'
+      text: `调试局面：请点击 ${formatBigBoardIndex(DEBUG_SETTLEMENT_BOARD_INDEX)} 棋盘 ${formatMoveCellText(DEBUG_SETTLEMENT_MOVE_INDEX)}，触发满盘结算。`
     }
   ]
 
@@ -1442,69 +1377,6 @@ function scrollLogToBottom(): void {
   filter: var(--utt-disabled-board-filter);
 }
 
-.utt-settlement-cue {
-  position: absolute;
-  inset: clamp(28px, 5vw, 64px);
-  z-index: 12;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: clamp(18px, 4vw, 36px);
-  border: 2px solid var(--utt-settlement-color, var(--vp-c-brand-1));
-  background:
-    radial-gradient(circle at center, color-mix(in srgb, var(--utt-settlement-color, var(--vp-c-brand-1)) 18%, transparent), transparent 58%),
-    color-mix(in srgb, var(--vp-c-bg) 88%, transparent);
-  color: var(--vp-c-text-1);
-  text-align: center;
-  pointer-events: none;
-  box-shadow:
-    0 0 0 999px rgba(0, 0, 0, 0.2),
-    0 20px 60px rgba(0, 0, 0, 0.28);
-  animation: utt-settlement-cue 4.6s var(--lc-motion-ease-emphasis, cubic-bezier(0.22, 1, 0.36, 1)) both;
-}
-
-.utt-settlement-cue-blue {
-  --utt-settlement-color: #2563eb;
-}
-
-.utt-settlement-cue-red {
-  --utt-settlement-color: #dc2626;
-}
-
-.utt-settlement-cue-draw {
-  --utt-settlement-color: #64748b;
-}
-
-.utt-settlement-cue strong {
-  color: var(--utt-settlement-color);
-  font-size: clamp(22px, 5vw, 44px);
-  line-height: 1.1;
-}
-
-.utt-settlement-cue span,
-.utt-settlement-cue em {
-  font-style: normal;
-  font-size: clamp(14px, 2.4vw, 20px);
-  line-height: 1.35;
-}
-
-.utt-settlement-cue span {
-  animation: utt-settlement-text-in 0.42s ease both;
-  animation-delay: 0.72s;
-}
-
-.utt-settlement-cue-reward {
-  color: var(--utt-settlement-color);
-}
-
-.utt-settlement-cue em {
-  color: var(--vp-c-text-2);
-  animation: utt-settlement-text-in 0.42s ease both;
-  animation-delay: 1.56s;
-}
-
 .utt-cell {
   position: relative;
   z-index: 1;
@@ -1702,36 +1574,6 @@ function scrollLogToBottom(): void {
 
   100% {
     transform: scale(1);
-  }
-}
-
-@keyframes utt-settlement-cue {
-  0% {
-    opacity: 0;
-    transform: scale(0.94);
-  }
-
-  14%,
-  82% {
-    opacity: 1;
-    transform: scale(1);
-  }
-
-  100% {
-    opacity: 0;
-    transform: scale(1.025);
-  }
-}
-
-@keyframes utt-settlement-text-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
   }
 }
 

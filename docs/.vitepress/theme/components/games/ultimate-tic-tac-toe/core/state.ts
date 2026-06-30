@@ -2,7 +2,7 @@ import { EMPTY, X, O, type AdaptiveProfile, type AIDifficulty, type GameCoreStat
 
 export const DEFAULT_GAME_SETTINGS: GameSettings = {
   gameMode: 'human-vs-ai',
-  aiDifficulty: 'adaptive'
+  aiDifficulty: 'normal'
 }
 
 export const SETTINGS_STORAGE_KEY = 'lycan:utt:settings'
@@ -137,14 +137,14 @@ export function saveAdaptiveProfile(profile: AdaptiveProfile): void {
 
 export function getDifficultyName(difficulty: AIDifficulty): string {
   switch (difficulty) {
+    case 'easy':
+      return '简单'
     case 'normal':
       return '普通'
     case 'hard':
       return '困难'
     case 'nightmare':
       return '噩梦'
-    case 'adaptive':
-      return '自适应'
   }
 }
 
@@ -191,7 +191,9 @@ function normalizeGameMode(value: unknown): GameMode {
 }
 
 function normalizeDifficulty(value: unknown): AIDifficulty {
-  return value === 'normal' || value === 'hard' || value === 'nightmare' || value === 'adaptive'
+  if (value === 'adaptive') return 'normal'
+
+  return value === 'easy' || value === 'normal' || value === 'hard' || value === 'nightmare'
     ? value
     : DEFAULT_GAME_SETTINGS.aiDifficulty
 }
