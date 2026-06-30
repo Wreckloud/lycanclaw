@@ -11,6 +11,9 @@ const QUALITY_SCORES: Record<MoveQuality, number> = {
   blunder: 0.05
 }
 
+const ADAPTIVE_STRENGTH_OFFSET = 0.05
+const ADAPTIVE_STRENGTH_RATIO = 0.85
+
 export interface ResolvedAIProfile {
   targetDepth: number
   randomness: number
@@ -79,20 +82,24 @@ export function resolveAIProfile(difficulty: AIDifficulty, adaptiveProfile: Adap
     }
   }
 
-  const level = clamp(adaptiveProfile.level, 0.12, 0.9)
-  const isStrong = level >= 0.85
-  const isMiddle = level >= 0.55
+  const level = resolveAdaptiveLevel(adaptiveProfile.level)
+  const isStrong = level >= 0.68
+  const isMiddle = level >= 0.45
 
   return {
-    targetDepth: isStrong ? 5 : isMiddle ? 4 : 3,
-    randomness: isStrong ? 0.08 : isMiddle ? 0.14 : 0.22,
-    candidatePool: isStrong ? 2 : isMiddle ? 3 : 4,
-    maxBranching: isStrong ? 20 : isMiddle ? 16 : 12,
+    targetDepth: isStrong ? 4 : 3,
+    randomness: isStrong ? 0.16 : isMiddle ? 0.22 : 0.28,
+    candidatePool: isStrong ? 3 : isMiddle ? 4 : 5,
+    maxBranching: isStrong ? 14 : isMiddle ? 12 : 10,
     adaptiveLevel: level,
-    deadlineMs: isStrong ? 1100 : isMiddle ? 900 : 750,
+    deadlineMs: isStrong ? 900 : isMiddle ? 750 : 650,
     pressureStyle: 'adaptive',
     softenWhenAhead: true
   }
+}
+
+function resolveAdaptiveLevel(playerLevel: number): number {
+  return clamp((playerLevel * ADAPTIVE_STRENGTH_RATIO) - ADAPTIVE_STRENGTH_OFFSET, 0.12, 0.74)
 }
 
 function averageReportScore(reports: TurnReport[]): number {

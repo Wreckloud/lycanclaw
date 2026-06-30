@@ -21,7 +21,7 @@ interface TableEntry {
 }
 
 type PositionState = AIDecisionAnalysis['positionState']
-type RootSelection = 'best_score' | 'random_top_candidate' | 'adaptive_soft_candidate' | 'adaptive_delayed_finish'
+type RootSelection = 'best_score' | 'random_top_candidate' | 'adaptive_soft_candidate'
 type ScoredRootMove = {
   move: GameMove
   score: number
@@ -73,7 +73,7 @@ export function chooseAIMoveWithDeadline(
   }
 
   const immediateWin = findImmediateWinningMove(state, legalMoves, aiPlayer)
-  if (immediateWin && canUseImmediateWin(state, difficulty, positionState)) {
+  if (immediateWin) {
     return {
       move: immediateWin,
       resign: false,
@@ -91,18 +91,8 @@ export function chooseAIMoveWithDeadline(
   }
 
   const tacticalMoves = getTacticalMoves(state, legalMoves, aiPlayer)
-  let searchMoves = tacticalMoves.moves
-  let tactic = tacticalMoves.tactic
-  let delayedFinish = false
-
-  if (immediateWin && shouldDelayAdaptiveFinish(state, difficulty, positionState)) {
-    const safeNonFinishingMoves = getSafeNonFinishingMoves(state, tacticalMoves.moves, aiPlayer)
-    if (safeNonFinishingMoves.length > 0) {
-      searchMoves = safeNonFinishingMoves
-      tactic = 'adaptive_delay_finish'
-      delayedFinish = true
-    }
-  }
+  const searchMoves = tacticalMoves.moves
+  const tactic = tacticalMoves.tactic
 
   let bestMove = searchMoves[0] ?? legalMoves[0]
   let bestScore = -Infinity
@@ -126,7 +116,7 @@ export function chooseAIMoveWithDeadline(
       bestMove = picked.move
       bestScore = picked.score
       baseAnalysis.completedDepth = depth
-      baseAnalysis.selection = delayedFinish ? 'adaptive_delayed_finish' : picked.selection
+      baseAnalysis.selection = picked.selection
       baseAnalysis.chosenScore = picked.score
     } catch (error) {
       if (error instanceof DeadlineExceededError) break
@@ -291,34 +281,6 @@ function findImmediateWinningMove(state: GameCoreState, legalMoves: GameMove[], 
   return null
 }
 
-function canUseImmediateWin(state: GameCoreState, difficulty: AIDifficulty, positionState: PositionState): boolean {
-  if (difficulty !== 'adaptive') return true
-  if (state.moveHistory.length >= 45) return true
-
-  return positionState !== 'ahead' && positionState !== 'crushing'
-}
-
-function shouldDelayAdaptiveFinish(state: GameCoreState, difficulty: AIDifficulty, positionState: PositionState): boolean {
-  return !canUseImmediateWin(state, difficulty, positionState)
-}
-
-function getSafeNonFinishingMoves(state: GameCoreState, moves: GameMove[], aiPlayer: Player): GameMove[] {
-  const opponent = getOpponent(aiPlayer)
-  const safeMoves: GameMove[] = []
-
-  for (const move of moves) {
-    const nextState = cloneGameSearchState(state)
-    applyMoveMutable(nextState, move.bigIndex, move.smallIndex)
-
-    if (nextState.winner !== EMPTY) continue
-    if (findImmediateWinningMove(nextState, getLegalMoves(nextState), opponent)) continue
-
-    safeMoves.push(move)
-  }
-
-  return safeMoves
-}
-
 function pickScoredMove(
   scoredMoves: ScoredRootMove[],
   randomness: number,
@@ -361,8 +323,9 @@ function pickAdaptiveSoftMove(scoredMoves: ScoredRootMove[], positionState: Posi
 
   const windowSize = positionState === 'crushing' ? 6 : 4
   const startIndex = positionState === 'crushing' ? 2 : 1
-  const maxDrop = positionState === 'crushing' ? 30_000 : 12_000
-  const minScore = Math.max(0, best.score - maxDrop)
+  const maxDrop = positionState === 'crushing' ? 18_000 : 8_000
+  const safeFloor = positionState === 'crushing' ? 0 : -3_000
+  const minScore = Math.max(safeFloor, best.score - maxDrop)
   const candidates = scoredMoves
     .slice(startIndex, windowSize)
     .filter((item) => item.score >= minScore)

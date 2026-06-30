@@ -55,7 +55,35 @@
               'utt-preview-frame-free': isPreviewFrameFree
             }"
             :style="previewFrameStyle"
-          />
+          >
+            <span v-if="previewHintLines.length > 0" class="utt-preview-hint">
+              <span
+                v-for="(line, lineIndex) in previewHintLines"
+                :key="`preview-hint-${lineIndex}`"
+                class="utt-preview-hint-line"
+              >
+                <span
+                  v-for="(part, partIndex) in line"
+                  :key="`preview-hint-${lineIndex}-${partIndex}`"
+                  :class="getPlayerTextClass(part.player)"
+                >
+                  {{ part.text }}
+                </span>
+              </span>
+            </span>
+          </div>
+
+          <div
+            v-if="settlementCue"
+            :key="settlementCue.id"
+            class="utt-settlement-cue"
+            :class="`utt-settlement-cue-${settlementCue.tone}`"
+          >
+            <strong>{{ settlementCue.title }}</strong>
+            <span>{{ settlementCue.detail }}</span>
+            <span class="utt-settlement-cue-reward">{{ settlementCue.reward }}</span>
+            <em>{{ settlementCue.outcome }}</em>
+          </div>
         </div>
       </section>
 
@@ -128,7 +156,7 @@
                 <span
                   v-for="(part, partIndex) in splitMessageLineParts(line)"
                   :key="`${message.id}-${lineIndex}-${partIndex}`"
-                  :class="part.player === X ? 'utt-log-line-blue' : part.player === O ? 'utt-log-line-red' : ''"
+                  :class="getPlayerTextClass(part.player)"
                 >
                   {{ part.text }}
                 </span>
@@ -177,6 +205,7 @@ import { createTurnReport } from './core/report'
 import { applyMoveImmutable, forceWinnerByResign } from './core/reducer'
 import {
   createInitialGameState,
+  getDifficultyName,
   loadAdaptiveProfile,
   loadGameSettings,
   saveAdaptiveProfile,
@@ -202,11 +231,13 @@ import {
   X,
   type AIDecision,
   type AIDecisionAnalysis,
+  type CellValue,
   type GameCoreState,
   type GameMessage,
   type GameMove,
   type GameSettings,
-  type Player
+  type Player,
+  type RuleEvent
 } from './core/types'
 
 const boardIndexes = Array.from({ length: 9 }, (_, index) => index)
@@ -216,10 +247,14 @@ const AUTO_FILL_BASE_DELAY_MS = 220
 const AUTO_FILL_STEP_DELAY_MS = 180
 const AUTO_FILL_ANIMATION_MS = 780
 const AFTER_AUTO_FILL_PAUSE_MS = 260
+const SETTLEMENT_CUE_MIN_DELAY_MS = 4800
 const PREVIEW_SHOW_DELAY_MS = 70
 const PREVIEW_HIDE_DELAY_MS = 160
 const TOUCH_PREVIEW_COMMIT_MS = 280
 const TOUCH_PREVIEW_MOVE_THRESHOLD = 8
+const DEBUG_SETTLEMENT_BOARD_INDEX = 1
+const DEBUG_SETTLEMENT_MOVE_INDEX = 4
+const DEBUG_REWARD_EMPTY_BOARD_INDEX = 0
 const settings = ref<GameSettings>(loadGameSettings())
 const adaptiveProfile = ref(loadAdaptiveProfile())
 const state = ref<GameCoreState>(createInitialGameState(settings.value))
@@ -250,14 +285,36 @@ type PreviewTarget =
   | {
       type: 'board'
       boardIndex: number
+      hintLines: MessageLinePart[][]
+      rewardCells: PreviewRewardCell[]
     }
   | {
       type: 'free'
+      hintLines: MessageLinePart[][]
+      rewardCells: PreviewRewardCell[]
     }
 
 interface MessageLinePart {
   text: string
   player: Player | null
+}
+
+type SettlementTone = 'blue' | 'red' | 'draw'
+
+interface PreviewRewardCell {
+  bigIndex: number
+  smallIndex: number
+  player: Player
+}
+
+interface SettlementCue {
+  id: string
+  boardIndex: number
+  tone: SettlementTone
+  title: string
+  detail: string
+  reward: string
+  outcome: string
 }
 
 const isFinished = computed(() => state.value.winner !== EMPTY)
@@ -307,6 +364,8 @@ const previewFrameStyle = computed<Record<string, string> | null>(() => {
     height: `calc(${boardSize} + var(--utt-indicator-offset) + var(--utt-indicator-offset) + var(--utt-indicator-width) + var(--utt-indicator-width))`
   }
 })
+const previewHintLines = computed(() => activePreviewTarget.value?.hintLines ?? [])
+const settlementCue = computed<SettlementCue | null>(() => createSettlementCue(state.value))
 const messagePlaceholder = computed(() => {
   if (state.value.isMessageInputFocused) return ''
   if (state.value.errorMessage) return state.value.errorMessage
@@ -546,6 +605,7 @@ function getCellMark(bigIndex: number, smallIndex: number): string {
 function getCellClass(bigIndex: number, smallIndex: number): Record<string, boolean> {
   const value = state.value.board[getCellIndex(bigIndex, smallIndex)]
   const lastTurnMove = state.value.lastTurnMoves.find((move) => move.bigIndex === bigIndex && move.smallIndex === smallIndex)
+  const previewRewardPlayer = getPreviewRewardPlayer(bigIndex, smallIndex)
   const canPlay = canPlayCell(bigIndex, smallIndex)
 
   return {
@@ -556,8 +616,18 @@ function getCellClass(bigIndex: number, smallIndex: number): Record<string, bool
     'utt-cell-last-turn-auto': lastTurnMove?.source === 'auto',
     'utt-cell-disabled': !canPlay,
     'utt-hoverable-x': canPlay && state.value.currentPlayer === X,
-    'utt-hoverable-o': canPlay && state.value.currentPlayer === O
+    'utt-hoverable-o': canPlay && state.value.currentPlayer === O,
+    'utt-cell-preview-reward-x': previewRewardPlayer === X,
+    'utt-cell-preview-reward-o': previewRewardPlayer === O
   }
+}
+
+function getPreviewRewardPlayer(bigIndex: number, smallIndex: number): Player | null {
+  const rewardCell = activePreviewTarget.value?.rewardCells.find(
+    (cell) => cell.bigIndex === bigIndex && cell.smallIndex === smallIndex
+  )
+
+  return rewardCell?.player ?? null
 }
 
 function getCellStyle(bigIndex: number, smallIndex: number): Record<string, string> {
@@ -571,11 +641,13 @@ function getCellStyle(bigIndex: number, smallIndex: number): Record<string, stri
 }
 
 function getPostMoveDelay(currentState: GameCoreState): number {
+  if (currentState.lastRuleEvents.length === 0) return PLAYER_MOVE_SETTLE_DELAY_MS
+
   const autoFillCount = currentState.lastRuleEvents.reduce((total, event) => total + event.filledCount, 0)
-  if (autoFillCount === 0) return PLAYER_MOVE_SETTLE_DELAY_MS
+  if (autoFillCount === 0) return SETTLEMENT_CUE_MIN_DELAY_MS
 
   return Math.max(
-    PLAYER_MOVE_SETTLE_DELAY_MS,
+    SETTLEMENT_CUE_MIN_DELAY_MS,
     AUTO_FILL_BASE_DELAY_MS
       + (Math.max(0, autoFillCount - 1) * AUTO_FILL_STEP_DELAY_MS)
       + AUTO_FILL_ANIMATION_MS
@@ -592,16 +664,17 @@ function getSmallBoardClass(bigIndex: number): Record<string, boolean> {
   const isLockedBoard = isGameActive && !boardFull && !isPlayableBoard
   const hasBigBoardWinner = state.value.winner === X || state.value.winner === O
   const bigBoardWinningLine = state.value.bigBoardWinningLine ?? []
+  const currentSettlementCue = settlementCue.value
 
   return {
     'utt-small-board-active': isPlayableBoard,
     'utt-small-board-full': boardFull,
     'utt-small-board-locked': isLockedBoard,
+    'utt-small-board-settled': currentSettlementCue?.boardIndex === bigIndex,
     'utt-small-board-claimed-x': status === X,
     'utt-small-board-claimed-o': status === O,
     'utt-small-board-draw': status === DRAW,
-    'utt-small-board-big-win': hasBigBoardWinner && bigBoardWinningLine.includes(bigIndex),
-    'utt-small-board-big-dimmed': hasBigBoardWinner && !bigBoardWinningLine.includes(bigIndex)
+    'utt-small-board-big-win': hasBigBoardWinner && bigBoardWinningLine.includes(bigIndex)
   }
 }
 
@@ -625,15 +698,10 @@ function showNextBoardPreviewNow(bigIndex: number, smallIndex: number): void {
 
 function resolveNextBoardPreview(bigIndex: number, smallIndex: number): void {
   const result = applyMoveImmutable(state.value, { bigIndex, smallIndex })
-  if (!result.success || result.state.winner !== EMPTY) return
+  if (!result.success) return
 
-  const targetBoard = getEffectiveNextBoard(result.state)
-  if (targetBoard === null) {
-    setPreviewTarget({ type: 'free' })
-    return
-  }
-
-  setPreviewTarget({ type: 'board', boardIndex: targetBoard })
+  const target = createPreviewTarget(result.state)
+  if (target) setPreviewTarget(target)
 }
 
 function scheduleClearNextBoardPreview(): void {
@@ -666,6 +734,101 @@ function clearPreviewHideTimer(): void {
 function setPreviewTarget(target: PreviewTarget): void {
   activePreviewTarget.value = target
   lastPreviewTarget.value = target
+}
+
+function createPreviewTarget(nextState: GameCoreState): PreviewTarget | null {
+  const event = nextState.lastRuleEvents[0]
+  if (!event && (isPlayer(nextState.winner) || nextState.winner === DRAW)) return null
+
+  const targetBoard = isPlayer(nextState.winner) || nextState.winner === DRAW
+    ? null
+    : getEffectiveNextBoard(nextState)
+  const hintLines = event ? createSettlementPreviewHint(nextState, event) : []
+  const rewardCells = event?.filledCells.map((cell) => ({
+    bigIndex: cell.bigIndex,
+    smallIndex: cell.smallIndex,
+    player: cell.player
+  })) ?? []
+
+  return targetBoard === null
+    ? {
+        type: 'free',
+        hintLines,
+        rewardCells
+      }
+    : {
+        type: 'board',
+        boardIndex: targetBoard,
+        hintLines,
+        rewardCells
+      }
+}
+
+function createSettlementPreviewHint(nextState: GameCoreState, event: RuleEvent): MessageLinePart[][] {
+  if (!isPlayer(event.owner)) {
+    return [[{ text: '即将触发满盘结算！无人占领，不触发入口奖励。', player: null }]]
+  }
+
+  const nextPlayer = getOpponent(event.owner)
+
+  return [
+    [{ text: '即将触发满盘结算！', player: null }],
+    [
+      { text: '由 ', player: null },
+      { text: getDisplayPlayerName(event.owner, nextState), player: event.owner },
+      { text: ' 占领，结算后 ', player: null },
+      { text: getDisplayPlayerName(nextPlayer, nextState), player: nextPlayer },
+      { text: ' 自由落子。', player: null }
+    ]
+  ]
+}
+
+function getDisplayPlayerName(player: Player, currentState: GameCoreState): string {
+  if (currentState.gameMode === 'human-vs-ai') {
+    return player === X ? '你' : `电脑(${getDifficultyName(currentState.aiDifficulty)})`
+  }
+
+  return getPlayerName(player, currentState)
+}
+
+function createSettlementCue(currentState: GameCoreState): SettlementCue | null {
+  const event = currentState.lastRuleEvents[0]
+  if (!event) return null
+
+  if (event.owner === DRAW) {
+    return {
+      id: `settlement-${currentState.moveHistory.length}-${event.boardIndex}-draw`,
+      boardIndex: event.boardIndex,
+      tone: 'draw',
+      title: `${formatBigBoardIndex(event.boardIndex)} 棋盘已填满`,
+      detail: '无人控制，记为平局',
+      reward: '不触发入口奖励',
+      outcome: formatSettlementOutcome(currentState)
+    }
+  }
+
+  if (!isPlayer(event.owner)) return null
+
+  const owner = event.owner
+  const tone: SettlementTone = owner === X ? 'blue' : 'red'
+
+  return {
+    id: `settlement-${currentState.moveHistory.length}-${event.boardIndex}-${owner}-${event.filledCount}`,
+    boardIndex: event.boardIndex,
+    tone,
+    title: `${formatBigBoardIndex(event.boardIndex)} 棋盘已填满`,
+    detail: `${getPlayerName(owner, currentState)} 控制该棋盘`,
+    reward: `入口奖励 ${event.filledCount} 格`,
+    outcome: formatSettlementOutcome(currentState)
+  }
+}
+
+function formatSettlementOutcome(currentState: GameCoreState): string {
+  if (isPlayer(currentState.winner)) return `${getPlayerName(currentState.winner, currentState)} 赢得整局`
+  if (currentState.winner === DRAW) return '整局游戏平局'
+  if (currentState.nextBoard === null) return `${getPlayerName(currentState.currentPlayer, currentState)} 自由落子`
+
+  return `轮到 ${getPlayerName(currentState.currentPlayer, currentState)} 去 ${formatBigBoardIndex(currentState.nextBoard)} 棋盘`
 }
 
 function repeatCssAddition(value: string, times: number): string {
@@ -762,6 +925,10 @@ function handleMessageBlur(): void {
 function handleSendMessage(): void {
   const text = messageDraft.value.trim()
   if (!text) return
+  if (handleDebugCommand(text)) {
+    messageDraft.value = ''
+    return
+  }
 
   state.value.errorMessage = ''
   const sender = state.value.currentPlayer
@@ -774,6 +941,105 @@ function handleSendMessage(): void {
   }
   state.value.messages.push(message)
   messageDraft.value = ''
+}
+
+function handleDebugCommand(text: string): boolean {
+  if (!import.meta.env.DEV) return false
+
+  switch (text.toLowerCase()) {
+    case '/debug settle-o':
+    case '/调试 红方满盘':
+      triggerDebugSettlement(O, false)
+      return true
+    case '/debug settle-x':
+    case '/调试 蓝方满盘':
+      triggerDebugSettlement(X, false)
+      return true
+    case '/debug settle-win-o':
+    case '/调试 红方满盘胜利':
+      triggerDebugSettlement(O, true)
+      return true
+    case '/debug settle-draw':
+    case '/调试 平局满盘':
+      triggerDebugDrawSettlement()
+      return true
+    default:
+      return false
+  }
+}
+
+function triggerDebugSettlement(owner: Player, shouldWinGame: boolean): void {
+  prepareDebugState()
+  const debugState = createDebugBaseState(owner)
+  setupClaimedDebugBoard(debugState, owner)
+  setupSingleRewardEntrance(debugState, owner)
+
+  if (shouldWinGame) {
+    debugState.smallBoardStatus[0] = owner
+    debugState.smallBoardStatus[2] = owner
+  }
+
+  state.value = debugState
+  void nextTick(() => playMove({ bigIndex: DEBUG_SETTLEMENT_BOARD_INDEX, smallIndex: DEBUG_SETTLEMENT_MOVE_INDEX }))
+}
+
+function triggerDebugDrawSettlement(): void {
+  prepareDebugState()
+  const debugState = createDebugBaseState(X)
+  const boardCells: CellValue[] = [X, O, X, X, EMPTY, O, O, X, O]
+
+  for (let smallIndex = 0; smallIndex < boardCells.length; smallIndex += 1) {
+    debugState.board[getCellIndex(DEBUG_SETTLEMENT_BOARD_INDEX, smallIndex)] = boardCells[smallIndex]
+  }
+
+  state.value = debugState
+  void nextTick(() => playMove({ bigIndex: DEBUG_SETTLEMENT_BOARD_INDEX, smallIndex: DEBUG_SETTLEMENT_MOVE_INDEX }))
+}
+
+function prepareDebugState(): void {
+  clearAIRequestTimer()
+  clearAIDecisionApplyTimer()
+  clearNextBoardPreview()
+  isThinking.value = false
+  settings.value = {
+    ...settings.value,
+    gameMode: 'local'
+  }
+}
+
+function createDebugBaseState(currentPlayer: Player): GameCoreState {
+  const debugState = createInitialGameState(settings.value, { started: true })
+  debugState.currentPlayer = currentPlayer
+  debugState.nextBoard = null
+  debugState.messages = [
+    {
+      id: `debug-${Date.now()}`,
+      type: 'system',
+      text: '调试局面：下一步将触发满盘结算动画。'
+    }
+  ]
+
+  return debugState
+}
+
+function setupClaimedDebugBoard(debugState: GameCoreState, owner: Player): void {
+  const opponent = getOpponent(owner)
+  const boardCells: CellValue[] = [owner, owner, owner, opponent, EMPTY, opponent, owner, opponent, owner]
+
+  debugState.smallBoardStatus[DEBUG_SETTLEMENT_BOARD_INDEX] = owner
+  debugState.smallBoardWinningLines[DEBUG_SETTLEMENT_BOARD_INDEX] = [0, 1, 2]
+
+  for (let smallIndex = 0; smallIndex < boardCells.length; smallIndex += 1) {
+    debugState.board[getCellIndex(DEBUG_SETTLEMENT_BOARD_INDEX, smallIndex)] = boardCells[smallIndex]
+  }
+}
+
+function setupSingleRewardEntrance(debugState: GameCoreState, owner: Player): void {
+  for (let bigIndex = 0; bigIndex < boardIndexes.length; bigIndex += 1) {
+    debugState.board[getCellIndex(bigIndex, DEBUG_SETTLEMENT_BOARD_INDEX)] = owner
+  }
+
+  debugState.board[getCellIndex(DEBUG_REWARD_EMPTY_BOARD_INDEX, DEBUG_SETTLEMENT_BOARD_INDEX)] = EMPTY
 }
 
 function getMessageClass(message: GameMessage): Record<string, boolean> {
@@ -820,6 +1086,13 @@ function splitMessageLineParts(line: string): MessageLinePart[] {
   return parts.length > 0 ? parts : [{ text: line, player: null }]
 }
 
+function getPlayerTextClass(player: Player | null): string {
+  if (player === X) return 'utt-player-text-blue'
+  if (player === O) return 'utt-player-text-red'
+
+  return ''
+}
+
 function getMessageOpacity(index: number): number {
   const distanceFromLatest = state.value.messages.length - 1 - index
 
@@ -832,6 +1105,11 @@ function createMoveMessages(nextState: GameCoreState, movePlayer: Player, move: 
   const moveLines = [
     `${playerName} 下在 ${formatBigBoardIndex(move.bigIndex)} 棋盘 ${formatMoveCellText(move.smallIndex)}`
   ]
+
+  if (directEvent) {
+    moveLines.push(`填满了 ${formatBigBoardIndex(directEvent.boardIndex)} 棋盘`)
+  }
+
   const messages: GameMessage[] = [
     {
       id: `move-${Date.now()}-${reportId}`,
@@ -846,15 +1124,11 @@ function createMoveMessages(nextState: GameCoreState, movePlayer: Player, move: 
     const systemLines: string[] = []
     const mainEvent = nextState.lastRuleEvents[0]
 
-    if (directEvent) {
-      systemLines.push(`填满了 ${formatBigBoardIndex(directEvent.boardIndex)} 棋盘`)
-    }
-
     if (mainEvent.owner === DRAW) {
       systemLines.push(`${formatBigBoardIndex(mainEvent.boardIndex)} 棋盘平局`)
     } else if (isPlayer(mainEvent.owner)) {
-      systemLines.push(`由于 ${getPlayerName(mainEvent.owner, nextState)} 控制了 ${formatBigBoardIndex(mainEvent.boardIndex)} 棋盘`)
-      systemLines.push(`使用其棋子填充 ${mainEvent.filledCount} 格入口`)
+      systemLines.push(`由于 ${getPlayerName(mainEvent.owner, nextState)} 控制了 ${formatBigBoardIndex(mainEvent.boardIndex)} 棋盘，使用其棋子填充 ${mainEvent.filledCount} 格入口`)
+      systemLines.push('')
       systemLines.push(`并让 ${getPlayerName(getOpponent(mainEvent.owner), nextState)} 自由落子`)
     }
 
@@ -983,6 +1257,8 @@ function scrollLogToBottom(): void {
   --utt-small-board-border: #aab4c2;
   --utt-cell-bg: #fafafa;
   --utt-cell-text: #1f2933;
+  --utt-disabled-board-opacity: 0.38;
+  --utt-disabled-board-filter: saturate(0.55) brightness(0.88);
 
   position: relative;
   display: grid;
@@ -1001,11 +1277,6 @@ function scrollLogToBottom(): void {
 
 .utt-board-closed {
   filter: none;
-}
-
-.utt-board-closed .utt-small-board:not(.utt-small-board-big-win) {
-  opacity: 0.78;
-  filter: saturate(0.72);
 }
 
 :root.dark .utt-board {
@@ -1036,8 +1307,8 @@ function scrollLogToBottom(): void {
 }
 
 .utt-small-board-locked {
-  opacity: 0.38;
-  filter: saturate(0.55) brightness(0.88);
+  opacity: var(--utt-disabled-board-opacity);
+  filter: var(--utt-disabled-board-filter);
 }
 
 .utt-small-board-active {
@@ -1091,6 +1362,16 @@ function scrollLogToBottom(): void {
   filter: saturate(0.72) brightness(0.9);
 }
 
+.utt-board:not(.utt-board-closed) .utt-small-board-settled {
+  z-index: 3;
+  opacity: 1;
+  filter: none;
+}
+
+.utt-small-board-settled {
+  animation: utt-settled-board-pulse 1.9s var(--lc-motion-ease-emphasis, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
 .utt-preview-frame {
   position: absolute;
   z-index: 8;
@@ -1115,6 +1396,28 @@ function scrollLogToBottom(): void {
   transform: scale(1);
 }
 
+.utt-preview-hint {
+  position: absolute;
+  left: 50%;
+  top: 7px;
+  z-index: 2;
+  width: max-content;
+  max-width: min(280px, calc(100vw - 64px));
+  padding: 5px 8px;
+  border: 1px solid color-mix(in srgb, var(--utt-indicator-color) 42%, var(--vp-c-divider));
+  background: color-mix(in srgb, var(--vp-c-bg) 88%, transparent);
+  color: var(--vp-c-text-1);
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: center;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.16);
+  transform: translateX(-50%);
+}
+
+.utt-preview-hint-line {
+  display: block;
+}
+
 .utt-preview-frame-free.utt-preview-frame-visible {
   animation: utt-preview-expand var(--lc-motion-duration-normal) var(--lc-motion-ease-emphasis);
 }
@@ -1134,18 +1437,72 @@ function scrollLogToBottom(): void {
   filter: none;
 }
 
-.utt-small-board-big-dimmed {
-  opacity: 0.52;
-  filter: saturate(0.55) brightness(0.82);
+.utt-board-closed .utt-small-board:not(.utt-small-board-big-win) {
+  opacity: var(--utt-disabled-board-opacity);
+  filter: var(--utt-disabled-board-filter);
 }
 
-.utt-small-board-big-dimmed::after {
-  content: "";
+.utt-settlement-cue {
   position: absolute;
-  inset: 0;
-  z-index: 7;
+  inset: clamp(28px, 5vw, 64px);
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: clamp(18px, 4vw, 36px);
+  border: 2px solid var(--utt-settlement-color, var(--vp-c-brand-1));
+  background:
+    radial-gradient(circle at center, color-mix(in srgb, var(--utt-settlement-color, var(--vp-c-brand-1)) 18%, transparent), transparent 58%),
+    color-mix(in srgb, var(--vp-c-bg) 88%, transparent);
+  color: var(--vp-c-text-1);
+  text-align: center;
   pointer-events: none;
-  background: rgba(245, 245, 245, 0.25);
+  box-shadow:
+    0 0 0 999px rgba(0, 0, 0, 0.2),
+    0 20px 60px rgba(0, 0, 0, 0.28);
+  animation: utt-settlement-cue 4.6s var(--lc-motion-ease-emphasis, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.utt-settlement-cue-blue {
+  --utt-settlement-color: #2563eb;
+}
+
+.utt-settlement-cue-red {
+  --utt-settlement-color: #dc2626;
+}
+
+.utt-settlement-cue-draw {
+  --utt-settlement-color: #64748b;
+}
+
+.utt-settlement-cue strong {
+  color: var(--utt-settlement-color);
+  font-size: clamp(22px, 5vw, 44px);
+  line-height: 1.1;
+}
+
+.utt-settlement-cue span,
+.utt-settlement-cue em {
+  font-style: normal;
+  font-size: clamp(14px, 2.4vw, 20px);
+  line-height: 1.35;
+}
+
+.utt-settlement-cue span {
+  animation: utt-settlement-text-in 0.42s ease both;
+  animation-delay: 0.72s;
+}
+
+.utt-settlement-cue-reward {
+  color: var(--utt-settlement-color);
+}
+
+.utt-settlement-cue em {
+  color: var(--vp-c-text-2);
+  animation: utt-settlement-text-in 0.42s ease both;
+  animation-delay: 1.56s;
 }
 
 .utt-cell {
@@ -1185,6 +1542,28 @@ function scrollLogToBottom(): void {
 }
 
 :root.dark .utt-hoverable-o:hover {
+  background: rgba(220, 38, 38, 0.18);
+}
+
+.utt-cell-preview-reward-x,
+.utt-cell-preview-reward-x.utt-cell-disabled:hover {
+  background: #eff6ff;
+  animation: utt-preview-reward-cell 0.92s ease-in-out infinite;
+}
+
+.utt-cell-preview-reward-o,
+.utt-cell-preview-reward-o.utt-cell-disabled:hover {
+  background: #fff5f5;
+  animation: utt-preview-reward-cell 0.92s ease-in-out infinite;
+}
+
+:root.dark .utt-cell-preview-reward-x,
+:root.dark .utt-cell-preview-reward-x.utt-cell-disabled:hover {
+  background: rgba(37, 99, 235, 0.18);
+}
+
+:root.dark .utt-cell-preview-reward-o,
+:root.dark .utt-cell-preview-reward-o.utt-cell-disabled:hover {
   background: rgba(220, 38, 38, 0.18);
 }
 
@@ -1292,6 +1671,67 @@ function scrollLogToBottom(): void {
   100% {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@keyframes utt-preview-reward-cell {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+
+  50% {
+    filter: brightness(1.12);
+  }
+}
+
+@keyframes utt-settled-board-pulse {
+  0% {
+    box-shadow:
+      0 0 0 0 color-mix(in srgb, var(--utt-claim-color, #d97706) 36%, transparent),
+      inset 0 0 0 1px color-mix(in srgb, var(--utt-claim-color, #d97706) 28%, transparent);
+    transform: scale(0.985);
+  }
+
+  42% {
+    box-shadow:
+      0 0 0 7px color-mix(in srgb, var(--utt-claim-color, #d97706) 20%, transparent),
+      inset 0 0 0 2px color-mix(in srgb, var(--utt-claim-color, #d97706) 44%, transparent);
+    transform: scale(1.018);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes utt-settlement-cue {
+  0% {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+
+  14%,
+  82% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.025);
+  }
+}
+
+@keyframes utt-settlement-text-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -1507,11 +1947,15 @@ function scrollLogToBottom(): void {
   display: block;
 }
 
-.utt-log-line-blue {
+.utt-log-line:empty {
+  min-height: 8px;
+}
+
+.utt-player-text-blue {
   color: #2563eb;
 }
 
-.utt-log-line-red {
+.utt-player-text-red {
   color: #dc2626;
 }
 
