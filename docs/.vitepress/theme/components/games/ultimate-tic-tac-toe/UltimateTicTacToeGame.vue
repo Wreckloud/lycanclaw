@@ -4,10 +4,14 @@
       <section class="utt-game-area" aria-label="九宫叠阵棋盘">
         <div
           class="utt-board"
-          :class="{ 'utt-board-closed': isGameClosed }"
+          :class="{
+            'utt-board-closed': isGameClosed,
+            'utt-board-tutorial-clickable': tutorialDialogOpen
+          }"
           @touchmove="handleBoardTouchMove"
           @touchend="handleBoardTouchEnd"
           @touchcancel="handleBoardTouchCancel"
+          @click="handleBoardClick"
         >
           <div
             v-for="bigIndex in boardIndexes"
@@ -27,7 +31,7 @@
               type="button"
               :aria-disabled="!canPlayCell(bigIndex, smallIndex)"
               :aria-label="`${formatBigBoardIndex(bigIndex)} 棋盘 ${formatSmallCellPosition(smallIndex)}`"
-              @click="handleCellClick(bigIndex, smallIndex)"
+              @click.stop="handleCellClick(bigIndex, smallIndex)"
               @touchstart="handleCellTouchStart(bigIndex, smallIndex, $event)"
               @mouseenter="showNextBoardPreview(bigIndex, smallIndex)"
               @mouseleave="scheduleClearNextBoardPreview"
@@ -48,29 +52,87 @@
           </div>
 
           <div
-            v-if="previewFrameStyle"
+            v-if="visiblePreviewFrameStyle"
             class="utt-preview-frame"
             :class="{
-              'utt-preview-frame-visible': isPreviewFrameVisible,
-              'utt-preview-frame-free': isPreviewFrameFree
+              'utt-preview-frame-visible': isVisiblePreviewFrameVisible,
+              'utt-preview-frame-free': isVisiblePreviewFrameFree
             }"
-            :style="previewFrameStyle"
-          >
-            <span v-if="previewHintLines.length > 0" class="utt-preview-hint">
-              <span
-                v-for="(line, lineIndex) in previewHintLines"
-                :key="`preview-hint-${lineIndex}`"
-                class="utt-preview-hint-line"
-              >
+            :style="visiblePreviewFrameStyle"
+          />
+
+          <Transition name="utt-settlement-cue">
+            <div v-if="isSettlementCueVisible" class="utt-settlement-cue" aria-live="polite">
+              <div class="utt-settlement-cue-title" :class="settlementCueTitleClass">{{ settlementCueTitle }}</div>
+              <div class="utt-settlement-cue-subtitle">
                 <span
-                  v-for="(part, partIndex) in line"
-                  :key="`preview-hint-${lineIndex}-${partIndex}`"
+                  v-for="(part, partIndex) in settlementCueLines"
+                  :key="`settlement-cue-${partIndex}`"
                   :class="getPlayerTextClass(part.player)"
                 >
                   {{ part.text }}
                 </span>
+              </div>
+            </div>
+          </Transition>
+
+          <Transition name="utt-settlement-cue">
+            <div v-if="isVictoryCueVisible" class="utt-settlement-cue" aria-live="polite">
+              <div class="utt-settlement-cue-title" :class="victoryCueTitleClass">{{ victoryCueTitle }}</div>
+              <div class="utt-settlement-cue-subtitle">
+                <span
+                  v-for="(part, partIndex) in victoryCueLines"
+                  :key="`victory-cue-${partIndex}`"
+                  :class="getPlayerTextClass(part.player)"
+                >
+                  {{ part.text }}
+                </span>
+              </div>
+            </div>
+          </Transition>
+
+          <span v-if="visiblePreviewHintStyle" class="utt-preview-hint" :style="visiblePreviewHintStyle">
+            <span
+              v-for="(line, lineIndex) in visiblePreviewHintLines"
+              :key="`preview-hint-${lineIndex}`"
+              class="utt-preview-hint-line"
+            >
+              <span
+                v-for="(part, partIndex) in line"
+                :key="`preview-hint-${lineIndex}-${partIndex}`"
+                :class="getPlayerTextClass(part.player)"
+              >
+                {{ part.text }}
               </span>
             </span>
+          </span>
+
+          <div
+            v-if="tutorialDialogOpen"
+            class="utt-tutorial-prompt"
+            role="button"
+            tabindex="0"
+            aria-live="polite"
+            :class="tutorialPromptClass"
+            @click.stop="handleTutorialDialogNext"
+            @keydown.enter.prevent="handleTutorialDialogNext"
+            @keydown.space.prevent="handleTutorialDialogNext"
+          >
+            <div v-if="tutorialDialog.title" class="utt-tutorial-prompt-title">{{ tutorialDialog.title }}</div>
+            <div
+              v-for="(line, lineIndex) in tutorialDialog.lines"
+              :key="`tutorial-line-${lineIndex}`"
+              class="utt-tutorial-prompt-line"
+            >
+              <span
+                v-for="(part, partIndex) in line"
+                :key="`tutorial-line-${lineIndex}-${partIndex}`"
+                :class="getPlayerTextClass(part.player)"
+              >
+                {{ part.text }}
+              </span>
+            </div>
+            <div class="utt-tutorial-prompt-action">{{ tutorialPromptActionText }}</div>
           </div>
 
         </div>
@@ -82,21 +144,28 @@
 
           <label class="utt-menu-control">
             <span class="utt-menu-label">对战模式</span>
-            <select v-model="settings.gameMode" class="utt-menu-select" @change="handleModeChange">
+            <select
+              :value="modeSelectValue"
+              class="utt-menu-select"
+              :disabled="isTutorialMode"
+              @change="handleModeSelectChange"
+            >
+              <option v-if="isTutorialMode" value="tutorial">教学模式</option>
               <option value="human-vs-ai">人机对战</option>
               <option value="local">本地对战</option>
               <option value="online">在线对战</option>
             </select>
           </label>
 
-          <label v-if="settings.gameMode === 'human-vs-ai'" class="utt-menu-control">
+          <label v-if="settings.gameMode === 'human-vs-ai' || isTutorialMode" class="utt-menu-control">
             <span class="utt-menu-label">电脑难度</span>
             <select
-              v-model="settings.aiDifficulty"
+              :value="difficultySelectValue"
               class="utt-menu-select"
-              :disabled="settings.gameMode !== 'human-vs-ai'"
-              @change="handleDifficultyChange"
+              :disabled="isTutorialMode || settings.gameMode !== 'human-vs-ai'"
+              @change="handleDifficultySelectChange"
             >
+              <option v-if="isTutorialMode" value="tutorial">教学</option>
               <option value="easy">简单</option>
               <option value="normal">普通</option>
               <option value="hard">困难</option>
@@ -168,28 +237,37 @@
       </aside>
     </div>
 
-    <div v-if="isRulesOpen" class="utt-rules-dialog" role="dialog" aria-modal="true" aria-label="游戏规则">
-      <div class="utt-rules-card">
-        <h2>游戏规则</h2>
-        <p>游戏由 9 个小棋盘组成，每个小棋盘都是一个 3×3 井字棋。</p>
-        <p>玩家落子后，通常会把对手送到对应编号的小棋盘。例如下在第 1 格，对手下一步通常要去 1 号小棋盘。</p>
-        <p>下在中心格时，对手下一步可以自由选择任意可落子的棋盘。</p>
-        <p>当玩家在某个小棋盘里完成三连，该小棋盘会被该玩家控制。控制权一旦确定，不会因为后续落子改变。</p>
-        <p>被控制的小棋盘如果还没满，仍然可以继续落子。只有小棋盘满格时，才会触发满格结算。</p>
-        <p>如果满格的小棋盘有控制者，控制者会获得入口奖励：所有通向该小棋盘的空入口都会自动填入控制者的棋子；已有棋子的入口不变。随后控制者的对手获得自由落子。</p>
-        <p>如果小棋盘满格但无人控制，则记为平局，不触发入口奖励。</p>
-        <p>当一方控制的大棋盘位置连成三连时，该方赢得整局游戏。</p>
-        <button type="button" class="utt-menu-button" @click="isRulesOpen = false">知道了</button>
+    <Teleport to="body">
+      <div
+        v-if="isRulesOpen"
+        class="utt-rules-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label="游戏规则"
+        @click.self="closeRulesDialog"
+        @wheel.stop
+        @touchmove.stop
+      >
+        <div class="utt-rules-card">
+          <div class="utt-rules-content" v-html="rulesHtml"></div>
+          <div class="utt-rules-actions">
+            <button type="button" class="utt-menu-button" @click="closeRulesDialog">知道了</button>
+            <button type="button" class="utt-menu-button utt-menu-button-primary" @click="handleStartTutorial">进入教学</button>
+          </div>
+        </div>
       </div>
-    </div>
+    </Teleport>
+
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import rulesMarkdown from './rules.md?raw'
 import { createAdaptiveProfileFromReports } from './core/adaptive'
 import { chooseAIMoveWithDeadline } from './core/ai'
 import type { AIWorkerResponse } from './core/ai.worker'
+import { renderRulesMarkdown } from './core/markdown'
 import { createTurnReport } from './core/report'
 import { applyMoveImmutable, forceWinnerByResign } from './core/reducer'
 import {
@@ -200,6 +278,28 @@ import {
   saveAdaptiveProfile,
   saveGameSettings
 } from './core/state'
+import {
+  TUTORIAL_AI_SEND_TO_CENTER_MOVE,
+  TUTORIAL_AI_SEND_TO_CLAIM_CELL_INDEX,
+  TUTORIAL_AI_SEND_TO_SETTLEMENT_MOVE,
+  TUTORIAL_CENTER_BOARD_INDEX,
+  TUTORIAL_CENTER_CELL_INDEX,
+  TUTORIAL_CLAIM_BOARD_INDEX,
+  TUTORIAL_CLAIM_CELL_INDEX,
+  TUTORIAL_FIRST_MOVE_CELL_INDEXES,
+  TUTORIAL_OPENING_BOARD_INDEX,
+  TUTORIAL_SETTLEMENT_BOARD_INDEX,
+  TUTORIAL_SETTLEMENT_CELL_INDEX,
+  createTutorialOpeningState
+} from './core/tutorial'
+import {
+  createInactiveTutorialState,
+  createTutorialDialog,
+  type MessageLinePart,
+  type TutorialDialog,
+  type TutorialState,
+  type TutorialStep
+} from './core/tutorial-dialog'
 import {
   canMove,
   formatBigBoardIndex,
@@ -220,9 +320,10 @@ import {
   X,
   type AIDecision,
   type AIDecisionAnalysis,
-  type CellValue,
+  type AIDifficulty,
   type GameCoreState,
   type GameMessage,
+  type GameMode,
   type GameMove,
   type GameSettings,
   type Player,
@@ -236,20 +337,21 @@ const AUTO_FILL_BASE_DELAY_MS = 220
 const AUTO_FILL_STEP_DELAY_MS = 180
 const AUTO_FILL_ANIMATION_MS = 780
 const AFTER_AUTO_FILL_PAUSE_MS = 260
-const SETTLEMENT_CUE_MIN_DELAY_MS = 4800
+const SETTLEMENT_CUE_MIN_DELAY_MS = 7200
 const PREVIEW_SHOW_DELAY_MS = 70
 const PREVIEW_HIDE_DELAY_MS = 160
 const TOUCH_PREVIEW_COMMIT_MS = 280
 const TOUCH_PREVIEW_MOVE_THRESHOLD = 8
-const DEBUG_SETTLEMENT_BOARD_INDEX = 1
-const DEBUG_SETTLEMENT_MOVE_INDEX = 4
-const DEBUG_REWARD_EMPTY_BOARD_INDEX = 0
+const TUTORIAL_AI_MOVE_DELAY_MS = 1000
+const TUTORIAL_SETTLEMENT_DIALOG_DELAY_MS = 1800
 const settings = ref<GameSettings>(loadGameSettings())
 const adaptiveProfile = ref(loadAdaptiveProfile())
 const state = ref<GameCoreState>(createInitialGameState(settings.value))
 const isThinking = ref(false)
 const worker = ref<Worker | null>(null)
 const isRulesOpen = ref(false)
+const tutorialState = ref<TutorialState>(createInactiveTutorialState())
+const previousTutorialSettings = ref<GameSettings | null>(null)
 const messageDraft = ref('')
 const activePreviewTarget = ref<PreviewTarget | null>(null)
 const lastPreviewTarget = ref<PreviewTarget | null>(null)
@@ -260,6 +362,9 @@ let aiDecisionApplyTimer: number | null = null
 let aiThinkingStartedAt = 0
 let previewTimer: number | null = null
 let previewHideTimer: number | null = null
+let tutorialTimer: number | null = null
+let previousRulesBodyOverflow: string | null = null
+let previousRulesHtmlOverflow: string | null = null
 let touchPreviewState: {
   startedAt: number
   startX: number
@@ -275,18 +380,17 @@ type PreviewTarget =
       type: 'board'
       boardIndex: number
       hintLines: MessageLinePart[][]
+      hintPosition: PreviewHintPosition
+      hintBoardIndex: number | null
       rewardCells: PreviewRewardCell[]
     }
   | {
       type: 'free'
       hintLines: MessageLinePart[][]
+      hintPosition: PreviewHintPosition
+      hintBoardIndex: number | null
       rewardCells: PreviewRewardCell[]
     }
-
-interface MessageLinePart {
-  text: string
-  player: Player | null
-}
 
 interface PreviewRewardCell {
   bigIndex: number
@@ -294,16 +398,24 @@ interface PreviewRewardCell {
   player: Player
 }
 
+type PreviewHintPosition = 'above' | 'below'
+
 const isFinished = computed(() => state.value.winner !== EMPTY)
 const isAwaitingStart = computed(() => !state.value.isStarted)
 const isGameClosed = computed(() => isAwaitingStart.value || isFinished.value)
+const isTutorialMode = computed(() => tutorialState.value.active)
+const tutorialDialogOpen = computed(() => tutorialState.value.active && tutorialState.value.dialogOpen)
+const modeSelectValue = computed(() => isTutorialMode.value ? 'tutorial' : settings.value.gameMode)
+const difficultySelectValue = computed(() => isTutorialMode.value ? 'tutorial' : settings.value.aiDifficulty)
+const rulesHtml = computed(() => renderRulesMarkdown(rulesMarkdown))
 const primaryActionText = computed(() => {
+  if (isTutorialMode.value) return '退出教学'
   if (isAwaitingStart.value) return '开始游戏!'
-  return isFinished.value ? '再来一把' : '投降'
+  return isFinished.value ? '再来一把!' : '投降'
 })
 const primaryActionClass = computed(() => ({
-  'utt-menu-button-primary': isAwaitingStart.value || isFinished.value,
-  'utt-menu-button-danger': !isAwaitingStart.value && !isFinished.value
+  'utt-menu-button-primary': !isTutorialMode.value && (isAwaitingStart.value || isFinished.value),
+  'utt-menu-button-danger': isTutorialMode.value || (!isAwaitingStart.value && !isFinished.value)
 }))
 const currentTurnLabel = computed(() => {
   return getPlayerName(state.value.currentPlayer, state.value)
@@ -314,35 +426,76 @@ const currentTurnButtonClass = computed(() => ({
 }))
 const isPreviewFrameVisible = computed(() => activePreviewTarget.value !== null)
 const isPreviewFrameFree = computed(() => (activePreviewTarget.value ?? lastPreviewTarget.value)?.type === 'free')
-const previewFrameStyle = computed<Record<string, string> | null>(() => {
-  const target = activePreviewTarget.value ?? lastPreviewTarget.value
-  if (!target) return null
-
-  if (target.type === 'free') {
-    return {
-      left: 'calc(var(--utt-board-padding) - var(--utt-indicator-offset) - var(--utt-indicator-width))',
-      top: 'calc(var(--utt-board-padding) - var(--utt-indicator-offset) - var(--utt-indicator-width))',
-      width: 'calc(100% - var(--utt-board-padding) - var(--utt-board-padding) + var(--utt-indicator-offset) + var(--utt-indicator-offset) + var(--utt-indicator-width) + var(--utt-indicator-width))',
-      height: 'calc(100% - var(--utt-board-padding) - var(--utt-board-padding) + var(--utt-indicator-offset) + var(--utt-indicator-offset) + var(--utt-indicator-width) + var(--utt-indicator-width))'
-    }
-  }
-
-  const col = target.boardIndex % 3
-  const row = Math.floor(target.boardIndex / 3)
-  const boardSize = 'calc((100% - var(--utt-board-padding) - var(--utt-board-padding) - var(--utt-board-gap) - var(--utt-board-gap)) / 3)'
-  const step = `calc(${boardSize} + var(--utt-board-gap))`
-  const colOffset = repeatCssAddition(step, col)
-  const rowOffset = repeatCssAddition(step, row)
-
-  return {
-    left: `calc(var(--utt-board-padding)${colOffset} - var(--utt-indicator-offset) - var(--utt-indicator-width))`,
-    top: `calc(var(--utt-board-padding)${rowOffset} - var(--utt-indicator-offset) - var(--utt-indicator-width))`,
-    width: `calc(${boardSize} + var(--utt-indicator-offset) + var(--utt-indicator-offset) + var(--utt-indicator-width) + var(--utt-indicator-width))`,
-    height: `calc(${boardSize} + var(--utt-indicator-offset) + var(--utt-indicator-offset) + var(--utt-indicator-width) + var(--utt-indicator-width))`
-  }
-})
+const previewFrameStyle = computed<Record<string, string> | null>(() => createPreviewFrameStyle(activePreviewTarget.value ?? lastPreviewTarget.value))
 const previewHintLines = computed(() => activePreviewTarget.value?.hintLines ?? [])
+const tutorialPreviewTarget = computed<PreviewTarget | null>(() => createTutorialPreviewTarget())
+const visiblePreviewTarget = computed(() => activePreviewTarget.value ?? tutorialPreviewTarget.value ?? lastPreviewTarget.value)
+const visiblePreviewFrameStyle = computed(() => {
+  return activePreviewTarget.value || !tutorialPreviewTarget.value
+    ? previewFrameStyle.value
+    : createPreviewFrameStyle(tutorialPreviewTarget.value)
+})
+const isVisiblePreviewFrameVisible = computed(() => activePreviewTarget.value !== null || tutorialPreviewTarget.value !== null)
+const isVisiblePreviewFrameFree = computed(() => visiblePreviewTarget.value?.type === 'free')
+const visiblePreviewHintLines = computed(() => activePreviewTarget.value?.hintLines ?? tutorialPreviewTarget.value?.hintLines ?? [])
+const settlementCueLines = computed<MessageLinePart[] | null>(() => {
+  const event = state.value.lastRuleEvents[0]
+  if (!event) return null
+
+  if (isPlayer(state.value.winner)) {
+    return createVictoryCueLines(state.value.winner)
+  }
+
+  if (!isPlayer(event.owner)) {
+    return [
+      { text: `${formatBigBoardIndex(event.boardIndex)} 棋盘无人占领，不触发入口奖励`, player: null }
+    ]
+  }
+
+  const nextPlayer = getOpponent(event.owner)
+  return [
+    { text: '由于 ', player: null },
+    { text: getDisplayPlayerName(event.owner, state.value), player: event.owner },
+    { text: ` 占领了 ${formatBigBoardIndex(event.boardIndex)} 棋盘，回合重置给 `, player: null },
+    { text: getDisplayPlayerName(nextPlayer, state.value), player: nextPlayer }
+  ]
+})
+const isSettlementCueVisible = computed(() => {
+  if (!settlementCueLines.value) return false
+  if (!isTutorialMode.value) return true
+
+  return tutorialState.value.step === 'settlementIntro'
+})
+const settlementCueTitle = computed(() => {
+  const event = state.value.lastRuleEvents[0]
+  return isPlayer(state.value.winner) && event && event.filledCount > 0
+    ? '满盘终结'
+    : '满盘结算'
+})
+const settlementCueTitleClass = computed(() => {
+  return isPlayer(state.value.winner) ? getPlayerTextClass(state.value.winner) : ''
+})
+const isVictoryCueVisible = computed(() => isPlayer(state.value.winner) && !isSettlementCueVisible.value)
+const victoryCueTitle = computed(() => isPlayer(state.value.winner) ? `${getCuePlayerName(state.value.winner)}获胜` : '')
+const victoryCueTitleClass = computed(() => isPlayer(state.value.winner) ? getPlayerTextClass(state.value.winner) : '')
+const victoryCueLines = computed<MessageLinePart[]>(() => {
+  return isPlayer(state.value.winner) ? createVictoryCueLines(state.value.winner) : []
+})
+const previewHintStyle = computed<Record<string, string> | null>(() => createPreviewHintStyle(activePreviewTarget.value))
+const visiblePreviewHintStyle = computed(() => activePreviewTarget.value ? previewHintStyle.value : createPreviewHintStyle(tutorialPreviewTarget.value))
 const settlementBoardIndex = computed(() => state.value.lastRuleEvents[0]?.boardIndex ?? null)
+const tutorialDialog = computed<TutorialDialog>(() => createTutorialDialog(tutorialState.value, state.value, getDisplayPlayerName))
+const tutorialPromptActionText = computed(() => {
+  return tutorialDialog.value.buttonText === '继续'
+    ? '点击继续>'
+    : `${tutorialDialog.value.buttonText}>`
+})
+const tutorialPromptClass = computed(() => ({
+  'utt-tutorial-prompt-top': shouldPlaceTutorialPromptTop(),
+  'utt-tutorial-prompt-after-top-board': shouldPlaceTutorialPromptAfterTopBoard(),
+  'utt-tutorial-prompt-near-center-board': shouldPlaceTutorialPromptNearCenterBoard(),
+  'utt-tutorial-prompt-below-middle-row': shouldPlaceTutorialPromptBelowMiddleRow()
+}))
 const messagePlaceholder = computed(() => {
   if (state.value.isMessageInputFocused) return ''
   if (state.value.errorMessage) return state.value.errorMessage
@@ -358,11 +511,17 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  setRulesDialogScrollLock(false)
   clearNextBoardPreview()
   clearAIRequestTimer()
   clearAIDecisionApplyTimer()
+  clearTutorialTimer()
   worker.value?.removeEventListener('message', handleWorkerMessage)
   worker.value?.terminate()
+})
+
+watch(isRulesOpen, (open) => {
+  setRulesDialogScrollLock(open)
 })
 
 watch(
@@ -371,14 +530,34 @@ watch(
 )
 
 function handleCellClick(bigIndex: number, smallIndex: number): void {
+  if (tutorialDialogOpen.value && !tutorialState.value.inputEnabled) {
+    handleTutorialDialogNext()
+    return
+  }
   if (Date.now() < suppressCellClickUntil) return
   playCellFromInput(bigIndex, smallIndex)
+}
+
+function handleBoardClick(): void {
+  if (!tutorialDialogOpen.value || tutorialState.value.inputEnabled) return
+  handleTutorialDialogNext()
 }
 
 function playCellFromInput(bigIndex: number, smallIndex: number): void {
   if (isThinking.value || isAITurn(state.value)) {
     setError(`${getPlayerName(state.value.currentPlayer, state.value)} 正在思考`)
     return
+  }
+
+  if (isTutorialMode.value && tutorialState.value.inputEnabled) {
+    if (!canMove(state.value, bigIndex, smallIndex)) {
+      setError(getInvalidMoveReason(state.value, bigIndex, smallIndex))
+      return
+    }
+    if (!canPlayTutorialCell(bigIndex, smallIndex)) {
+      setError(getTutorialMoveRestrictionMessage())
+      return
+    }
   }
 
   if (!canPlayCell(bigIndex, smallIndex)) {
@@ -390,6 +569,7 @@ function playCellFromInput(bigIndex: number, smallIndex: number): void {
 }
 
 function handleCellTouchStart(bigIndex: number, smallIndex: number, event: TouchEvent): void {
+  if (tutorialDialogOpen.value) return
   preventCancelableDefault(event)
   const touch = event.touches[0] ?? event.changedTouches[0]
   if (!touch) return
@@ -447,6 +627,7 @@ function handleBoardTouchCancel(event: TouchEvent): void {
 function canPlayCell(bigIndex: number, smallIndex: number): boolean {
   if (!state.value.isStarted) return false
   if (settings.value.gameMode === 'online') return false
+  if (isTutorialMode.value && !canPlayTutorialCell(bigIndex, smallIndex)) return false
   if (isAITurn(state.value)) return false
 
   return canMove(state.value, bigIndex, smallIndex)
@@ -466,16 +647,21 @@ function playMove(move: GameMove, aiDecision: AIDecisionAnalysis | null = null):
   state.value = nextState
   clearNextBoardPreview()
 
-  if (!report.actor.isAI) {
+  if (!report.actor.isAI && !isTutorialMode.value) {
     adaptiveProfile.value = createAdaptiveProfileFromReports(adaptiveProfile.value, nextState.turnReports)
     saveAdaptiveProfile(adaptiveProfile.value)
   }
 
-  scheduleAIMoveIfNeeded()
+  if (isTutorialMode.value && !tutorialState.value.realAiEnabled) {
+    handleTutorialMoveCompleted(movePlayer, move)
+  } else {
+    scheduleAIMoveIfNeeded()
+  }
 }
 
 function scheduleAIMoveIfNeeded(): void {
   clearAIRequestTimer()
+  if (isTutorialMode.value && !tutorialState.value.realAiEnabled) return
   if (!isAITurn(state.value) || state.value.winner !== EMPTY) return
   const delayMs = getPostMoveDelay(state.value)
 
@@ -503,6 +689,7 @@ function clearAIDecisionApplyTimer(): void {
 function requestAIMoveIfNeeded(): void {
   clearAIRequestTimer()
   clearAIDecisionApplyTimer()
+  if (isTutorialMode.value && !tutorialState.value.realAiEnabled) return
   if (!state.value.isStarted || !isAITurn(state.value) || state.value.winner !== EMPTY || isThinking.value) return
 
   isThinking.value = true
@@ -584,6 +771,7 @@ function getCellClass(bigIndex: number, smallIndex: number): Record<string, bool
   const lastTurnMove = state.value.lastTurnMoves.find((move) => move.bigIndex === bigIndex && move.smallIndex === smallIndex)
   const previewRewardPlayer = getPreviewRewardPlayer(bigIndex, smallIndex)
   const canPlay = canPlayCell(bigIndex, smallIndex)
+  const isTutorialTarget = isTutorialTargetCell(bigIndex, smallIndex)
 
   return {
     'utt-cell-x': value === X,
@@ -594,9 +782,41 @@ function getCellClass(bigIndex: number, smallIndex: number): Record<string, bool
     'utt-cell-disabled': !canPlay,
     'utt-hoverable-x': canPlay && state.value.currentPlayer === X,
     'utt-hoverable-o': canPlay && state.value.currentPlayer === O,
+    'utt-cell-tutorial-target': isTutorialTarget,
     'utt-cell-preview-reward-x': previewRewardPlayer === X,
     'utt-cell-preview-reward-o': previewRewardPlayer === O
   }
+}
+
+function isTutorialTargetCell(bigIndex: number, smallIndex: number): boolean {
+  if (!tutorialState.value.active || !tutorialState.value.inputEnabled) return false
+  if (!shouldHighlightTutorialTargets()) return false
+
+  return tutorialState.value.allowedMoves?.some((move) => (
+    move.bigIndex === bigIndex && move.smallIndex === smallIndex
+  )) ?? false
+}
+
+function shouldHighlightTutorialTargets(): boolean {
+  const allowedMoves = tutorialState.value.allowedMoves
+  if (!allowedMoves || allowedMoves.length !== 1) return false
+
+  return countLegalMoves() > 1
+}
+
+function countLegalMoves(): number {
+  let moveCount = 0
+
+  for (let bigIndex = 0; bigIndex < 9; bigIndex += 1) {
+    for (let smallIndex = 0; smallIndex < 9; smallIndex += 1) {
+      if (canMove(state.value, bigIndex, smallIndex)) {
+        moveCount += 1
+      }
+      if (moveCount > 1) return moveCount
+    }
+  }
+
+  return moveCount
 }
 
 function getPreviewRewardPlayer(bigIndex: number, smallIndex: number): Player | null {
@@ -636,7 +856,14 @@ function getSmallBoardClass(bigIndex: number): Record<string, boolean> {
   const status = state.value.smallBoardStatus[bigIndex]
   const boardFull = isBoardFull(state.value, bigIndex)
   const effectiveNextBoard = getEffectiveNextBoard(state.value)
-  const isGameActive = state.value.isStarted && state.value.winner === EMPTY
+  const lastManualMoveBoardIndex = getLastManualMoveBoardIndex()
+  const tutorialFocusBoards = getTutorialFocusBoards()
+  const hasTutorialFocus = tutorialFocusBoards.length > 0
+  const isTutorialFocus = tutorialFocusBoards.includes(bigIndex)
+  const shouldDimBoard = shouldDimAllTutorialBoards()
+  const isGameActive = state.value.isStarted
+    && state.value.winner === EMPTY
+    && (!isTutorialMode.value || tutorialState.value.inputEnabled)
   const isPlayableBoard = isGameActive && !boardFull && (effectiveNextBoard === null || effectiveNextBoard === bigIndex)
   const isLockedBoard = isGameActive && !boardFull && !isPlayableBoard
   const hasBigBoardWinner = state.value.winner === X || state.value.winner === O
@@ -644,9 +871,10 @@ function getSmallBoardClass(bigIndex: number): Record<string, boolean> {
   const currentSettlementBoardIndex = settlementBoardIndex.value
 
   return {
-    'utt-small-board-active': isPlayableBoard,
+    'utt-small-board-active': isPlayableBoard || (hasTutorialFocus && isTutorialFocus && !boardFull),
+    'utt-small-board-last-move': lastManualMoveBoardIndex === bigIndex && !boardFull,
     'utt-small-board-full': boardFull,
-    'utt-small-board-locked': isLockedBoard,
+    'utt-small-board-locked': shouldDimBoard || isLockedBoard || (hasTutorialFocus && !isTutorialFocus && !boardFull),
     'utt-small-board-settled': currentSettlementBoardIndex === bigIndex,
     'utt-small-board-claimed-x': status === X,
     'utt-small-board-claimed-o': status === O,
@@ -655,10 +883,170 @@ function getSmallBoardClass(bigIndex: number): Record<string, boolean> {
   }
 }
 
+function getLastManualMoveBoardIndex(): number | null {
+  return state.value.lastTurnMoves.find((move) => move.source === 'manual')?.bigIndex ?? null
+}
+
+function getTutorialFocusBoards(): number[] {
+  if (!tutorialState.value.active || state.value.winner !== EMPTY) return []
+
+  switch (tutorialState.value.step) {
+    case 'previousMoveIntro':
+      return [4]
+    case 'limitIntro':
+    case 'awaitFirstMove':
+      return [4, TUTORIAL_OPENING_BOARD_INDEX]
+    case 'afterFirstMove': {
+      const nextBoard = getEffectiveNextBoard(state.value)
+      return nextBoard === null ? [] : [nextBoard]
+    }
+    case 'claimIntro':
+    case 'awaitClaimMove':
+    case 'claimSuccess':
+    case 'lineRule':
+      return [TUTORIAL_CLAIM_BOARD_INDEX]
+    case 'centerMoveIntro':
+    case 'awaitCenterMove':
+    case 'centerSuccess':
+    case 'centerRule':
+    case 'freeMoveIntro':
+      return [TUTORIAL_CENTER_BOARD_INDEX]
+    case 'settlementReady':
+    case 'settlementIntro':
+    case 'settlementReward':
+    case 'settlementCurrent':
+    case 'drawSettlement':
+    case 'fullTargetRule':
+    case 'done':
+      return [TUTORIAL_SETTLEMENT_BOARD_INDEX]
+    default:
+      return []
+  }
+}
+
+function shouldDimAllTutorialBoards(): boolean {
+  if (!tutorialState.value.active) return false
+
+  switch (tutorialState.value.step) {
+    case 'welcome':
+    case 'boardIntro':
+    case 'controlGoal':
+    case 'victoryGoal':
+    case 'practiceIntro':
+      return true
+    default:
+      return false
+  }
+}
+
+function createTutorialPreviewTarget(): PreviewTarget | null {
+  const boardIndex = getTutorialPreviewBoardIndex()
+  if (boardIndex === null) return null
+
+  return {
+    type: 'board',
+    boardIndex,
+    hintLines: [],
+    hintPosition: getPreviewHintPosition(boardIndex),
+    hintBoardIndex: null,
+    rewardCells: []
+  }
+}
+
+function getTutorialPreviewBoardIndex(): number | null {
+  if (!tutorialDialogOpen.value || state.value.winner !== EMPTY) return null
+
+  switch (tutorialState.value.step) {
+    case 'limitIntro':
+    case 'awaitFirstMove':
+      return TUTORIAL_OPENING_BOARD_INDEX
+    case 'afterFirstMove':
+      return getEffectiveNextBoard(state.value)
+    case 'claimIntro':
+    case 'awaitClaimMove':
+    case 'claimSuccess':
+    case 'lineRule':
+      return TUTORIAL_CLAIM_BOARD_INDEX
+    case 'centerMoveIntro':
+    case 'awaitCenterMove':
+    case 'centerSuccess':
+    case 'centerRule':
+    case 'freeMoveIntro':
+      return TUTORIAL_CENTER_BOARD_INDEX
+    case 'settlementReady':
+    case 'settlementIntro':
+    case 'settlementReward':
+    case 'settlementCurrent':
+    case 'drawSettlement':
+    case 'fullTargetRule':
+    case 'done':
+      return TUTORIAL_SETTLEMENT_BOARD_INDEX
+    default:
+      return null
+  }
+}
+
+function shouldPlaceTutorialPromptTop(): boolean {
+  switch (tutorialState.value.step) {
+    case 'welcome':
+    case 'boardIntro':
+    case 'controlGoal':
+    case 'victoryGoal':
+    case 'practiceIntro':
+    case 'previousMoveIntro':
+    case 'limitIntro':
+    case 'awaitFirstMove':
+    case 'afterFirstMove':
+      return true
+    default:
+      return false
+  }
+}
+
+function shouldPlaceTutorialPromptAfterTopBoard(): boolean {
+  switch (tutorialState.value.step) {
+    case 'claimIntro':
+    case 'awaitClaimMove':
+    case 'claimSuccess':
+    case 'lineRule':
+      return true
+    default:
+      return false
+  }
+}
+
+function shouldPlaceTutorialPromptNearCenterBoard(): boolean {
+  switch (tutorialState.value.step) {
+    case 'centerMoveIntro':
+    case 'awaitCenterMove':
+    case 'centerSuccess':
+    case 'centerRule':
+    case 'freeMoveIntro':
+      return true
+    default:
+      return false
+  }
+}
+
+function shouldPlaceTutorialPromptBelowMiddleRow(): boolean {
+  switch (tutorialState.value.step) {
+    case 'settlementReady':
+    case 'settlementIntro':
+    case 'settlementReward':
+    case 'settlementCurrent':
+    case 'drawSettlement':
+    case 'fullTargetRule':
+    case 'done':
+      return true
+    default:
+      return false
+  }
+}
+
 function showNextBoardPreview(bigIndex: number, smallIndex: number): void {
   clearPreviewTimer()
   clearPreviewHideTimer()
-  if (!canPlayCell(bigIndex, smallIndex)) return
+  if (!canPreviewCell(bigIndex, smallIndex)) return
 
   previewTimer = window.setTimeout(() => {
     previewTimer = null
@@ -669,8 +1057,16 @@ function showNextBoardPreview(bigIndex: number, smallIndex: number): void {
 function showNextBoardPreviewNow(bigIndex: number, smallIndex: number): void {
   clearPreviewTimer()
   clearPreviewHideTimer()
-  if (!canPlayCell(bigIndex, smallIndex)) return
+  if (!canPreviewCell(bigIndex, smallIndex)) return
   resolveNextBoardPreview(bigIndex, smallIndex)
+}
+
+function canPreviewCell(bigIndex: number, smallIndex: number): boolean {
+  if (!state.value.isStarted) return false
+  if (settings.value.gameMode === 'online') return false
+  if (isAITurn(state.value)) return false
+
+  return canMove(state.value, bigIndex, smallIndex)
 }
 
 function resolveNextBoardPreview(bigIndex: number, smallIndex: number): void {
@@ -713,6 +1109,59 @@ function setPreviewTarget(target: PreviewTarget): void {
   lastPreviewTarget.value = target
 }
 
+function createPreviewFrameStyle(target: PreviewTarget | null): Record<string, string> | null {
+  if (!target) return null
+
+  if (target.type === 'free') {
+    return {
+      left: 'calc(var(--utt-board-padding) - var(--utt-indicator-offset) - var(--utt-indicator-width))',
+      top: 'calc(var(--utt-board-padding) - var(--utt-indicator-offset) - var(--utt-indicator-width))',
+      width: 'calc(100% - var(--utt-board-padding) - var(--utt-board-padding) + var(--utt-indicator-offset) + var(--utt-indicator-offset) + var(--utt-indicator-width) + var(--utt-indicator-width))',
+      height: 'calc(100% - var(--utt-board-padding) - var(--utt-board-padding) + var(--utt-indicator-offset) + var(--utt-indicator-offset) + var(--utt-indicator-width) + var(--utt-indicator-width))'
+    }
+  }
+
+  const col = target.boardIndex % 3
+  const row = Math.floor(target.boardIndex / 3)
+  const boardSize = 'calc((100% - var(--utt-board-padding) - var(--utt-board-padding) - var(--utt-board-gap) - var(--utt-board-gap)) / 3)'
+  const step = `calc(${boardSize} + var(--utt-board-gap))`
+  const colOffset = repeatCssAddition(step, col)
+  const rowOffset = repeatCssAddition(step, row)
+
+  return {
+    left: `calc(var(--utt-board-padding)${colOffset} - var(--utt-indicator-offset) - var(--utt-indicator-width))`,
+    top: `calc(var(--utt-board-padding)${rowOffset} - var(--utt-indicator-offset) - var(--utt-indicator-width))`,
+    width: `calc(${boardSize} + var(--utt-indicator-offset) + var(--utt-indicator-offset) + var(--utt-indicator-width) + var(--utt-indicator-width))`,
+    height: `calc(${boardSize} + var(--utt-indicator-offset) + var(--utt-indicator-offset) + var(--utt-indicator-width) + var(--utt-indicator-width))`
+  }
+}
+
+function createPreviewHintStyle(target: PreviewTarget | null): Record<string, string> | null {
+  if (!target || target.hintLines.length === 0 || target.hintBoardIndex === null) return null
+
+  const col = target.hintBoardIndex % 3
+  const row = Math.floor(target.hintBoardIndex / 3)
+  const boardSize = 'calc((100% - var(--utt-board-padding) - var(--utt-board-padding) - var(--utt-board-gap) - var(--utt-board-gap)) / 3)'
+  const step = `calc(${boardSize} + var(--utt-board-gap))`
+  const colOffset = repeatCssAddition(step, col)
+  const rowOffset = repeatCssAddition(step, row)
+  const left = `calc(var(--utt-board-padding)${colOffset} + (${boardSize} / 2))`
+
+  return target.hintPosition === 'below'
+    ? {
+        left,
+        top: `calc(var(--utt-board-padding)${rowOffset} + ${boardSize} + 8px)`,
+        '--utt-preview-hint-transform': 'translateX(-50%)',
+        '--utt-preview-hint-from-transform': 'translate(-50%, -6px)'
+      }
+    : {
+        left,
+        top: `calc(var(--utt-board-padding)${rowOffset} - 8px)`,
+        '--utt-preview-hint-transform': 'translate(-50%, -100%)',
+        '--utt-preview-hint-from-transform': 'translate(-50%, calc(-100% - 6px))'
+      }
+}
+
 function createPreviewTarget(nextState: GameCoreState): PreviewTarget | null {
   const event = nextState.lastRuleEvents[0]
   if (!event && (isPlayer(nextState.winner) || nextState.winner === DRAW)) return null
@@ -721,6 +1170,8 @@ function createPreviewTarget(nextState: GameCoreState): PreviewTarget | null {
     ? null
     : getEffectiveNextBoard(nextState)
   const hintLines = event ? createSettlementPreviewHint(nextState, event) : []
+  const hintPosition = event ? getPreviewHintPosition(event.boardIndex) : 'above'
+  const hintBoardIndex = event?.boardIndex ?? null
   const rewardCells = event?.filledCells.map((cell) => ({
     bigIndex: cell.bigIndex,
     smallIndex: cell.smallIndex,
@@ -731,19 +1182,30 @@ function createPreviewTarget(nextState: GameCoreState): PreviewTarget | null {
     ? {
         type: 'free',
         hintLines,
+        hintPosition,
+        hintBoardIndex,
         rewardCells
       }
     : {
         type: 'board',
         boardIndex: targetBoard,
         hintLines,
+        hintPosition,
+        hintBoardIndex,
         rewardCells
       }
 }
 
+function getPreviewHintPosition(boardIndex: number): PreviewHintPosition {
+  return Math.floor(boardIndex / 3) === 0 ? 'below' : 'above'
+}
+
 function createSettlementPreviewHint(nextState: GameCoreState, event: RuleEvent): MessageLinePart[][] {
   if (!isPlayer(event.owner)) {
-    return [[{ text: '即将触发满盘结算！无人占领，不触发入口奖励。', player: null }]]
+    return [
+      [{ text: '即将触发满盘结算！', player: null }],
+      [{ text: '无人占领，不触发入口奖励。', player: null }]
+    ]
   }
 
   const nextPlayer = getOpponent(event.owner)
@@ -758,6 +1220,35 @@ function createSettlementPreviewHint(nextState: GameCoreState, event: RuleEvent)
       { text: ' 自由落子。', player: null }
     ]
   ]
+}
+
+function createVictoryCueLines(winner: Player): MessageLinePart[] {
+  const winningLine = state.value.bigBoardWinningLine ?? []
+  if (winningLine.length === 0) {
+    return [
+      { text: `${getCuePlayerName(winner)}赢得整局游戏。`, player: winner }
+    ]
+  }
+
+  return [
+    { text: getCuePlayerName(winner), player: winner },
+    { text: `占领了 ${formatBoardList(winningLine)}。`, player: null }
+  ]
+}
+
+function formatBoardList(boardIndexes: number[]): string {
+  if (boardIndexes.length === 1) return `${formatBigBoardIndex(boardIndexes[0])} 棋盘`
+  if (boardIndexes.length === 2) {
+    return `${formatBigBoardIndex(boardIndexes[0])} 棋盘和 ${formatBigBoardIndex(boardIndexes[1])} 棋盘`
+  }
+
+  const leadingBoards = boardIndexes.slice(0, -1).map((boardIndex) => `${formatBigBoardIndex(boardIndex)} 棋盘`)
+  const lastBoard = `${formatBigBoardIndex(boardIndexes[boardIndexes.length - 1])} 棋盘`
+  return `${leadingBoards.join('、')}和 ${lastBoard}`
+}
+
+function getCuePlayerName(player: Player): string {
+  return player === X ? '蓝方' : '红方'
 }
 
 function getDisplayPlayerName(player: Player, currentState: GameCoreState): string {
@@ -799,6 +1290,60 @@ function resetGameToReady(): void {
   clearNextBoardPreview()
 }
 
+function closeRulesDialog(): void {
+  isRulesOpen.value = false
+}
+
+function setRulesDialogScrollLock(locked: boolean): void {
+  if (typeof document === 'undefined') return
+
+  if (locked) {
+    if (previousRulesBodyOverflow === null) previousRulesBodyOverflow = document.body.style.overflow
+    if (previousRulesHtmlOverflow === null) previousRulesHtmlOverflow = document.documentElement.style.overflow
+    document.body.style.overflow = 'hidden'
+    document.documentElement.style.overflow = 'hidden'
+    return
+  }
+
+  if (previousRulesBodyOverflow !== null) {
+    document.body.style.overflow = previousRulesBodyOverflow
+    previousRulesBodyOverflow = null
+  }
+  if (previousRulesHtmlOverflow !== null) {
+    document.documentElement.style.overflow = previousRulesHtmlOverflow
+    previousRulesHtmlOverflow = null
+  }
+}
+
+function handleStartTutorial(): void {
+  if (isTutorialMode.value) {
+    window.alert('你已经进入教学模式了。')
+    return
+  }
+
+  closeRulesDialog()
+  clearAIRequestTimer()
+  clearAIDecisionApplyTimer()
+  clearTutorialTimer()
+  isThinking.value = false
+  previousTutorialSettings.value = { ...settings.value }
+  settings.value = {
+    gameMode: 'human-vs-ai',
+    aiDifficulty: 'easy'
+  }
+  tutorialState.value = {
+    active: true,
+    step: 'welcome',
+    dialogOpen: true,
+    inputEnabled: false,
+    realAiEnabled: false,
+    allowedMoves: null
+  }
+  state.value = createTutorialOpeningState(settings.value)
+  appendTutorialStepMessage('welcome')
+  clearNextBoardPreview()
+}
+
 function startGame(): void {
   isThinking.value = false
   clearAIRequestTimer()
@@ -812,6 +1357,11 @@ function startGame(): void {
 function handleResignOrRematch(): void {
   clearAIRequestTimer()
   clearAIDecisionApplyTimer()
+
+  if (isTutorialMode.value) {
+    exitTutorialWithConfirm()
+    return
+  }
 
   if (!state.value.isStarted || isFinished.value) {
     startGame()
@@ -834,6 +1384,26 @@ function handleResignOrRematch(): void {
   state.value = nextState
 }
 
+function handleModeSelectChange(event: Event): void {
+  if (isTutorialMode.value) return
+  const gameMode = (event.target as HTMLSelectElement).value as GameMode
+  settings.value = {
+    ...settings.value,
+    gameMode
+  }
+  handleModeChange()
+}
+
+function handleDifficultySelectChange(event: Event): void {
+  if (isTutorialMode.value) return
+  const aiDifficulty = (event.target as HTMLSelectElement).value as AIDifficulty
+  settings.value = {
+    ...settings.value,
+    aiDifficulty
+  }
+  handleDifficultyChange()
+}
+
 function handleModeChange(): void {
   if (settings.value.gameMode === 'online') {
     window.alert('在线对战暂未开放\n后续接入房间后开启')
@@ -850,6 +1420,249 @@ function handleDifficultyChange(): void {
   resetGameToReady()
 }
 
+function handleTutorialDialogNext(): void {
+  switch (tutorialState.value.step) {
+    case 'welcome':
+      showTutorialStep('boardIntro')
+      return
+    case 'boardIntro':
+      showTutorialStep('controlGoal')
+      return
+    case 'controlGoal':
+      showTutorialStep('victoryGoal')
+      return
+    case 'victoryGoal':
+      showTutorialStep('practiceIntro')
+      return
+    case 'practiceIntro':
+      showTutorialStep('previousMoveIntro')
+      return
+    case 'previousMoveIntro':
+      showTutorialStep('limitIntro')
+      return
+    case 'limitIntro':
+      beginTutorialInput(
+        'awaitFirstMove',
+        TUTORIAL_FIRST_MOVE_CELL_INDEXES.map((smallIndex) => ({
+          bigIndex: TUTORIAL_OPENING_BOARD_INDEX,
+          smallIndex
+        })),
+        true
+      )
+      return
+    case 'afterFirstMove':
+      runTutorialFirstAIMove()
+      return
+    case 'claimIntro':
+      beginTutorialInput('awaitClaimMove', [{
+        bigIndex: TUTORIAL_CLAIM_BOARD_INDEX,
+        smallIndex: TUTORIAL_CLAIM_CELL_INDEX
+      }], true)
+      return
+    case 'claimSuccess':
+      showTutorialStep('lineRule')
+      return
+    case 'lineRule':
+      runTutorialAIMove(TUTORIAL_AI_SEND_TO_CENTER_MOVE, () => showTutorialStep('centerMoveIntro'))
+      return
+    case 'centerMoveIntro':
+      beginTutorialInput('awaitCenterMove', [{
+        bigIndex: TUTORIAL_CENTER_BOARD_INDEX,
+        smallIndex: TUTORIAL_CENTER_CELL_INDEX
+      }], true)
+      return
+    case 'centerSuccess':
+      showTutorialStep('centerRule')
+      return
+    case 'centerRule':
+      showTutorialStep('freeMoveIntro')
+      return
+    case 'freeMoveIntro':
+      runTutorialAIMove(TUTORIAL_AI_SEND_TO_SETTLEMENT_MOVE, () => {
+        beginTutorialInput('settlementReady', [{
+          bigIndex: TUTORIAL_SETTLEMENT_BOARD_INDEX,
+          smallIndex: TUTORIAL_SETTLEMENT_CELL_INDEX
+        }], true)
+      })
+      return
+    case 'settlementReady':
+      return
+    case 'settlementIntro':
+      showTutorialStep('settlementReward')
+      return
+    case 'settlementReward':
+      showTutorialStep('settlementCurrent')
+      return
+    case 'settlementCurrent':
+      showTutorialStep('drawSettlement')
+      return
+    case 'drawSettlement':
+      showTutorialStep('fullTargetRule')
+      return
+    case 'fullTargetRule':
+      showTutorialStep('done')
+      return
+    case 'done':
+      finishTutorialNarration()
+      return
+    case 'awaitFirstMove':
+    case 'awaitClaimMove':
+    case 'awaitCenterMove':
+      return
+  }
+}
+
+function canPlayTutorialCell(bigIndex: number, smallIndex: number): boolean {
+  if (!tutorialState.value.active) return true
+  if (!tutorialState.value.inputEnabled) return false
+  const allowedMoves = tutorialState.value.allowedMoves
+  if (!allowedMoves) return true
+
+  return allowedMoves.some((move) => move.bigIndex === bigIndex && move.smallIndex === smallIndex)
+}
+
+function getTutorialMoveRestrictionMessage(): string {
+  return '请按指示落子。'
+}
+
+function handleTutorialMoveCompleted(movePlayer: Player, move: GameMove): void {
+  if (!tutorialState.value.active || movePlayer !== X) return
+
+  switch (tutorialState.value.step) {
+    case 'awaitFirstMove':
+      showTutorialStep('afterFirstMove')
+      return
+    case 'awaitClaimMove':
+      showTutorialStep('claimSuccess')
+      return
+    case 'awaitCenterMove':
+      showTutorialStep('centerSuccess')
+      return
+    case 'settlementReady':
+      tutorialState.value = {
+        ...tutorialState.value,
+        inputEnabled: false,
+        allowedMoves: null
+      }
+      clearTutorialTimer()
+      tutorialTimer = window.setTimeout(() => {
+        tutorialTimer = null
+        showTutorialStep('settlementIntro')
+      }, TUTORIAL_SETTLEMENT_DIALOG_DELAY_MS)
+      return
+    default:
+      return
+  }
+}
+
+function showTutorialStep(step: TutorialStep): void {
+  tutorialState.value = {
+    ...tutorialState.value,
+    step,
+    dialogOpen: true,
+    inputEnabled: false,
+    allowedMoves: null
+  }
+  appendTutorialStepMessage(step)
+}
+
+function beginTutorialInput(step: TutorialStep, allowedMoves: GameMove[] | null = null, keepDialog = false): void {
+  tutorialState.value = {
+    ...tutorialState.value,
+    step,
+    dialogOpen: keepDialog,
+    inputEnabled: true,
+    allowedMoves
+  }
+  appendTutorialStepMessage(step)
+}
+
+function appendTutorialStepMessage(step: TutorialStep): void {
+  const dialog = createTutorialDialog(
+    {
+      ...tutorialState.value,
+      step
+    },
+    state.value,
+    getDisplayPlayerName
+  )
+  const lines = [
+    dialog.title,
+    ...dialog.lines.map((line) => line.map((part) => part.text).join(''))
+  ].filter(Boolean)
+
+  if (lines.length === 0) return
+  state.value.messages.push({
+    id: `tutorial-step-${step}-${Date.now()}-${state.value.messages.length}`,
+    type: 'system',
+    text: lines.join('\n')
+  })
+}
+
+function runTutorialAIMove(move: GameMove, afterMove: () => void, delayMs = TUTORIAL_AI_MOVE_DELAY_MS): void {
+  if (!canMove(state.value, move.bigIndex, move.smallIndex)) {
+    setError('教程局面异常，请退出教程后重新进入')
+    return
+  }
+
+  clearTutorialTimer()
+  clearAIRequestTimer()
+  clearAIDecisionApplyTimer()
+  requestId += 1
+  isThinking.value = true
+  setError(`${getPlayerName(O, state.value)} 正在演示`)
+  tutorialTimer = window.setTimeout(() => {
+    tutorialTimer = null
+    isThinking.value = false
+    playMove(move)
+    afterMove()
+  }, delayMs)
+}
+
+function runTutorialFirstAIMove(delayMs = TUTORIAL_AI_MOVE_DELAY_MS): void {
+  const targetBoard = getEffectiveNextBoard(state.value)
+  if (targetBoard === null) {
+    setError('教程局面异常，请退出教程后重新进入')
+    return
+  }
+
+  runTutorialAIMove({
+    bigIndex: targetBoard,
+    smallIndex: TUTORIAL_AI_SEND_TO_CLAIM_CELL_INDEX
+  }, () => showTutorialStep('claimIntro'), delayMs)
+}
+
+function finishTutorialNarration(): void {
+  clearTutorialTimer()
+  isThinking.value = false
+  tutorialState.value = createInactiveTutorialState()
+  settings.value = previousTutorialSettings.value ?? loadGameSettings()
+  previousTutorialSettings.value = null
+  resetGameToReady()
+}
+
+function exitTutorialWithConfirm(): void {
+  if (state.value.winner === EMPTY) {
+    const confirmed = window.confirm('真的要退出教程模式吗？\n对战进度不会保留。')
+    if (!confirmed) return
+  }
+
+  clearTutorialTimer()
+  clearAIRequestTimer()
+  clearAIDecisionApplyTimer()
+  isThinking.value = false
+  tutorialState.value = createInactiveTutorialState()
+  settings.value = previousTutorialSettings.value ?? loadGameSettings()
+  previousTutorialSettings.value = null
+  resetGameToReady()
+}
+
+function clearTutorialTimer(): void {
+  if (tutorialTimer === null) return
+  window.clearTimeout(tutorialTimer)
+  tutorialTimer = null
+}
+
 function handleMessageFocus(): void {
   state.value.errorMessage = ''
   state.value.isMessageInputFocused = true
@@ -862,10 +1675,6 @@ function handleMessageBlur(): void {
 function handleSendMessage(): void {
   const text = messageDraft.value.trim()
   if (!text) return
-  if (handleDebugCommand(text)) {
-    messageDraft.value = ''
-    return
-  }
 
   state.value.errorMessage = ''
   const sender = state.value.currentPlayer
@@ -878,103 +1687,6 @@ function handleSendMessage(): void {
   }
   state.value.messages.push(message)
   messageDraft.value = ''
-}
-
-function handleDebugCommand(text: string): boolean {
-  if (!import.meta.env.DEV) return false
-
-  switch (text.toLowerCase()) {
-    case '/debug settle-o':
-    case '/调试 红方满盘':
-      triggerDebugSettlement(O, false)
-      return true
-    case '/debug settle-x':
-    case '/调试 蓝方满盘':
-      triggerDebugSettlement(X, false)
-      return true
-    case '/debug settle-win-o':
-    case '/调试 红方满盘胜利':
-      triggerDebugSettlement(O, true)
-      return true
-    case '/debug settle-draw':
-    case '/调试 平局满盘':
-      triggerDebugDrawSettlement()
-      return true
-    default:
-      return false
-  }
-}
-
-function triggerDebugSettlement(owner: Player, shouldWinGame: boolean): void {
-  prepareDebugState()
-  const debugState = createDebugBaseState(owner)
-  setupClaimedDebugBoard(debugState, owner)
-  setupSingleRewardEntrance(debugState, owner)
-
-  if (shouldWinGame) {
-    debugState.smallBoardStatus[0] = owner
-    debugState.smallBoardStatus[2] = owner
-  }
-
-  state.value = debugState
-}
-
-function triggerDebugDrawSettlement(): void {
-  prepareDebugState()
-  const debugState = createDebugBaseState(X)
-  const boardCells: CellValue[] = [X, O, X, X, EMPTY, O, O, X, O]
-
-  for (let smallIndex = 0; smallIndex < boardCells.length; smallIndex += 1) {
-    debugState.board[getCellIndex(DEBUG_SETTLEMENT_BOARD_INDEX, smallIndex)] = boardCells[smallIndex]
-  }
-
-  state.value = debugState
-}
-
-function prepareDebugState(): void {
-  clearAIRequestTimer()
-  clearAIDecisionApplyTimer()
-  clearNextBoardPreview()
-  isThinking.value = false
-  settings.value = {
-    ...settings.value,
-    gameMode: 'local'
-  }
-}
-
-function createDebugBaseState(currentPlayer: Player): GameCoreState {
-  const debugState = createInitialGameState(settings.value, { started: true })
-  debugState.currentPlayer = currentPlayer
-  debugState.nextBoard = null
-  debugState.messages = [
-    {
-      id: `debug-${Date.now()}`,
-      type: 'system',
-      text: `调试局面：请点击 ${formatBigBoardIndex(DEBUG_SETTLEMENT_BOARD_INDEX)} 棋盘 ${formatMoveCellText(DEBUG_SETTLEMENT_MOVE_INDEX)}，触发满盘结算。`
-    }
-  ]
-
-  return debugState
-}
-
-function setupClaimedDebugBoard(debugState: GameCoreState, owner: Player): void {
-  const opponent = getOpponent(owner)
-  const boardCells: CellValue[] = [owner, owner, owner, opponent, EMPTY, opponent, owner, opponent, owner]
-
-  debugState.smallBoardStatus[DEBUG_SETTLEMENT_BOARD_INDEX] = owner
-  debugState.smallBoardWinningLines[DEBUG_SETTLEMENT_BOARD_INDEX] = [0, 1, 2]
-
-  for (let smallIndex = 0; smallIndex < boardCells.length; smallIndex += 1) {
-    debugState.board[getCellIndex(DEBUG_SETTLEMENT_BOARD_INDEX, smallIndex)] = boardCells[smallIndex]
-  }
-}
-
-function setupSingleRewardEntrance(debugState: GameCoreState, owner: Player): void {
-  for (let bigIndex = 0; bigIndex < boardIndexes.length; bigIndex += 1) {
-    debugState.board[getCellIndex(bigIndex, DEBUG_SETTLEMENT_BOARD_INDEX)] = owner
-  }
-
-  debugState.board[getCellIndex(DEBUG_REWARD_EMPTY_BOARD_INDEX, DEBUG_SETTLEMENT_BOARD_INDEX)] = EMPTY
 }
 
 function getMessageClass(message: GameMessage): Record<string, boolean> {
@@ -1214,6 +1926,10 @@ function scrollLogToBottom(): void {
   filter: none;
 }
 
+.utt-board-tutorial-clickable {
+  cursor: pointer;
+}
+
 :root.dark .utt-board {
   --utt-indicator-mask: rgba(255, 255, 255, 0.1);
   --utt-board-bg: color-mix(in srgb, var(--vp-c-bg) 66%, #303030);
@@ -1246,12 +1962,24 @@ function scrollLogToBottom(): void {
   filter: var(--utt-disabled-board-filter);
 }
 
+.utt-small-board-last-move {
+  opacity: 0.72;
+  filter: saturate(0.78) brightness(0.94);
+}
+
 .utt-small-board-active {
   border-color: color-mix(in srgb, var(--utt-small-board-border) 56%, var(--vp-c-text-1));
   background: color-mix(in srgb, var(--utt-small-board-bg) 82%, var(--vp-c-bg) 18%);
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--vp-c-text-1) 14%, transparent),
     0 0 0 1px color-mix(in srgb, var(--vp-c-text-1) 8%, transparent);
+}
+
+.utt-small-board-active.utt-small-board-last-move,
+.utt-small-board-settled.utt-small-board-last-move,
+.utt-small-board-big-win.utt-small-board-last-move {
+  opacity: 1;
+  filter: none;
 }
 
 .utt-small-board-claimed-x {
@@ -1333,9 +2061,7 @@ function scrollLogToBottom(): void {
 
 .utt-preview-hint {
   position: absolute;
-  left: 50%;
-  top: 7px;
-  z-index: 2;
+  z-index: 10;
   width: max-content;
   max-width: min(280px, calc(100vw - 64px));
   padding: 5px 8px;
@@ -1346,11 +2072,168 @@ function scrollLogToBottom(): void {
   line-height: 1.35;
   text-align: center;
   box-shadow: 0 8px 22px rgba(15, 23, 42, 0.16);
-  transform: translateX(-50%);
+  pointer-events: none;
+  transform: var(--utt-preview-hint-transform, translate(-50%, -100%));
+  animation: utt-preview-hint-in 0.2s var(--lc-motion-ease-emphasis, cubic-bezier(0.22, 1, 0.36, 1)) both;
 }
 
 .utt-preview-hint-line {
   display: block;
+}
+
+.utt-preview-hint-line + .utt-preview-hint-line {
+  margin-top: 3px;
+}
+
+.utt-tutorial-prompt {
+  --utt-tutorial-board-size: calc((100% - var(--utt-board-padding) - var(--utt-board-padding) - var(--utt-board-gap) - var(--utt-board-gap)) / 3);
+
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  z-index: 11;
+  width: min(360px, calc(100% - 28px));
+  padding: 5px 8px 6px;
+  border: 1px solid color-mix(in srgb, var(--vp-c-divider) 72%, var(--vp-c-text-1));
+  background: color-mix(in srgb, var(--vp-c-bg) 92%, transparent);
+  color: var(--vp-c-text-2);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.04;
+  text-align: left;
+  user-select: none;
+  -webkit-user-select: none;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.16);
+  transform: translateX(-50%);
+}
+
+.utt-tutorial-prompt-top {
+  top: 12px;
+  bottom: auto;
+}
+
+.utt-tutorial-prompt-after-top-board {
+  top: calc(var(--utt-board-padding) + var(--utt-tutorial-board-size) + 8px);
+  bottom: auto;
+}
+
+.utt-tutorial-prompt-near-center-board {
+  top: calc(var(--utt-board-padding) + var(--utt-tutorial-board-size) + var(--utt-board-gap) + var(--utt-tutorial-board-size) + var(--utt-board-gap) - 8px);
+  bottom: auto;
+  transform: translate(-50%, -100%);
+}
+
+.utt-tutorial-prompt-below-middle-row {
+  top: calc(var(--utt-board-padding) + var(--utt-tutorial-board-size) + var(--utt-board-gap) + var(--utt-tutorial-board-size) + 8px);
+  bottom: auto;
+}
+
+.utt-tutorial-prompt:focus-visible {
+  outline: 2px solid #1d4fb8;
+  outline-offset: 2px;
+}
+
+.utt-tutorial-prompt-title {
+  margin-bottom: 1px;
+  color: var(--vp-c-text-1);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.04;
+}
+
+.utt-tutorial-prompt-line {
+  display: block;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.utt-tutorial-prompt-action {
+  margin-top: 1px;
+  color: #1d4fb8;
+  font-size: 12px;
+  line-height: 1.04;
+  text-align: right;
+}
+
+.utt-settlement-cue {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 12;
+  display: inline-flex;
+  width: max-content;
+  max-width: calc(100% - 28px);
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.utt-settlement-cue-title {
+  color: var(--vp-c-text-1);
+  font-size: clamp(46px, 9.6vw, 92px);
+  font-style: italic;
+  font-weight: 900;
+  line-height: 0.92;
+  letter-spacing: 0.07em;
+  text-shadow:
+    3px 0 0 var(--vp-c-bg),
+    -3px 0 0 var(--vp-c-bg),
+    0 3px 0 var(--vp-c-bg),
+    0 -3px 0 var(--vp-c-bg),
+    2px 2px 0 var(--vp-c-bg),
+    -2px -2px 0 var(--vp-c-bg),
+    2px -2px 0 var(--vp-c-bg),
+    -2px 2px 0 var(--vp-c-bg),
+    0 10px 22px rgba(15, 23, 42, 0.28);
+  -webkit-text-stroke: 2px var(--vp-c-bg);
+}
+
+.utt-settlement-cue-title.utt-player-text-blue {
+  color: #2563eb;
+}
+
+.utt-settlement-cue-title.utt-player-text-red {
+  color: #dc2626;
+}
+
+.utt-settlement-cue-subtitle {
+  color: var(--vp-c-text-2);
+  font-size: clamp(11px, 1.9vw, 14px);
+  font-weight: 400;
+  line-height: 1.4;
+  text-align: center;
+  text-shadow:
+    1px 0 0 var(--vp-c-bg),
+    -1px 0 0 var(--vp-c-bg),
+    0 1px 0 var(--vp-c-bg),
+    0 -1px 0 var(--vp-c-bg),
+    0 6px 16px rgba(15, 23, 42, 0.24);
+  white-space: nowrap;
+}
+
+.utt-settlement-cue-enter-active,
+.utt-settlement-cue-leave-active {
+  transition:
+    opacity 0.42s var(--lc-motion-ease-emphasis, cubic-bezier(0.22, 1, 0.36, 1)),
+    transform 0.42s var(--lc-motion-ease-emphasis, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.utt-settlement-cue-enter-from {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(1.16);
+}
+
+.utt-settlement-cue-enter-to,
+.utt-settlement-cue-leave-from {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.utt-settlement-cue-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(1.12);
 }
 
 .utt-preview-frame-free.utt-preview-frame-visible {
@@ -1364,6 +2247,18 @@ function scrollLogToBottom(): void {
 
   to {
     transform: scale(1);
+  }
+}
+
+@keyframes utt-preview-hint-in {
+  from {
+    opacity: 0;
+    transform: var(--utt-preview-hint-from-transform, translate(-50%, calc(-100% - 6px)));
+  }
+
+  to {
+    opacity: 1;
+    transform: var(--utt-preview-hint-transform, translate(-50%, -100%));
   }
 }
 
@@ -1409,6 +2304,13 @@ function scrollLogToBottom(): void {
   background: #fff5f5;
 }
 
+.utt-cell-tutorial-target,
+.utt-cell-tutorial-target.utt-cell-disabled:hover {
+  background: color-mix(in srgb, var(--utt-claim-x-color) 16%, var(--utt-cell-bg));
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--utt-claim-x-color) 72%, transparent);
+  animation: utt-tutorial-target-pulse 2s ease-in-out infinite;
+}
+
 :root.dark .utt-hoverable-x:hover {
   background: rgba(37, 99, 235, 0.18);
 }
@@ -1417,26 +2319,39 @@ function scrollLogToBottom(): void {
   background: rgba(220, 38, 38, 0.18);
 }
 
+:root.dark .utt-cell-tutorial-target,
+:root.dark .utt-cell-tutorial-target.utt-cell-disabled:hover {
+  background: color-mix(in srgb, var(--utt-claim-x-color) 24%, var(--utt-cell-bg));
+}
+
 .utt-cell-preview-reward-x,
 .utt-cell-preview-reward-x.utt-cell-disabled:hover {
-  background: #eff6ff;
-  animation: utt-preview-reward-cell 0.92s ease-in-out infinite;
+  --utt-preview-reward-bg: var(--utt-cell-bg);
+  --utt-preview-reward-bg-strong: color-mix(in srgb, var(--utt-claim-x-color) 24%, var(--utt-cell-bg));
+  background: var(--utt-preview-reward-bg);
+  animation: utt-preview-reward-cell 1.8s ease-in-out infinite;
 }
 
 .utt-cell-preview-reward-o,
 .utt-cell-preview-reward-o.utt-cell-disabled:hover {
-  background: #fff5f5;
-  animation: utt-preview-reward-cell 0.92s ease-in-out infinite;
+  --utt-preview-reward-bg: var(--utt-cell-bg);
+  --utt-preview-reward-bg-strong: color-mix(in srgb, var(--utt-claim-o-color) 24%, var(--utt-cell-bg));
+  background: var(--utt-preview-reward-bg);
+  animation: utt-preview-reward-cell 1.8s ease-in-out infinite;
 }
 
 :root.dark .utt-cell-preview-reward-x,
 :root.dark .utt-cell-preview-reward-x.utt-cell-disabled:hover {
-  background: rgba(37, 99, 235, 0.18);
+  --utt-preview-reward-bg: var(--utt-cell-bg);
+  --utt-preview-reward-bg-strong: color-mix(in srgb, var(--utt-claim-x-color) 30%, var(--utt-cell-bg));
+  background: var(--utt-preview-reward-bg);
 }
 
 :root.dark .utt-cell-preview-reward-o,
 :root.dark .utt-cell-preview-reward-o.utt-cell-disabled:hover {
-  background: rgba(220, 38, 38, 0.18);
+  --utt-preview-reward-bg: var(--utt-cell-bg);
+  --utt-preview-reward-bg-strong: color-mix(in srgb, var(--utt-claim-o-color) 30%, var(--utt-cell-bg));
+  background: var(--utt-preview-reward-bg);
 }
 
 .utt-cell-x {
@@ -1549,11 +2464,22 @@ function scrollLogToBottom(): void {
 @keyframes utt-preview-reward-cell {
   0%,
   100% {
-    filter: brightness(1);
+    background: var(--utt-preview-reward-bg);
   }
 
   50% {
-    filter: brightness(1.12);
+    background: var(--utt-preview-reward-bg-strong);
+  }
+}
+
+@keyframes utt-tutorial-target-pulse {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--utt-claim-x-color) 58%, transparent);
+  }
+
+  50% {
+    box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--utt-claim-x-color) 92%, transparent);
   }
 }
 
@@ -1848,28 +2774,102 @@ function scrollLogToBottom(): void {
   justify-content: center;
   padding: 20px;
   background: rgba(0, 0, 0, 0.32);
+  overscroll-behavior: contain;
 }
 
 .utt-rules-card {
+  display: flex;
   width: min(560px, 100%);
   max-height: min(720px, 90vh);
-  overflow-y: auto;
+  box-sizing: border-box;
+  flex-direction: column;
   padding: 22px;
+  overflow: hidden;
   background: var(--vp-c-bg);
   border: 2px solid var(--vp-c-text-1);
 }
 
-.utt-rules-card h2 {
-  margin: 0 0 14px;
-  font-size: 20px;
+.utt-rules-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
 }
 
-.utt-rules-card p {
+.utt-rules-content :deep(h1),
+.utt-rules-content :deep(h2),
+.utt-rules-content :deep(h3) {
+  margin: 0 0 14px;
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+.utt-rules-content :deep(h2) {
+  margin-top: 20px;
+  font-size: 17px;
+}
+
+.utt-rules-content :deep(h3) {
+  margin-top: 16px;
+  font-size: 15px;
+}
+
+.utt-rules-content :deep(p),
+.utt-rules-content :deep(li) {
   margin: 0 0 12px;
   color: var(--vp-c-text-2);
   font-size: 14px;
   line-height: 1.7;
   text-align: left;
+}
+
+.utt-rules-content :deep(ul) {
+  margin: 0 0 14px;
+  padding-left: 20px;
+}
+
+.utt-rules-content :deep(strong) {
+  color: var(--vp-c-text-1);
+}
+
+.utt-rules-content :deep(code) {
+  padding: 2px 5px;
+  border: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-1);
+  font-size: 13px;
+}
+
+.utt-rules-content :deep(a) {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.utt-rules-content :deep(img) {
+  display: block;
+  max-width: 100%;
+  max-height: 280px;
+  margin: 12px auto 16px;
+  border: 1px solid var(--vp-c-divider);
+  object-fit: contain;
+}
+
+.utt-rules-actions {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg);
+}
+
+.utt-rules-actions .utt-menu-button {
+  margin-bottom: 0;
+  justify-content: center;
 }
 
 @media (max-width: 768px) {
@@ -1914,6 +2914,24 @@ function scrollLogToBottom(): void {
 
   .utt-cell {
     font-size: clamp(18px, 6vw, 28px);
+  }
+
+  .utt-rules-dialog {
+    align-items: stretch;
+    padding: 0;
+  }
+
+  .utt-rules-card {
+    width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    min-height: 0;
+    padding: 18px 16px calc(14px + env(safe-area-inset-bottom));
+    border: 0;
+  }
+
+  .utt-rules-actions {
+    margin-top: 10px;
   }
 
   .utt-side-panel {
