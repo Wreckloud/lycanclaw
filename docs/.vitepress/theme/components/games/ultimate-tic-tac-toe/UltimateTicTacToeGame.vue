@@ -362,7 +362,7 @@ const TOUCH_PREVIEW_MOVE_THRESHOLD = 8
 const TUTORIAL_AI_MOVE_DELAY_MS = 1000
 const TUTORIAL_SETTLEMENT_DIALOG_DELAY_MS = 1800
 const ONLINE_NICKNAME_STORAGE_KEY = 'lycan:utt:online:nickname'
-const ONLINE_TOKENS_STORAGE_KEY = 'lycan:utt:online:tokens'
+const ONLINE_SESSION_TOKENS_STORAGE_KEY = 'lycan:utt:online:session-tokens'
 const settings = ref<GameSettings>(loadGameSettings())
 const adaptiveProfile = ref(loadAdaptiveProfile())
 const state = ref<GameCoreState>(createInitialGameState(settings.value))
@@ -1771,7 +1771,7 @@ function saveOnlineNickname(nickname: string): void {
 function loadOnlineRoomToken(roomId: string): string {
   if (typeof window === 'undefined') return ''
   try {
-    const raw = window.localStorage.getItem(ONLINE_TOKENS_STORAGE_KEY)
+    const raw = window.sessionStorage.getItem(ONLINE_SESSION_TOKENS_STORAGE_KEY)
     if (!raw) return ''
     const tokens = JSON.parse(raw) as Record<string, string>
     return typeof tokens[roomId] === 'string' ? tokens[roomId] : ''
@@ -1784,12 +1784,12 @@ function saveOnlineRoomToken(roomId: string, token: string): void {
   if (typeof window === 'undefined') return
   const tokens: Record<string, string> = {}
   try {
-    Object.assign(tokens, JSON.parse(window.localStorage.getItem(ONLINE_TOKENS_STORAGE_KEY) || '{}'))
+    Object.assign(tokens, JSON.parse(window.sessionStorage.getItem(ONLINE_SESSION_TOKENS_STORAGE_KEY) || '{}'))
   } catch {
-    // 损坏的本地 token 映射直接覆盖，避免影响新房间加入。
+    // 损坏的标签页 token 映射直接覆盖，避免影响新房间加入。
   }
   tokens[roomId] = token
-  window.localStorage.setItem(ONLINE_TOKENS_STORAGE_KEY, JSON.stringify(tokens))
+  window.sessionStorage.setItem(ONLINE_SESSION_TOKENS_STORAGE_KEY, JSON.stringify(tokens))
 }
 
 function handleTutorialDialogNext(): void {
