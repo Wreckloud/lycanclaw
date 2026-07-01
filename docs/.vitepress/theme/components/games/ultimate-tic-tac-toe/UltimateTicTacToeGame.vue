@@ -173,18 +173,18 @@
             </select>
           </label>
           <div v-else class="utt-menu-control">
-            <span class="utt-menu-label">当前棋手</span>
+            <span class="utt-menu-label">{{ statusControlLabel }}</span>
             <button
               type="button"
               class="utt-turn-button"
               :class="currentTurnButtonClass"
               disabled
             >
-              {{ currentTurnLabel }}
+              {{ statusControlText }}
             </button>
           </div>
 
-          <button type="button" class="utt-menu-button" @click="isRulesOpen = true">游戏规则</button>
+          <button type="button" class="utt-menu-button" @click="handleSecondaryAction">{{ secondaryActionText }}</button>
           <button
             type="button"
             class="utt-menu-button"
@@ -252,7 +252,14 @@
           <div class="utt-rules-content" v-html="rulesHtml"></div>
           <div class="utt-rules-actions">
             <button type="button" class="utt-menu-button" @click="closeRulesDialog">知道了</button>
-            <button type="button" class="utt-menu-button utt-menu-button-primary" @click="handleStartTutorial">进入教学</button>
+            <button
+              v-if="canShowTutorialButton"
+              type="button"
+              class="utt-menu-button utt-menu-button-primary"
+              @click="handleStartTutorial"
+            >
+              进入教学
+            </button>
           </div>
         </div>
       </div>
@@ -301,6 +308,16 @@ import {
   type TutorialStep
 } from './core/tutorial-dialog'
 import {
+  OnlineGameClient,
+  createOnlinePlayerToken,
+  createOnlineRoom,
+  type OnlineGameMessage,
+  type OnlineRecordedMove,
+  type OnlineRoomSnapshot,
+  type OnlineRoomStatus,
+  type OnlineRuleEvent
+} from './core/online-client'
+import {
   canMove,
   formatBigBoardIndex,
   formatSmallCellPosition,
@@ -344,6 +361,8 @@ const TOUCH_PREVIEW_COMMIT_MS = 280
 const TOUCH_PREVIEW_MOVE_THRESHOLD = 8
 const TUTORIAL_AI_MOVE_DELAY_MS = 1000
 const TUTORIAL_SETTLEMENT_DIALOG_DELAY_MS = 1800
+const ONLINE_NICKNAME_STORAGE_KEY = 'lycan:utt:online:nickname'
+const ONLINE_TOKENS_STORAGE_KEY = 'lycan:utt:online:tokens'
 const settings = ref<GameSettings>(loadGameSettings())
 const adaptiveProfile = ref(loadAdaptiveProfile())
 const state = ref<GameCoreState>(createInitialGameState(settings.value))
@@ -353,6 +372,13 @@ const isRulesOpen = ref(false)
 const tutorialState = ref<TutorialState>(createInactiveTutorialState())
 const previousTutorialSettings = ref<GameSettings | null>(null)
 const messageDraft = ref('')
+const onlineRoomId = ref('')
+const onlinePlayerToken = ref('')
+const onlineNickname = ref(loadOnlineNickname())
+const onlineRoomStatus = ref<OnlineRoomStatus | 'NOT_JOINED'>('NOT_JOINED')
+const onlineConnectionStatus = ref<'idle' | 'connecting' | 'connected' | 'disconnected'>('idle')
+const onlineSelfSide = ref<Player | null>(null)
+const onlineClient = ref<OnlineGameClient | null>(null)
 const activePreviewTarget = ref<PreviewTarget | null>(null)
 const lastPreviewTarget = ref<PreviewTarget | null>(null)
 const logRef = ref<HTMLElement | null>(null)
@@ -410,13 +436,39 @@ const difficultySelectValue = computed(() => isTutorialMode.value ? 'tutorial' :
 const rulesHtml = computed(() => renderRulesMarkdown(rulesMarkdown))
 const primaryActionText = computed(() => {
   if (isTutorialMode.value) return '退出教学'
+  if (settings.value.gameMode === 'online') return getOnlinePrimaryActionText()
   if (isAwaitingStart.value) return '开始游戏!'
   return isFinished.value ? '再来一把!' : '投降'
 })
 const primaryActionClass = computed(() => ({
-  'utt-menu-button-primary': !isTutorialMode.value && (isAwaitingStart.value || isFinished.value),
-  'utt-menu-button-danger': isTutorialMode.value || (!isAwaitingStart.value && !isFinished.value)
+  'utt-menu-button-primary': !isTutorialMode.value && (
+    settings.value.gameMode === 'online'
+      ? onlineRoomStatus.value !== 'PLAYING'
+      : (isAwaitingStart.value || isFinished.value)
+  ),
+  'utt-menu-button-danger': isTutorialMode.value || (
+    settings.value.gameMode === 'online'
+      ? onlineRoomStatus.value === 'PLAYING'
+      : (!isAwaitingStart.value && !isFinished.value)
+  )
 }))
+const secondaryActionText = computed(() => {
+  return settings.value.gameMode === 'online' && !hasOnlineRoom.value ? '加入房间' : '游戏规则'
+})
+const hasOnlineRoom = computed(() => settings.value.gameMode === 'online' && Boolean(onlineRoomId.value))
+const canShowTutorialButton = computed(() => {
+  return !isTutorialMode.value && !state.value.isStarted && !hasOnlineRoom.value
+})
+const statusControlLabel = computed(() => {
+  return settings.value.gameMode === 'online' && onlineRoomStatus.value !== 'PLAYING'
+    ? '房间状态'
+    : '当前棋手'
+})
+const statusControlText = computed(() => {
+  return settings.value.gameMode === 'online' && onlineRoomStatus.value !== 'PLAYING'
+    ? getOnlineRoomStatusText()
+    : currentTurnLabel.value
+})
 const currentTurnLabel = computed(() => {
   return getPlayerName(state.value.currentPlayer, state.value)
 })
@@ -499,6 +551,7 @@ const tutorialPromptClass = computed(() => ({
 const messagePlaceholder = computed(() => {
   if (state.value.isMessageInputFocused) return ''
   if (state.value.errorMessage) return state.value.errorMessage
+  if (settings.value.gameMode === 'online' && !hasOnlineRoom.value) return '加入房间后聊天'
 
   return '输入消息'
 })
@@ -506,6 +559,7 @@ const messagePlaceholder = computed(() => {
 onMounted(() => {
   worker.value = new Worker(new URL('./core/ai.worker.ts', import.meta.url), { type: 'module' })
   worker.value.addEventListener('message', handleWorkerMessage)
+  handleInitialOnlineRoomFromUrl()
   requestAIMoveIfNeeded()
   scrollLogToBottom()
 })
@@ -516,6 +570,7 @@ onBeforeUnmount(() => {
   clearAIRequestTimer()
   clearAIDecisionApplyTimer()
   clearTutorialTimer()
+  closeOnlineClient()
   worker.value?.removeEventListener('message', handleWorkerMessage)
   worker.value?.terminate()
 })
@@ -544,6 +599,11 @@ function handleBoardClick(): void {
 }
 
 function playCellFromInput(bigIndex: number, smallIndex: number): void {
+  if (settings.value.gameMode === 'online') {
+    playOnlineCell(bigIndex, smallIndex)
+    return
+  }
+
   if (isThinking.value || isAITurn(state.value)) {
     setError(`${getPlayerName(state.value.currentPlayer, state.value)} 正在思考`)
     return
@@ -626,7 +686,11 @@ function handleBoardTouchCancel(event: TouchEvent): void {
 
 function canPlayCell(bigIndex: number, smallIndex: number): boolean {
   if (!state.value.isStarted) return false
-  if (settings.value.gameMode === 'online') return false
+  if (settings.value.gameMode === 'online') {
+    return onlineRoomStatus.value === 'PLAYING'
+      && onlineSelfSide.value === state.value.currentPlayer
+      && canMove(state.value, bigIndex, smallIndex)
+  }
   if (isTutorialMode.value && !canPlayTutorialCell(bigIndex, smallIndex)) return false
   if (isAITurn(state.value)) return false
 
@@ -1063,7 +1127,11 @@ function showNextBoardPreviewNow(bigIndex: number, smallIndex: number): void {
 
 function canPreviewCell(bigIndex: number, smallIndex: number): boolean {
   if (!state.value.isStarted) return false
-  if (settings.value.gameMode === 'online') return false
+  if (settings.value.gameMode === 'online') {
+    return onlineRoomStatus.value === 'PLAYING'
+      && onlineSelfSide.value === state.value.currentPlayer
+      && canMove(state.value, bigIndex, smallIndex)
+  }
   if (isAITurn(state.value)) return false
 
   return canMove(state.value, bigIndex, smallIndex)
@@ -1294,6 +1362,14 @@ function closeRulesDialog(): void {
   isRulesOpen.value = false
 }
 
+function handleSecondaryAction(): void {
+  if (settings.value.gameMode === 'online' && !hasOnlineRoom.value) {
+    void joinOnlineRoomFromPrompt()
+    return
+  }
+  isRulesOpen.value = true
+}
+
 function setRulesDialogScrollLock(locked: boolean): void {
   if (typeof document === 'undefined') return
 
@@ -1318,6 +1394,10 @@ function setRulesDialogScrollLock(locked: boolean): void {
 function handleStartTutorial(): void {
   if (isTutorialMode.value) {
     window.alert('你已经进入教学模式了。')
+    return
+  }
+  if (state.value.isStarted || hasOnlineRoom.value) {
+    window.alert('当前已有对局，只能查看游戏规则。')
     return
   }
 
@@ -1363,6 +1443,11 @@ function handleResignOrRematch(): void {
     return
   }
 
+  if (settings.value.gameMode === 'online') {
+    void handleOnlinePrimaryAction()
+    return
+  }
+
   if (!state.value.isStarted || isFinished.value) {
     startGame()
     return
@@ -1405,10 +1490,8 @@ function handleDifficultySelectChange(event: Event): void {
 }
 
 function handleModeChange(): void {
-  if (settings.value.gameMode === 'online') {
-    window.alert('在线对战暂未开放\n后续接入房间后开启')
-    settings.value.gameMode = state.value.gameMode
-    return
+  if (settings.value.gameMode !== 'online') {
+    resetOnlineRoom()
   }
 
   saveGameSettings(settings.value)
@@ -1418,6 +1501,295 @@ function handleModeChange(): void {
 function handleDifficultyChange(): void {
   saveGameSettings(settings.value)
   resetGameToReady()
+}
+
+async function handleOnlinePrimaryAction(): Promise<void> {
+  if (onlineRoomStatus.value === 'PLAYING') {
+    resignOnlineGame()
+    return
+  }
+  if (onlineRoomStatus.value === 'WAITING') {
+    await shareOnlineRoom()
+    return
+  }
+  await createOnlineRoomFromCurrentPlayer()
+}
+
+async function createOnlineRoomFromCurrentPlayer(): Promise<void> {
+  const nickname = ensureOnlineNickname()
+  if (!nickname) return
+
+  try {
+    setError('正在创建在线房间')
+    const room = await createOnlineRoom(nickname)
+    saveOnlineRoomToken(room.roomId, room.playerToken)
+    connectOnlineRoom(room.roomId, room.playerToken, nickname)
+  } catch (error) {
+    setError(error instanceof Error ? error.message : '创建房间失败')
+  }
+}
+
+async function joinOnlineRoomFromPrompt(): Promise<void> {
+  const roomId = window.prompt('请输入房间 ID')
+  if (!roomId || !roomId.trim()) return
+  const nickname = ensureOnlineNickname()
+  if (!nickname) return
+  joinOnlineRoom(roomId.trim(), nickname)
+}
+
+function joinOnlineRoom(roomId: string, nickname: string): void {
+  const normalizedRoomId = normalizeOnlineRoomId(roomId)
+  const playerToken = loadOnlineRoomToken(normalizedRoomId) || createOnlinePlayerToken()
+  saveOnlineRoomToken(normalizedRoomId, playerToken)
+  connectOnlineRoom(normalizedRoomId, playerToken, nickname)
+}
+
+function connectOnlineRoom(roomId: string, playerToken: string, nickname: string): void {
+  closeOnlineClient()
+  settings.value = {
+    ...settings.value,
+    gameMode: 'online'
+  }
+  saveGameSettings(settings.value)
+  onlineRoomId.value = normalizeOnlineRoomId(roomId)
+  onlinePlayerToken.value = playerToken
+  onlineNickname.value = nickname
+  onlineRoomStatus.value = 'NOT_JOINED'
+  onlineConnectionStatus.value = 'connecting'
+  saveOnlineNickname(nickname)
+  state.value = createInitialGameState(settings.value)
+  clearNextBoardPreview()
+
+  const client = new OnlineGameClient({
+    onSnapshot: applyOnlineSnapshot,
+    onError: setError,
+    onClose: () => {
+      if (onlineClient.value === client) {
+        handleOnlineSocketClosed()
+      }
+    }
+  })
+  onlineClient.value = client
+  client.connect(onlineRoomId.value, onlinePlayerToken.value, nickname)
+}
+
+function playOnlineCell(bigIndex: number, smallIndex: number): void {
+  if (!canPlayCell(bigIndex, smallIndex)) {
+    setError(getOnlineMoveError())
+    return
+  }
+  onlineClient.value?.move(onlineRoomId.value, onlinePlayerToken.value, { bigIndex, smallIndex })
+}
+
+function resignOnlineGame(): void {
+  if (!onlineClient.value || !onlineRoomId.value || !onlinePlayerToken.value) {
+    setError('尚未加入在线房间')
+    return
+  }
+  const confirmed = window.confirm('确认投降当前在线对局？')
+  if (!confirmed) return
+  onlineClient.value.resign(onlineRoomId.value, onlinePlayerToken.value)
+}
+
+async function shareOnlineRoom(): Promise<void> {
+  if (!onlineRoomId.value) {
+    setError('尚未加入在线房间')
+    return
+  }
+  const inviteLink = createOnlineInviteLink(onlineRoomId.value)
+  try {
+    await navigator.clipboard.writeText(inviteLink)
+    setError('房间邀请链接已复制')
+  } catch {
+    window.prompt('复制房间邀请链接', inviteLink)
+  }
+}
+
+function applyOnlineSnapshot(snapshot: OnlineRoomSnapshot): void {
+  onlineRoomId.value = snapshot.roomId
+  onlineRoomStatus.value = snapshot.roomStatus
+  onlineConnectionStatus.value = 'connected'
+  onlineSelfSide.value = toOnlinePlayer(snapshot.selfSide)
+
+  const nextState = createInitialGameState(settings.value, { started: snapshot.state.isStarted })
+  nextState.board = snapshot.state.board.slice() as GameCoreState['board']
+  nextState.smallBoardStatus = snapshot.state.smallBoardStatus.slice() as GameCoreState['smallBoardStatus']
+  nextState.smallBoardResolved = snapshot.state.smallBoardResolved.slice()
+  nextState.smallBoardWinningLines = snapshot.state.smallBoardWinningLines.map((line) => line?.slice() ?? null)
+  nextState.currentPlayer = snapshot.state.currentPlayer as Player
+  nextState.nextBoard = snapshot.state.nextBoard
+  nextState.winner = snapshot.state.winner as GameCoreState['winner']
+  nextState.bigBoardWinningLine = snapshot.state.bigBoardWinningLine?.slice() ?? null
+  nextState.gameMode = 'online'
+  nextState.moveHistory = snapshot.state.moveHistory.map(toRecordedMove)
+  nextState.lastTurnMoves = snapshot.state.lastTurnMoves.map(toRecordedMove)
+  nextState.lastRuleEvents = snapshot.state.lastRuleEvents.map(toRuleEvent)
+  nextState.turnReports = []
+  nextState.messages = snapshot.messages.map(toGameMessage)
+  nextState.errorMessage = ''
+  nextState.isMessageInputFocused = state.value.isMessageInputFocused
+
+  for (const player of snapshot.players) {
+    const side = toOnlinePlayer(player.side)
+    if (side) {
+      nextState.players[side] = {
+        sideName: side === X ? '蓝方' : '红方',
+        name: player.nickname
+      }
+    }
+  }
+
+  state.value = nextState
+  clearNextBoardPreview()
+}
+
+function toRecordedMove(move: OnlineRecordedMove): GameCoreState['moveHistory'][number] {
+  return {
+    bigIndex: move.bigIndex,
+    smallIndex: move.smallIndex,
+    player: toOnlinePlayer(move.player) ?? X,
+    source: move.source,
+    settlementBoardIndex: move.settlementBoardIndex ?? undefined
+  }
+}
+
+function toRuleEvent(event: OnlineRuleEvent): RuleEvent {
+  return {
+    boardIndex: event.boardIndex,
+    owner: event.owner as RuleEvent['owner'],
+    filledCount: event.filledCount,
+    filledCells: event.filledCells.map(toRecordedMove)
+  }
+}
+
+function toGameMessage(message: OnlineGameMessage): GameMessage {
+  return {
+    id: message.id,
+    type: message.type,
+    player: toOnlinePlayer(message.player) ?? undefined,
+    sender: toOnlinePlayer(message.sender) ?? undefined,
+    senderName: message.senderName ?? undefined,
+    text: message.text
+  }
+}
+
+function toOnlinePlayer(value: unknown): Player | null {
+  return value === X || value === O ? value : null
+}
+
+function handleOnlineSocketClosed(): void {
+  if (settings.value.gameMode !== 'online') return
+  onlineConnectionStatus.value = onlineRoomId.value ? 'disconnected' : 'idle'
+}
+
+function handleInitialOnlineRoomFromUrl(): void {
+  if (typeof window === 'undefined') return
+  const roomId = new URLSearchParams(window.location.search).get('room')
+  if (!roomId) return
+  const nickname = ensureOnlineNickname()
+  if (!nickname) return
+  joinOnlineRoom(roomId, nickname)
+}
+
+function ensureOnlineNickname(): string | null {
+  if (onlineNickname.value) return onlineNickname.value
+  const nickname = window.prompt('请输入在线对战昵称（1-16 字）')
+  if (!nickname) return null
+  const cleanNickname = nickname.trim()
+  if (!cleanNickname || cleanNickname.length > 16) {
+    window.alert('昵称需要 1-16 字')
+    return null
+  }
+  onlineNickname.value = cleanNickname
+  saveOnlineNickname(cleanNickname)
+  return cleanNickname
+}
+
+function resetOnlineRoom(): void {
+  closeOnlineClient()
+  onlineRoomId.value = ''
+  onlinePlayerToken.value = ''
+  onlineRoomStatus.value = 'NOT_JOINED'
+  onlineConnectionStatus.value = 'idle'
+  onlineSelfSide.value = null
+}
+
+function closeOnlineClient(): void {
+  const client = onlineClient.value
+  onlineClient.value = null
+  client?.close()
+}
+
+function getOnlinePrimaryActionText(): string {
+  if (onlineRoomStatus.value === 'PLAYING') return '投降'
+  if (onlineRoomStatus.value === 'WAITING') return '分享房间'
+  if (onlineRoomStatus.value === 'FINISHED') return '创建房间'
+  return '创建房间'
+}
+
+function getOnlineRoomStatusText(): string {
+  if (onlineConnectionStatus.value === 'connecting') return '连接中'
+  if (onlineConnectionStatus.value === 'disconnected') return '连接已断开'
+  switch (onlineRoomStatus.value) {
+    case 'WAITING':
+      return '等待对手'
+    case 'PLAYING':
+      return '对局中'
+    case 'FINISHED':
+      return '已结束'
+    case 'NOT_JOINED':
+      return '未加入房间'
+  }
+}
+
+function getOnlineMoveError(): string {
+  if (onlineRoomStatus.value !== 'PLAYING') return '在线对局尚未开始'
+  if (onlineSelfSide.value !== state.value.currentPlayer) return '还没轮到你落子'
+  return '这里不能落子'
+}
+
+function createOnlineInviteLink(roomId: string): string {
+  const url = new URL(window.location.href)
+  url.searchParams.set('room', roomId)
+  return url.toString()
+}
+
+function normalizeOnlineRoomId(roomId: string): string {
+  return roomId.trim().toUpperCase()
+}
+
+function loadOnlineNickname(): string {
+  if (typeof window === 'undefined') return ''
+  return window.localStorage.getItem(ONLINE_NICKNAME_STORAGE_KEY)?.trim() ?? ''
+}
+
+function saveOnlineNickname(nickname: string): void {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(ONLINE_NICKNAME_STORAGE_KEY, nickname)
+}
+
+function loadOnlineRoomToken(roomId: string): string {
+  if (typeof window === 'undefined') return ''
+  try {
+    const raw = window.localStorage.getItem(ONLINE_TOKENS_STORAGE_KEY)
+    if (!raw) return ''
+    const tokens = JSON.parse(raw) as Record<string, string>
+    return typeof tokens[roomId] === 'string' ? tokens[roomId] : ''
+  } catch {
+    return ''
+  }
+}
+
+function saveOnlineRoomToken(roomId: string, token: string): void {
+  if (typeof window === 'undefined') return
+  const tokens: Record<string, string> = {}
+  try {
+    Object.assign(tokens, JSON.parse(window.localStorage.getItem(ONLINE_TOKENS_STORAGE_KEY) || '{}'))
+  } catch {
+    // 损坏的本地 token 映射直接覆盖，避免影响新房间加入。
+  }
+  tokens[roomId] = token
+  window.localStorage.setItem(ONLINE_TOKENS_STORAGE_KEY, JSON.stringify(tokens))
 }
 
 function handleTutorialDialogNext(): void {
@@ -1675,6 +2047,16 @@ function handleMessageBlur(): void {
 function handleSendMessage(): void {
   const text = messageDraft.value.trim()
   if (!text) return
+
+  if (settings.value.gameMode === 'online') {
+    if (!onlineClient.value || !onlineRoomId.value || !onlinePlayerToken.value) {
+      setError('请先加入在线房间')
+      return
+    }
+    onlineClient.value.chat(onlineRoomId.value, onlinePlayerToken.value, text)
+    messageDraft.value = ''
+    return
+  }
 
   state.value.errorMessage = ''
   const sender = state.value.currentPlayer
