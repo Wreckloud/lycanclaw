@@ -1,4 +1,5 @@
 import { EMPTY, X, O, type AdaptiveProfile, type AIDifficulty, type GameCoreState, type GameMode, type GameSettings } from './types'
+import { GAME_TEXT } from './game-text'
 
 export const DEFAULT_GAME_SETTINGS: GameSettings = {
   gameMode: 'human-vs-ai',
@@ -29,12 +30,12 @@ export function createInitialGameState(settings: Partial<GameSettings> = {}, opt
     isStarted,
     players: {
       [X]: {
-        sideName: '蓝方',
-        name: '蓝方 X'
+        sideName: GAME_TEXT.player.sideName(X),
+        name: GAME_TEXT.player.defaultName(X)
       },
       [O]: {
-        sideName: '红方',
-        name: '红方 O'
+        sideName: GAME_TEXT.player.sideName(O),
+        name: GAME_TEXT.player.defaultName(O)
       }
     },
     moveHistory: [],
@@ -136,27 +137,11 @@ export function saveAdaptiveProfile(profile: AdaptiveProfile): void {
 }
 
 export function getDifficultyName(difficulty: AIDifficulty): string {
-  switch (difficulty) {
-    case 'easy':
-      return '简单'
-    case 'normal':
-      return '普通'
-    case 'hard':
-      return '困难'
-    case 'nightmare':
-      return '噩梦'
-  }
+  return GAME_TEXT.settings.difficultyName(difficulty)
 }
 
 export function getGameModeName(gameMode: GameMode): string {
-  switch (gameMode) {
-    case 'human-vs-ai':
-      return '人机对战'
-    case 'local':
-      return '本地对战'
-    case 'online':
-      return '在线对战'
-  }
+  return GAME_TEXT.settings.gameModeName(gameMode)
 }
 
 function createDefaultAdaptiveProfile(): AdaptiveProfile {
@@ -169,17 +154,14 @@ function createDefaultAdaptiveProfile(): AdaptiveProfile {
 
 function createStartMessages(settings: GameSettings) {
   const modeLine = settings.gameMode === 'human-vs-ai'
-    ? `${getGameModeName(settings.gameMode)} ${getDifficultyName(settings.aiDifficulty)} 难度`
+    ? `${getGameModeName(settings.gameMode)} 电脑(${getDifficultyName(settings.aiDifficulty)})`
     : getGameModeName(settings.gameMode)
 
   return [
     {
       id: `start-${Date.now()}`,
       type: 'system' as const,
-      text: [
-        modeLine,
-        '蓝方 X 先手'
-      ].join('\n')
+      text: GAME_TEXT.record.gameStart(modeLine, GAME_TEXT.player.defaultName(X))
     }
   ]
 }

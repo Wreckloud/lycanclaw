@@ -2,6 +2,21 @@ import { getBackendApiBase } from '../../../../utils/runtimePolicy'
 
 export type OnlineRoomStatus = 'WAITING' | 'PLAYING' | 'FINISHED'
 export type OnlineServerMessageType = 'snapshot' | 'error'
+export type OnlineGameEventType =
+  | 'ROOM_CREATED'
+  | 'PLAYER_JOINED'
+  | 'PLAYER_LEFT'
+  | 'PLAYER_READY'
+  | 'PLAYER_UNREADY'
+  | 'GAME_STARTED'
+  | 'MOVE_PLAYED'
+  | 'BOARD_DRAW'
+  | 'BOARD_SETTLEMENT'
+  | 'GAME_DRAW'
+  | 'LINE_WIN'
+  | 'RESIGN_WIN'
+  | 'LEAVE_WIN'
+  | 'CHAT_SENT'
 
 export interface OnlineGameMove {
   bigIndex: number
@@ -28,13 +43,17 @@ export interface OnlineGameMessage {
   sender?: number | null
   senderName?: string | null
   text: string
+  eventType?: OnlineGameEventType | null
+  eventData?: Record<string, unknown> | null
 }
 
 export interface OnlinePlayerSnapshot {
-  side: number
+  side: number | null
   nickname: string
   connected: boolean
   ready: boolean
+  spectator: boolean
+  self: boolean
 }
 
 export interface OnlineStateSnapshot {
@@ -59,6 +78,17 @@ export interface OnlineRoomSnapshot {
   players: OnlinePlayerSnapshot[]
   state: OnlineStateSnapshot
   messages: OnlineGameMessage[]
+}
+
+export interface OnlineRoomListItem {
+  roomId: string
+  roomStatus: OnlineRoomStatus
+  playerCount: number
+  maxPlayerCount: number
+  readyCount: number
+  joinable: boolean
+  playable: boolean
+  updatedAt: string
 }
 
 export interface CreateOnlineRoomResult {
@@ -135,6 +165,14 @@ export class OnlineGameClient {
     })
   }
 
+  leave(roomId: string, playerToken: string): void {
+    this.send({
+      type: 'leave',
+      roomId,
+      playerToken
+    })
+  }
+
   close(): void {
     if (!this.socket) return
     this.socket.close()
@@ -180,6 +218,19 @@ export async function createOnlineRoom(nickname: string): Promise<CreateOnlineRo
   }
   if (!response.ok || !payload.success || !payload.data) {
     throw new Error(payload.error?.message || '创建房间失败')
+  }
+  return payload.data
+}
+
+export async function fetchOnlineRooms(): Promise<OnlineRoomListItem[]> {
+  const response = await fetch(`${getBackendApiBase()}/api/game/rooms`)
+  const payload = await response.json() as {
+    success: boolean
+    data?: OnlineRoomListItem[]
+    error?: { message?: string }
+  }
+  if (!response.ok || !payload.success || !payload.data) {
+    throw new Error(payload.error?.message || '获取房间列表失败')
   }
   return payload.data
 }

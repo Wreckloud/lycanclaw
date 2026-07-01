@@ -1,4 +1,5 @@
 import { evaluateState } from './evaluate'
+import { GAME_TEXT } from './game-text'
 import { applyMoveMutable } from './reducer'
 import { CENTER_INDEX, formatBigBoardIndex, formatSmallCellPosition, getLegalMoves, getOpponent, getPlayerName, isPlayer } from './rules'
 import { cloneGameSearchState } from './state'
@@ -164,7 +165,7 @@ function createTurnSummary(
 ): string {
   const actorName = getPlayerName(movePlayer, state)
   const parts = [
-    `${actorName} 下在 ${formatBigBoardIndex(bigIndex)} 棋盘`,
+    GAME_TEXT.record.moveBoard(actorName, formatBigBoardIndex(bigIndex)),
     formatSmallCellPosition(smallIndex),
     getMoveQualityText(quality)
   ]
@@ -175,9 +176,9 @@ function createTurnSummary(
   }
 
   if (state.winner === DRAW) {
-    parts.push('整局平局。')
+    parts.push(GAME_TEXT.record.gameDraw())
   } else if (isPlayer(state.winner)) {
-    parts.push(`${getPlayerName(state.winner, state)} 赢下整局。`)
+    parts.push(GAME_TEXT.record.wholeWinner(getPlayerName(state.winner, state)))
   } else if (state.winner === EMPTY) {
     parts.push(state.nextBoard === null ? '下一手自由落子' : `下一手 ${formatBigBoardIndex(state.nextBoard)} 棋盘`)
   }

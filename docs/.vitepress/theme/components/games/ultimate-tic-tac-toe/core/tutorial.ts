@@ -1,6 +1,7 @@
 import { canMove, getBoardCells, getBoardResult, getCellIndex, isBoardFull, isPlayer } from './rules'
 import { applyMoveImmutable } from './reducer'
 import { createInitialGameState } from './state'
+import { GAME_TEXT } from './game-text'
 import { DRAW, EMPTY, O, X, type CellValue, type GameCoreState, type GameMove, type GameSettings } from './types'
 
 export const TUTORIAL_OPENING_BOARD_INDEX = 8
@@ -33,7 +34,7 @@ export function createTutorialOpeningState(settings: GameSettings): GameCoreStat
     {
       id: `tutorial-start-${Date.now()}`,
       type: 'system',
-      text: '教学模式\n蓝方 X 先手'
+      text: GAME_TEXT.record.gameStart('教学模式', GAME_TEXT.player.defaultName(X))
     }
   ]
 

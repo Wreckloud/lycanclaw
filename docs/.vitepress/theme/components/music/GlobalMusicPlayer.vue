@@ -39,6 +39,8 @@ const RESUME_SAVE_INTERVAL_MS = 2000
 const RESUME_END_GUARD_SEC = 3
 const RESUME_FADE_IN_MS = 900
 const VOLUME_HINT_STORAGE_KEY = 'lycan:global-player-volume-hint-seen'
+const COLLAPSE_HINT_STORAGE_KEY = 'lycan:global-player-collapse-hint-seen'
+const COLLAPSE_HINT_AUTO_HIDE_MS = 4500
 const READ_SCROLL_DELTA = 48
 const ROTATE_BASE_DEG_PER_SEC = 18
 const ROTATE_GESTURE_DECAY = 0.92
@@ -91,6 +93,7 @@ const gestureSpinVelocity = ref(0)
 const playableSongInfo = ref<AudioSongInfo | null>(null)
 const shouldFadeOnNextPlay = ref(false)
 const showVolumeHint = ref(false)
+const showCollapseHint = ref(false)
 
 const unsubscribers: Array<() => void> = []
 let resizeTimer: ReturnType<typeof setTimeout> | null = null
@@ -104,6 +107,7 @@ let scrollRafId: number | null = null
 let lastScrollY = 0
 let downwardScrollDistance = 0
 let lyricRequestSequence = 0
+let collapseHintTimer: ReturnType<typeof setTimeout> | null = null
 
 let isDraggingPanel = false
 let panelPointerOffsetX = 0
@@ -154,9 +158,24 @@ const coverTransformStyle = computed(() => ({
 const volumeHintStyle = computed(() => {
   if (typeof window === 'undefined') return {}
   const coverCenter = panelMode.value === 'expanded' ? 43 : 29
+  const halfHintWidth = 84
+  const minLeft = halfHintWidth + 12
+  const maxLeft = Math.max(minLeft, window.innerWidth - halfHintWidth - 12)
+  const preferredLeft = position.value.x + coverCenter
   return {
-    left: `${coverCenter}px`,
+    left: `${Math.min(Math.max(preferredLeft, minLeft), maxLeft)}px`,
     top: `${position.value.y - 8}px`
+  }
+})
+const collapseHintStyle = computed(() => {
+  if (typeof window === 'undefined') return {}
+  const hintWidth = 218
+  const panelWidth = getPanelSize(panelMode.value).width
+  const preferredLeft = position.value.x + panelWidth + 8
+  const maxLeft = Math.max(12, window.innerWidth - hintWidth - 12)
+  return {
+    left: `${Math.min(Math.max(preferredLeft, 12), maxLeft)}px`,
+    top: `${position.value.y + 29}px`
   }
 })
 
@@ -188,6 +207,11 @@ function hideVolumeHint(): void {
   showVolumeHint.value = false
 }
 
+function hideCollapseHint(): void {
+  showCollapseHint.value = false
+  clearCollapseHintTimer()
+}
+
 function maybeShowVolumeHint(): void {
   if (
     typeof window === 'undefined'
@@ -207,10 +231,32 @@ function markVolumeHintLearned(): void {
   hideVolumeHint()
 }
 
+function maybeShowCollapseHint(): void {
+  if (
+    typeof window === 'undefined'
+    || panelMode.value !== 'collapsed'
+    || readLocalStorage(COLLAPSE_HINT_STORAGE_KEY) === 'true'
+    || showCollapseHint.value
+  ) {
+    return
+  }
+
+  writeLocalStorage(COLLAPSE_HINT_STORAGE_KEY, 'true')
+  showCollapseHint.value = true
+  clearCollapseHintTimer()
+  collapseHintTimer = setTimeout(hideCollapseHint, COLLAPSE_HINT_AUTO_HIDE_MS)
+}
+
 function clearResizeTimer(): void {
   if (!resizeTimer) return
   clearTimeout(resizeTimer)
   resizeTimer = null
+}
+
+function clearCollapseHintTimer(): void {
+  if (!collapseHintTimer) return
+  clearTimeout(collapseHintTimer)
+  collapseHintTimer = null
 }
 
 function normalizeSongId(rawId: string): string {
@@ -791,14 +837,19 @@ function expandPanel(): void {
 }
 
 function collapsePanel(): void {
+  const wasExpanded = panelMode.value === 'expanded'
   hideVolumeHint()
   panelMode.value = isNarrowScreen.value ? 'immersive' : 'collapsed'
-  nextTick(() => ensurePanelInViewport())
+  nextTick(() => {
+    ensurePanelInViewport()
+    if (wasExpanded) maybeShowCollapseHint()
+  })
 }
 
 function enterImmersiveMode(): void {
   if (panelMode.value === 'immersive') return
   hideVolumeHint()
+  hideCollapseHint()
   panelMode.value = 'immersive'
   nextTick(() => ensurePanelInViewport())
 }
@@ -986,6 +1037,7 @@ function onControlAreaMouseDown(event: MouseEvent): void {
     return
   }
 
+  hideCollapseHint()
   beginPendingControlPress(pointerFromMouse(event), 'mouse')
 }
 
@@ -998,6 +1050,7 @@ function onControlAreaTouchStart(event: TouchEvent): void {
     return
   }
 
+  hideCollapseHint()
   beginPendingControlPress(point, 'touch')
 }
 
@@ -1334,6 +1387,7 @@ onUnmounted(() => {
   clearResizeTimer()
   clearSnapTimer()
   hideVolumeHint()
+  hideCollapseHint()
   stopProgressDrag()
   resetPendingControlPress()
   endPanelDrag()
@@ -1482,6 +1536,16 @@ onUnmounted(() => {
       :style="volumeHintStyle"
     >
       上下滑动唱片可调节音量
+    </div>
+  </Transition>
+
+  <Transition name="collapse-hint">
+    <div
+      v-if="showCollapseHint && !isExpanded && !isImmersive"
+      class="collapsed-drag-hint"
+      :style="collapseHintStyle"
+    >
+      试试在收起状态拖动右侧工具栏!
     </div>
   </Transition>
 </template>
@@ -1873,6 +1937,36 @@ onUnmounted(() => {
   transform: translate(-50%, -100%);
 }
 
+.collapsed-drag-hint {
+  position: fixed;
+  z-index: 1000;
+  width: 218px;
+  max-width: calc(100vw - 24px);
+  padding: 6px 9px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--vp-c-text-2);
+  background: color-mix(in srgb, var(--vp-c-bg-soft) 94%, transparent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  text-align: left;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.collapsed-drag-hint::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3px;
+  height: 58%;
+  border-radius: 2px;
+  background: var(--vp-c-brand-1);
+  transform: translateY(-50%);
+}
+
 .volume-gesture-hint::before {
   content: '';
   position: absolute;
@@ -1898,6 +1992,18 @@ onUnmounted(() => {
 .volume-hint-leave-to {
   opacity: 0;
   transform: translate(-50%, calc(-100% + 8px));
+}
+
+.collapse-hint-enter-active,
+.collapse-hint-leave-active {
+  transition: opacity var(--lc-motion-duration-fast) var(--lc-motion-ease-standard),
+    transform var(--lc-motion-duration-fast) var(--lc-motion-ease-standard);
+}
+
+.collapse-hint-enter-from,
+.collapse-hint-leave-to {
+  opacity: 0;
+  transform: translateY(calc(-50% + 8px));
 }
 
 .slide-fade-enter-active,

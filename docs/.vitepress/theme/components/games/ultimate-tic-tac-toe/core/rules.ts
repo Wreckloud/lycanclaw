@@ -1,4 +1,5 @@
 import { DRAW, EMPTY, O, X, type BoardResult, type CellValue, type GameCoreState, type Player } from './types'
+import { GAME_TEXT } from './game-text'
 
 export const CENTER_INDEX = 4
 
@@ -96,40 +97,33 @@ export function getLegalMoves(state: GameCoreState): Array<{ bigIndex: number; s
 }
 
 export function getInvalidMoveReason(state: GameCoreState, bigIndex: number, smallIndex: number): string {
-  if (!state.isStarted) return '请先开始游戏'
-  if (state.winner !== EMPTY) return '这一局已经结束'
-  if (isBoardFull(state, bigIndex)) return `${formatBigBoardIndex(bigIndex)} 棋盘已结束`
-  if (state.board[getCellIndex(bigIndex, smallIndex)] !== EMPTY) return '这个格子已有棋子'
+  if (!state.isStarted) return GAME_TEXT.invalidMove.notStarted
+  if (state.winner !== EMPTY) return GAME_TEXT.invalidMove.finished
+  if (isBoardFull(state, bigIndex)) return GAME_TEXT.invalidMove.boardFinished(formatBigBoardIndex(bigIndex))
+  if (state.board[getCellIndex(bigIndex, smallIndex)] !== EMPTY) return GAME_TEXT.invalidMove.occupied
 
   const effectiveNextBoard = getEffectiveNextBoard(state)
   if (effectiveNextBoard !== null && effectiveNextBoard !== bigIndex) {
-    return `请去 ${formatBigBoardIndex(effectiveNextBoard)} 棋盘`
+    return GAME_TEXT.invalidMove.requiredBoard(formatBigBoardIndex(effectiveNextBoard))
   }
 
-  return '这一步不能下'
+  return GAME_TEXT.invalidMove.fallback
 }
 
 export function formatBigBoardIndex(bigIndex: number): string {
-  return `${bigIndex + 1}号`
+  return GAME_TEXT.board.bigBoard(bigIndex)
 }
 
 export function formatSmallCellPosition(smallIndex: number): string {
-  const row = Math.floor(smallIndex / 3) + 1
-  const col = (smallIndex % 3) + 1
-
-  return `${row}行${col}列`
+  return GAME_TEXT.board.smallCell(smallIndex)
 }
 
 export function getMarkText(value: BoardResult): string {
-  if (value === X) return 'X'
-  if (value === O) return 'O'
-  if (value === DRAW) return '—'
-
-  return ''
+  return GAME_TEXT.player.mark(value)
 }
 
 export function getPlayerSideName(player: Player): string {
-  return player === X ? '蓝方' : '红方'
+  return GAME_TEXT.player.sideName(player)
 }
 
 export function getPlayerName(player: Player, state: GameCoreState): string {

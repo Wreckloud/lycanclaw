@@ -178,10 +178,24 @@
               type="button"
               class="utt-turn-button"
               :class="currentTurnButtonClass"
-              disabled
+              :disabled="settings.gameMode !== 'online'"
+              @click="handleOnlineStatusClick"
             >
               {{ statusControlText }}
             </button>
+            <div v-if="isOnlineMemberMenuOpen && hasOnlineRoom" class="utt-online-member-menu">
+              <div
+                v-for="(player, playerIndex) in onlinePlayers"
+                :key="`${player.nickname}-${playerIndex}`"
+                class="utt-online-member-row"
+              >
+                <span>{{ getOnlineMemberDisplayName(player) }}</span>
+                <span>{{ getOnlineMemberStatusText(player) }}</span>
+              </div>
+              <button type="button" class="utt-online-leave-button" @click="handleLeaveOnlineRoomClick">
+                离开房间
+              </button>
+            </div>
           </div>
 
           <button type="button" class="utt-menu-button" @click="handleSecondaryAction">{{ secondaryActionText }}</button>
@@ -201,11 +215,10 @@
 
           <ul ref="logRef" class="utt-game-log">
             <li
-              v-for="(message, index) in state.messages"
+              v-for="message in state.messages"
               :key="message.id"
               class="utt-log-message"
               :class="getMessageClass(message)"
-              :style="{ opacity: getMessageOpacity(index) }"
             >
               <span
                 v-for="(line, lineIndex) in splitMessageLines(message.text)"
@@ -224,15 +237,34 @@
           </ul>
 
           <form class="utt-message-input" @submit.prevent="handleSendMessage">
-            <input
-              v-model="messageDraft"
-              type="text"
-              :placeholder="messagePlaceholder"
-              :class="{ 'utt-input-error': !state.isMessageInputFocused && state.errorMessage }"
-              @focus="handleMessageFocus"
-              @blur="handleMessageBlur"
+            <div
+              class="utt-message-field"
+              :class="{ 'utt-message-field-error': Boolean(state.errorMessage) && !state.isMessageInputFocused }"
             >
-            <button type="submit">发送</button>
+              <span v-if="state.errorMessage && !state.isMessageInputFocused" class="utt-message-field-hint">
+                {{ state.errorMessage }}
+              </span>
+              <template v-else>
+                <button
+                  v-if="settings.gameMode === 'online'"
+                  type="button"
+                  class="utt-message-user-line"
+                  :class="{ 'utt-message-user-line-clickable': !hasOnlineRoom }"
+                  @click="editOnlineNickname"
+                >
+                  {{ messageUserLineText }}
+                </button>
+                <input
+                  v-model="messageDraft"
+                  type="text"
+                  maxlength="200"
+                  :placeholder="messagePlaceholder"
+                  @focus="handleMessageFocus"
+                  @blur="handleMessageBlur"
+                >
+              </template>
+            </div>
+            <button type="submit" class="utt-message-send-button">发送</button>
           </form>
         </section>
       </aside>
@@ -266,6 +298,47 @@
       </div>
     </Teleport>
 
+    <Teleport to="body">
+      <div
+        v-if="isOnlineRoomDialogOpen"
+        class="utt-rules-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label="加入在线房间"
+        @click.self="closeOnlineRoomDialog"
+        @wheel.stop
+        @touchmove.stop
+      >
+        <div class="utt-rules-card utt-online-room-card">
+          <div class="utt-online-room-header">
+            <h2>加入房间</h2>
+            <p>{{ onlineRoomDialogHint }}</p>
+          </div>
+          <div class="utt-online-room-list">
+            <button
+              v-for="room in onlineRooms"
+              :key="room.roomId"
+              type="button"
+              class="utt-online-room-item"
+              :disabled="!room.joinable"
+              @click="joinOnlineRoomFromList(room)"
+            >
+              <span>{{ room.roomId }}</span>
+              <span>{{ getOnlineRoomListStatusText(room) }}</span>
+            </button>
+            <p v-if="!isOnlineRoomsLoading && onlineRooms.length === 0" class="utt-online-room-empty">暂无房间</p>
+            <p v-if="isOnlineRoomsLoading" class="utt-online-room-empty">正在读取房间列表...</p>
+          </div>
+          <div class="utt-rules-actions">
+            <button type="button" class="utt-menu-button" @click="randomJoinOnlineRoom">随机加入</button>
+            <button type="button" class="utt-menu-button utt-menu-button-primary" @click="createOnlineRoomFromDialog">
+              创建房间
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
   </section>
 </template>
 
@@ -274,6 +347,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import rulesMarkdown from './rules.md?raw'
 import { createAdaptiveProfileFromReports } from './core/adaptive'
 import { chooseAIMoveWithDeadline } from './core/ai'
+import { GAME_TEXT } from './core/game-text'
 import type { AIWorkerResponse } from './core/ai.worker'
 import { renderRulesMarkdown } from './core/markdown'
 import { createTurnReport } from './core/report'
@@ -312,9 +386,11 @@ import {
   OnlineGameClient,
   createOnlinePlayerToken,
   createOnlineRoom,
+  fetchOnlineRooms,
   type OnlineGameMessage,
   type OnlinePlayerSnapshot,
   type OnlineRecordedMove,
+  type OnlineRoomListItem,
   type OnlineRoomSnapshot,
   type OnlineRoomStatus,
   type OnlineRuleEvent
@@ -357,6 +433,7 @@ const AUTO_FILL_STEP_DELAY_MS = 180
 const AUTO_FILL_ANIMATION_MS = 780
 const AFTER_AUTO_FILL_PAUSE_MS = 260
 const SETTLEMENT_CUE_MIN_DELAY_MS = 7200
+const SETTLEMENT_CUE_AUTO_HIDE_MS = 3000
 const PREVIEW_SHOW_DELAY_MS = 70
 const PREVIEW_HIDE_DELAY_MS = 160
 const TOUCH_PREVIEW_COMMIT_MS = 280
@@ -365,6 +442,7 @@ const TUTORIAL_AI_MOVE_DELAY_MS = 1000
 const TUTORIAL_SETTLEMENT_DIALOG_DELAY_MS = 1800
 const ONLINE_NICKNAME_STORAGE_KEY = 'lycan:utt:online:nickname'
 const ONLINE_SESSION_TOKENS_STORAGE_KEY = 'lycan:utt:online:session-tokens'
+const DEFAULT_ONLINE_NICKNAME = GAME_TEXT.room.defaultNickname
 const settings = ref<GameSettings>(loadGameSettings())
 const adaptiveProfile = ref(loadAdaptiveProfile())
 const state = ref<GameCoreState>(createInitialGameState(settings.value))
@@ -377,11 +455,17 @@ const messageDraft = ref('')
 const onlineRoomId = ref('')
 const onlinePlayerToken = ref('')
 const onlineNickname = ref(loadOnlineNickname())
+const hasCustomOnlineNickname = ref(loadHasCustomOnlineNickname())
 const onlineRoomStatus = ref<OnlineRoomStatus | 'NOT_JOINED'>('NOT_JOINED')
 const onlineConnectionStatus = ref<'idle' | 'connecting' | 'connected' | 'disconnected'>('idle')
 const onlineSelfSide = ref<Player | null>(null)
 const onlinePlayers = ref<OnlinePlayerSnapshot[]>([])
 const onlineClient = ref<OnlineGameClient | null>(null)
+const isOnlineRoomDialogOpen = ref(false)
+const isOnlineRoomsLoading = ref(false)
+const onlineRooms = ref<OnlineRoomListItem[]>([])
+const isOnlineMemberMenuOpen = ref(false)
+const dismissedSettlementCueKey = ref('')
 const activePreviewTarget = ref<PreviewTarget | null>(null)
 const lastPreviewTarget = ref<PreviewTarget | null>(null)
 const logRef = ref<HTMLElement | null>(null)
@@ -392,6 +476,7 @@ let aiThinkingStartedAt = 0
 let previewTimer: number | null = null
 let previewHideTimer: number | null = null
 let tutorialTimer: number | null = null
+let settlementCueTimer: number | null = null
 let previousRulesBodyOverflow: string | null = null
 let previousRulesHtmlOverflow: string | null = null
 let touchPreviewState: {
@@ -456,32 +541,48 @@ const primaryActionClass = computed(() => ({
   )
 }))
 const secondaryActionText = computed(() => {
+  if (settings.value.gameMode === 'online' && hasOnlineRoom.value && onlineRoomStatus.value === 'WAITING') {
+    return '邀请房间'
+  }
   return settings.value.gameMode === 'online' && !hasOnlineRoom.value ? '加入房间' : '游戏规则'
 })
 const hasOnlineRoom = computed(() => settings.value.gameMode === 'online' && Boolean(onlineRoomId.value))
 const onlinePlayerCount = computed(() => onlinePlayers.value.length)
 const onlineReadyCount = computed(() => onlinePlayers.value.filter((player) => player.ready).length)
+const onlineSelfPlayer = computed(() => onlinePlayers.value.find((player) => player.self) ?? null)
 const onlineSelfReady = computed(() => {
-  return onlinePlayers.value.some((player) => toOnlinePlayer(player.side) === onlineSelfSide.value && player.ready)
+  return onlineSelfPlayer.value?.ready ?? false
 })
+const onlineSelfRoleText = computed(() => {
+  if (!hasOnlineRoom.value) return GAME_TEXT.room.notJoined
+  if (!onlineSelfPlayer.value || !onlineSelfSide.value) return GAME_TEXT.room.spectator
+  return GAME_TEXT.player.sideName(onlineSelfSide.value)
+})
+const onlineSelfIsActivePlayer = computed(() => onlineSelfSide.value === X || onlineSelfSide.value === O)
 const isPrimaryActionDisabled = computed(() => {
   return settings.value.gameMode === 'online'
-    && (onlineConnectionStatus.value === 'connecting' || onlineSelfReady.value)
+    && (
+      onlineConnectionStatus.value === 'connecting'
+      || (onlineRoomStatus.value === 'PLAYING' && !onlineSelfIsActivePlayer.value)
+    )
 })
 const canShowTutorialButton = computed(() => {
-  return !isTutorialMode.value && !state.value.isStarted && !hasOnlineRoom.value
+  return !isTutorialMode.value && (!state.value.isStarted || settings.value.gameMode === 'online')
 })
 const statusControlLabel = computed(() => {
-  return settings.value.gameMode === 'online' && onlineRoomStatus.value !== 'PLAYING'
+  return settings.value.gameMode === 'online'
     ? '房间状态'
     : '当前棋手'
 })
 const statusControlText = computed(() => {
-  return settings.value.gameMode === 'online' && onlineRoomStatus.value !== 'PLAYING'
+  return settings.value.gameMode === 'online'
     ? getOnlineRoomStatusText()
     : currentTurnLabel.value
 })
 const currentTurnLabel = computed(() => {
+  if (settings.value.gameMode === 'online' && onlineRoomStatus.value === 'PLAYING') {
+    return getOnlineSideDisplayName(state.value.currentPlayer)
+  }
   return getPlayerName(state.value.currentPlayer, state.value)
 })
 const currentTurnButtonClass = computed(() => ({
@@ -526,6 +627,8 @@ const settlementCueLines = computed<MessageLinePart[] | null>(() => {
 })
 const isSettlementCueVisible = computed(() => {
   if (!settlementCueLines.value) return false
+  if (isPlayer(state.value.winner)) return true
+  if (dismissedSettlementCueKey.value === settlementCueKey.value) return false
   if (!isTutorialMode.value) return true
 
   return tutorialState.value.step === 'settlementIntro'
@@ -540,7 +643,7 @@ const settlementCueTitleClass = computed(() => {
   return isPlayer(state.value.winner) ? getPlayerTextClass(state.value.winner) : ''
 })
 const isVictoryCueVisible = computed(() => isPlayer(state.value.winner) && !isSettlementCueVisible.value)
-const victoryCueTitle = computed(() => isPlayer(state.value.winner) ? `${getCuePlayerName(state.value.winner)}获胜` : '')
+const victoryCueTitle = computed(() => isPlayer(state.value.winner) ? `${getPlayerSideName(state.value.winner)}获胜` : '')
 const victoryCueTitleClass = computed(() => isPlayer(state.value.winner) ? getPlayerTextClass(state.value.winner) : '')
 const victoryCueLines = computed<MessageLinePart[]>(() => {
   return isPlayer(state.value.winner) ? createVictoryCueLines(state.value.winner) : []
@@ -548,6 +651,11 @@ const victoryCueLines = computed<MessageLinePart[]>(() => {
 const previewHintStyle = computed<Record<string, string> | null>(() => createPreviewHintStyle(activePreviewTarget.value))
 const visiblePreviewHintStyle = computed(() => activePreviewTarget.value ? previewHintStyle.value : createPreviewHintStyle(tutorialPreviewTarget.value))
 const settlementBoardIndex = computed(() => state.value.lastRuleEvents[0]?.boardIndex ?? null)
+const settlementCueKey = computed(() => {
+  const event = state.value.lastRuleEvents[0]
+  if (!event) return ''
+  return `${state.value.moveHistory.length}-${event.boardIndex}-${event.filledCount}-${state.value.winner}`
+})
 const tutorialDialog = computed<TutorialDialog>(() => createTutorialDialog(tutorialState.value, state.value, getDisplayPlayerName))
 const tutorialPromptActionText = computed(() => {
   return tutorialDialog.value.buttonText === '继续'
@@ -562,15 +670,20 @@ const tutorialPromptClass = computed(() => ({
 }))
 const messagePlaceholder = computed(() => {
   if (state.value.isMessageInputFocused) return ''
-  if (state.value.errorMessage) return state.value.errorMessage
   if (settings.value.gameMode === 'online' && !hasOnlineRoom.value) return '加入房间后聊天'
 
   return '输入消息'
+})
+const messageUserLineText = computed(() => {
+  const editHint = !hasOnlineRoom.value && !hasCustomOnlineNickname.value ? '(点击修改)' : ''
+  return `${onlineNickname.value || DEFAULT_ONLINE_NICKNAME}${editHint}:`
 })
 
 onMounted(() => {
   worker.value = new Worker(new URL('./core/ai.worker.ts', import.meta.url), { type: 'module' })
   worker.value.addEventListener('message', handleWorkerMessage)
+  window.addEventListener('beforeunload', handleBeforeUnload)
+  document.addEventListener('click', handleDocumentClick)
   handleInitialOnlineRoomFromUrl()
   requestAIMoveIfNeeded()
   scrollLogToBottom()
@@ -582,7 +695,10 @@ onBeforeUnmount(() => {
   clearAIRequestTimer()
   clearAIDecisionApplyTimer()
   clearTutorialTimer()
-  closeOnlineClient()
+  clearSettlementCueTimer()
+  leaveOnlineRoom(false)
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+  document.removeEventListener('click', handleDocumentClick)
   worker.value?.removeEventListener('message', handleWorkerMessage)
   worker.value?.terminate()
 })
@@ -591,10 +707,24 @@ watch(isRulesOpen, (open) => {
   setRulesDialogScrollLock(open)
 })
 
+watch(isOnlineRoomDialogOpen, (open) => {
+  setRulesDialogScrollLock(open)
+})
+
 watch(
   () => state.value.messages.length,
   () => scrollLogToBottom()
 )
+
+watch(settlementCueKey, (key) => {
+  clearSettlementCueTimer()
+  if (!key || isPlayer(state.value.winner)) return
+  dismissedSettlementCueKey.value = ''
+  settlementCueTimer = window.setTimeout(() => {
+    dismissedSettlementCueKey.value = key
+    settlementCueTimer = null
+  }, SETTLEMENT_CUE_AUTO_HIDE_MS)
+})
 
 function handleCellClick(bigIndex: number, smallIndex: number): void {
   if (tutorialDialogOpen.value && !tutorialState.value.inputEnabled) {
@@ -823,7 +953,7 @@ function applyAIDecision(responseId: number, decision: AIDecision): void {
       id: `ai-resign-${Date.now()}`,
       type: 'system',
       player: O,
-      text: '红方 O 投降\n蓝方 X 赢得本局。'
+      text: GAME_TEXT.record.resign(getPlayerName(O, nextState), getPlayerName(X, nextState))
     })
     state.value = nextState
     return
@@ -1297,7 +1427,7 @@ function createSettlementPreviewHint(nextState: GameCoreState, event: RuleEvent)
       { text: getDisplayPlayerName(event.owner, nextState), player: event.owner },
       { text: ' 占领，结算后 ', player: null },
       { text: getDisplayPlayerName(nextPlayer, nextState), player: nextPlayer },
-      { text: ' 自由落子。', player: null }
+      { text: ' 自由落子', player: null }
     ]
   ]
 }
@@ -1306,13 +1436,12 @@ function createVictoryCueLines(winner: Player): MessageLinePart[] {
   const winningLine = state.value.bigBoardWinningLine ?? []
   if (winningLine.length === 0) {
     return [
-      { text: `${getCuePlayerName(winner)}赢得整局游戏。`, player: winner }
+      { text: GAME_TEXT.record.winner(getCuePlayerName(winner)), player: winner }
     ]
   }
 
   return [
-    { text: getCuePlayerName(winner), player: winner },
-    { text: `占领了 ${formatBoardList(winningLine)}。`, player: null }
+    { text: GAME_TEXT.record.lineWinner(getCuePlayerName(winner), formatBoardList(winningLine)), player: winner }
   ]
 }
 
@@ -1328,15 +1457,33 @@ function formatBoardList(boardIndexes: number[]): string {
 }
 
 function getCuePlayerName(player: Player): string {
+  if (settings.value.gameMode === 'online') {
+    return getOnlineSideDisplayName(player, false)
+  }
   return player === X ? '蓝方' : '红方'
 }
 
+function getPlayerSideName(player: Player): string {
+  return GAME_TEXT.player.sideName(player)
+}
+
 function getDisplayPlayerName(player: Player, currentState: GameCoreState): string {
+  if (settings.value.gameMode === 'online') {
+    return getOnlineSideDisplayName(player)
+  }
   if (currentState.gameMode === 'human-vs-ai') {
     return player === X ? '你' : `电脑(${getDifficultyName(currentState.aiDifficulty)})`
   }
 
   return getPlayerName(player, currentState)
+}
+
+function getOnlineSideDisplayName(player: Player, _withRole = true): string {
+  const onlinePlayer = onlinePlayers.value.find((item) => toOnlinePlayer(item.side) === player)
+  const baseName = onlinePlayer?.self ? '你' : onlinePlayer?.nickname
+  const fallback = GAME_TEXT.player.defaultName(player)
+  if (!baseName) return fallback
+  return baseName
 }
 
 function repeatCssAddition(value: string, times: number): string {
@@ -1376,7 +1523,11 @@ function closeRulesDialog(): void {
 
 function handleSecondaryAction(): void {
   if (settings.value.gameMode === 'online' && !hasOnlineRoom.value) {
-    void joinOnlineRoomFromPrompt()
+    void openOnlineRoomDialog()
+    return
+  }
+  if (settings.value.gameMode === 'online' && hasOnlineRoom.value && onlineRoomStatus.value === 'WAITING') {
+    void shareOnlineRoom()
     return
   }
   isRulesOpen.value = true
@@ -1408,7 +1559,13 @@ function handleStartTutorial(): void {
     window.alert('你已经进入教学模式了。')
     return
   }
-  if (state.value.isStarted || hasOnlineRoom.value) {
+  if (hasOnlineRoom.value && !confirmLeaveOnlineRoom('这么做会离开房间，确定要继续吗？')) {
+    return
+  }
+  if (hasOnlineRoom.value) {
+    leaveOnlineRoom(true)
+  }
+  if (state.value.isStarted && settings.value.gameMode !== 'online') {
     window.alert('当前已有对局，只能查看游戏规则。')
     return
   }
@@ -1476,7 +1633,7 @@ function handleResignOrRematch(): void {
     id: `human-resign-${Date.now()}`,
     type: 'system',
     player: loser,
-    text: `${getPlayerName(loser, nextState)} 投降\n${getPlayerName(winner, nextState)} 赢得本局。`
+    text: GAME_TEXT.record.resign(getPlayerName(loser, nextState), getPlayerName(winner, nextState))
   })
   state.value = nextState
 }
@@ -1484,6 +1641,12 @@ function handleResignOrRematch(): void {
 function handleModeSelectChange(event: Event): void {
   if (isTutorialMode.value) return
   const gameMode = (event.target as HTMLSelectElement).value as GameMode
+  if (settings.value.gameMode === 'online' && gameMode !== 'online' && hasOnlineRoom.value) {
+    if (!confirmLeaveOnlineRoom('切换模式会离开当前房间，确定要继续吗？')) {
+      return
+    }
+    leaveOnlineRoom(true)
+  }
   settings.value = {
     ...settings.value,
     gameMode
@@ -1503,7 +1666,7 @@ function handleDifficultySelectChange(event: Event): void {
 
 function handleModeChange(): void {
   if (settings.value.gameMode !== 'online') {
-    resetOnlineRoom()
+    leaveOnlineRoom(false)
   }
 
   saveGameSettings(settings.value)
@@ -1518,10 +1681,6 @@ function handleDifficultyChange(): void {
 async function handleOnlinePrimaryAction(): Promise<void> {
   if (onlineRoomStatus.value === 'PLAYING') {
     resignOnlineGame()
-    return
-  }
-  if (onlineRoomStatus.value === 'WAITING' && onlinePlayerCount.value < 2) {
-    await shareOnlineRoom()
     return
   }
   if (onlineRoomStatus.value === 'WAITING' || onlineRoomStatus.value === 'FINISHED') {
@@ -1540,17 +1699,54 @@ async function createOnlineRoomFromCurrentPlayer(): Promise<void> {
     const room = await createOnlineRoom(nickname)
     saveOnlineRoomToken(room.roomId, room.playerToken)
     connectOnlineRoom(room.roomId, room.playerToken, nickname)
+    updateOnlineRoomUrl(room.roomId)
+    closeOnlineRoomDialog()
   } catch (error) {
     setError(error instanceof Error ? error.message : '创建房间失败')
   }
 }
 
-async function joinOnlineRoomFromPrompt(): Promise<void> {
-  const roomId = window.prompt('请输入房间 ID')
-  if (!roomId || !roomId.trim()) return
+async function openOnlineRoomDialog(): Promise<void> {
+  isOnlineRoomDialogOpen.value = true
+  await refreshOnlineRooms()
+}
+
+function closeOnlineRoomDialog(): void {
+  isOnlineRoomDialogOpen.value = false
+}
+
+async function refreshOnlineRooms(): Promise<void> {
+  isOnlineRoomsLoading.value = true
+  try {
+    onlineRooms.value = await fetchOnlineRooms()
+  } catch (error) {
+    setError(error instanceof Error ? error.message : '获取房间列表失败')
+  } finally {
+    isOnlineRoomsLoading.value = false
+  }
+}
+
+function joinOnlineRoomFromList(room: OnlineRoomListItem): void {
+  if (!room.joinable) return
   const nickname = ensureOnlineNickname()
   if (!nickname) return
-  joinOnlineRoom(roomId.trim(), nickname)
+  joinOnlineRoom(room.roomId, nickname)
+  closeOnlineRoomDialog()
+}
+
+function randomJoinOnlineRoom(): void {
+  const targetRoom = [...onlineRooms.value]
+    .filter((room) => room.joinable)
+    .sort((left, right) => getRandomJoinRoomScore(left) - getRandomJoinRoomScore(right))[0]
+  if (!targetRoom) {
+    setError('当前没有可加入的房间，建议创建一个新房间。')
+    return
+  }
+  joinOnlineRoomFromList(targetRoom)
+}
+
+async function createOnlineRoomFromDialog(): Promise<void> {
+  await createOnlineRoomFromCurrentPlayer()
 }
 
 function joinOnlineRoom(roomId: string, nickname: string): void {
@@ -1558,6 +1754,7 @@ function joinOnlineRoom(roomId: string, nickname: string): void {
   const playerToken = loadOnlineRoomToken(normalizedRoomId) || createOnlinePlayerToken()
   saveOnlineRoomToken(normalizedRoomId, playerToken)
   connectOnlineRoom(normalizedRoomId, playerToken, nickname)
+  updateOnlineRoomUrl(normalizedRoomId)
 }
 
 function connectOnlineRoom(roomId: string, playerToken: string, nickname: string): void {
@@ -1572,7 +1769,6 @@ function connectOnlineRoom(roomId: string, playerToken: string, nickname: string
   onlineNickname.value = nickname
   onlineRoomStatus.value = 'NOT_JOINED'
   onlineConnectionStatus.value = 'connecting'
-  saveOnlineNickname(nickname)
   state.value = createInitialGameState(settings.value)
   clearNextBoardPreview()
 
@@ -1694,8 +1890,168 @@ function toGameMessage(message: OnlineGameMessage): GameMessage {
     player: toOnlinePlayer(message.player) ?? undefined,
     sender: toOnlinePlayer(message.sender) ?? undefined,
     senderName: message.senderName ?? undefined,
-    text: message.text
+    text: formatOnlineMessageText(message)
   }
+}
+
+function formatOnlineMessageText(message: OnlineGameMessage): string {
+  const eventText = formatOnlineEventMessage(message)
+  if (eventText !== null) return eventText
+
+  if (message.type === 'chat' && message.senderName) {
+    const separator = '说：'
+    const separatorIndex = message.text.indexOf(separator)
+    const content = separatorIndex >= 0 ? message.text.slice(separatorIndex + separator.length) : message.text
+    const senderPlayer = findOnlineMessageSender(message)
+    const senderName = senderPlayer?.self ? '你' : message.senderName
+    return GAME_TEXT.record.chat(senderName, content)
+  }
+
+  return message.text
+}
+
+function formatOnlineEventMessage(message: OnlineGameMessage): string | null {
+  if (!message.eventType) return null
+
+  const eventData = message.eventData ?? {}
+  switch (message.eventType) {
+    case 'ROOM_CREATED':
+      return `${readEventNickname(eventData, 'nickname')} 创建并加入了 ${readEventString(eventData, 'roomId')} 房间`
+    case 'PLAYER_JOINED':
+      return `${readEventNickname(eventData, 'nickname')} 加入了游戏`
+    case 'PLAYER_LEFT':
+      return `${readEventNickname(eventData, 'nickname')} 离开了房间`
+    case 'PLAYER_READY':
+      return `${readEventNickname(eventData, 'nickname')} 已准备`
+    case 'PLAYER_UNREADY':
+      return `${readEventNickname(eventData, 'nickname')} 取消准备`
+    case 'GAME_STARTED':
+      return GAME_TEXT.record.gameStart(GAME_TEXT.settings.gameModeName('online'), readEventPlayerName(eventData, 'firstPlayer'))
+    case 'MOVE_PLAYED':
+      return formatOnlineMoveEvent(eventData)
+    case 'BOARD_DRAW':
+      return formatOnlineDrawBoardEvent(eventData)
+    case 'BOARD_SETTLEMENT':
+      return formatOnlineSettlementEvent(eventData)
+    case 'GAME_DRAW':
+      return GAME_TEXT.record.gameDraw()
+    case 'LINE_WIN':
+      return formatOnlineLineWinnerEvent(eventData)
+    case 'RESIGN_WIN':
+      return GAME_TEXT.record.resign(readEventPlayerName(eventData, 'loser'), readEventPlayerName(eventData, 'winner'))
+    case 'LEAVE_WIN':
+      return GAME_TEXT.record.leaveWinner(readEventPlayerName(eventData, 'loser'), readEventPlayerName(eventData, 'winner'))
+    case 'CHAT_SENT':
+      return GAME_TEXT.record.chat(readEventNickname(eventData, 'nickname'), readEventString(eventData, 'text'))
+  }
+}
+
+function formatOnlineMoveEvent(eventData: Record<string, unknown>): string {
+  const playerName = readEventPlayerName(eventData, 'player')
+  const bigIndex = readEventNumber(eventData, 'bigIndex')
+  const smallIndex = readEventNumber(eventData, 'smallIndex')
+  const lines = [
+    GAME_TEXT.record.move(playerName, formatBigBoardIndex(bigIndex), GAME_TEXT.board.smallCell(smallIndex))
+  ]
+
+  const filledBoardIndex = readOptionalEventNumber(eventData, 'filledBoardIndex')
+  if (filledBoardIndex !== null) {
+    lines.push(GAME_TEXT.record.filledBoard(formatBigBoardIndex(filledBoardIndex)))
+  }
+
+  const nextTurnText = formatOnlineNextTurnEvent(eventData)
+  if (nextTurnText) lines.push(nextTurnText)
+  return lines.join('\n')
+}
+
+function formatOnlineDrawBoardEvent(eventData: Record<string, unknown>): string {
+  const lines = [GAME_TEXT.record.drawBoard(formatBigBoardIndex(readEventNumber(eventData, 'boardIndex')))]
+  const nextTurnText = formatOnlineNextTurnEvent(eventData)
+  if (nextTurnText) lines.push(nextTurnText)
+  return lines.join('\n')
+}
+
+function formatOnlineSettlementEvent(eventData: Record<string, unknown>): string {
+  const lines = [
+    GAME_TEXT.record.settlement(
+      readEventPlayerName(eventData, 'owner'),
+      formatBigBoardIndex(readEventNumber(eventData, 'boardIndex')),
+      readEventNumber(eventData, 'filledCount')
+    ),
+    GAME_TEXT.record.settlementNext(readEventPlayerName(eventData, 'nextPlayer'))
+  ]
+  const chainCount = readOptionalEventNumber(eventData, 'chainCount') ?? 0
+  if (chainCount > 0) {
+    lines.push(GAME_TEXT.record.chainSettlement(chainCount))
+  }
+  return lines.join('\n')
+}
+
+function formatOnlineLineWinnerEvent(eventData: Record<string, unknown>): string {
+  const winnerName = readEventPlayerName(eventData, 'winner')
+  const winningLine = readEventNumberArray(eventData, 'line')
+  return winningLine.length > 0
+    ? GAME_TEXT.record.lineWinner(winnerName, formatBoardList(winningLine))
+    : GAME_TEXT.record.winner(winnerName)
+}
+
+function formatOnlineNextTurnEvent(eventData: Record<string, unknown>): string | null {
+  const nextPlayer = readOptionalEventPlayer(eventData, 'nextPlayer')
+  if (!nextPlayer) return null
+
+  const nextPlayerName = getOnlineSideDisplayName(nextPlayer, false)
+  const nextBoard = readOptionalEventNumber(eventData, 'nextBoard')
+  return nextBoard === null
+    ? GAME_TEXT.record.nextFree(nextPlayerName)
+    : GAME_TEXT.record.nextBoard(nextPlayerName, formatBigBoardIndex(nextBoard))
+}
+
+function readEventNickname(eventData: Record<string, unknown>, key: string): string {
+  const nickname = readEventString(eventData, key)
+  const onlinePlayer = onlinePlayers.value.find((player) => player.nickname === nickname)
+  return onlinePlayer?.self ? '你' : nickname
+}
+
+function readEventPlayerName(eventData: Record<string, unknown>, key: string): string {
+  const player = readOptionalEventPlayer(eventData, key)
+  return player ? getOnlineSideDisplayName(player, false) : GAME_TEXT.player.defaultName(X)
+}
+
+function readOptionalEventPlayer(eventData: Record<string, unknown>, key: string): Player | null {
+  return toOnlinePlayer(readOptionalEventNumber(eventData, key))
+}
+
+function readEventString(eventData: Record<string, unknown>, key: string): string {
+  const value = eventData[key]
+  return typeof value === 'string' ? value : ''
+}
+
+function readEventNumber(eventData: Record<string, unknown>, key: string): number {
+  return readOptionalEventNumber(eventData, key) ?? 0
+}
+
+function readOptionalEventNumber(eventData: Record<string, unknown>, key: string): number | null {
+  const value = eventData[key]
+  return typeof value === 'number' && Number.isInteger(value) ? value : null
+}
+
+function readEventNumberArray(eventData: Record<string, unknown>, key: string): number[] {
+  const value = eventData[key]
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is number => typeof item === 'number' && Number.isInteger(item))
+}
+
+function findOnlineMessageSender(message: OnlineGameMessage): OnlinePlayerSnapshot | null {
+  const sender = toOnlinePlayer(message.sender)
+  if (sender) {
+    return onlinePlayers.value.find((player) => toOnlinePlayer(player.side) === sender) ?? null
+  }
+  return onlinePlayers.value.find((player) => player.nickname === message.senderName) ?? null
+}
+
+function formatOnlineSenderName(senderName: string, _sender: Player | null, self = false): string {
+  const baseName = self ? '你' : senderName
+  return baseName
 }
 
 function toOnlinePlayer(value: unknown): Player | null {
@@ -1718,16 +2074,34 @@ function handleInitialOnlineRoomFromUrl(): void {
 
 function ensureOnlineNickname(): string | null {
   if (onlineNickname.value) return onlineNickname.value
-  const nickname = window.prompt('请输入在线对战昵称（1-16 字）')
-  if (!nickname) return null
+  onlineNickname.value = DEFAULT_ONLINE_NICKNAME
+  return onlineNickname.value
+}
+
+function editOnlineNickname(): void {
+  if (hasOnlineRoom.value) return
+  const nickname = window.prompt('请输入在线对战昵称（1-16 字）', onlineNickname.value)
+  if (!nickname) return
   const cleanNickname = nickname.trim()
   if (!cleanNickname || cleanNickname.length > 16) {
     window.alert('昵称需要 1-16 字')
-    return null
+    return
   }
   onlineNickname.value = cleanNickname
   saveOnlineNickname(cleanNickname)
-  return cleanNickname
+}
+
+function confirmLeaveOnlineRoom(message: string): boolean {
+  if (!hasOnlineRoom.value) return true
+  return window.confirm(message)
+}
+
+function leaveOnlineRoom(notifyServer: boolean): void {
+  if (notifyServer && onlineClient.value && onlineRoomId.value && onlinePlayerToken.value) {
+    onlineClient.value.leave(onlineRoomId.value, onlinePlayerToken.value)
+  }
+  resetOnlineRoom()
+  clearOnlineRoomUrl()
 }
 
 function resetOnlineRoom(): void {
@@ -1738,6 +2112,7 @@ function resetOnlineRoom(): void {
   onlineConnectionStatus.value = 'idle'
   onlineSelfSide.value = null
   onlinePlayers.value = []
+  isOnlineMemberMenuOpen.value = false
 }
 
 function closeOnlineClient(): void {
@@ -1746,33 +2121,108 @@ function closeOnlineClient(): void {
   client?.close()
 }
 
+function handleBeforeUnload(event: BeforeUnloadEvent): void {
+  if (!hasOnlineRoom.value) return
+  event.preventDefault()
+  event.returnValue = ''
+}
+
 function getOnlinePrimaryActionText(): string {
-  if (onlineRoomStatus.value === 'PLAYING') return '投降'
+  if (onlineRoomStatus.value === 'PLAYING') return onlineSelfIsActivePlayer.value ? '投降' : '观战中'
   if (onlineRoomStatus.value === 'WAITING') {
-    if (onlinePlayerCount.value < 2) return '分享房间'
-    if (onlineSelfReady.value) return `等待对手 (${onlineReadyCount.value}/2)`
+    if (onlineSelfReady.value) return `取消准备 (${onlineReadyCount.value}/2)`
     return `准备开始! (${onlineReadyCount.value}/2)`
   }
   if (onlineRoomStatus.value === 'FINISHED') {
-    if (onlineSelfReady.value) return `等待对手 (${onlineReadyCount.value}/2)`
+    if (onlineSelfReady.value) return `取消准备 (${onlineReadyCount.value}/2)`
     return `再来一把! (${onlineReadyCount.value}/2)`
   }
   return '创建房间'
 }
 
 function getOnlineRoomStatusText(): string {
-  if (onlineConnectionStatus.value === 'connecting') return '连接中'
-  if (onlineConnectionStatus.value === 'disconnected') return '连接已断开'
+  if (onlineConnectionStatus.value === 'connecting') return GAME_TEXT.room.connecting
+  if (onlineConnectionStatus.value === 'disconnected') return GAME_TEXT.room.disconnected
+  if (!hasOnlineRoom.value) return GAME_TEXT.room.notJoined
   switch (onlineRoomStatus.value) {
     case 'WAITING':
-      return onlinePlayerCount.value < 2 ? '等待对手' : `准备中 (${onlineReadyCount.value}/2)`
+      return GAME_TEXT.room.waitingReady
     case 'PLAYING':
-      return '对局中'
+      return getOnlineTurnStatusText()
     case 'FINISHED':
-      return `已结束 (${onlineReadyCount.value}/2)`
+      return GAME_TEXT.room.finished
     case 'NOT_JOINED':
-      return '未加入房间'
+      return onlineSelfRoleText.value
   }
+}
+
+function getOnlineTurnStatusText(): string {
+  const currentPlayer = state.value.currentPlayer
+  if (!isPlayer(currentPlayer)) return GAME_TEXT.room.playing
+  if (onlineSelfSide.value === X || onlineSelfSide.value === O) {
+    return currentPlayer === onlineSelfSide.value ? GAME_TEXT.room.turnSelf : GAME_TEXT.room.turnOpponent
+  }
+  return currentPlayer === X ? GAME_TEXT.room.turnBlue : GAME_TEXT.room.turnRed
+}
+
+const onlineRoomDialogHint = computed(() => {
+  if (isOnlineRoomsLoading.value) return '正在读取当前在线房间。'
+  if (onlineRooms.value.length === 0) return '当前没有可加入的房间，建议创建一个新房间。'
+  return '选择一个房间加入；对局中或已结束的房间会以观战身份进入。'
+})
+
+function getOnlineRoomListStatusText(room: OnlineRoomListItem): string {
+  const statusText = room.roomStatus === 'WAITING'
+    ? '等待中'
+    : room.roomStatus === 'PLAYING'
+      ? '对局中'
+      : '已结束'
+  return `${room.playerCount}/${room.maxPlayerCount} · ${statusText}`
+}
+
+function getRandomJoinRoomScore(room: OnlineRoomListItem): number {
+  if (room.roomStatus === 'WAITING' && room.playable) return 0
+  if (room.roomStatus === 'WAITING') return 1
+  if (room.roomStatus === 'PLAYING') return 2
+  return 3
+}
+
+function handleOnlineStatusClick(): void {
+  if (settings.value.gameMode !== 'online') return
+  if (!hasOnlineRoom.value) {
+    editOnlineNickname()
+    return
+  }
+  isOnlineMemberMenuOpen.value = !isOnlineMemberMenuOpen.value
+}
+
+function handleDocumentClick(event: MouseEvent): void {
+  if (!isOnlineMemberMenuOpen.value) return
+  const target = event.target
+  if (!(target instanceof Element)) return
+  if (target.closest('.utt-menu-control')) return
+  isOnlineMemberMenuOpen.value = false
+}
+
+function handleLeaveOnlineRoomClick(): void {
+  const message = onlineRoomStatus.value === 'PLAYING' && onlineSelfIsActivePlayer.value
+    ? '离开房间会直接判负。确定要离开吗？'
+    : '确定要离开当前房间吗？'
+  if (!confirmLeaveOnlineRoom(message)) return
+  leaveOnlineRoom(true)
+  resetGameToReady()
+}
+
+function getOnlineMemberDisplayName(player: OnlinePlayerSnapshot): string {
+  return player.self ? '你' : player.nickname
+}
+
+function getOnlineMemberStatusText(player: OnlinePlayerSnapshot): string {
+  const role = toOnlinePlayer(player.side)
+  const roleText = role === X ? '蓝方' : role === O ? '红方' : '观战'
+  const readyText = player.ready ? ' · 已准备' : ''
+  const offlineText = player.connected ? '' : ' · 离线'
+  return `${roleText}${readyText}${offlineText}`
 }
 
 function getOnlineMoveError(): string {
@@ -1787,18 +2237,36 @@ function createOnlineInviteLink(roomId: string): string {
   return url.toString()
 }
 
+function updateOnlineRoomUrl(roomId: string): void {
+  if (typeof window === 'undefined') return
+  window.history.replaceState(window.history.state, '', createOnlineInviteLink(roomId))
+}
+
+function clearOnlineRoomUrl(): void {
+  if (typeof window === 'undefined') return
+  const url = new URL(window.location.href)
+  url.searchParams.delete('room')
+  window.history.replaceState(window.history.state, '', url.toString())
+}
+
 function normalizeOnlineRoomId(roomId: string): string {
   return roomId.trim().toUpperCase()
 }
 
 function loadOnlineNickname(): string {
-  if (typeof window === 'undefined') return ''
-  return window.localStorage.getItem(ONLINE_NICKNAME_STORAGE_KEY)?.trim() ?? ''
+  if (typeof window === 'undefined') return DEFAULT_ONLINE_NICKNAME
+  return window.localStorage.getItem(ONLINE_NICKNAME_STORAGE_KEY)?.trim() || DEFAULT_ONLINE_NICKNAME
+}
+
+function loadHasCustomOnlineNickname(): boolean {
+  if (typeof window === 'undefined') return false
+  return Boolean(window.localStorage.getItem(ONLINE_NICKNAME_STORAGE_KEY)?.trim())
 }
 
 function saveOnlineNickname(nickname: string): void {
   if (typeof window === 'undefined') return
   window.localStorage.setItem(ONLINE_NICKNAME_STORAGE_KEY, nickname)
+  hasCustomOnlineNickname.value = true
 }
 
 function loadOnlineRoomToken(roomId: string): string {
@@ -2068,6 +2536,12 @@ function clearTutorialTimer(): void {
   tutorialTimer = null
 }
 
+function clearSettlementCueTimer(): void {
+  if (settlementCueTimer === null) return
+  window.clearTimeout(settlementCueTimer)
+  settlementCueTimer = null
+}
+
 function handleMessageFocus(): void {
   state.value.errorMessage = ''
   state.value.isMessageInputFocused = true
@@ -2098,19 +2572,28 @@ function handleSendMessage(): void {
     type: 'chat',
     sender,
     senderName: getPlayerName(sender, state.value),
-    text: `${getPlayerName(sender, state.value)} 说：${text}`
+    text: GAME_TEXT.record.chat(getPlayerName(sender, state.value), text)
   }
   state.value.messages.push(message)
   messageDraft.value = ''
 }
 
 function getMessageClass(message: GameMessage): Record<string, boolean> {
+  const isGameRecord = isGameRecordMessage(message)
   return {
-    'utt-log-message-system': message.type === 'system',
+    'utt-log-message-system': message.type === 'system' && !isGameRecord,
+    'utt-log-message-record': isGameRecord,
     'utt-log-message-chat': message.type === 'chat',
     'utt-log-message-blue': message.type === 'move' && message.player === X,
     'utt-log-message-red': message.type === 'move' && message.player === O
   }
+}
+
+function isGameRecordMessage(message: GameMessage): boolean {
+  if (message.type === 'move') return true
+  if (message.type !== 'system') return false
+
+  return /下在|填满了|控制了|入口|自由落子|轮到|平局|赢下|占领了|投降|离开对局|落下第一步|本局游戏/.test(message.text)
 }
 
 function splitMessageLines(text: string): string[] {
@@ -2119,7 +2602,8 @@ function splitMessageLines(text: string): string[] {
 
 function splitMessageLineParts(line: string): MessageLinePart[] {
   const parts: MessageLinePart[] = []
-  const pattern = /(蓝方 X|红方 O)/g
+  const labels = getColoredPlayerLabels()
+  const pattern = new RegExp(labels.map((label) => escapeRegExp(label.text)).join('|'), 'g')
   let lastIndex = 0
 
   for (const match of line.matchAll(pattern)) {
@@ -2133,7 +2617,7 @@ function splitMessageLineParts(line: string): MessageLinePart[] {
 
     parts.push({
       text: match[0],
-      player: match[0] === '蓝方 X' ? X : O
+      player: labels.find((label) => label.text === match[0])?.player ?? null
     })
     lastIndex = match.index + match[0].length
   }
@@ -2148,6 +2632,26 @@ function splitMessageLineParts(line: string): MessageLinePart[] {
   return parts.length > 0 ? parts : [{ text: line, player: null }]
 }
 
+function getColoredPlayerLabels(): MessageLinePart[] {
+  const labels: MessageLinePart[] = [
+    { text: GAME_TEXT.player.defaultName(X), player: X },
+    { text: GAME_TEXT.player.defaultName(O), player: O }
+  ]
+  for (const player of onlinePlayers.value) {
+    const side = toOnlinePlayer(player.side)
+    if (!side) continue
+    labels.push({ text: formatOnlineSenderName(player.nickname, side, player.self), player: side })
+  }
+
+  return labels
+    .filter((label, index, list) => list.findIndex((item) => item.text === label.text) === index)
+    .sort((left, right) => right.text.length - left.text.length)
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 function getPlayerTextClass(player: Player | null): string {
   if (player === X) return 'utt-player-text-blue'
   if (player === O) return 'utt-player-text-red'
@@ -2155,21 +2659,15 @@ function getPlayerTextClass(player: Player | null): string {
   return ''
 }
 
-function getMessageOpacity(index: number): number {
-  const distanceFromLatest = state.value.messages.length - 1 - index
-
-  return Math.max(0.35, 1 - distanceFromLatest * 0.15)
-}
-
 function createMoveMessages(nextState: GameCoreState, movePlayer: Player, move: GameMove, reportId: number): GameMessage[] {
   const playerName = getPlayerName(movePlayer, nextState)
   const directEvent = nextState.lastRuleEvents.find((event) => event.boardIndex === move.bigIndex)
   const moveLines = [
-    `${playerName} 下在 ${formatBigBoardIndex(move.bigIndex)} 棋盘 ${formatMoveCellText(move.smallIndex)}`
+    GAME_TEXT.record.move(playerName, formatBigBoardIndex(move.bigIndex), formatMoveCellText(move.smallIndex))
   ]
 
   if (directEvent) {
-    moveLines.push(`填满了 ${formatBigBoardIndex(directEvent.boardIndex)} 棋盘`)
+    moveLines.push(GAME_TEXT.record.filledBoard(formatBigBoardIndex(directEvent.boardIndex)))
   }
 
   const messages: GameMessage[] = [
@@ -2187,15 +2685,19 @@ function createMoveMessages(nextState: GameCoreState, movePlayer: Player, move: 
     const mainEvent = nextState.lastRuleEvents[0]
 
     if (mainEvent.owner === DRAW) {
-      systemLines.push(`${formatBigBoardIndex(mainEvent.boardIndex)} 棋盘平局`)
+      systemLines.push(GAME_TEXT.record.drawBoard(formatBigBoardIndex(mainEvent.boardIndex)))
     } else if (isPlayer(mainEvent.owner)) {
-      systemLines.push(`由于 ${getPlayerName(mainEvent.owner, nextState)} 控制了 ${formatBigBoardIndex(mainEvent.boardIndex)} 棋盘，使用其棋子填充 ${mainEvent.filledCount} 格入口`)
+      systemLines.push(GAME_TEXT.record.settlement(
+        getPlayerName(mainEvent.owner, nextState),
+        formatBigBoardIndex(mainEvent.boardIndex),
+        mainEvent.filledCount
+      ))
       systemLines.push('')
-      systemLines.push(`并让 ${getPlayerName(getOpponent(mainEvent.owner), nextState)} 自由落子`)
+      systemLines.push(GAME_TEXT.record.settlementNext(getPlayerName(getOpponent(mainEvent.owner), nextState)))
     }
 
     if (nextState.lastRuleEvents.length > 1) {
-      systemLines.push(`连锁结算 ${nextState.lastRuleEvents.length - 1} 个`)
+      systemLines.push(GAME_TEXT.record.chainSettlement(nextState.lastRuleEvents.length - 1))
     }
 
     if (isPlayer(nextState.winner) || nextState.winner === DRAW) {
@@ -2219,9 +2721,14 @@ function createMoveMessages(nextState: GameCoreState, movePlayer: Player, move: 
 
 function appendResultOrNextTurn(lines: string[], nextState: GameCoreState): void {
   if (isPlayer(nextState.winner)) {
-    lines.push(`${getPlayerName(nextState.winner, nextState)} 赢得整局。`)
+    const lineText = nextState.bigBoardWinningLine?.length
+      ? formatBoardList(nextState.bigBoardWinningLine)
+      : ''
+    lines.push(lineText
+      ? GAME_TEXT.record.lineWinner(getPlayerName(nextState.winner, nextState), lineText)
+      : GAME_TEXT.record.winner(getPlayerName(nextState.winner, nextState)))
   } else if (nextState.winner === DRAW) {
-    lines.push('整局游戏平局。')
+    lines.push(GAME_TEXT.record.gameDraw())
   } else {
     appendNextTurn(lines, nextState)
   }
@@ -2229,17 +2736,14 @@ function appendResultOrNextTurn(lines: string[], nextState: GameCoreState): void
 
 function appendNextTurn(lines: string[], nextState: GameCoreState): void {
   if (nextState.nextBoard === null) {
-    lines.push(`${getPlayerName(nextState.currentPlayer, nextState)} 自由落子`)
+    lines.push(GAME_TEXT.record.nextFree(getPlayerName(nextState.currentPlayer, nextState)))
   } else {
-    lines.push(`轮到 ${getPlayerName(nextState.currentPlayer, nextState)} 去 ${formatBigBoardIndex(nextState.nextBoard)} 棋盘`)
+    lines.push(GAME_TEXT.record.nextBoard(getPlayerName(nextState.currentPlayer, nextState), formatBigBoardIndex(nextState.nextBoard)))
   }
 }
 
 function formatMoveCellText(smallIndex: number): string {
-  const row = Math.floor(smallIndex / 3) + 1
-  const col = (smallIndex % 3) + 1
-
-  return `(${row},${col})`
+  return GAME_TEXT.board.smallCell(smallIndex)
 }
 
 function setError(message: string): void {
@@ -2995,6 +3499,7 @@ function scrollLogToBottom(): void {
 }
 
 .utt-menu-control {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3040,6 +3545,10 @@ function scrollLogToBottom(): void {
   font-size: 14px;
   text-align: left;
   cursor: default;
+}
+
+.utt-turn-button:not(:disabled) {
+  cursor: pointer;
 }
 
 .utt-turn-button-x {
@@ -3106,35 +3615,58 @@ function scrollLogToBottom(): void {
 }
 
 .utt-log-message {
-  margin-bottom: 6px;
-  padding: 0 8px;
-  background: var(--vp-c-bg-soft);
+  margin-bottom: 3px;
+  padding: 0 4px;
+  background: transparent;
   color: var(--vp-c-text-1);
-  font-size: 14px;
-  line-height: 1.32;
+  font-size: 13px;
+  line-height: 1.34;
   text-align: left;
   white-space: pre-line;
 }
 
 .utt-log-message-system {
-  padding-inline: 0;
+  align-self: center;
+  max-width: 92%;
+  margin: 4px 0;
+  padding: 0 8px;
   background: transparent;
-  color: var(--vp-c-text-2);
+  color: var(--vp-c-text-3);
+  font-size: 12px;
+  line-height: 1.34;
+  text-align: center;
+}
+
+.utt-log-message-record {
+  align-self: stretch;
+  width: 100%;
+  margin-bottom: 0;
+  padding: 2px 8px;
+  border-left: 4px solid transparent;
+  background: var(--vp-c-bg-soft);
+  line-height: 1.34;
+  text-align: left;
+}
+
+.utt-log-message-record + .utt-log-message-record {
+  margin-top: -3px;
 }
 
 .utt-log-message-chat {
-  margin-bottom: 6px;
-  padding-inline: 0;
+  align-self: stretch;
+  margin-bottom: 1px;
+  padding: 0 2px;
   background: transparent;
-  line-height: 1.35;
+  color: var(--vp-c-text-1);
+  line-height: 1.34;
 }
 
 .utt-log-message-blue {
-  border-left: 4px solid #2563eb;
+  border-left-color: #2563eb;
 }
 
 .utt-log-message-red {
-  border-left: 4px solid #dc2626;
+  border-left-color: #dc2626;
 }
 
 .utt-log-line {
@@ -3142,7 +3674,45 @@ function scrollLogToBottom(): void {
 }
 
 .utt-log-line:empty {
-  min-height: 4px;
+  min-height: 1px;
+}
+
+.utt-online-member-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.18);
+}
+
+.utt-online-member-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--vp-c-text-2);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.utt-online-member-row span:first-child {
+  color: var(--vp-c-text-1);
+}
+
+.utt-online-leave-button {
+  height: 30px;
+  margin-top: 4px;
+  border: 1px solid #9f1d1d;
+  background: transparent;
+  color: #9f1d1d;
+  cursor: pointer;
+  font-size: 12px;
 }
 
 .utt-player-text-blue {
@@ -3156,19 +3726,65 @@ function scrollLogToBottom(): void {
 .utt-message-input {
   flex: 0 0 auto;
   display: flex;
-  gap: 8px;
+  gap: 6px;
   margin-top: 12px;
   padding-top: 8px;
   border-top: 1px solid var(--vp-c-divider);
 }
 
+.utt-message-field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  height: 38px;
+  border: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg);
+}
+
+.utt-message-field-error {
+  padding: 0 10px;
+}
+
+.utt-message-field-hint {
+  flex: 1;
+  min-width: 0;
+  color: #dc2626;
+  font-size: 14px;
+  line-height: 36px;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.utt-message-user-line {
+  flex: 0 1 auto;
+  max-width: 42%;
+  height: 100%;
+  padding: 0 0 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--vp-c-text-2);
+  font-size: 14px;
+  line-height: 36px;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.utt-message-user-line-clickable {
+  cursor: pointer;
+}
+
 .utt-message-input input {
   flex: 1;
   min-width: 0;
-  height: 38px;
-  padding: 0 10px;
-  border: 1px solid var(--vp-c-divider);
-  background: var(--vp-c-bg);
+  height: 100%;
+  padding: 0 10px 0 4px;
+  border: 0;
+  background: transparent;
   color: var(--vp-c-text-1);
   font-size: 14px;
 }
@@ -3177,7 +3793,8 @@ function scrollLogToBottom(): void {
   outline: 0;
 }
 
-.utt-message-input button {
+.utt-message-send-button {
+  flex: 0 0 auto;
   height: 38px;
   padding: 0 16px;
   border: 1px solid var(--vp-c-divider);
@@ -3185,10 +3802,6 @@ function scrollLogToBottom(): void {
   color: var(--vp-c-text-1);
   font-size: 14px;
   cursor: pointer;
-}
-
-.utt-message-input input.utt-input-error::placeholder {
-  color: #dc2626;
 }
 
 .utt-rules-dialog {
@@ -3213,6 +3826,54 @@ function scrollLogToBottom(): void {
   overflow: hidden;
   background: var(--vp-c-bg);
   border: 2px solid var(--vp-c-text-1);
+}
+
+.utt-online-room-card {
+  gap: 14px;
+}
+
+.utt-online-room-header h2 {
+  margin: 0 0 6px;
+  color: var(--vp-c-text-1);
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.utt-online-room-header p,
+.utt-online-room-empty {
+  margin: 0;
+  color: var(--vp-c-text-2);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.utt-online-room-list {
+  display: flex;
+  min-height: 120px;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.utt-online-room-item {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 10px;
+  border: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-1);
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+}
+
+.utt-online-room-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
 }
 
 .utt-rules-content {
@@ -3445,9 +4106,17 @@ function scrollLogToBottom(): void {
     padding-top: 6px;
   }
 
-  .utt-message-input input,
-  .utt-message-input button {
+  .utt-message-field,
+  .utt-message-send-button {
     height: 40px;
+  }
+
+  .utt-message-user-line {
+    line-height: 38px;
+  }
+
+  .utt-message-field-hint {
+    line-height: 38px;
   }
 }
 </style>
