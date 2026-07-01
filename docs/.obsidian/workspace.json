@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "knowledge/后端 Java 基础/第一部分-基础语法.md",
+                "file": "_scaffolds/post.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "第一部分-基础语法"
+              "title": "post"
             }
           }
         ]
@@ -40,13 +40,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "knowledge/后端 Java 基础/第一部分-基础语法.md",
+                "file": "_scaffolds/post.md",
                 "followCursor": false,
                 "showSearch": true,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "第一部分-基础语法 的大纲"
+              "title": "post 的大纲"
             }
           },
           {
@@ -155,14 +155,17 @@
   },
   "active": "31f181ae07cf6de7",
   "lastOpenFiles": [
-    "knowledge/后端面试/Java 基础.md",
     "knowledge/实习实训/CSS 的.md",
+    "_scaffolds/post.md",
+    "_scaffolds/page.md",
+    "_scaffolds/未命名.md",
+    "knowledge/后端 Java 基础/第一部分-基础语法.md",
+    "knowledge/后端面试/Java 基础.md",
     "knowledge/后端面试/并发编程.md",
     "knowledge/后端 Java 基础/第二部分-常用 API.md",
     "knowledge/后端面试/面试问题清单.md",
     "knowledge/后端 Java 基础/第一部分-面向对象高级.md",
     "knowledge/后端 Java 基础/第一部分-面向对象基础.md",
-    "knowledge/后端 Java 基础/第一部分-基础语法.md",
     "knowledge/后端工具库/Docker 容器技术.md",
     "public/reaction-like.svg",
     "thoughts/献给狼，献给你.md",
@@ -179,9 +182,6 @@
     "thoughts/叼住时间的尾巴.md",
     "thoughts/电子音乐.md",
     "knowledge/后端 微服务基础/远程调用.md",
-    "knowledge/后端 微服务基础/微服务基础.md",
-    "knowledge/后端 Web 基础/MyBatis Plus 增强框架.md",
-    "knowledge/后端 Java 基础/第四部分-多线程.md",
     "public/images/文章资源/docker-容器技术",
     "public/images/文章资源/docker-容器技术/file-20260521144338417.jpg",
     "public/images/文章资源/docker",

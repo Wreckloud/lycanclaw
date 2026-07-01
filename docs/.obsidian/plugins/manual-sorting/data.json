@@ -1,6 +1,7 @@
 {
   "customFileOrder": {
     "/": [
+      "games",
       "_scaffolds",
       "knowledge",
       "projects",
@@ -10,8 +11,11 @@
       "index.md"
     ],
     "_scaffolds": [
-      "_scaffolds/page.md",
-      "_scaffolds/post.md"
+      "_scaffolds/post.md",
+      "_scaffolds/page.md"
+    ],
+    "games": [
+      "games/ultimate-tic-tac-toe.md"
     ],
     "knowledge": [
       "knowledge/后端 Java 基础",
@@ -136,7 +140,6 @@
       "projects/index.md"
     ],
     "public": [
-      "public/reaction-like.svg",
       "public/contribution-stats.json",
       "public/images",
       "public/default.png",
