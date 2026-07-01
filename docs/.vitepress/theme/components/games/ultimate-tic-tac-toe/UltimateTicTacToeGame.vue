@@ -189,6 +189,7 @@
             type="button"
             class="utt-menu-button"
             :class="primaryActionClass"
+            :disabled="isPrimaryActionDisabled"
             @click="handleResignOrRematch"
           >
             {{ primaryActionText }}
@@ -312,6 +313,7 @@ import {
   createOnlinePlayerToken,
   createOnlineRoom,
   type OnlineGameMessage,
+  type OnlinePlayerSnapshot,
   type OnlineRecordedMove,
   type OnlineRoomSnapshot,
   type OnlineRoomStatus,
@@ -378,6 +380,7 @@ const onlineNickname = ref(loadOnlineNickname())
 const onlineRoomStatus = ref<OnlineRoomStatus | 'NOT_JOINED'>('NOT_JOINED')
 const onlineConnectionStatus = ref<'idle' | 'connecting' | 'connected' | 'disconnected'>('idle')
 const onlineSelfSide = ref<Player | null>(null)
+const onlinePlayers = ref<OnlinePlayerSnapshot[]>([])
 const onlineClient = ref<OnlineGameClient | null>(null)
 const activePreviewTarget = ref<PreviewTarget | null>(null)
 const lastPreviewTarget = ref<PreviewTarget | null>(null)
@@ -456,6 +459,15 @@ const secondaryActionText = computed(() => {
   return settings.value.gameMode === 'online' && !hasOnlineRoom.value ? '加入房间' : '游戏规则'
 })
 const hasOnlineRoom = computed(() => settings.value.gameMode === 'online' && Boolean(onlineRoomId.value))
+const onlinePlayerCount = computed(() => onlinePlayers.value.length)
+const onlineReadyCount = computed(() => onlinePlayers.value.filter((player) => player.ready).length)
+const onlineSelfReady = computed(() => {
+  return onlinePlayers.value.some((player) => toOnlinePlayer(player.side) === onlineSelfSide.value && player.ready)
+})
+const isPrimaryActionDisabled = computed(() => {
+  return settings.value.gameMode === 'online'
+    && (onlineConnectionStatus.value === 'connecting' || onlineSelfReady.value)
+})
 const canShowTutorialButton = computed(() => {
   return !isTutorialMode.value && !state.value.isStarted && !hasOnlineRoom.value
 })
@@ -1508,8 +1520,12 @@ async function handleOnlinePrimaryAction(): Promise<void> {
     resignOnlineGame()
     return
   }
-  if (onlineRoomStatus.value === 'WAITING') {
+  if (onlineRoomStatus.value === 'WAITING' && onlinePlayerCount.value < 2) {
     await shareOnlineRoom()
+    return
+  }
+  if (onlineRoomStatus.value === 'WAITING' || onlineRoomStatus.value === 'FINISHED') {
+    readyOnlineGame()
     return
   }
   await createOnlineRoomFromCurrentPlayer()
@@ -1591,6 +1607,14 @@ function resignOnlineGame(): void {
   onlineClient.value.resign(onlineRoomId.value, onlinePlayerToken.value)
 }
 
+function readyOnlineGame(): void {
+  if (!onlineClient.value || !onlineRoomId.value || !onlinePlayerToken.value) {
+    setError('尚未加入在线房间')
+    return
+  }
+  onlineClient.value.ready(onlineRoomId.value, onlinePlayerToken.value)
+}
+
 async function shareOnlineRoom(): Promise<void> {
   if (!onlineRoomId.value) {
     setError('尚未加入在线房间')
@@ -1610,6 +1634,7 @@ function applyOnlineSnapshot(snapshot: OnlineRoomSnapshot): void {
   onlineRoomStatus.value = snapshot.roomStatus
   onlineConnectionStatus.value = 'connected'
   onlineSelfSide.value = toOnlinePlayer(snapshot.selfSide)
+  onlinePlayers.value = snapshot.players
 
   const nextState = createInitialGameState(settings.value, { started: snapshot.state.isStarted })
   nextState.board = snapshot.state.board.slice() as GameCoreState['board']
@@ -1712,6 +1737,7 @@ function resetOnlineRoom(): void {
   onlineRoomStatus.value = 'NOT_JOINED'
   onlineConnectionStatus.value = 'idle'
   onlineSelfSide.value = null
+  onlinePlayers.value = []
 }
 
 function closeOnlineClient(): void {
@@ -1722,8 +1748,15 @@ function closeOnlineClient(): void {
 
 function getOnlinePrimaryActionText(): string {
   if (onlineRoomStatus.value === 'PLAYING') return '投降'
-  if (onlineRoomStatus.value === 'WAITING') return '分享房间'
-  if (onlineRoomStatus.value === 'FINISHED') return '创建房间'
+  if (onlineRoomStatus.value === 'WAITING') {
+    if (onlinePlayerCount.value < 2) return '分享房间'
+    if (onlineSelfReady.value) return `等待对手 (${onlineReadyCount.value}/2)`
+    return `准备开始! (${onlineReadyCount.value}/2)`
+  }
+  if (onlineRoomStatus.value === 'FINISHED') {
+    if (onlineSelfReady.value) return `等待对手 (${onlineReadyCount.value}/2)`
+    return `再来一把! (${onlineReadyCount.value}/2)`
+  }
   return '创建房间'
 }
 
@@ -1732,11 +1765,11 @@ function getOnlineRoomStatusText(): string {
   if (onlineConnectionStatus.value === 'disconnected') return '连接已断开'
   switch (onlineRoomStatus.value) {
     case 'WAITING':
-      return '等待对手'
+      return onlinePlayerCount.value < 2 ? '等待对手' : `准备中 (${onlineReadyCount.value}/2)`
     case 'PLAYING':
       return '对局中'
     case 'FINISHED':
-      return '已结束'
+      return `已结束 (${onlineReadyCount.value}/2)`
     case 'NOT_JOINED':
       return '未加入房间'
   }
@@ -3030,6 +3063,15 @@ function scrollLogToBottom(): void {
   background: color-mix(in srgb, var(--vp-c-bg-soft) 82%, var(--vp-c-text-1) 6%);
 }
 
+.utt-menu-button:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.utt-menu-button:disabled:hover {
+  background: transparent;
+}
+
 .utt-menu-button-danger {
   border-color: #9f1d1d;
   color: #9f1d1d;
@@ -3064,17 +3106,19 @@ function scrollLogToBottom(): void {
 }
 
 .utt-log-message {
-  margin-bottom: 10px;
-  padding: 0 10px;
+  margin-bottom: 6px;
+  padding: 0 8px;
   background: var(--vp-c-bg-soft);
   color: var(--vp-c-text-1);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.32;
   text-align: left;
   white-space: pre-line;
 }
 
 .utt-log-message-system {
+  padding-inline: 0;
+  background: transparent;
   color: var(--vp-c-text-2);
 }
 
@@ -3098,7 +3142,7 @@ function scrollLogToBottom(): void {
 }
 
 .utt-log-line:empty {
-  min-height: 8px;
+  min-height: 4px;
 }
 
 .utt-player-text-blue {

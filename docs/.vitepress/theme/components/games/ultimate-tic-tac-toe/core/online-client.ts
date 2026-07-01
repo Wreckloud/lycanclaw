@@ -34,6 +34,7 @@ export interface OnlinePlayerSnapshot {
   side: number
   nickname: string
   connected: boolean
+  ready: boolean
 }
 
 export interface OnlineStateSnapshot {
@@ -121,6 +122,14 @@ export class OnlineGameClient {
   resign(roomId: string, playerToken: string): void {
     this.send({
       type: 'resign',
+      roomId,
+      playerToken
+    })
+  }
+
+  ready(roomId: string, playerToken: string): void {
+    this.send({
+      type: 'ready',
       roomId,
       playerToken
     })
