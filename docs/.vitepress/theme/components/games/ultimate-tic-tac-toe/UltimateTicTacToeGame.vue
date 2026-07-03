@@ -236,7 +236,7 @@
             </li>
           </ul>
 
-          <form class="utt-message-input" @submit.prevent="handleSendMessage">
+          <form ref="messageInputFormRef" class="utt-message-input" @submit.prevent="handleSendMessage">
             <div
               class="utt-message-field"
               :class="{ 'utt-message-field-error': Boolean(state.errorMessage) && !state.isMessageInputFocused }"
@@ -469,6 +469,7 @@ const dismissedSettlementCueKey = ref('')
 const activePreviewTarget = ref<PreviewTarget | null>(null)
 const lastPreviewTarget = ref<PreviewTarget | null>(null)
 const logRef = ref<HTMLElement | null>(null)
+const messageInputFormRef = ref<HTMLFormElement | null>(null)
 let requestId = 0
 let aiRequestTimer: number | null = null
 let aiDecisionApplyTimer: number | null = null
@@ -2545,10 +2546,16 @@ function clearSettlementCueTimer(): void {
 function handleMessageFocus(): void {
   state.value.errorMessage = ''
   state.value.isMessageInputFocused = true
+  scrollMessageInputIntoView()
+  window.setTimeout(scrollMessageInputIntoView, 280)
 }
 
 function handleMessageBlur(): void {
   state.value.isMessageInputFocused = false
+}
+
+function scrollMessageInputIntoView(): void {
+  messageInputFormRef.value?.scrollIntoView({ block: 'end', behavior: 'smooth' })
 }
 
 function handleSendMessage(): void {
@@ -3096,17 +3103,14 @@ function scrollLogToBottom(): void {
   font-weight: 900;
   line-height: 0.92;
   letter-spacing: 0.07em;
-  text-shadow:
-    3px 0 0 var(--vp-c-bg),
-    -3px 0 0 var(--vp-c-bg),
-    0 3px 0 var(--vp-c-bg),
-    0 -3px 0 var(--vp-c-bg),
-    2px 2px 0 var(--vp-c-bg),
-    -2px -2px 0 var(--vp-c-bg),
-    2px -2px 0 var(--vp-c-bg),
-    -2px 2px 0 var(--vp-c-bg),
-    0 10px 22px rgba(15, 23, 42, 0.28);
-  -webkit-text-stroke: 2px var(--vp-c-bg);
+  text-shadow: 0 10px 22px rgba(15, 23, 42, 0.28);
+  filter:
+    drop-shadow(2px 0 0 var(--vp-c-bg))
+    drop-shadow(-2px 0 0 var(--vp-c-bg))
+    drop-shadow(0 2px 0 var(--vp-c-bg))
+    drop-shadow(0 -2px 0 var(--vp-c-bg))
+    drop-shadow(1px 1px 0 var(--vp-c-bg))
+    drop-shadow(-1px -1px 0 var(--vp-c-bg));
 }
 
 .utt-settlement-cue-title.utt-player-text-blue {
@@ -4102,8 +4106,14 @@ function scrollLogToBottom(): void {
   }
 
   .utt-message-input {
+    position: sticky;
+    bottom: env(safe-area-inset-bottom);
+    z-index: 12;
     margin-top: 6px;
     padding-top: 6px;
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+    background: var(--vp-c-bg);
+    scroll-margin-bottom: max(24px, env(safe-area-inset-bottom));
   }
 
   .utt-message-field,
