@@ -19,6 +19,11 @@ function normalizeBaseUrl(url: string): string {
   return url.replace(/\/+$/, '')
 }
 
+function resolveBrowserBaseUrl(url: string): string {
+  if (typeof window === 'undefined') return normalizeBaseUrl(url)
+  return normalizeBaseUrl(new URL(url || '/', window.location.origin).href)
+}
+
 // 仅在浏览器端读取 window 注入值。
 function readRuntimeValue(key: keyof LycanRuntimeConfig): string | undefined {
   if (typeof window === 'undefined') return undefined
@@ -58,5 +63,7 @@ export function getBackendApiBase(): string {
 
 export function getWalineServerUrl(): string {
   const backendBase = getBackendApiBase()
-  return backendBase ? `${backendBase}/waline` : '/waline'
+  if (backendBase) return `${resolveBrowserBaseUrl(backendBase)}/waline`
+  if (typeof window !== 'undefined') return `${window.location.origin}/waline`
+  return '/waline'
 }

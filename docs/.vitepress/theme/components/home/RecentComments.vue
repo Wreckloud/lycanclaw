@@ -153,8 +153,13 @@ function isTrustedEmojiSource(value: string): boolean {
   try {
     const url = new URL(value, window.location.origin)
     if (url.origin === window.location.origin) return true
-    return url.hostname === 'cdn.jsdelivr.net'
-      && url.pathname.startsWith('/npm/@waline/emojis@')
+    if (url.hostname === 'cdn.jsdelivr.net') {
+      return url.pathname.startsWith('/npm/@waline/emojis')
+    }
+    if (url.hostname === 'unpkg.com') {
+      return url.pathname.startsWith('/@waline/emojis')
+    }
+    return false
   } catch {
     return false
   }
