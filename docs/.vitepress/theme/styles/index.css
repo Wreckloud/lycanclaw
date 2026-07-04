@@ -95,6 +95,17 @@ input[type='reset'] {
   background-color: var(--vp-c-bg);
 }
 
+@media (max-width: 767px) {
+  .VPNavScreen .VPNavScreenAppearance {
+    border-radius: 3px 3px 0 0;
+  }
+
+  .VPNavScreen .social-links:empty {
+    display: none;
+    margin-top: 0 !important;
+  }
+}
+
 @keyframes fade-in-up {
   from {
     opacity: 0;

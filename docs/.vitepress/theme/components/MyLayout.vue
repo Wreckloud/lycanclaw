@@ -9,6 +9,7 @@ import PostTitle from './PostTitle.vue'
 import ArticleTagsFooter from './ArticleTagsFooter.vue'
 import DataPanel from './DataPanel.vue'
 import GlobalMusicPlayer from './music/GlobalMusicPlayer.vue'
+import NavMusicPlayer from './music/NavMusicPlayer.vue'
 import BackToTop from './common/BackToTop.vue'
 import { useData } from 'vitepress'
 import { defineAsyncComponent, computed } from 'vue'
@@ -62,6 +63,10 @@ const shouldShowPostTitle = computed(() => !frontmatter.value.hideTitle)
     <!-- 页脚数据面板 -->
     <template #layout-bottom>
       <DataPanel />
+    </template>
+
+    <template #nav-screen-content-after>
+      <NavMusicPlayer />
     </template>
   </Layout>
   
