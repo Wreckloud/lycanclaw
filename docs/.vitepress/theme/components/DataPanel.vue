@@ -148,13 +148,13 @@ function applyForwardRoll(indexRef: { value: number }, durationRef: { value: num
     return
   }
 
-  if (currentDigit === 9 && nextDigit === 0) {
+  if (nextDigit < currentDigit) {
     durationRef.value = DIGIT_WRAP_DURATION_MS
-    indexRef.value += DIGIT_SEQUENCE_SIZE - 1
+    indexRef.value += currentDigit - nextDigit
     return
   }
 
-  const forwardStep = (nextDigit - currentDigit + DIGIT_SEQUENCE_SIZE) % DIGIT_SEQUENCE_SIZE
+  const forwardStep = nextDigit - currentDigit
   durationRef.value = DIGIT_STEP_DURATION_MS
   indexRef.value -= forwardStep
 }
