@@ -106,6 +106,24 @@ input[type='reset'] {
   }
 }
 
+@media (min-width: 768px) {
+  .VPNavBarExtra {
+    display: block !important;
+  }
+
+  .VPNavBarExtra .VPMenu {
+    border-radius: 3px;
+  }
+
+  .VPNavBarExtra .VPMenu > .group {
+    padding-bottom: 0 !important;
+  }
+
+  .VPNavBarExtra .VPMenu > .group:has(.social-links-list:empty) {
+    display: none;
+  }
+}
+
 @keyframes fade-in-up {
   from {
     opacity: 0;
