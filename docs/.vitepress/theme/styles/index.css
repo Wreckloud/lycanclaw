@@ -107,6 +107,10 @@ input[type='reset'] {
 }
 
 @media (min-width: 768px) {
+  .VPNavBarAppearance {
+    display: none !important;
+  }
+
   .VPNavBarExtra {
     display: block !important;
   }
