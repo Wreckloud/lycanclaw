@@ -226,7 +226,7 @@
                 class="utt-log-line"
               >
                 <span
-                  v-for="(part, partIndex) in splitMessageLineParts(line)"
+                  v-for="(part, partIndex) in splitMessageLineParts(line, message)"
                   :key="`${message.id}-${lineIndex}-${partIndex}`"
                   :class="getPlayerTextClass(part.player)"
                 >
@@ -1487,10 +1487,8 @@ function getDisplayPlayerName(player: Player, currentState: GameCoreState): stri
 
 function getOnlineSideDisplayName(player: Player, _withRole = true): string {
   const onlinePlayer = onlinePlayers.value.find((item) => toOnlinePlayer(item.side) === player)
-  const baseName = onlinePlayer?.self ? '你' : onlinePlayer?.nickname
   const fallback = GAME_TEXT.player.defaultName(player)
-  if (!baseName) return fallback
-  return baseName
+  return onlinePlayer ? getOnlinePlayerDisplayName(onlinePlayer) : fallback
 }
 
 function repeatCssAddition(value: string, times: number): string {
@@ -2057,12 +2055,21 @@ function formatOnlineNextTurnEvent(eventData: Record<string, unknown>): string |
 }
 
 function readEventNickname(eventData: Record<string, unknown>, key: string): string {
+  const playerNumber = readOptionalEventNumber(eventData, 'playerNumber')
+  const eventPlayer = findOnlinePlayerByNumber(playerNumber)
+  if (eventPlayer) return getOnlinePlayerDisplayName(eventPlayer)
+  if (playerNumber !== null) return `${DEFAULT_ONLINE_NICKNAME}${playerNumber}`
+
   const nickname = readEventString(eventData, key)
-  const onlinePlayer = onlinePlayers.value.find((player) => player.nickname === nickname)
-  return onlinePlayer?.self ? '你' : nickname
+  return nickname || GAME_TEXT.room.defaultNickname
 }
 
 function readEventPlayerName(eventData: Record<string, unknown>, key: string): string {
+  const playerNumber = readOptionalEventNumber(eventData, `${key}Number`)
+  const eventPlayer = findOnlinePlayerByNumber(playerNumber)
+  if (eventPlayer) return getOnlinePlayerDisplayName(eventPlayer)
+  if (playerNumber !== null) return `${DEFAULT_ONLINE_NICKNAME}${playerNumber}`
+
   const player = readOptionalEventPlayer(eventData, key)
   return player ? getOnlineSideDisplayName(player, false) : GAME_TEXT.player.defaultName(X)
 }
@@ -2092,6 +2099,9 @@ function readEventNumberArray(eventData: Record<string, unknown>, key: string): 
 }
 
 function findOnlineMessageSender(message: OnlineGameMessage): OnlinePlayerSnapshot | null {
+  const eventPlayer = findOnlinePlayerByNumber(readOptionalEventNumber(message.eventData ?? {}, 'playerNumber'))
+  if (eventPlayer) return eventPlayer
+
   const sender = toOnlinePlayer(message.sender)
   if (sender) {
     return onlinePlayers.value.find((player) => toOnlinePlayer(player.side) === sender) ?? null
@@ -2099,9 +2109,9 @@ function findOnlineMessageSender(message: OnlineGameMessage): OnlinePlayerSnapsh
   return onlinePlayers.value.find((player) => player.nickname === message.senderName) ?? null
 }
 
-function formatOnlineSenderName(senderName: string, _sender: Player | null, self = false): string {
-  const baseName = self ? '你' : senderName
-  return baseName
+function findOnlinePlayerByNumber(playerNumber: number | null): OnlinePlayerSnapshot | null {
+  if (playerNumber === null) return null
+  return onlinePlayers.value.find((player) => player.playerNumber === playerNumber) ?? null
 }
 
 function toOnlinePlayer(value: unknown): Player | null {
@@ -2301,7 +2311,7 @@ function handleLeaveOnlineRoomClick(): void {
 }
 
 function getOnlineMemberDisplayName(player: OnlinePlayerSnapshot): string {
-  return player.self ? '你' : player.nickname
+  return getOnlinePlayerDisplayName(player)
 }
 
 function getOnlineMemberStatusText(player: OnlinePlayerSnapshot): string {
@@ -2310,6 +2320,23 @@ function getOnlineMemberStatusText(player: OnlinePlayerSnapshot): string {
   const readyText = player.ready ? ' · 已准备' : ''
   const offlineText = player.connected ? '' : ' · 离线'
   return `${roleText}${readyText}${offlineText}`
+}
+
+function getOnlinePlayerDisplayName(player: OnlinePlayerSnapshot): string {
+  if (player.self) return '你'
+  const nickname = getOnlinePlayerNickname(player)
+  if (shouldAppendOnlinePlayerNumber(player)) return `${nickname}${player.playerNumber}`
+  return player.nickname
+}
+
+function shouldAppendOnlinePlayerNumber(player: OnlinePlayerSnapshot): boolean {
+  const nickname = getOnlinePlayerNickname(player)
+  if (!nickname || nickname === DEFAULT_ONLINE_NICKNAME) return true
+  return onlinePlayers.value.filter((item) => item.nickname.trim() === nickname).length > 1
+}
+
+function getOnlinePlayerNickname(player: OnlinePlayerSnapshot): string {
+  return player.nickname.trim() || DEFAULT_ONLINE_NICKNAME
 }
 
 function getOnlineMoveError(): string {
@@ -2719,9 +2746,15 @@ function splitMessageLines(text: string): string[] {
   return text.split('\n')
 }
 
-function splitMessageLineParts(line: string): MessageLinePart[] {
+function splitMessageLineParts(line: string, message: GameMessage): MessageLinePart[] {
+  if (!shouldHighlightMessagePlayers(message)) {
+    return [{ text: line, player: null }]
+  }
+
   const parts: MessageLinePart[] = []
   const labels = getColoredPlayerLabels()
+  if (labels.length === 0) return [{ text: line, player: null }]
+
   const pattern = new RegExp(labels.map((label) => escapeRegExp(label.text)).join('|'), 'g')
   let lastIndex = 0
 
@@ -2751,6 +2784,10 @@ function splitMessageLineParts(line: string): MessageLinePart[] {
   return parts.length > 0 ? parts : [{ text: line, player: null }]
 }
 
+function shouldHighlightMessagePlayers(message: GameMessage): boolean {
+  return message.type === 'move' || isGameRecordMessage(message)
+}
+
 function getColoredPlayerLabels(): MessageLinePart[] {
   const labels: MessageLinePart[] = [
     { text: GAME_TEXT.player.defaultName(X), player: X },
@@ -2759,7 +2796,7 @@ function getColoredPlayerLabels(): MessageLinePart[] {
   for (const player of onlinePlayers.value) {
     const side = toOnlinePlayer(player.side)
     if (!side) continue
-    labels.push({ text: formatOnlineSenderName(player.nickname, side, player.self), player: side })
+    labels.push({ text: getOnlinePlayerDisplayName(player), player: side })
   }
 
   return labels
@@ -3216,15 +3253,15 @@ function scrollLogToBottom(): void {
   line-height: 0.92;
   letter-spacing: 0.07em;
   text-shadow:
-    2px 0 0 var(--vp-c-bg),
-    -2px 0 0 var(--vp-c-bg),
-    0 2px 0 var(--vp-c-bg),
-    0 -2px 0 var(--vp-c-bg),
-    1.5px 1.5px 0 var(--vp-c-bg),
-    -1.5px 1.5px 0 var(--vp-c-bg),
-    1.5px -1.5px 0 var(--vp-c-bg),
-    -1.5px -1.5px 0 var(--vp-c-bg),
-    0 10px 22px rgba(15, 23, 42, 0.28);
+    1px 0 0 var(--vp-c-bg),
+    -1px 0 0 var(--vp-c-bg),
+    0 1px 0 var(--vp-c-bg),
+    0 -1px 0 var(--vp-c-bg),
+    1px 1px 0 var(--vp-c-bg),
+    -1px 1px 0 var(--vp-c-bg),
+    1px -1px 0 var(--vp-c-bg),
+    -1px -1px 0 var(--vp-c-bg),
+    0 6px 16px rgba(15, 23, 42, 0.2);
 }
 
 .utt-settlement-cue-title.utt-player-text-blue {

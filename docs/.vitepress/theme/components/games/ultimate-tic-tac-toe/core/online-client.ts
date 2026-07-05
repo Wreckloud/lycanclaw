@@ -48,6 +48,7 @@ export interface OnlineGameMessage {
 }
 
 export interface OnlinePlayerSnapshot {
+  playerNumber: number
   side: number | null
   nickname: string
   connected: boolean
