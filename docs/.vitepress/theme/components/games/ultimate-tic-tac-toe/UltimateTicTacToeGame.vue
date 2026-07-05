@@ -441,8 +441,10 @@ const TOUCH_PREVIEW_MOVE_THRESHOLD = 8
 const TUTORIAL_AI_MOVE_DELAY_MS = 1000
 const TUTORIAL_SETTLEMENT_DIALOG_DELAY_MS = 1800
 const ONLINE_NICKNAME_STORAGE_KEY = 'lycan:utt:online:nickname'
+const ONLINE_INTRO_SHOWN_STORAGE_KEY = 'lycan:utt:online:intro-shown'
 const ONLINE_SESSION_TOKENS_STORAGE_KEY = 'lycan:utt:online:session-tokens'
 const DEFAULT_ONLINE_NICKNAME = GAME_TEXT.room.defaultNickname
+type OnlineConnectionStatus = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'expired'
 const settings = ref<GameSettings>(loadGameSettings())
 const adaptiveProfile = ref(loadAdaptiveProfile())
 const state = ref<GameCoreState>(createInitialGameState(settings.value))
@@ -457,7 +459,7 @@ const onlinePlayerToken = ref('')
 const onlineNickname = ref(loadOnlineNickname())
 const hasCustomOnlineNickname = ref(loadHasCustomOnlineNickname())
 const onlineRoomStatus = ref<OnlineRoomStatus | 'NOT_JOINED'>('NOT_JOINED')
-const onlineConnectionStatus = ref<'idle' | 'connecting' | 'connected' | 'disconnected'>('idle')
+const onlineConnectionStatus = ref<OnlineConnectionStatus>('idle')
 const onlineSelfSide = ref<Player | null>(null)
 const onlinePlayers = ref<OnlinePlayerSnapshot[]>([])
 const onlineClient = ref<OnlineGameClient | null>(null)
@@ -684,6 +686,8 @@ onMounted(() => {
   worker.value = new Worker(new URL('./core/ai.worker.ts', import.meta.url), { type: 'module' })
   worker.value.addEventListener('message', handleWorkerMessage)
   window.addEventListener('beforeunload', handleBeforeUnload)
+  window.addEventListener('online', reconnectOnlineRoomIfNeeded)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
   document.addEventListener('click', handleDocumentClick)
   handleInitialOnlineRoomFromUrl()
   requestAIMoveIfNeeded()
@@ -697,8 +701,10 @@ onBeforeUnmount(() => {
   clearAIDecisionApplyTimer()
   clearTutorialTimer()
   clearSettlementCueTimer()
-  leaveOnlineRoom(false)
+  closeOnlineClient()
   window.removeEventListener('beforeunload', handleBeforeUnload)
+  window.removeEventListener('online', reconnectOnlineRoomIfNeeded)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
   document.removeEventListener('click', handleDocumentClick)
   worker.value?.removeEventListener('message', handleWorkerMessage)
   worker.value?.terminate()
@@ -1642,6 +1648,12 @@ function handleResignOrRematch(): void {
 function handleModeSelectChange(event: Event): void {
   if (isTutorialMode.value) return
   const gameMode = (event.target as HTMLSelectElement).value as GameMode
+  const shouldOpenOnlineIntro = gameMode === 'online' && settings.value.gameMode !== 'online' && shouldShowOnlineIntro()
+
+  if (gameMode === 'online' && !ensureOnlineNicknameForEntry()) {
+    return
+  }
+
   if (settings.value.gameMode === 'online' && gameMode !== 'online' && hasOnlineRoom.value) {
     if (!confirmLeaveOnlineRoom('切换模式会离开当前房间，确定要继续吗？')) {
       return
@@ -1653,6 +1665,11 @@ function handleModeSelectChange(event: Event): void {
     gameMode
   }
   handleModeChange()
+
+  if (shouldOpenOnlineIntro) {
+    markOnlineIntroShown()
+    isRulesOpen.value = true
+  }
 }
 
 function handleDifficultySelectChange(event: Event): void {
@@ -1775,7 +1792,7 @@ function connectOnlineRoom(roomId: string, playerToken: string, nickname: string
 
   const client = new OnlineGameClient({
     onSnapshot: applyOnlineSnapshot,
-    onError: setError,
+    onError: handleOnlineRoomError,
     onClose: () => {
       if (onlineClient.value === client) {
         handleOnlineSocketClosed()
@@ -1784,6 +1801,38 @@ function connectOnlineRoom(roomId: string, playerToken: string, nickname: string
   })
   onlineClient.value = client
   client.connect(onlineRoomId.value, onlinePlayerToken.value, nickname)
+}
+
+function handleOnlineRoomError(message: string): void {
+  setError(message)
+  if (isExpiredOnlineRoomError(message)) {
+    expireOnlineRoom(message)
+  }
+}
+
+function isExpiredOnlineRoomError(message: string): boolean {
+  return message.includes('房间不存在')
+    || message.includes('已过期')
+    || message.includes('房间失效')
+}
+
+function expireOnlineRoom(message = '房间已失效，请重新创建或加入房间'): void {
+  const expiredRoomId = onlineRoomId.value
+  closeOnlineClient()
+  onlineRoomId.value = ''
+  onlinePlayerToken.value = ''
+  onlineRoomStatus.value = 'NOT_JOINED'
+  onlineConnectionStatus.value = 'expired'
+  onlineSelfSide.value = null
+  onlinePlayers.value = []
+  isOnlineMemberMenuOpen.value = false
+  if (expiredRoomId) {
+    removeOnlineRoomToken(expiredRoomId)
+  }
+  clearOnlineRoomUrl()
+  state.value = createInitialGameState(settings.value)
+  clearNextBoardPreview()
+  setError(message)
 }
 
 function playOnlineCell(bigIndex: number, smallIndex: number): void {
@@ -2064,12 +2113,29 @@ function handleOnlineSocketClosed(): void {
   onlineConnectionStatus.value = onlineRoomId.value ? 'disconnected' : 'idle'
 }
 
+function handleVisibilityChange(): void {
+  if (document.visibilityState === 'visible') {
+    reconnectOnlineRoomIfNeeded()
+  }
+}
+
+function reconnectOnlineRoomIfNeeded(): void {
+  if (settings.value.gameMode !== 'online') return
+  if (onlineConnectionStatus.value !== 'disconnected') return
+  if (!onlineRoomId.value || !onlinePlayerToken.value || !onlineNickname.value) return
+  connectOnlineRoom(onlineRoomId.value, onlinePlayerToken.value, onlineNickname.value)
+}
+
 function handleInitialOnlineRoomFromUrl(): void {
   if (typeof window === 'undefined') return
   const roomId = new URLSearchParams(window.location.search).get('room')
   if (!roomId) return
-  const nickname = ensureOnlineNickname()
+  const nickname = ensureOnlineNicknameForEntry()
   if (!nickname) return
+  if (shouldShowOnlineIntro()) {
+    markOnlineIntroShown()
+    isRulesOpen.value = true
+  }
   joinOnlineRoom(roomId, nickname)
 }
 
@@ -2077,6 +2143,25 @@ function ensureOnlineNickname(): string | null {
   if (onlineNickname.value) return onlineNickname.value
   onlineNickname.value = DEFAULT_ONLINE_NICKNAME
   return onlineNickname.value
+}
+
+function ensureOnlineNicknameForEntry(): string | null {
+  if (hasCustomOnlineNickname.value && onlineNickname.value.trim()) {
+    return onlineNickname.value.trim()
+  }
+
+  const nickname = window.prompt('首次进入在线对战，请先输入昵称（1-16 字）', onlineNickname.value || DEFAULT_ONLINE_NICKNAME)
+  if (nickname === null) return null
+
+  const cleanNickname = nickname.trim()
+  if (!cleanNickname || cleanNickname.length > 16) {
+    window.alert('昵称需要 1-16 字')
+    return null
+  }
+
+  onlineNickname.value = cleanNickname
+  saveOnlineNickname(cleanNickname)
+  return cleanNickname
 }
 
 function editOnlineNickname(): void {
@@ -2131,17 +2216,18 @@ function handleBeforeUnload(event: BeforeUnloadEvent): void {
 function getOnlinePrimaryActionText(): string {
   if (onlineRoomStatus.value === 'PLAYING') return onlineSelfIsActivePlayer.value ? '投降' : '观战中'
   if (onlineRoomStatus.value === 'WAITING') {
-    if (onlineSelfReady.value) return `取消准备 (${onlineReadyCount.value}/2)`
-    return `准备开始! (${onlineReadyCount.value}/2)`
+    if (onlineSelfReady.value) return `取消(${onlineReadyCount.value}/2)`
+    return `准备(${onlineReadyCount.value}/2)`
   }
   if (onlineRoomStatus.value === 'FINISHED') {
-    if (onlineSelfReady.value) return `取消准备 (${onlineReadyCount.value}/2)`
-    return `再来一把! (${onlineReadyCount.value}/2)`
+    if (onlineSelfReady.value) return `取消(${onlineReadyCount.value}/2)`
+    return `再来!(${onlineReadyCount.value}/2)`
   }
   return '创建房间'
 }
 
 function getOnlineRoomStatusText(): string {
+  if (onlineConnectionStatus.value === 'expired') return GAME_TEXT.room.expired
   if (onlineConnectionStatus.value === 'connecting') return GAME_TEXT.room.connecting
   if (onlineConnectionStatus.value === 'disconnected') return GAME_TEXT.room.disconnected
   if (!hasOnlineRoom.value) return GAME_TEXT.room.notJoined
@@ -2264,6 +2350,16 @@ function loadHasCustomOnlineNickname(): boolean {
   return Boolean(window.localStorage.getItem(ONLINE_NICKNAME_STORAGE_KEY)?.trim())
 }
 
+function shouldShowOnlineIntro(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.localStorage.getItem(ONLINE_INTRO_SHOWN_STORAGE_KEY) !== 'true'
+}
+
+function markOnlineIntroShown(): void {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(ONLINE_INTRO_SHOWN_STORAGE_KEY, 'true')
+}
+
 function saveOnlineNickname(nickname: string): void {
   if (typeof window === 'undefined') return
   window.localStorage.setItem(ONLINE_NICKNAME_STORAGE_KEY, nickname)
@@ -2292,6 +2388,17 @@ function saveOnlineRoomToken(roomId: string, token: string): void {
   }
   tokens[roomId] = token
   window.sessionStorage.setItem(ONLINE_SESSION_TOKENS_STORAGE_KEY, JSON.stringify(tokens))
+}
+
+function removeOnlineRoomToken(roomId: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    const tokens = JSON.parse(window.sessionStorage.getItem(ONLINE_SESSION_TOKENS_STORAGE_KEY) || '{}') as Record<string, string>
+    delete tokens[roomId]
+    window.sessionStorage.setItem(ONLINE_SESSION_TOKENS_STORAGE_KEY, JSON.stringify(tokens))
+  } catch {
+    window.sessionStorage.removeItem(ONLINE_SESSION_TOKENS_STORAGE_KEY)
+  }
 }
 
 function handleTutorialDialogNext(): void {
@@ -2546,6 +2653,7 @@ function clearSettlementCueTimer(): void {
 function handleMessageFocus(): void {
   state.value.errorMessage = ''
   state.value.isMessageInputFocused = true
+  if (isMobileGameViewport()) return
   scrollMessageInputIntoView()
   window.setTimeout(scrollMessageInputIntoView, 280)
 }
@@ -2556,6 +2664,10 @@ function handleMessageBlur(): void {
 
 function scrollMessageInputIntoView(): void {
   messageInputFormRef.value?.scrollIntoView({ block: 'end', behavior: 'smooth' })
+}
+
+function isMobileGameViewport(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
 }
 
 function handleSendMessage(): void {
@@ -3103,14 +3215,16 @@ function scrollLogToBottom(): void {
   font-weight: 900;
   line-height: 0.92;
   letter-spacing: 0.07em;
-  text-shadow: 0 10px 22px rgba(15, 23, 42, 0.28);
-  filter:
-    drop-shadow(2px 0 0 var(--vp-c-bg))
-    drop-shadow(-2px 0 0 var(--vp-c-bg))
-    drop-shadow(0 2px 0 var(--vp-c-bg))
-    drop-shadow(0 -2px 0 var(--vp-c-bg))
-    drop-shadow(1px 1px 0 var(--vp-c-bg))
-    drop-shadow(-1px -1px 0 var(--vp-c-bg));
+  text-shadow:
+    2px 0 0 var(--vp-c-bg),
+    -2px 0 0 var(--vp-c-bg),
+    0 2px 0 var(--vp-c-bg),
+    0 -2px 0 var(--vp-c-bg),
+    1.5px 1.5px 0 var(--vp-c-bg),
+    -1.5px 1.5px 0 var(--vp-c-bg),
+    1.5px -1.5px 0 var(--vp-c-bg),
+    -1.5px -1.5px 0 var(--vp-c-bg),
+    0 10px 22px rgba(15, 23, 42, 0.28);
 }
 
 .utt-settlement-cue-title.utt-player-text-blue {
@@ -4049,6 +4163,7 @@ function scrollLogToBottom(): void {
   }
 
   .utt-menu-control {
+    min-width: 0;
     min-height: 40px;
     display: block;
     margin: 0;
@@ -4061,6 +4176,7 @@ function scrollLogToBottom(): void {
   }
 
   .utt-menu-select {
+    box-sizing: border-box;
     width: 100%;
     height: 40px;
     padding: 0 6px;
@@ -4068,23 +4184,32 @@ function scrollLogToBottom(): void {
     background: var(--vp-c-bg-soft);
     font-size: 13px;
     text-align: center;
+    white-space: nowrap;
   }
 
   .utt-turn-button {
+    box-sizing: border-box;
     width: 100%;
     height: 40px;
     border: 1px solid var(--vp-c-divider);
     background: var(--vp-c-bg-soft);
     font-size: 13px;
     text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .utt-menu-button {
+    min-width: 0;
     min-height: 40px;
     justify-content: center;
     margin: 0;
     padding: 0 6px;
     font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .utt-log-panel {
@@ -4106,8 +4231,6 @@ function scrollLogToBottom(): void {
   }
 
   .utt-message-input {
-    position: sticky;
-    bottom: env(safe-area-inset-bottom);
     z-index: 12;
     margin-top: 6px;
     padding-top: 6px;

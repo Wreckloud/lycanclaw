@@ -115,9 +115,10 @@ export const GAME_TEXT = {
     finished: '已结束',
     connecting: '连接中',
     disconnected: '连接已断开',
+    expired: '房间失效',
     playing: '对局中',
-    turnSelf: '轮到你落子',
-    turnOpponent: '轮到对手落子',
+    turnSelf: '轮到你',
+    turnOpponent: '轮到对手',
     turnBlue: '轮到蓝方',
     turnRed: '轮到红方'
   },
