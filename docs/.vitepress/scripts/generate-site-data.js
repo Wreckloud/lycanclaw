@@ -43,6 +43,10 @@ function normalizeTags(tags) {
   return []
 }
 
+function readMarkdownContent(filePath) {
+  return fs.readFileSync(filePath, 'utf-8').replace(/\r\n/g, '\n')
+}
+
 // 递归获取目录下的所有md文件
 function getAllMarkdownFiles(dir, fileList = []) {
   if (!fs.existsSync(dir)) {
@@ -186,7 +190,7 @@ function generatePostsData(thoughtsDir, publicDir, docsDir) {
   // 生成新的数据
   const posts = mdFiles.map(file => {
     const filePath = path.join(thoughtsDir, file)
-    const content = fs.readFileSync(filePath, 'utf-8')
+    const content = readMarkdownContent(filePath)
     
     // 使用gray-matter解析frontmatter
     const { data: frontmatter, content: markdownContent, excerpt } = matter(content, {
@@ -272,7 +276,7 @@ function generateKnowledgeStats(knowledgeDir, publicDir, docsDir) {
   const stats = []
   
   mdFilePaths.forEach(filePath => {
-    const content = fs.readFileSync(filePath, 'utf-8')
+    const content = readMarkdownContent(filePath)
     const { data: frontmatter, content: markdownContent } = matter(content)
     const isPublish = frontmatter.publish !== undefined ? frontmatter.publish : true
     if (!isPublish) {

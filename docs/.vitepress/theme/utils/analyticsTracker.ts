@@ -51,6 +51,15 @@ function currentTitle(path: string): string {
   return rawTitle || path
 }
 
+function isNotFoundPage(): boolean {
+  return typeof document !== 'undefined' && Boolean(document.querySelector('.lycan-not-found'))
+}
+
+function isNotFoundTitle(title: string): boolean {
+  const value = title.trim()
+  return value === '404' || value.toLowerCase() === 'not found'
+}
+
 function addVisibleDuration(): void {
   if (!activeVisit || !activeVisit.visible) return
   activeVisit.visibleDurationMs += Date.now() - activeVisit.visibleSince
@@ -122,13 +131,18 @@ async function startTrackableVisit(path: string): Promise<void> {
     finishActiveVisit(true)
     return
   }
+  const title = currentTitle(normalized)
+  if (isNotFoundPage() || isNotFoundTitle(title)) {
+    finishActiveVisit(true)
+    return
+  }
 
   finishActiveVisit(false)
 
   try {
     const response = await startVisit({
       path: normalized,
-      title: currentTitle(normalized),
+      title,
       referrer: document.referrer || '',
       visitorId: getVisitorId()
     })
